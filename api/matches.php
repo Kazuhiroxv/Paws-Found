@@ -105,6 +105,28 @@ function match_decide(int $id): never
         json_error('Write what you need from the reporters before asking.', 422);
     }
 
+    // Confirming moves both reports to 'returned', which is the one place a
+    // report's status is written without passing through REPORT_TRANSITIONS in
+    // api/reports.php. So the same rule is applied here: both reports must
+    // still be open. Otherwise a pairing raised before a moderation decision
+    // closed one of the reports could be confirmed afterwards, quietly
+    // reopening a closed case as a reunion.
+    //
+    // Before the transaction starts, so nothing has to be unwound.
+    if ($action === 'confirm') {
+        foreach (['lost_report_id', 'found_report_id'] as $key) {
+            $check = db()->prepare('SELECT status FROM pet_reports WHERE report_id = :id');
+            $check->execute([':id' => (int) $match[$key]]);
+
+            if (!in_array($check->fetchColumn(), ['active', 'possible_match'], true)) {
+                json_error(
+                    'One of these reports is no longer open, so this pairing cannot be confirmed.',
+                    409
+                );
+            }
+        }
+    }
+
     $pdo = db();
     $pdo->beginTransaction();
 
@@ -117,11 +139,23 @@ function match_decide(int $id): never
             'confirm'              => match_confirm($id, $match, $user, $note),
         };
 
+        $after = $pdo->prepare('SELECT match_status FROM match_claims WHERE match_id = :id');
+        $after->execute([':id' => $id]);
+        $matchStatusAfter = (string) $after->fetchColumn();
+
         $pdo->commit();
     } catch (Throwable $exception) {
         $pdo->rollBack();
         throw $exception;
     }
+
+    // `match_claims.reviewed_by_user_id` already says who last touched this
+    // pairing, but it holds one name and is overwritten by the next decision.
+    // The audit row is appended, so a pairing that was asked about, then
+    // rejected, then complained about reads as three entries in order rather
+    // than one name with no history behind it.
+    audit_log('match_decided', (int) $user['user_id'], $user['email'],
+        'match', $id, 'success', "{$action}: {$match['match_status']} -> {$matchStatusAfter}");
 
     match_detail($id);
 }

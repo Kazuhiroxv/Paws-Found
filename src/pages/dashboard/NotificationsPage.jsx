@@ -8,6 +8,7 @@ import { useAsync } from '@/hooks/useAsync'
 import { notificationService, userService } from '@/services'
 import { formatRelativeTime } from '@/utils/date'
 import { cn } from '@/utils/cn'
+import emptyNoNotifications from '@/assets/empty-no-notifications.webp'
 
 /**
  * An icon and a tone per kind of event, so the list can be scanned without
@@ -154,7 +155,7 @@ export function NotificationsPage({
 
       {visible.length === 0 ? (
         <EmptyState
-          icon={Bell}
+illustration={emptyNoNotifications}
           title={showUnreadOnly ? "You're all caught up" : 'No notifications yet'}
           description={
             showUnreadOnly

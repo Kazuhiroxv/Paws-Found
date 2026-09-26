@@ -263,9 +263,14 @@ Services operate on mock data now; only their internals change when they start
 calling the PHP API with `fetch`. Connecting the real backend must not require
 rewriting the UI — that is the whole reason this boundary exists.
 
-The database is built: `database/schema.sql` (11 tables, verified on MariaDB
-10.4.32 via XAMPP). **This XAMPP runs MySQL on port 3307**, not 3306, because a
+The database is built: `database/schema.sql` — **15 tables**, the 14 on the
+ERD plus `schema_migrations`, with 23 foreign keys. Counted from
+`information_schema` on MariaDB 10.4.32 via XAMPP, not from the file. **This XAMPP runs MySQL on port 3307**, not 3306, because a
 separate MySQL 8.0 Windows service holds 3306.
+
+Changes made after a database already exists go in `database/migrations/` as
+numbered, additive files, and are mirrored back into `schema.sql` so a fresh
+import and a migrated database stay identical. See that folder's README.
 
 ---
 

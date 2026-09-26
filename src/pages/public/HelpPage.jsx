@@ -13,7 +13,7 @@ import {
   TriangleAlert,
   Users,
 } from 'lucide-react'
-import headerIllustration from '@/assets/img-012-help-header-illustration.png'
+import helpIllustration from '@/assets/img-028-help-safety.webp'
 import { Container } from '@/components/ui'
 import { PatternVeil } from '@/components/PatternVeil'
 import { PageHeader } from '@/components/PageHeader'
@@ -180,6 +180,24 @@ const SAFETY_RULES = [
 ]
 
 /**
+ * The ground each topic section stands on, in page order.
+ *
+ * Not alternating two colours: three, cycled so that no two neighbours share
+ * one and the eye registers "this is a different subject" on the way down.
+ * Kept here rather than computed from the index so re-ordering TOPICS cannot
+ * silently put two identical grounds next to each other.
+ */
+const TOPIC_GROUNDS = {
+  'reporting-lost': 'bg-warm-band',
+  'reporting-found': 'bg-surface-alt',
+  'possible-matches': '',
+  'verifying-ownership': 'bg-surface-alt',
+  'safe-handovers': 'bg-warm-band',
+  privacy: 'bg-surface-alt',
+  'reporting-abuse': '',
+}
+
+/**
  * Topics are tinted by what they are about — filing, matching, or staying safe
  * — rather than all seven sharing one teal. Seven identical cards gave the eye
  * nothing to sort them by.
@@ -192,6 +210,22 @@ const TOPIC_TINTS = {
   'safe-handovers': 'bg-status-returned-soft text-success-ink',
   privacy: 'bg-status-returned-soft text-success-ink',
   'reporting-abuse': 'bg-danger-soft text-danger-hover',
+}
+
+/**
+ * The same sorting, as ink rather than a chip: the section icon at the head of
+ * each topic is drawn large and unboxed, so it needs a colour and no fill. The
+ * pairs match TOPIC_TINTS above — a topic must not be amber in the card list
+ * and teal in its own section.
+ */
+const TOPIC_ICON_INK = {
+  'reporting-lost': 'text-lost',
+  'reporting-found': 'text-found',
+  'possible-matches': 'text-brand',
+  'verifying-ownership': 'text-brand',
+  'safe-handovers': 'text-success-ink',
+  privacy: 'text-success-ink',
+  'reporting-abuse': 'text-danger-hover',
 }
 
 export function HelpPage() {
@@ -211,52 +245,74 @@ export function HelpPage() {
 
   return (
     <div className="-my-8 flex flex-col">
-      {/* The page opens on its own ground rather than on flat white, so it
-          reads as a destination the way Home and Explore do. */}
-      <section className="hero-ground relative isolate border-b border-border pt-10 pb-12 sm:pt-14">
+      {/* Explore's header is a rounded panel with its illustration inset on the
+          right, the title and search on the left. This page had the same shape,
+          the same proportions and the same reading order, so the two pages were
+          telling the eye they were the same kind of place.
+
+          Here the artwork IS the ground: full bleed, no card edge, and the
+          search field steps off its lower edge onto the page rather than
+          sitting inside a box. Same content, different composition. */}
+      <section className="relative isolate border-b border-border">
+        {/* A floor under the band from `lg`, where the artwork is showing. The
+            heading alone made it ~310px, which cropped the illustration to
+            half its height and cut the phone and the dog's feet off. */}
+        <div className="relative isolate overflow-hidden bg-warm-band lg:min-h-[25rem]">
+          {/* IMG-028 from `lg` up, where the text column is capped well clear
+              of the artwork. Below that the band keeps the cream the artwork is
+              drawn on and the type has the width to itself — the illustration
+              is busy on the right, and text over it would not hold. */}
+          <img
+            src={helpIllustration}
+            alt=""
+            className="absolute inset-0 hidden size-full object-cover object-[75%_50%] lg:block"
+          />
+
+          {/* The same scrim the homepage and About heroes carry. The amber
+              route ribbon in IMG-028 runs left across the band at 1366px and
+              lands under the description, which measured 2.53:1 there — the
+              heading was fine, so looking at it would not have caught it. */}
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 hidden bg-[linear-gradient(90deg,rgba(254,249,240,0.97)_0%,rgba(254,249,240,0.96)_38%,rgba(254,249,240,0.90)_50%,rgba(254,249,240,0.45)_60%,transparent_74%)] lg:block"
+          />
+
+          <Container className="relative flex flex-col justify-center py-11 sm:py-14 lg:min-h-[25rem] lg:pb-20">
+            <div className="lg:max-w-[46%]">
+              <PageHeader
+                title="Help & community safety"
+                description="How to file a report that helps, how a match is checked, and how to stay safe arranging a handover."
+                onArtwork
+              />
+            </div>
+          </Container>
+        </div>
+
+        {/* Straddling the band's lower edge. The overlap is the whole point:
+            it ties the search to the artwork above it instead of leaving it
+            floating on the page beneath. */}
+        <Container className="relative -mt-7 pb-10">
+          <label className="relative block max-w-xl">
+            <span className="sr-only">Search help</span>
+            <Search
+              size={18}
+              className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-fg-muted"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search help — try “collar”, “match” or “handover”"
+              className="h-14 w-full rounded-control border border-border-strong bg-panel pr-4 pl-12 text-base text-fg shadow-raised placeholder:text-fg-muted"
+            />
+          </label>
+        </Container>
+      </section>
+
+      <section className="hero-ground relative isolate border-b border-border pb-12">
         <PatternVeil />
         <Container className="flex flex-col gap-10">
-          {/* IMG-012, built the same way as Explore's IMG-008: the whole band
-              is one 3:1 illustration with its left side left clear, so the
-              heading sits on the plain area rather than over the artwork. */}
-          <section className="relative min-h-52 overflow-hidden rounded-card bg-brand-soft/60 lg:min-h-60">
-            {/* From `lg` up only, where the text column is capped at half the
-                band. From `md` the description ran under the dog. Narrower
-                than that the band keeps its tint and the type has it to itself. */}
-            <img
-              src={headerIllustration}
-              alt=""
-              className="absolute inset-0 hidden size-full object-cover object-center lg:block"
-            />
-
-            <div className="relative px-6 py-8 sm:px-10 sm:py-10">
-              {/* Capped at half the width: past that the artwork begins and
-                  text over it would not hold its contrast. */}
-              <div className="lg:max-w-1/2">
-                <PageHeader
-                  title="Help & community safety"
-                  description="How to file a report that helps, how a match is checked, and how to stay safe arranging a handover."
-                />
-
-                <label className="relative mt-5 block max-w-md">
-                  <span className="sr-only">Search help</span>
-                  <Search
-                    size={18}
-                    className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-fg-muted"
-                    aria-hidden="true"
-                  />
-                  <input
-                    type="search"
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Search help — try “collar”, “match” or “handover”"
-                    className="h-12 w-full rounded-control border border-border-strong bg-panel pr-4 pl-12 text-base text-fg shadow-card placeholder:text-fg-muted"
-                  />
-                </label>
-              </div>
-            </div>
-          </section>
-
           {/* Jump links rather than a search box: with seven topics, scanning
               them is faster than typing, and there is no index to search. */}
           <nav aria-label="Help topics">
@@ -329,26 +385,45 @@ export function HelpPage() {
         </Container>
       </section>
 
-      {TOPICS.map((topic, index) => (
-        <section
-          key={topic.id}
-          id={topic.id}
-          // Clears the sticky navbar when jumped to from the list above.
-          className={index % 2 === 0 ? 'scroll-mt-24 py-12 sm:py-16' : 'scroll-mt-24 bg-surface-alt py-12 sm:py-16'}
-        >
-          <Container className="flex flex-col gap-6">
-            <SectionHeading title={topic.title} description={topic.summary} />
+      {/* Seven sections, each one a heading with a 500px column of accordions
+          under it — on a 1920px canvas that left two thirds of every section
+          empty and made a two-question topic as tall as a five-question one.
 
-            <ul className="flex max-w-prose flex-col gap-3">
-              {topic.faqs.map((faq) => (
-                <li key={faq.q}>
-                  <Faq question={faq.q} answer={faq.a} />
-                </li>
-              ))}
-            </ul>
-          </Container>
-        </section>
-      ))}
+          Now the section title, its sentence and its icon hold the left third
+          and the questions have the rest. The height comes from the questions:
+          `py-12` and nothing fixed beyond it, so a short topic is short. */}
+      {TOPICS.map((topic) => {
+        const Icon = topic.icon
+
+        return (
+          <section
+            key={topic.id}
+            id={topic.id}
+            // Clears the sticky navbar when jumped to from the list above.
+            className={`scroll-mt-24 border-b border-border/60 py-12 ${TOPIC_GROUNDS[topic.id]}`}
+          >
+            <Container className="grid gap-8 lg:grid-cols-[35fr_65fr] lg:gap-12">
+              <div className="flex flex-col gap-4">
+                <Icon
+                  size={40}
+                  aria-hidden="true"
+                  className={`shrink-0 ${TOPIC_ICON_INK[topic.id]}`}
+                  strokeWidth={1.5}
+                />
+                <SectionHeading title={topic.title} description={topic.summary} />
+              </div>
+
+              <ul className="flex flex-col gap-3">
+                {topic.faqs.map((faq) => (
+                  <li key={faq.q}>
+                    <Faq question={faq.q} answer={faq.a} />
+                  </li>
+                ))}
+              </ul>
+            </Container>
+          </section>
+        )
+      })}
     </div>
   )
 }

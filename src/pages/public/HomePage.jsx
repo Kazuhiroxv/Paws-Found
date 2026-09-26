@@ -19,7 +19,8 @@ import {
   ShieldCheck,
   TriangleAlert,
 } from 'lucide-react'
-import heroImage from '@/assets/img-006-homepage-hero.jpg'
+import heroImage from '@/assets/img-027-homepage-reunion.webp'
+import heroEnvironment from '@/assets/img-018-hero-environment.webp'
 import reunionImage from '@/assets/img-015-reunion-home.jpg'
 import emptyReportsImage from '@/assets/empty-no-reports.png'
 import photoPlaceholder from '@/assets/pet-photo-placeholder.png'
@@ -61,17 +62,55 @@ export function HomePage() {
             pattern, and a search sweep running off the top-right corner. The
             hero panel is the foreground object standing on it. */}
         <div className="hero-ground relative isolate overflow-hidden pb-4">
+          {/* IMG-018: the ground the opening stands on.
+              
+              Everything above this was an approximation of an illustration
+              drawn with CSS — line art at four per cent opacity — and it was
+              never going to read as a place. This is the place.
+              
+              The artwork's own left third is open sky, which is where the
+              headline goes; the fade at the foot hands the page back to the
+              canvas rather than stopping at a hard edge. Hidden below `sm`,
+              where the hero stacks and the photograph is doing this job
+              already. */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 -z-10 hidden h-[38rem] overflow-hidden sm:block"
+          >
+            <img
+              src={heroEnvironment}
+              alt=""
+              className="size-full object-cover object-[60%_35%] opacity-90"
+              fetchPriority="high"
+            />
+            {/* A scrim, not a filter.
+            
+                The headline, the paragraph and the announcement strip all sit
+                over this photograph, and what is behind any one word depends
+                on the crop — a mountain at one width, open sky at another.
+                Darkening or blurring the whole image would fix that by
+                throwing away the picture.
+            
+                This lightens only the left, where the text is, and is gone by
+                the time it reaches the artwork that matters. Measured after
+                the fact rather than guessed: see the contrast readings in
+                docs/design-system.md. */}
+            <span className="absolute inset-0 bg-[linear-gradient(90deg,rgba(251,249,246,0.97)_0%,rgba(251,249,246,0.93)_28%,rgba(251,249,246,0.66)_46%,rgba(251,249,246,0.18)_60%,transparent_72%)]" />
+            <span className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-b from-transparent to-surface" />
+          </div>
+
           <PatternVeil />
-          <RadarOrnament tone="teal" size={620} className="-top-40 -right-56 lg:-right-40" />
-          <RouteOrnament tone="amber" size={420} className="-bottom-10 -left-32" />
+          {/* Halved, and pushed further out. IMG-018 is already a landscape; a radar
+              sweep at full strength on top of it was two decorations arguing over
+              the same corner while the headline tried to be read underneath. */}
+          <RadarOrnament tone="teal" size={660} strength={1} className="-top-32 -right-44 opacity-50 lg:-right-28" />
           <UrgentLine />
           <Hero />
-          <SpeciesRow />
+          <Promises />
           <SectionCurve to="surface" />
         </div>
 
         <RecentReports />
-        <CommunityNumbers />
         <HowItWorks />
         <Reunions />
         <Safety />
@@ -89,7 +128,21 @@ export function HomePage() {
 function UrgentLine() {
   return (
     <Container className="pt-6 sm:pt-8">
-      <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-fg-muted">
+      {/* Its own pale surface rather than sitting straight on IMG-018.
+          
+          Measured: against the lightest part of the artwork this line reads at
+          5.1:1, but a dark leaf drifting behind it at some widths takes it to
+          2.4. Text on a picture cannot promise its own contrast, so it stops
+          depending on the picture.
+
+          `rounded-card` until `sm`, pill only once it fits on one line. A pill
+          radius on a block that has wrapped to three lines is half its height,
+          and the corner it cuts away reaches into the text: at 390px the
+          "Report a lost pet" link began 18px outside its own background and
+          was sitting on the page. Found by measuring, not by looking — it
+          reads as a slightly odd corner until you check what is under the
+          first two letters. */}
+      <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-card bg-surface/95 px-4 py-2 text-sm text-fg backdrop-blur-sm sm:w-fit sm:rounded-pill">
         <span className="inline-flex items-center gap-2 rounded-pill bg-accent-soft px-3 py-1 font-medium text-lost">
           <span className="size-1.5 rounded-full bg-accent-hover" aria-hidden="true" />
           Lost a pet today?
@@ -143,76 +196,121 @@ const PROMISES = [
  * page have a foreground standing on a background instead of two columns.
  */
 function Hero() {
+  const { data: stats } = useAsync(loadHeroStats)
+
   return (
-    <section className="pt-6 pb-8 sm:pt-8">
-      <Container>
-        <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-panel/80 shadow-raised backdrop-blur-sm">
-          <div className="grid lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-            <div className="flex flex-col items-start gap-6 p-6 sm:p-10 lg:py-14">
-              <h1 className="text-[2.75rem] leading-[1.04] font-semibold tracking-tight text-balance text-fg sm:text-[3.5rem] xl:text-[3.85rem]">
-                Every lost pet has someone looking for them.
-              </h1>
+    <section className="pt-4 pb-10 sm:pt-6 lg:pb-14">
+      <Container className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.02fr)] lg:gap-14">
+        {/* Left: the claim, then the one object that does something about it. */}
+        <div className="flex min-w-0 flex-col gap-6">
+          <h1 className="text-[2.75rem] leading-[1.03] font-semibold tracking-tight text-balance text-fg sm:text-[3.4rem] xl:text-[3.75rem]">
+            Every lost pet has{' '}
+            <span className="text-brand">someone looking for them.</span>
+          </h1>
 
-              <p className="max-w-lg text-lg leading-relaxed text-fg-muted">
-                Lost and found reports in one place, compared on the details that identify
-                a pet — so the search stops depending on who saw which post.
-              </p>
+          {/* `fg`, not `fg-muted`. Measured over the scrimmed photograph at
+              1366px the muted ink reads 4.46:1 — under AA by four hundredths,
+              which is not a rounding error, it is a fail. A darker neutral
+              costs nothing here and does not depend on where the crop lands. */}
+          <p className="max-w-lg text-lg leading-relaxed text-fg">
+            Lost and found reports in one place, compared on the details that identify a pet —
+            so the search stops depending on who saw which post.
+          </p>
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                <Button as={Link} to="/report/lost" variant="accent" size="lg">
-                  <TriangleAlert size={18} aria-hidden="true" />
-                  Report a lost pet
-                </Button>
-                <Button as={Link} to="/report/found" variant="primary" size="lg">
-                  <PawPrint size={18} aria-hidden="true" />
-                  I found a pet
-                </Button>
-              </div>
+          {/* The action card. Everything somebody might have arrived to do is
+              on this one raised surface: look for a pet, report one, or see
+              how much is already here. It floats on the environment rather
+              than the whole hero being a panel — which is what lets the
+              photograph run to the edge behind it. */}
+          <div className="flex flex-col gap-5 rounded-[1.5rem] border border-border/70 bg-panel/90 p-5 shadow-raised backdrop-blur-sm sm:p-6">
+            <SearchBand />
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Button as={Link} to="/report/lost" variant="accent" size="lg" fullWidth>
+                <TriangleAlert size={18} aria-hidden="true" />
+                Report a lost pet
+              </Button>
+              <Button as={Link} to="/report/found" variant="primary" size="lg" fullWidth>
+                <PawPrint size={18} aria-hidden="true" />
+                I found a pet
+              </Button>
             </div>
 
-            {/* IMG-006, filling its half of the panel and bleeding to the
-                edges. The subjects are centred in the frame, so the crop keeps
-                both animals in view at every width. */}
-            <div className="relative sm:min-h-[26rem] lg:min-h-full">
-              <img
-                src={heroImage}
-                alt="A tan Aspin sitting beside its owner, who is holding a tabby cat, on the tiled porch of a Philippine home"
-                // Framed left of centre: the dog is the left two-thirds of the
-                // source, and a centre crop in a tall column put the tiled
-                // floor between the animals in the middle of the panel.
-                className="h-72 w-full object-cover object-[38%_45%] sm:absolute sm:inset-0 sm:h-full"
-                fetchPriority="high"
-              />
-            </div>
+            {/* Counted from the reports actually in the database. The
+                reference design shows four-figure numbers; ours are the real
+                ones, and a real 32 is worth more than an invented 1,284. */}
+            {stats && (
+              <dl className="grid grid-cols-3 gap-2 border-t border-border/70 pt-4">
+                <HeroFigure value={stats.total} label="reports filed" />
+                <HeroFigure value={stats.reunited} label="pets back home" />
+                <HeroFigure value={stats.cities} label="cities covered" />
+              </dl>
+            )}
           </div>
-
-          {/* What the system promises, on a strip of its own between the
-              photograph and the search. It used to float over the picture,
-              where it covered the dog — the photograph is the point of this
-              panel, so nothing sits on top of it. */}
-          <ul className="grid gap-x-6 gap-y-4 border-t border-border/70 bg-panel/70 px-6 py-5 sm:px-10 md:grid-cols-3">
-            {PROMISES.map((promise) => {
-              const Icon = promise.icon
-
-              return (
-                <li key={promise.title} className="flex items-start gap-3">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-brand">
-                    <Icon size={17} aria-hidden="true" />
-                  </span>
-                  <span className="flex min-w-0 flex-col">
-                    <span className="text-sm font-semibold text-fg">{promise.title}</span>
-                    <span className="text-sm text-fg-muted">{promise.body}</span>
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
-
-          {/* The search sits inside the panel, along its bottom edge: looking
-              is the third thing somebody might have come to do, and it belongs
-              with the other two rather than in a section of its own. */}
-          <SearchBand />
         </div>
+
+        {/* Right: IMG-027, large and unboxed.
+        
+            IMG-006 was a fine photograph of a person with two pets, which is
+            not what this site is about — it showed ownership, not the moment
+            the site exists for. This one is the reunion: the dog is arriving,
+            the owner is crouched and reaching, and their face is out of frame
+            so the animal is what you look at. The crop is centred on the dog's
+            head, which sits just right of centre in the source. */}
+        <div className="relative order-first lg:order-none">
+          <img
+            src={heroImage}
+            alt="A brown Aspin leaning into the hands of its owner, who is crouched beside it on a Philippine residential street in late-afternoon light"
+            className="h-64 w-full rounded-[1.5rem] object-cover object-[52%_42%] shadow-raised ring-1 ring-black/5 sm:h-80 lg:h-[30rem]"
+            fetchPriority="high"
+          />
+        </div>
+      </Container>
+    </section>
+  )
+}
+
+/** One real number and what it counts. */
+function HeroFigure({ value, label }) {
+  return (
+    <div className="flex flex-col">
+      <dt className="sr-only">{label}</dt>
+      <dd className="text-[1.6rem] leading-none font-semibold text-fg tabular-nums">{value}</dd>
+      <dd aria-hidden="true" className="mt-1 text-sm leading-snug text-fg-muted">
+        {label}
+      </dd>
+    </div>
+  )
+}
+
+/**
+ * What the system promises, on a strip of its own under the hero.
+ *
+ * It used to sit inside the hero panel. The panel is gone — the photograph
+ * needed the room — so the three promises became a band on the canvas, which
+ * is also where the eye goes next.
+ */
+function Promises() {
+  return (
+    <section className="pb-14 sm:pb-16">
+      <Container>
+        <ul className="grid gap-x-6 gap-y-4 rounded-card border border-border/60 bg-panel/70 px-5 py-5 backdrop-blur-sm sm:px-7 md:grid-cols-3">
+          {PROMISES.map((promise) => {
+            const Icon = promise.icon
+
+            return (
+              <li key={promise.title} className="flex items-start gap-3">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-brand">
+                  <Icon size={17} aria-hidden="true" />
+                </span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-sm font-semibold text-fg">{promise.title}</span>
+                  <span className="text-sm text-fg-muted">{promise.body}</span>
+                </span>
+              </li>
+            )
+          })}
+        </ul>
       </Container>
     </section>
   )
@@ -222,8 +320,17 @@ function Hero() {
 const SPECIES_ICONS = { dog: Dog, cat: Cat, bird: Bird, rabbit: Rabbit }
 
 /**
- * Straight into Explore, filtered. The reference shops open with a row of
- * departments; the equivalent here is the animal somebody is looking for.
+ * Browse by pet.
+ *
+ * This row used to sit on its own between the promises strip and the recent
+ * reports, belonging to neither — a line of controls with nothing above or
+ * below explaining what they filtered. It now opens the section it actually
+ * acts on, under a label that says so.
+ *
+ * Chips, not buttons. They are a way of narrowing what is listed underneath,
+ * and dressing them like the Lost and Found actions said they were the same
+ * kind of thing. "All reports" carries the filled state because it is where
+ * the section already stands.
  */
 function SpeciesRow() {
   const { data: categories } = useAsync(loadActiveCategories)
@@ -240,15 +347,18 @@ function SpeciesRow() {
       return rank(a.id) - rank(b.id) || a.label.localeCompare(b.label)
     })
 
+  const chip =
+    'inline-flex h-11 shrink-0 items-center gap-2 rounded-pill border px-4 text-sm font-medium whitespace-nowrap transition-colors'
+
   return (
-    <Container className="pb-10 sm:pb-14">
-      <ul className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-        <li>
-          <Link
-            to="/explore"
-            className="inline-flex items-center gap-2 rounded-pill border border-border-strong bg-panel px-4 py-2 text-sm font-medium text-fg shadow-card transition-colors hover:bg-surface-muted"
-          >
-            <Search size={15} className="text-brand" aria-hidden="true" />
+    <nav aria-label="Browse reports by pet" className="flex flex-col gap-2.5">
+      <h3 className="text-sm font-medium text-fg-muted">Browse by pet</h3>
+      {/* Scrolls rather than wraps on a phone: five chips on two lines pushed
+          the first report card off the fold, and none of them may disappear. */}
+      <ul className="-mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
+        <li className="snap-start">
+          <Link to="/explore" className={cn(chip, 'border-brand/30 bg-brand-soft text-brand-hover')}>
+            <Search size={16} aria-hidden="true" />
             All reports
           </Link>
         </li>
@@ -256,19 +366,19 @@ function SpeciesRow() {
           const Icon = SPECIES_ICONS[category.id] ?? PawPrint
 
           return (
-            <li key={category.id}>
+            <li key={category.id} className="snap-start">
               <Link
                 to={`/explore?species=${category.id}`}
-                className="inline-flex items-center gap-2 rounded-pill border border-border-strong bg-panel px-4 py-2 text-sm font-medium text-fg shadow-card transition-colors hover:bg-surface-muted"
+                className={cn(chip, 'border-border-strong bg-panel text-fg hover:bg-surface-muted')}
               >
-                <Icon size={15} className="text-brand" aria-hidden="true" />
+                <Icon size={16} className="text-brand" aria-hidden="true" />
                 {category.label}
               </Link>
             </li>
           )
         })}
       </ul>
-    </Container>
+    </nav>
   )
 }
 
@@ -276,47 +386,6 @@ function SpeciesRow() {
  * The numbers, counted from the reports themselves rather than written into
  * the page — if the seed changes, these change with it.
  */
-function CommunityNumbers() {
-  const { data: stats } = useAsync(loadHeroStats)
-  if (!stats) return null
-
-  const figures = [
-    { value: stats.total, label: 'reports filed', icon: ClipboardList },
-    { value: stats.reunited, label: 'pets back home', icon: Heart },
-    { value: stats.cities, label: 'cities covered', icon: MapPin },
-    { value: stats.species, label: 'kinds of animal', icon: PawPrint },
-  ]
-
-  return (
-    <section className="pb-16 sm:pb-20">
-      <Container>
-        <ul className="grid grid-cols-2 gap-3 rounded-card bg-sunken/70 p-4 sm:gap-4 sm:p-6 lg:grid-cols-4">
-          {figures.map((figure) => {
-            const Icon = figure.icon
-
-            return (
-              <li
-                key={figure.label}
-                className="flex items-center gap-3.5 rounded-card border border-border bg-panel px-4 py-4 shadow-card"
-              >
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-control bg-brand-soft text-brand">
-                  <Icon size={19} aria-hidden="true" />
-                </span>
-                <span className="flex min-w-0 flex-col">
-                  <span className="text-[1.75rem] leading-none font-semibold text-fg tabular-nums">
-                    {figure.value}
-                  </span>
-                  <span className="mt-1 text-sm text-fg-muted">{figure.label}</span>
-                </span>
-              </li>
-            )
-          })}
-        </ul>
-      </Container>
-    </section>
-  )
-}
-
 /** The last thing on the page is the first thing somebody came to do. */
 function ClosingCall() {
   return (
@@ -381,65 +450,64 @@ function SearchBand() {
   }
 
   return (
-    // Inside the hero panel now, along its bottom edge, so looking for a pet
-    // sits with reporting one instead of in a section of its own.
-    <div className="border-t border-border/70 bg-surface/70">
-      <form onSubmit={submit} className="p-6 sm:p-8">
-        <div className="flex items-center gap-3">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
-            <SearchCheck size={20} aria-hidden="true" />
-          </span>
-          <h2 className="text-xl font-semibold text-fg">Find or report a pet near you</h2>
+    // Inside the hero's action card. Two rows rather than the old four-across
+    // strip: the card is half the page wide, and four controls on one line
+    // squeezed each of them below a usable width.
+    <form onSubmit={submit} className="flex flex-col gap-3">
+      <div className="flex items-center gap-2.5">
+        <SearchCheck size={18} className="shrink-0 text-brand" aria-hidden="true" />
+        <h2 className="font-semibold text-fg">Find a pet near you</h2>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="home-city" className="text-sm font-medium text-fg">
+            Location
+          </label>
+          <div className="relative">
+            <MapPin
+              size={17}
+              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-fg-subtle"
+              aria-hidden="true"
+            />
+            <input
+              id="home-city"
+              value={city}
+              onChange={(event) => setCity(event.target.value)}
+              placeholder="City or barangay"
+              className="h-11 w-full rounded-control border border-border-strong bg-panel pr-3 pl-10 text-base text-fg placeholder:text-fg-muted"
+            />
+          </div>
         </div>
 
-          <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr_1fr_auto] lg:items-end">
-            <Select
-              label="Species"
-              value={species}
-              onChange={(event) => setSpecies(event.target.value)}
-              options={[
-                { value: '', label: 'All species' },
-                ...(categories ?? []).map((c) => ({ value: c.id, label: c.label })),
-              ]}
-            />
+        <Select
+          label="Species"
+          value={species}
+          onChange={(event) => setSpecies(event.target.value)}
+          options={[
+            { value: '', label: 'All species' },
+            ...(categories ?? []).map((c) => ({ value: c.id, label: c.label })),
+          ]}
+        />
+      </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="home-city" className="text-sm font-medium text-fg">
-                Location
-              </label>
-              <div className="relative">
-                <MapPin
-                  size={17}
-                  className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-fg-subtle"
-                  aria-hidden="true"
-                />
-                <input
-                  id="home-city"
-                  value={city}
-                  onChange={(event) => setCity(event.target.value)}
-                  placeholder="City or barangay"
-                  className="h-11 w-full rounded-control border border-border-strong bg-panel pr-3 pl-10 text-base text-fg placeholder:text-fg-muted"
-                />
-              </div>
-            </div>
+      <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+        <Select
+          label="Report type"
+          value={type}
+          onChange={(event) => setType(event.target.value)}
+          options={[
+            { value: '', label: 'Lost & found' },
+            ...optionsFromLabels(REPORT_TYPE_LABELS),
+          ]}
+        />
 
-            <Select
-              label="Type"
-              value={type}
-              onChange={(event) => setType(event.target.value)}
-              options={[
-                { value: '', label: 'Lost & found' },
-                ...optionsFromLabels(REPORT_TYPE_LABELS),
-              ]}
-            />
-
-            <Button type="submit" size="lg" className="lg:mb-0.5 lg:min-w-38">
-              <Search size={18} aria-hidden="true" />
-              Search
-            </Button>
-          </div>
-      </form>
-    </div>
+        <Button type="submit" size="lg" className="sm:min-w-32">
+          <Search size={18} aria-hidden="true" />
+          Search
+        </Button>
+      </div>
+    </form>
   )
 }
 
@@ -466,6 +534,8 @@ function RecentReports() {
             </Link>
           }
         />
+
+        <SpeciesRow />
 
         {isLoading && (
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4" aria-busy="true">
@@ -624,29 +694,23 @@ function Reunions() {
 
   if (isLoading || !reunions || reunions.length === 0) return null
 
-  const [featured, ...rest] = reunions
+  // Three, so the row is even. "See all reunions" is where the rest live.
+  const stories = reunions.slice(0, 3)
 
   return (
     <section className="reunion-ground relative isolate overflow-hidden bg-warm-band py-14 sm:py-20">
       <WovenVeil />
       <RouteOrnament tone="amber" size={520} className="-right-40 -bottom-16 rotate-6" />
-      <Container className="flex flex-col gap-8">
-        {/* IMG-015 opens the chapter: what the cases below actually end in.
-            It sits slightly proud of the section's rhythm on wide screens —
-            the one place a photograph is allowed to break the grid — and
-            stacks above the text on a phone. */}
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:gap-10">
-          <img
-            src={reunionImage}
-            alt="A dog back home, lying on the floor while somebody kneels beside it."
-            width="1400"
-            height="1050"
-            loading="lazy"
-            decoding="async"
-            className="w-full rounded-card object-cover shadow-raised lg:-my-6 lg:w-1/2 lg:max-w-md xl:max-w-lg"
-          />
+      <Container className="flex flex-col gap-10">
+        {/* The chapter opening: what these cases are, and one photograph of
+            what one looks like afterwards.
 
-          <div className="min-w-0 flex-1">
+            IMG-015 used to be half the width and taller than the text beside
+            it, which made it compete with the stories below for the same job.
+            It is shallower now and clearly editorial — the stories are the
+            cards; this is the picture at the top of the page. */}
+        <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:gap-12">
+          <div className="min-w-0 lg:w-[55%]">
             <SectionHeading
               title={
                 <span className="inline-flex items-center gap-2.5">
@@ -666,24 +730,30 @@ function Reunions() {
               }
             />
 
-            {/* One line of context so the column beside the photograph is not
-                simply empty: it also says what a reunion here actually is. */}
             <p className="mt-4 max-w-prose text-fg-muted">
               Every one of these began as two separate reports — a lost pet and a found one —
               that the system paired on their characteristics and a Pet Coordinator verified
               before anybody met.
             </p>
           </div>
+
+          <img
+            src={reunionImage}
+            alt="A dog back home, lying on the floor while somebody kneels beside it."
+            width="1400"
+            height="1050"
+            loading="lazy"
+            decoding="async"
+            className="aspect-16/9 w-full rounded-card object-cover object-center shadow-raised lg:w-[45%]"
+          />
         </div>
 
-        {/* One story told properly, then the others. The photographs are the
-            point of this section — a reunion shown at thumbnail size is just
-            another row of data. */}
-        <ul className="grid gap-5 lg:grid-cols-[1.25fr_1fr]">
-          <li className="lg:row-span-2">
-            <ReunionStory report={featured} featured />
-          </li>
-          {rest.map((report) => (
+        {/* Three of the same card. The featured-plus-two arrangement gave one
+            case a photograph four times the size of the others for no reason
+            anybody could point at — and on a page being marked, an
+            inconsistency reads as an accident rather than as editing. */}
+        <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {stories.map((report) => (
             <li key={report.id}>
               <ReunionStory report={report} />
             </li>
@@ -696,10 +766,10 @@ function Reunions() {
 }
 
 /**
- * One reunion. The featured variant leads with a large photograph above the
- * story; the others put a smaller one alongside it.
+ * One reunion: the same photograph, the same heading, the same summary and the
+ * same link, in the same order, at the same height as the two beside it.
  */
-function ReunionStory({ report, featured = false }) {
+function ReunionStory({ report }) {
   const photo = report.photos.find((p) => p.isPrimary) ?? report.photos[0]
   // A found pet often has no name, and two unnamed cats both read "Cat is
   // home", which looks like the same story told twice. The city separates
@@ -712,43 +782,30 @@ function ReunionStory({ report, featured = false }) {
   return (
     <Link
       to={`/pet/${report.id}`}
-      className={cn(
-        'card-interactive group flex h-full overflow-hidden rounded-card border border-border bg-panel shadow-card',
-        featured ? 'flex-col' : 'flex-row',
-      )}
+      className="card-interactive group flex h-full flex-col overflow-hidden rounded-card border border-border bg-panel shadow-card"
     >
       <img
         src={photo?.url ?? photoPlaceholder}
         alt=""
-        className={cn(
-          'shrink-0 bg-surface-muted object-cover',
-          featured ? 'aspect-16/10 w-full' : 'aspect-square w-2/5',
-        )}
+        className="aspect-16/10 w-full shrink-0 bg-surface-muted object-cover"
         loading="lazy"
       />
 
-      <div className={cn('flex min-w-0 flex-col gap-2', featured ? 'p-6' : 'p-5')}>
-        <p
-          className={cn(
-            'flex items-center gap-2 font-semibold text-fg',
-            featured ? 'text-2xl' : 'text-lg',
-          )}
-        >
-          <Heart
-            size={featured ? 20 : 16}
-            className="shrink-0 text-success"
-            aria-hidden="true"
-          />
+      <div className="flex min-w-0 flex-1 flex-col gap-2 p-5">
+        <p className="flex items-start gap-2 text-lg font-semibold text-fg">
+          <Heart size={17} className="mt-1 shrink-0 text-success" aria-hidden="true" />
           {heading}
         </p>
 
-        <p className={cn('text-fg-muted', featured ? 'text-base' : 'text-sm')}>
+        <p className="text-sm text-fg-muted">
           Reported {REPORT_TYPE_LABELS[report.reportType].toLowerCase()} in{' '}
           {report.location.city} on {formatDate(report.incidentDate)}, and reunited after a
           coordinator confirmed the match.
         </p>
 
-        <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 pt-2">
+        {/* `mt-auto` is what keeps this row on the same line across all three
+            when one summary runs longer than the others. */}
+        <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 pt-3">
           {days !== null && (
             <span className="rounded-pill bg-success-soft px-2.5 py-0.5 text-sm font-medium text-success-ink">
               Reunited in {days} {days === 1 ? 'day' : 'days'}

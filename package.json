@@ -7,10 +7,13 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:deploy": "node scripts/build-deploy.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "a11y": "node scripts/a11y.mjs",
-    "audit": "python scripts/audit_cases.py"
+    "audit": "python scripts/audit_cases.py",
+    "multi-device": "python scripts/multi_device.py",
+    "verify:deploy": "python scripts/verify_deployment.py"
   },
   "dependencies": {
     "leaflet": "^1.9.4",

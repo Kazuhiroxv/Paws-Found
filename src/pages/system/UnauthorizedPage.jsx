@@ -14,11 +14,16 @@ export function UnauthorizedPage() {
       <EmptyState
         icon={Lock}
         title="This area is for a different role"
-        description="Community members, Pet Coordinators and administrators each see a different workspace. While authentication is simulated, switch account using the Demo role selector in the navigation bar."
+        description="Community members, Pet Coordinators and administrators each see a different workspace, and this one is not yours. If you were in here a moment ago, an administrator has changed what this account is allowed to reach — the change applies everywhere the account is signed in, straight away."
         action={
-          <Link to="/" className="text-sm text-fg underline">
-            Go to the homepage
-          </Link>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <Link to="/dashboard" className="text-sm text-fg underline">
+              Go to my account
+            </Link>
+            <Link to="/" className="text-sm text-fg-muted underline">
+              Go to the homepage
+            </Link>
+          </div>
         }
       />
     </Container>

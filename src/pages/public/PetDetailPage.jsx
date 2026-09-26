@@ -9,6 +9,7 @@ import {
   Clock,
   Dog,
   Flag,
+  HandHeart,
   Heart,
   History,
   Link as LinkIcon,
@@ -37,7 +38,7 @@ import {
 } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { PatternVeil } from '@/components/PatternVeil'
-import { RadarOrnament } from '@/components/Ornament'
+import { RadarOrnament, RouteOrnament } from '@/components/Ornament'
 import { Breadcrumb } from '@/components/Breadcrumb'
 import { MatchCard } from '@/components/MatchCard'
 import { ReportMap } from '@/components/LazyMaps'
@@ -209,7 +210,19 @@ export function PetDetailPage({ role }) {
           first thing anyone needs to read here. */}
       <title>{`${heading} · Paws&Found`}</title>
 
-      <div className="flex flex-col gap-4 border-b border-border pb-6">
+      {/* A committed case header rather than a name with two badges under it.
+          The band is the report's own colour — amber for a lost pet, teal for
+          a found one — so the page announces which kind of case this is before
+          a word is read, and the plea sits opposite the name where the
+          reference design puts the case reference.
+          
+          There is no case ID in the schema, so that line carries what we do
+          have. It says "last updated" rather than "reported" because the
+          detail endpoint does not return created_at — labelling the incident
+          date as the filing date would have been a plausible-looking lie, and
+          `updated_at` is both real and the more useful of the two on a case
+          somebody is deciding whether to act on. */}
+      <div className="flex flex-col gap-5 pb-2">
         <Breadcrumb
           items={[
             { label: 'Home', to: '/' },
@@ -218,18 +231,62 @@ export function PetDetailPage({ role }) {
           ]}
         />
 
-        <div className="flex items-start gap-4">
-          <span className="flex size-13 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
-            <SpeciesMark species={report.species} size={26} />
-          </span>
+        <div
+          className={cn(
+            'relative isolate overflow-hidden rounded-[1.5rem] border px-5 py-6 sm:px-8 sm:py-7',
+            isFound ? 'border-found/20 bg-found-soft/60' : 'border-lost/20 bg-lost-soft/60',
+          )}
+        >
+          <RouteOrnament
+            tone={isFound ? 'teal' : 'amber'}
+            size={460}
+            strength={2.6}
+            className="-top-6 right-4 hidden lg:block"
+          />
 
-          <div className="flex flex-col gap-3">
-            <h1 className="text-3xl font-semibold tracking-tight text-balance text-fg sm:text-4xl">
-              {heading}
-            </h1>
-            <div className="flex flex-wrap items-center gap-3">
-              <ReportTypeBadge reportType={report.reportType} />
-              <StatusBadge status={report.status} />
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex min-w-0 items-start gap-4">
+              <span
+                className={cn(
+                  'flex size-14 shrink-0 items-center justify-center rounded-full',
+                  isFound ? 'bg-found/10 text-found' : 'bg-lost/10 text-lost',
+                )}
+              >
+                <SpeciesMark species={report.species} size={28} />
+              </span>
+
+              <div className="flex min-w-0 flex-col gap-2.5">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <ReportTypeBadge reportType={report.reportType} />
+                  <StatusBadge status={report.status} />
+                </div>
+
+                <h1 className="text-[2.25rem] leading-[1.05] font-semibold tracking-tight text-balance text-fg sm:text-[2.75rem]">
+                  {heading}
+                </h1>
+
+                {(report.breed || report.species) && (
+                  <p className="text-lg text-fg-muted">
+                    {[speciesLabel(report.species), report.breed].filter(Boolean).join(' · ')}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="shrink-0 lg:text-right">
+              <p
+                className={cn(
+                  'text-sm font-medium',
+                  isFound ? 'text-found' : 'text-lost',
+                )}
+              >
+                {isFound
+                  ? `Help ${report.petName ?? 'this pet'} get home`
+                  : `Help bring ${report.petName ?? 'them'} home`}
+              </p>
+              <p className="mt-1 text-sm text-fg-muted">
+                Last updated {formatDate(report.updatedAt)}
+              </p>
             </div>
           </div>
         </div>
@@ -379,6 +436,23 @@ export function PetDetailPage({ role }) {
             bottom card would sit permanently below the fold with no way to
             scroll to it. */}
         <aside className="flex flex-col gap-4 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:self-start lg:overflow-y-auto">
+          {/* The page's one primary action, at the top where a primary action
+              belongs.
+
+              It used to have none. Somebody arriving here because they think
+              they have seen this animal found a summary, a description and a
+              Share button, and nothing that said what to do next — the whole
+              point of the page had no affordance.
+
+              What it offers is the thing the system actually does. There is no
+              messaging feature, so there is no "Contact reporter" button to
+              give: filing the opposite kind of report is what puts these two
+              cases in front of the matching algorithm and a coordinator. That
+              is the real path, so it is the one on the button. */}
+          {!isOwner && report.status !== REPORT_STATUSES.CLOSED && (
+            <NextStepCard report={report} />
+          )}
+
           {/* The summary is the quieter surface beside the report: tinted, so
               the photographs and the description stay the white ones. */}
           <Card tone="layer">
@@ -716,5 +790,53 @@ function HeadingWithIcon({ icon: Icon, children }) {
       <Icon size={18} className="shrink-0 text-brand" aria-hidden="true" />
       {children}
     </span>
+  )
+}
+
+/**
+ * What to do about this report, for somebody who did not file it.
+ *
+ * The wording depends on which way round the case is, because the useful next
+ * step is the opposite of whatever this report is:
+ *
+ *   * a LOST report — you may have seen the animal, so file a found report;
+ *   * a FOUND report — it may be yours, so file a lost report.
+ *
+ * Either way the new report is compared against this one automatically, which
+ * is the honest version of "get in touch": the system has no messaging, and a
+ * button that implied it did would be a button that does nothing.
+ */
+function NextStepCard({ report }) {
+  const isLost = report.reportType === REPORT_TYPES.LOST
+  const name = report.petName ?? 'this pet'
+
+  return (
+    <Card>
+      <CardBody className="flex flex-col gap-3">
+        <h2 className="font-semibold text-fg">
+          {isLost ? `Have you seen ${name}?` : `Is this your pet?`}
+        </h2>
+
+        <p className="text-sm text-fg-muted">
+          {isLost
+            ? 'File a found report with what you saw and where. It is compared against this one straight away, and a Pet Coordinator checks any pairing before anyone is put in touch.'
+            : 'File a lost report describing your pet. It is compared against this one straight away, and a Pet Coordinator verifies ownership before arranging a handover.'}
+        </p>
+
+        <Button as={Link} to={isLost ? '/report/found' : '/report/lost'} fullWidth>
+          {isLost ? (
+            <>
+              <HandHeart size={16} aria-hidden="true" />
+              Report a found pet
+            </>
+          ) : (
+            <>
+              <SearchX size={16} aria-hidden="true" />
+              Report a lost pet
+            </>
+          )}
+        </Button>
+      </CardBody>
+    </Card>
   )
 }

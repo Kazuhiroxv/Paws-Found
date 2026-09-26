@@ -24,6 +24,12 @@ import { Breadcrumb } from './Breadcrumb'
  *   workspace to say whose it is.
  * @param {boolean} [props.compact]  A slightly smaller heading, for a
  *   dashboard greeting rather than a page title.
+ * @param {boolean} [props.onArtwork]  Set when the header sits on an
+ *   illustration or a photograph. It darkens the description from `fg-muted`
+ *   to `fg`, which is not a taste decision: `fg-muted` measures 5.48:1 against
+ *   *pure white*, so on any real surface it cannot be pushed past about 5.2 —
+ *   there is no headroom above AA to give. A hero that has to hold its margin
+ *   across crops, scaling and a projector needs the darker ink.
  */
 export function PageHeader({
   title,
@@ -33,6 +39,7 @@ export function PageHeader({
   icon: Icon,
   eyebrow,
   compact = false,
+  onArtwork = false,
 }) {
   return (
     <div className="flex flex-col gap-2.5 border-b border-border pb-5">
@@ -68,7 +75,9 @@ export function PageHeader({
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>
 
-      {description && <p className="max-w-prose text-fg-muted">{description}</p>}
+      {description && (
+        <p className={cn('max-w-prose', onArtwork ? 'text-fg' : 'text-fg-muted')}>{description}</p>
+      )}
     </div>
   )
 }

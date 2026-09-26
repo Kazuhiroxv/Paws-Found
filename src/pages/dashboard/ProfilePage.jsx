@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Check, Lock, MapPin, ShieldCheck, UserRound } from 'lucide-react'
-import { Button, Card, CardBody, CardHeader, Checkbox, Input, LoadingSkeleton } from '@/components/ui'
+import {
+  Button, Card, CardBody, CardHeader, Checkbox, Input, LoadingSkeleton, RequiredNote,
+} from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { ROLE_LABELS } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
@@ -132,6 +134,8 @@ function ProfileForm({ user, onSaved }) {
   return (
     <form onSubmit={save} className="flex flex-col gap-6">
       {header}
+
+      <RequiredNote className="-mt-2 text-sm text-fg-muted" />
 
       <Card>
         <CardHeader

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Flag, FolderTree, ListChecks, ShieldHalf, Users } from 'lucide-react'
+import { ArrowRight, Flag, FolderTree, Heart, ListChecks, ShieldHalf, Users } from 'lucide-react'
 import photoPlaceholder from '@/assets/pet-photo-placeholder.png'
 import { Button, Card, CardBody, CardHeader, LoadingSkeleton } from '@/components/ui'
 import { Avatar } from '@/components/Avatar'
@@ -105,7 +105,11 @@ export function AdminOverviewPage() {
     <div className="flex flex-col gap-8">
       {header}
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+      {/* Five counts, and the last one is the point of the whole system.
+          The other four measure work in progress; "pets back home" measures
+          whether any of it worked, which is the number worth having on an
+          overview at all. */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5">
         <StatTile
           icon={Flag}
           label="Flags awaiting review"
@@ -115,6 +119,12 @@ export function AdminOverviewPage() {
         />
         <StatTile icon={Users} label="Accounts" value={users.length} to="/admin/users" />
         <StatTile icon={ListChecks} label="Active reports" value={stats.totals.active} to="/admin/reports" />
+        <StatTile
+          icon={Heart}
+          label="Pets back home"
+          value={reports.filter((report) => report.status === REPORT_STATUSES.RETURNED).length}
+          to="/admin/reports"
+        />
         <StatTile icon={FolderTree} label="Pet categories" value={categories.length} to="/admin/categories" />
       </div>
 

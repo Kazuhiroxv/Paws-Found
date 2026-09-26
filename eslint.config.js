@@ -11,7 +11,12 @@ import reactRefresh from 'eslint-plugin-react-refresh'
  * — a wall of red squiggles gets ignored.
  */
 export default [
-  { ignores: ['dist', 'node_modules'] },
+  // `scripts/.local/` holds throwaway measurement scripts that drive a headless
+  // Chrome. Most of their body is code that runs inside `page.evaluate()`, so
+  // `document`, `window` and `scrollY` are real there and undefined here —
+  // linting them as Node files reports fourteen errors about globals that are
+  // correct. They are gitignored and are not part of the application.
+  { ignores: ['dist', 'node_modules', 'scripts/.local'] },
 
   js.configs.recommended,
   // The plugin ships both formats; `configs.flat.*` are the flat-config ones.

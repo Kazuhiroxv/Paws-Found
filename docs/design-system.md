@@ -466,3 +466,54 @@ a person needs to read uses `fg-muted` or darker.
 - **Typography** beyond the system stack and Tailwind's default scale.
 - **Logo / brand mark** (IMG-002) — should be generated from this palette so the
   imagery and the interface read as one project.
+
+## Text over a photograph
+
+axe cannot judge this. It sees a transparent background behind the words,
+declines to guess what is under them, and reports nothing — so every reading
+below was taken by hiding the text, photographing the page, and comparing each
+text colour against every pixel inside its own box. `scripts/.local/` holds the
+two files that do it; they are not part of the suite because they answer a
+question about three specific bands rather than about the site.
+
+Three public heroes put text on artwork: the homepage over IMG-018, Help over
+IMG-028, About over IMG-029. All three carry the same device — **a directional
+scrim**, cream, strongest at the left edge and gone by roughly 72% of the
+width. Not a filter over the whole picture: the landscape stays visible, and
+the text sits on a field whose lightness does not depend on where the crop
+happens to land at a given width.
+
+Measured at 390, 768, 1366 and 1920, worst pixel in each text box:
+
+| | 390 | 768 | 1366 | 1920 | needs |
+| --- | --- | --- | --- | --- | --- |
+| Home — headline, dark words | 11.72 | 6.25 | 10.90 | 11.13 | 3.0 |
+| Home — headline, teal words | 4.38 | 3.44 | 4.35 | 4.16 | 3.0 |
+| Home — paragraph | 11.78 | 11.88 | 11.17 | 11.43 | 4.5 |
+| Home — announcement strip | 12.90 | 12.43 | 12.73 | 12.84 | 4.5 |
+| Home — announcement link | 4.84 | 4.84 | 4.76 | 4.80 | 4.5 |
+| Help — heading | 12.88 | 12.88 | 13.09 | 13.09 | 3.0 |
+| Help — description | 5.14 | 5.14 | 4.94 | 4.93 | 4.5 |
+| About — eyebrow | 4.82 | 4.82 | 4.68 | 4.77 | 4.5 |
+| About — heading | 12.88 | 12.88 | 8.56 | 10.02 | 3.0 |
+| About — paragraph | 5.09 | 5.09 | 7.57 | 10.36 | 4.5 |
+
+Four things this found that looking would not have:
+
+* The homepage paragraph read **4.46** in muted ink at 1366 — under AA by four
+  hundredths. Now `text-fg`.
+* The About paragraph read **1.17** at 1366: its right end reaches the stand of
+  leaves at the left of IMG-029, which the scrim lightens but does not erase.
+  Now `text-fg`.
+* The Help description read **2.53** at 1366, sitting on the amber route ribbon
+  in IMG-028 — while the heading directly above it read 12.43. A heading that
+  passes says nothing about the line under it.
+* The announcement strip is `rounded-card` until `sm` and a pill only once it
+  fits on one line. A pill radius on a block that has wrapped to three lines is
+  half its height, and at 390px the corner it cut away reached 18px into the
+  "Report a lost pet" link, which was therefore sitting on the page rather than
+  on its own background.
+
+**The rule this leaves:** where text sits on artwork, the readable surface has
+to be something the page draws, not something the picture happens to provide.
+Opacity, brightness and a text-shadow all depend on the crop; a scrim does not.

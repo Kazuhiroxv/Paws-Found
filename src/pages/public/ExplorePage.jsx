@@ -10,7 +10,6 @@ import { ReportMap } from '@/components/LazyMaps'
 import { cn } from '@/utils/cn'
 import { hasCoordinates } from '@/utils/location'
 import { FilterPanel } from '@/components/FilterPanel'
-import { PatternVeil } from '@/components/PatternVeil'
 import { RadarOrnament } from '@/components/Ornament'
 import { ActiveFilters } from '@/components/ActiveFilters'
 import { useAsync } from '@/hooks/useAsync'
@@ -75,7 +74,10 @@ export function ExplorePage() {
   const [sort, setSort] = useState('newest')
   const [page, setPage] = useState(1)
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false)
-  const [view, setView] = useState('list')
+  // Map by default: the map is now a band above the cards rather than a
+  // replacement for them, so opening with it costs nothing and answers "is
+  // any of this near me" before anybody has to ask for it.
+  const [view, setView] = useState('map')
 
   // Re-runs whenever a filter, the sort or the page changes — no page reload,
   // which is the asynchronous behaviour this page is meant to demonstrate.
@@ -248,16 +250,16 @@ export function ExplorePage() {
           </div>
         </aside>
 
-        {/* scroll-mt clears the sticky header, or paging lands with the first
-            row of cards hidden underneath it. The well and the route pattern
-            carry the header band's language down into the results, so the page
-            does not go from illustration to bare canvas in one step. */}
-        <div
-          ref={resultsRef}
-          className="relative isolate flex min-w-0 flex-1 scroll-mt-24 flex-col gap-4 overflow-hidden rounded-card bg-sunken/35 p-4 sm:p-5"
-        >
-          <PatternVeil className="h-72" />
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+        {/* Results sit directly on the canvas. They used to live in a tinted
+            well with a pattern behind them, which put a third surface between
+            the page and the cards and made the map look like it was inside a
+            box. The cards are the raised objects here; nothing needs to be
+            raised underneath them.
+            
+            scroll-mt clears the sticky header, or paging lands with the first
+            row of cards hidden beneath it. */}
+        <div ref={resultsRef} className="flex min-w-0 flex-1 scroll-mt-24 flex-col gap-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-lg font-semibold text-fg" aria-live="polite">
               {/* The whole result set, not this page: "9 pets found" beside a
                   four-page pager would contradict itself. */}
@@ -270,8 +272,8 @@ export function ExplorePage() {
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex rounded-control border border-border-strong bg-panel p-1" role="group" aria-label="View">
                 {[
-                  { id: 'list', label: 'List', icon: List },
                   { id: 'map', label: 'Map', icon: MapIcon },
+                  { id: 'list', label: 'List', icon: List },
                 ].map((option) => {
                   const Icon = option.icon
 
@@ -310,24 +312,20 @@ export function ExplorePage() {
                 )}
               </Button>
 
-              {/* Sorting only changes the list. On the map it would be a
-                  control with no visible effect, so it is not offered. */}
-              {view === 'list' && (
-                <>
-                  <label htmlFor="explore-sort" className="sr-only">
-                    Sort reports
-                  </label>
-                  <select
-                    id="explore-sort"
-                    value={sort}
-                    onChange={(event) => changeSort(event.target.value)}
-                    className="h-10 rounded-control border border-border-strong bg-panel px-3 text-sm text-fg"
-                  >
-                    <option value="newest">Newest first</option>
-                    <option value="oldest">Oldest first</option>
-                  </select>
-                </>
-              )}
+              {/* Always offered now: the cards are on screen in both views,
+                  so sorting always has something visible to act on. */}
+              <label htmlFor="explore-sort" className="sr-only">
+                Sort reports
+              </label>
+              <select
+                id="explore-sort"
+                value={sort}
+                onChange={(event) => changeSort(event.target.value)}
+                className="h-10 rounded-control border border-border-strong bg-panel px-3 text-sm text-fg"
+              >
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+              </select>
             </div>
           </div>
 
@@ -374,31 +372,62 @@ export function ExplorePage() {
             />
           )}
 
+          {/* Map ABOVE the results, not instead of them.
+              
+              The two used to be mutually exclusive, which made somebody choose
+              between knowing where the reports are and knowing what they are.
+              They answer different halves of the same question, so the map is
+              now a band across the top of the results and the cards continue
+              underneath it. "List view" puts the map away for anyone who wants
+              the cards alone.
+              
+              The map draws every matching report rather than the current page:
+              a pin is cheap, and paging a map would be baffling. */}
           {!isLoading && !error && visibleReports.length > 0 && view === 'map' && (
             <>
-              {/* The map shows every result, not just the loaded page — a pin is
-                  cheap and paging a map would be confusing. From `lg` it fills
-                  the screen below the header: the filter panel beside it is far
-                  taller than 36rem, and a fixed height left a gap under the map. */}
-              <ReportMap
-                reports={reports}
-                height="h-[36rem] lg:h-[max(36rem,calc(100dvh-8rem))]"
-                className="shadow-raised"
-              />
+              <div className="relative isolate">
+                <ReportMap
+                  reports={reports}
+                  height="h-[22rem] lg:h-[26rem]"
+                  className="shadow-raised"
+                />
+
+                {/* What the pin colours mean. The map has always drawn lost
+                    and found in different colours and never said so anywhere,
+                    which left the single most useful thing on it readable only
+                    by people who could both see and guess. The words are the
+                    signal; the swatches only repeat them. */}
+                <ul className="pointer-events-none absolute top-3 right-3 z-[400] flex gap-3 rounded-control border border-border bg-panel/95 px-3 py-2 text-sm shadow-card backdrop-blur-sm">
+                  <li className="flex items-center gap-1.5">
+                    <span
+                      aria-hidden="true"
+                      className="size-2.5 rounded-full bg-lost ring-2 ring-lost-soft"
+                    />
+                    <span className="text-fg">Lost</span>
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <span
+                      aria-hidden="true"
+                      className="size-2.5 rounded-full bg-found ring-2 ring-found-soft"
+                    />
+                    <span className="text-fg">Found</span>
+                  </li>
+                </ul>
+              </div>
 
               {unpinnedCount > 0 && (
-                <p className="text-sm text-fg-muted">
+                <p className="-mt-1 text-sm text-fg-muted">
                   {unpinnedCount} of these {visibleReports.length} reports{' '}
                   {unpinnedCount === 1 ? 'has' : 'have'} no map pin and{' '}
-                  {unpinnedCount === 1 ? 'is' : 'are'} only in the list.
+                  {unpinnedCount === 1 ? 'is' : 'are'} only in the list below.
                 </p>
               )}
             </>
           )}
 
-          {!isLoading && !error && visibleReports.length > 0 && view === 'list' && (
+          {!isLoading && !error && visibleReports.length > 0 && (
             <>
-              <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {visibleReports.map((report) => (
                   <li key={report.id} className="flex">
                     <PetCard report={report} className="w-full" />

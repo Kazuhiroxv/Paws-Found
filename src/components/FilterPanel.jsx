@@ -1,9 +1,10 @@
+import { useState } from 'react'
 import {
   CalendarDays,
+  ChevronDown,
   CircleCheck,
   Dog,
   MapPin,
-  Palette,
   PawPrint,
   Ruler,
 } from 'lucide-react'
@@ -23,9 +24,19 @@ const ANY = ''
 /**
  * The filter controls for Explore.
  *
- * Presentational only — it holds no state. The page owns the filter values so
- * the same panel can be rendered in the desktop sidebar and inside the mobile
- * dialog without the two getting out of step.
+ * Presentational as far as the FILTERS are concerned — it holds none of them,
+ * so the page can render this panel in the desktop rail and inside the mobile
+ * dialog without the two getting out of step. Each group does own whether it
+ * is expanded, which is disclosure, not data: two instances disagreeing about
+ * that is correct.
+ *
+ * Report type and species stay open because they are the two filters people
+ * actually reach for. The rest collapse — seven open groups made the rail as
+ * tall as the results beside it, and most of them are never touched.
+ *
+ * A collapsed group that is doing something says so, in a number and a word.
+ * Otherwise a filter set on a previous visit, or arriving through a link,
+ * would quietly cut the results with nothing on screen to explain it.
  *
  * @param {Object} props
  * @param {Object} props.filters
@@ -42,12 +53,14 @@ export function FilterPanel({
   hasActiveFilters,
   speciesOptions = [],
 }) {
+  const setCount = (...fields) => fields.filter((field) => filters[field]).length
+
   return (
     // A tinted rail rather than a white card: filtering is the layer between
     // the canvas and the white report cards beside it, and three levels is
     // what stops the page reading as one flat plane. No shadow — it groups,
     // it does not lift.
-    <div className="flex flex-col gap-5 rounded-card border border-border bg-layer p-5">
+    <div className="flex flex-col gap-4 rounded-card border border-border bg-layer p-5">
       <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
         <h2 className="text-lg font-semibold text-fg">Filters</h2>
         {hasActiveFilters && (
@@ -63,31 +76,30 @@ export function FilterPanel({
 
       {/* Report type is three options and the most consequential filter on the
           page, so it is a visible choice rather than something hidden inside a
-          dropdown. */}
+          dropdown — or behind a disclosure. */}
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-0.5">
           <FilterLabel icon={PawPrint}>Report type</FilterLabel>
         </legend>
         <div className="flex rounded-control border border-border-strong bg-panel p-1">
-          {[
-            { value: ANY, label: 'Both' },
-            ...optionsFromLabels(REPORT_TYPE_LABELS),
-          ].map((option) => (
-            <button
-              key={option.value || 'any'}
-              type="button"
-              onClick={() => onChange('reportType', option.value)}
-              aria-pressed={filters.reportType === option.value}
-              className={cn(
-                'flex-1 rounded-[0.45rem] px-2 py-1.5 text-sm transition-colors',
-                filters.reportType === option.value
-                  ? 'bg-brand-soft font-medium text-brand-hover'
-                  : 'text-fg-muted hover:text-fg',
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
+          {[{ value: ANY, label: 'Both' }, ...optionsFromLabels(REPORT_TYPE_LABELS)].map(
+            (option) => (
+              <button
+                key={option.value || 'any'}
+                type="button"
+                onClick={() => onChange('reportType', option.value)}
+                aria-pressed={filters.reportType === option.value}
+                className={cn(
+                  'flex-1 rounded-[0.45rem] px-2 py-1.5 text-sm transition-colors',
+                  filters.reportType === option.value
+                    ? 'bg-brand-soft font-medium text-brand-hover'
+                    : 'text-fg-muted hover:text-fg',
+                )}
+              >
+                {option.label}
+              </button>
+            ),
+          )}
         </div>
       </fieldset>
 
@@ -98,41 +110,51 @@ export function FilterPanel({
         options={[{ value: ANY, label: 'Any species' }, ...speciesOptions]}
       />
 
-      <Select
-        label={<FilterLabel icon={Ruler}>Size</FilterLabel>}
-        value={filters.size}
-        onChange={(event) => onChange('size', event.target.value)}
-        options={[{ value: ANY, label: 'Any size' }, ...optionsFromLabels(PET_SIZE_LABELS)]}
-      />
+      <FilterGroup
+        icon={Ruler}
+        title="Size and colour"
+        activeCount={setCount('size', 'color')}
+      >
+        <Select
+          label="Size"
+          value={filters.size}
+          onChange={(event) => onChange('size', event.target.value)}
+          options={[{ value: ANY, label: 'Any size' }, ...optionsFromLabels(PET_SIZE_LABELS)]}
+        />
+        <Input
+          label="Colour"
+          value={filters.color}
+          onChange={(event) => onChange('color', event.target.value)}
+          placeholder="e.g. brown"
+        />
+      </FilterGroup>
 
-      <Input
-        label={<FilterLabel icon={Palette}>Colour</FilterLabel>}
-        value={filters.color}
-        onChange={(event) => onChange('color', event.target.value)}
-        placeholder="e.g. brown"
-      />
+      <FilterGroup icon={MapPin} title="Place" activeCount={setCount('city')}>
+        <Input
+          label="City"
+          value={filters.city}
+          onChange={(event) => onChange('city', event.target.value)}
+          placeholder="e.g. Makati"
+        />
+      </FilterGroup>
 
-      <Input
-        label={<FilterLabel icon={MapPin}>City</FilterLabel>}
-        value={filters.city}
-        onChange={(event) => onChange('city', event.target.value)}
-        placeholder="e.g. Makati"
-      />
+      <FilterGroup icon={CircleCheck} title="Status" activeCount={setCount('status')}>
+        <Select
+          label="Report status"
+          value={filters.status}
+          onChange={(event) => onChange('status', event.target.value)}
+          options={[
+            { value: ANY, label: 'Any status' },
+            ...orderedOptionsFromLabels(REPORT_STATUS_LABELS, REPORT_STATUS_ORDER),
+          ]}
+        />
+      </FilterGroup>
 
-      <Select
-        label={<FilterLabel icon={CircleCheck}>Status</FilterLabel>}
-        value={filters.status}
-        onChange={(event) => onChange('status', event.target.value)}
-        options={[
-          { value: ANY, label: 'Any status' },
-          ...orderedOptionsFromLabels(REPORT_STATUS_LABELS, REPORT_STATUS_ORDER),
-        ]}
-      />
-
-      <fieldset className="flex flex-col gap-3">
-        <legend className="mb-1">
-          <FilterLabel icon={CalendarDays}>Date of incident</FilterLabel>
-        </legend>
+      <FilterGroup
+        icon={CalendarDays}
+        title="Date of incident"
+        activeCount={setCount('dateFrom', 'dateTo')}
+      >
         <Input
           label="From"
           type="date"
@@ -148,11 +170,57 @@ export function FilterPanel({
           max={todayAsInputValue()}
           onChange={(event) => onChange('dateTo', event.target.value)}
         />
-      </fieldset>
+      </FilterGroup>
 
       <Button variant="secondary" onClick={onClear} disabled={!hasActiveFilters} fullWidth>
         Clear all filters
       </Button>
+    </div>
+  )
+}
+
+/**
+ * One collapsible group of filters.
+ *
+ * A button with `aria-expanded` rather than `<details>`: React fights a
+ * controlled `open` attribute, and this way the expanded state is ordinary
+ * component state that opens itself when the group arrives with something
+ * already set.
+ *
+ * The badge is a number and a word, never a bare dot — "1 set" survives being
+ * read aloud and being looked at by somebody who cannot pick the tint out
+ * from the rail behind it.
+ */
+function FilterGroup({ icon, title, activeCount, children }) {
+  // Initial only. Once somebody has opened or closed a group, that is their
+  // decision, and a filter changing underneath must not overrule it.
+  const [isOpen, setIsOpen] = useState(activeCount > 0)
+
+  return (
+    <div className="border-t border-border pt-4">
+      <button
+        type="button"
+        onClick={() => setIsOpen((open) => !open)}
+        aria-expanded={isOpen}
+        className="flex w-full items-center justify-between gap-2 text-left"
+      >
+        <FilterLabel icon={icon}>{title}</FilterLabel>
+
+        <span className="flex shrink-0 items-center gap-2">
+          {activeCount > 0 && (
+            <span className="rounded-pill bg-brand-soft px-2 py-0.5 text-xs font-medium text-brand-hover">
+              {activeCount} set
+            </span>
+          )}
+          <ChevronDown
+            size={16}
+            aria-hidden="true"
+            className={cn('text-fg-muted transition-transform duration-150', isOpen && 'rotate-180')}
+          />
+        </span>
+      </button>
+
+      {isOpen && <div className="flex flex-col gap-4 pt-4">{children}</div>}
     </div>
   )
 }

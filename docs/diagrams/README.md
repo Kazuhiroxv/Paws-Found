@@ -5,13 +5,13 @@ The two figures used in the revised Phase 1 and Phase 2 submission.
 | File | Figure | Shows |
 | --- | --- | --- |
 | `fig1-architecture.svg` / `.png` | Figure 1 | Three-tier system architecture: React client, PHP REST API, MySQL |
-| `fig2-erd.svg` / `.png` | Figure 2 | The revised ERD — 11 tables, 20 foreign keys |
+| `fig2-erd.svg` / `.png` | Figure 2 | The revised ERD — 14 tables, 23 foreign keys |
 
 The SVGs are the source; edit those, not the PNGs. To regenerate a PNG after
 editing:
 
 ```
-python -c "import fitz; d=fitz.open('fig2-erd.svg'); d[0].get_pixmap(dpi=170).save('fig2-erd.png')"
+python -c "import pymupdf; pymupdf.open('fig2-erd.svg')[0].get_pixmap(dpi=110).save('fig2-erd.png')"
 ```
 
 Both were drawn from the live schema (`information_schema`) and the endpoint

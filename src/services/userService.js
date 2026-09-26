@@ -108,7 +108,7 @@ export async function signOut() {
  * The role is deliberately not sent: the API always creates an ordinary user,
  * so a crafted request cannot register an administrator.
  */
-export async function register({ fullName, email, password, phone = '' }) {
+export async function register({ fullName, email, password, phone = '', privacyConsent = false }) {
   await apiFetch('/auth/register', {
     method: 'POST',
     body: JSON.stringify({
@@ -116,6 +116,9 @@ export async function register({ fullName, email, password, phone = '' }) {
       email,
       password,
       contact_number: phone,
+      // Sent as a real boolean: the API compares with `=== true`, so a
+      // request that leaves it out, or sends the string "false", is refused.
+      privacy_consent: privacyConsent === true,
     }),
   })
 
@@ -174,6 +177,25 @@ export async function updateUser(id, changes) {
       notify_status: changes.notificationPreferences?.statusUpdates,
       notify_staff: changes.notificationPreferences?.staffMessages,
     }),
+  })
+
+  return userFromApi(payload.data)
+}
+
+/**
+ * Administrator action: unlock an account that locked itself after three
+ * failed sign-in attempts.
+ *
+ * The same request as reinstating a suspended account — the account goes back
+ * to active — but it is a different act with a different reason, so it has its
+ * own name here and its own entry in the audit log. The server clears the
+ * failed-attempt counter as part of it; without that the next wrong password
+ * would lock the account straight back up.
+ */
+export async function unlockAccount(id) {
+  const payload = await apiFetch(`/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ account_status: 'active' }),
   })
 
   return userFromApi(payload.data)

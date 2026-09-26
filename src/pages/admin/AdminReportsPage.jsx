@@ -1,13 +1,16 @@
 import { useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ListChecks, Search } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { CircleCheck, HandHeart, ListChecks, Search, TriangleAlert } from 'lucide-react'
 import photoPlaceholder from '@/assets/pet-photo-placeholder.png'
-import { Button, EmptyState, LoadingSkeleton, Select } from '@/components/ui'
+import { Button, EmptyState, LoadingSkeleton, Select, SidePanel } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { Pagination } from '@/components/Pagination'
+import { StatTile } from '@/components/StatTile'
 import { ReportTypeBadge } from '@/components/ReportTypeBadge'
 import { StatusBadge } from '@/components/StatusBadge'
 import {
+  PET_SEX_LABELS,
+  PET_SIZE_LABELS,
   REPORT_STATUS_LABELS,
   REPORT_STATUS_ORDER,
   REPORT_TYPES,
@@ -54,7 +57,10 @@ export function AdminReportsPage() {
   const [species, setSpecies] = useState('')
   const [sort, setSort] = useState('updated')
   const [page, setPage] = useState(1)
-  const navigate = useNavigate()
+  // The record being read. Opening one used to leave the page entirely, which
+  // threw away the filters, the sort and which page of results you were on —
+  // so checking three records meant setting the filters up three times.
+  const [selected, setSelected] = useState(null)
 
   // Narrowing the list starts again at page one — otherwise a filter can leave
   // you on a page that no longer exists.
@@ -132,6 +138,37 @@ export function AdminReportsPage() {
   return (
     <div className="flex flex-col gap-6">
       {header}
+
+      {/* The shape of the whole record set, before any filter narrows it.
+          Counted from `reports` rather than from the filtered view on purpose:
+          these answer "what is in the system", and a total that moved every
+          time somebody typed in the search box would answer nothing. */}
+      <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <li className="contents">
+          <StatTile icon={ListChecks} label="Records" value={reports.length} />
+        </li>
+        <li className="contents">
+          <StatTile
+            icon={TriangleAlert}
+            label="Lost reports"
+            value={reports.filter((r) => r.reportType === REPORT_TYPES.LOST).length}
+          />
+        </li>
+        <li className="contents">
+          <StatTile
+            icon={HandHeart}
+            label="Found reports"
+            value={reports.filter((r) => r.reportType === REPORT_TYPES.FOUND).length}
+          />
+        </li>
+        <li className="contents">
+          <StatTile
+            icon={CircleCheck}
+            label="Back home"
+            value={reports.filter((r) => r.status === 'returned').length}
+          />
+        </li>
+      </ul>
 
       <div className="flex flex-col gap-3">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_10rem_11rem_10rem]">
@@ -269,9 +306,11 @@ export function AdminReportsPage() {
                     <tr
                       key={report.id}
                       onClick={(event) => {
-                        // A click on the name is a link and does its own thing.
+                        // A click on the name is a link and does its own thing:
+                        // it opens the full public report. The row opens the
+                        // panel beside the table instead.
                         if (event.target.closest('a')) return
-                        navigate(`/pet/${report.id}`)
+                        setSelected(report)
                       }}
                       className="cursor-pointer align-middle transition-colors hover:bg-surface has-[a:focus-visible]:bg-surface"
                     >
@@ -332,6 +371,88 @@ export function AdminReportsPage() {
           )}
         </>
       )}
+
+      {/* Beside the table, not over it: the list stays lit and stays
+          clickable, so working through several records is one click each
+          rather than open-read-close-find-your-place. */}
+      <SidePanel
+        isOpen={Boolean(selected)}
+        eyebrow="Record"
+        title={selected ? reportName(selected) : ''}
+        onClose={() => setSelected(null)}
+      >
+        {selected && (
+          <RecordPanel report={selected} reporter={usersById[selected.reporterId]} />
+        )}
+      </SidePanel>
+    </div>
+  )
+}
+
+/**
+ * One record, read in full without leaving the list.
+ *
+ * Everything here comes off the report the table already loaded, so opening
+ * the panel costs no request. Contact details are shown because this page is
+ * administrators only and the API has already decided they may see them —
+ * the panel does not go looking for anything the row was not given.
+ */
+function RecordPanel({ report, reporter }) {
+  const colours = [report.primaryColor, report.secondaryColor].filter(Boolean).join(' and ')
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex gap-3">
+        <Thumb report={report} className="size-20 shrink-0" />
+        <div className="flex min-w-0 flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <ReportTypeBadge reportType={report.reportType} size="sm" />
+            <StatusBadge status={report.status} variant="pill" />
+          </div>
+          <p className="text-sm text-fg-muted">
+            {[speciesLabel(report.species), report.breed].filter(Boolean).join(' · ')}
+          </p>
+        </div>
+      </div>
+
+      <dl className="flex flex-col gap-3 text-sm">
+        <PanelRow term="Colour" value={colours} />
+        <PanelRow term="Size" value={report.size ? PET_SIZE_LABELS[report.size] : null} />
+        <PanelRow term="Sex" value={report.sex ? PET_SEX_LABELS[report.sex] : null} />
+        <PanelRow
+          term="Distinctive features"
+          value={report.distinctiveMarkings}
+        />
+        <PanelRow
+          term="Area"
+          value={`${report.location.city}, ${report.location.province}`}
+        />
+        <PanelRow term="Incident date" value={formatShortDate(report.incidentDate)} />
+        <PanelRow term="Last updated" value={formatCardDate(report.updatedAt)} />
+        <PanelRow term="Filed by" value={reporter?.fullName} />
+        <PanelRow term="Contact" value={reporter?.email} />
+      </dl>
+
+      {report.description && (
+        <div className="flex flex-col gap-1.5">
+          <h3 className="text-sm font-medium text-fg">What happened</h3>
+          <p className="text-sm leading-relaxed text-fg-muted">{report.description}</p>
+        </div>
+      )}
+
+      <Button as={Link} to={`/pet/${report.id}`} variant="secondary" fullWidth>
+        Open the full report
+      </Button>
+    </div>
+  )
+}
+
+/** One term and its value. Anything the reporter left blank says so. */
+function PanelRow({ term, value }) {
+  return (
+    <div className="grid grid-cols-[8rem_1fr] gap-3">
+      <dt className="text-fg-muted">{term}</dt>
+      <dd className={value ? 'text-fg' : 'text-fg-subtle'}>{value || 'Not given'}</dd>
     </div>
   )
 }

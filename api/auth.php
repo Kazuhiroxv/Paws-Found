@@ -32,6 +32,16 @@ function handle_auth(string $method, ?string $action): never
     json_error('No such endpoint.', 404);
 }
 
+/**
+ * What the person is told when the account is locked.
+ *
+ * The same sentence whether or not the address belongs to an account, because
+ * the counter behind it is kept per address typed rather than per account.
+ */
+const LOCKED_MESSAGE = 'This account is locked after '
+    . MAX_LOGIN_ATTEMPTS
+    . ' failed sign-in attempts. An administrator has to unlock it before you can sign in again.';
+
 function auth_login(): never
 {
     $body = request_body();
@@ -40,6 +50,21 @@ function auth_login(): never
 
     if ($email === '' || $password === '') {
         json_error('Enter your email address and password.', 422);
+    }
+
+    // The counter for this address. It exists whether or not an account does,
+    // which is the whole reason the messages below can be honest about how many
+    // attempts are left without confirming that the address is registered.
+    $attempts = login_attempts_for($email);
+
+    // Checked BEFORE the password is verified. This is the line that makes the
+    // lock a lock: typing the correct password afterwards does not lift it, it
+    // just arrives at this same refusal.
+    if ((int) $attempts['failed_count'] >= MAX_LOGIN_ATTEMPTS) {
+        audit_log('login_failed', null, $email, 'user', $attempts['user_id'] ? (int) $attempts['user_id'] : null,
+            'failure', 'attempted while locked');
+
+        json_error(LOCKED_MESSAGE, 403, ['locked' => true, 'attempts_remaining' => 0]);
     }
 
     $statement = db()->prepare(
@@ -53,12 +78,31 @@ function auth_login(): never
     // One message for "no such account" and "wrong password" on purpose. Telling
     // them apart would confirm which email addresses are registered.
     if (!$user || !password_verify($password, $user['password_hash'])) {
-        json_error('That email address and password do not match.', 401);
+        login_failed($email, $user ? (int) $user['user_id'] : null);
     }
 
     if ($user['account_status'] === 'suspended') {
+        // Actor NULL for the same reason as the failed attempts above: the
+        // password was right, but that still does not prove who typed it.
+        audit_log('login_failed', null, $email, 'user', (int) $user['user_id'],
+            'failure', 'account suspended');
+
         json_error('This account has been suspended. Contact an administrator.', 403);
     }
+
+    // Belt and braces: the counter above is the usual way in here, but if a
+    // lock were ever cleared without the account being reactivated, the account
+    // state itself still refuses.
+    if ($user['account_status'] === 'locked') {
+        audit_log('login_failed', null, $email, 'user', (int) $user['user_id'],
+            'failure', 'account locked');
+
+        json_error(LOCKED_MESSAGE, 403, ['locked' => true, 'attempts_remaining' => 0]);
+    }
+
+    // Signing in successfully is what clears the counter. Nothing else does,
+    // apart from an administrator unlocking the account.
+    clear_login_attempts($email);
 
     start_session();
 
@@ -67,7 +111,13 @@ function auth_login(): never
     session_regenerate_id(true);
     $_SESSION['user_id'] = (int) $user['user_id'];
 
+    audit_log('login', (int) $user['user_id'], $user['email'], 'user', (int) $user['user_id']);
+
     json_response([
+        // The session id just changed, so the token paired with it changes too.
+        // Returned here so the browser does not have to ask for it before its
+        // next action.
+        'csrf_token' => rotate_csrf_token(),
         'user' => [
             'user_id' => (int) $user['user_id'],
             'full_name' => $user['full_name'],
@@ -75,6 +125,108 @@ function auth_login(): never
             'role' => $user['role'],
         ],
     ]);
+}
+
+// -----------------------------------------------------------------------------
+// The three-attempt lock
+// -----------------------------------------------------------------------------
+
+/**
+ * The counter row for an address, creating it if this is the first time the
+ * address has been seen.
+ *
+ * Keyed by the address that was typed rather than by the account, so an address
+ * belonging to nobody is counted exactly like one that does. That symmetry is
+ * what stops the "2 attempts left" message from being an account-enumeration
+ * oracle: it is said to everybody, in the same words, at the same moment.
+ */
+function login_attempts_for(string $email): array
+{
+    $select = db()->prepare(
+        'SELECT attempt_id, email, user_id, failed_count, locked_at
+           FROM login_attempts
+          WHERE email = :email'
+    );
+    $select->execute([':email' => $email]);
+    $row = $select->fetch();
+
+    if ($row) {
+        return $row;
+    }
+
+    return ['attempt_id' => null, 'email' => $email, 'user_id' => null,
+            'failed_count' => 0, 'locked_at' => null];
+}
+
+/**
+ * Record a failed sign-in, lock the account if that was the last attempt, and
+ * answer. Never returns.
+ *
+ * The count is written before the response is chosen, so the number in the
+ * message and the number in the database are the same number.
+ */
+function login_failed(string $email, ?int $userId): never
+{
+    // One statement does insert-or-increment. Two statements — SELECT then
+    // UPDATE — would let two simultaneous attempts both read 1 and both write
+    // 2, which is a free extra guess.
+    $statement = db()->prepare(
+        'INSERT INTO login_attempts (email, user_id, failed_count, first_failed_at, last_failed_at)
+              VALUES (:email, :user_id, 1, NOW(), NOW())
+         ON DUPLICATE KEY UPDATE
+              failed_count = failed_count + 1,
+              last_failed_at = NOW(),
+              user_id = COALESCE(VALUES(user_id), user_id)'
+    );
+    $statement->execute([':email' => $email, ':user_id' => $userId]);
+
+    $count = (int) login_attempts_for($email)['failed_count'];
+    $remaining = max(0, MAX_LOGIN_ATTEMPTS - $count);
+
+    // The actor is NULL on purpose. A failed sign-in tells us which account was
+    // being aimed at — that is the target — but not who was doing the aiming.
+    // Naming the account holder as the actor would put "Kenneth Villanueva
+    // failed to sign in" in the log when it may well have been somebody else.
+    audit_log('login_failed', null, $email, $userId ? 'user' : null, $userId, 'failure',
+        "failed attempt {$count} of " . MAX_LOGIN_ATTEMPTS);
+
+    if ($count < MAX_LOGIN_ATTEMPTS) {
+        json_error(attempts_message($remaining), 401, [
+            'attempts_remaining' => $remaining,
+            'locked' => false,
+        ]);
+    }
+
+    // The third failure. Mark the moment on the counter either way, and move
+    // the account itself to 'locked' when there is an account — which is what
+    // ends every session it has open, on every device, because current_user()
+    // refuses anything that is not active.
+    $lock = db()->prepare('UPDATE login_attempts SET locked_at = NOW() WHERE email = :email');
+    $lock->execute([':email' => $email]);
+
+    if ($userId !== null) {
+        $update = db()->prepare(
+            "UPDATE users SET account_status = 'locked' WHERE user_id = :id AND account_status = 'active'"
+        );
+        $update->execute([':id' => $userId]);
+
+        audit_log('account_locked', null, $email, 'user', $userId, 'success',
+            MAX_LOGIN_ATTEMPTS . ' failed sign-in attempts');
+    }
+
+    json_error(LOCKED_MESSAGE, 403, ['attempts_remaining' => 0, 'locked' => true]);
+}
+
+/** The refusal, with the count of what is left said out loud. */
+function attempts_message(int $remaining): string
+{
+    if ($remaining === 1) {
+        return 'That email address and password do not match. This is the last attempt — '
+             . 'one more failure locks the account, and an administrator will have to unlock it.';
+    }
+
+    return "That email address and password do not match. {$remaining} attempts remain "
+         . 'before the account is locked.';
 }
 
 function auth_register(): never
@@ -113,6 +265,14 @@ function auth_register(): never
         $errors['contact_number'] = 'That phone number is too long.';
     }
 
+    // The privacy acknowledgement. Checked here and not only in the form,
+    // because the form is not what creates the account — and a consent record
+    // that a crafted request could skip would be worth nothing.
+    if (($body['privacy_consent'] ?? false) !== true) {
+        $errors['privacy_consent'] =
+            'Please confirm you have read the Privacy Notice before creating an account.';
+    }
+
     if ($errors !== []) {
         json_error('Please check the highlighted fields.', 422, ['fields' => $errors]);
     }
@@ -125,6 +285,12 @@ function auth_register(): never
               VALUES (:full_name, :email, :password_hash, :contact_number, 'user', 'active')"
     );
 
+    // The account and the record of what they agreed to are written together.
+    // An account with no consent row, or a consent row with no account, would
+    // each be a worse outcome than the registration simply failing.
+    $pdo = db();
+    $pdo->beginTransaction();
+
     try {
         $statement->execute([
             ':full_name' => $fullName,
@@ -134,7 +300,23 @@ function auth_register(): never
             ':password_hash' => password_hash($password, PASSWORD_DEFAULT),
             ':contact_number' => $contact === '' ? null : $contact,
         ]);
+
+        $userId = (int) $pdo->lastInsertId();
+
+        $consent = $pdo->prepare(
+            'INSERT INTO privacy_consents (user_id, notice_version, ip_address)
+                  VALUES (:user_id, :version, :ip)'
+        );
+        $consent->execute([
+            ':user_id' => $userId,
+            ':version' => PRIVACY_NOTICE_VERSION,
+            ':ip' => client_ip(),
+        ]);
+
+        $pdo->commit();
     } catch (PDOException $exception) {
+        $pdo->rollBack();
+
         // 23000 is the integrity-constraint class, which here can only be the
         // unique index on email. Letting the database decide closes the gap
         // between checking and inserting, where two people registering the same
@@ -148,15 +330,16 @@ function auth_register(): never
         throw $exception;
     }
 
-    $userId = (int) db()->lastInsertId();
-
     // Registering signs you in, so nobody has to retype the password they just
     // chose. Same fresh session id as auth_login(), for the same reason.
     start_session();
     session_regenerate_id(true);
     $_SESSION['user_id'] = $userId;
 
+    audit_log('register', $userId, $email, 'user', $userId);
+
     json_response([
+        'csrf_token' => rotate_csrf_token(),
         'user' => [
             'user_id' => $userId,
             'full_name' => $fullName,
@@ -168,6 +351,14 @@ function auth_register(): never
 
 function auth_logout(): never
 {
+    // Read before the session is torn down: afterwards there is nobody left to
+    // record as having signed out.
+    $user = current_user();
+
+    if ($user !== null) {
+        audit_log('logout', (int) $user['user_id'], $user['email'], 'user', (int) $user['user_id']);
+    }
+
     start_session();
 
     $_SESSION = [];
@@ -181,20 +372,27 @@ function auth_logout(): never
 
     session_destroy();
 
-    json_response(['ok' => true]);
+    // A fresh session for whoever is now using this browser, with a token of
+    // its own — otherwise the next person to sign in has no way to make the
+    // request that signs them in.
+    json_response(['ok' => true, 'csrf_token' => rotate_csrf_token()]);
 }
 
 function auth_me(): never
 {
     $user = current_user();
 
-    // Not an error: the public pages call this on load to find out whether
-    // anyone is signed in, and "nobody" is a normal answer.
+    // This endpoint is also where the browser gets its CSRF token. The app
+    // calls it on load, before it can possibly have anything to submit, so by
+    // the time somebody presses a button the token is already in hand — even
+    // when the answer is "nobody is signed in", because signing in is itself a
+    // request that has to be verified.
     if ($user === null) {
-        json_response(['user' => null]);
+        json_response(['user' => null, 'csrf_token' => csrf_token()]);
     }
 
     json_response([
+        'csrf_token' => csrf_token(),
         'user' => [
             'user_id' => (int) $user['user_id'],
             'full_name' => $user['full_name'],

@@ -3,8 +3,17 @@
 -- ITS122P – AM5 · Group 3 · Final Project (Database + Backend)
 --
 -- Target: MariaDB 10.4+ (what XAMPP ships) or MySQL 8, via phpMyAdmin.
--- Verified imported on MariaDB 10.4.32 (XAMPP) on 2026-08-19:
---   11 tables, 20 foreign keys, 2 CHECK constraints, all enforced.
+-- Counted from information_schema on the running database, 25 September 2026:
+--
+--   15 tables      the 14 on the ERD, plus schema_migrations
+--   23 foreign keys    all 23 on the 14; schema_migrations has none
+--   15 primary keys    one per table
+--    7 unique constraints
+--    2 CHECK constraints
+--
+-- First imported on MariaDB 10.4.32 (XAMPP) on 2026-08-19 at 11 tables and 20
+-- foreign keys; the lockout, audit and consent tables arrived with the
+-- hardening pass as migrations 001 to 004.
 --
 -- NOTE: this XAMPP installation runs MySQL on PORT 3307, not the default 3306,
 -- because a separate MySQL 8.0 Windows service holds 3306. phpMyAdmin is already
@@ -13,9 +22,15 @@
 -- Engine InnoDB throughout, because the project relies on foreign keys and
 -- transactions. MyISAM ignores foreign keys silently.
 --
--- 11 tables. The guide requires a minimum of 8; the extra three
--- (match_signals, notifications, moderation_cases) exist because three of the
--- application's workspaces have nowhere to store their data without them.
+-- 14 tables. The guide requires a minimum of 8; the extra six
+-- (match_signals, notifications, moderation_cases, login_attempts, audit_logs,
+-- privacy_consents) exist because three of the application's workspaces, the
+-- three-attempt lock, the audit trail and the privacy acknowledgement have
+-- nowhere to store their data without them.
+--
+-- A fifteenth table, `schema_migrations`, is created by the first migration.
+-- It is infrastructure — a record of which files in database/migrations/ this
+-- database has had applied — and is deliberately not on the ERD.
 --
 -- Every ENUM below matches the values already used in the frontend
 -- (src/constants/index.js) exactly, so the API does not have to translate.
@@ -28,6 +43,9 @@ CREATE DATABASE IF NOT EXISTS pawsandfound
 USE pawsandfound;
 
 -- Dropped in reverse dependency order so the file can be re-run while we build.
+DROP TABLE IF EXISTS privacy_consents;
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS login_attempts;
 DROP TABLE IF EXISTS moderation_cases;
 DROP TABLE IF EXISTS notifications;
 DROP TABLE IF EXISTS status_logs;
@@ -51,6 +69,12 @@ DROP TABLE IF EXISTS users;
 -- `account_status` is how an administrator suspends someone. Accounts are
 -- suspended, never deleted, because their reports and case history must remain
 -- readable (see the ON DELETE RESTRICT on pet_reports.user_id).
+--
+-- It has a third value, 'locked', which nobody chooses: an account goes there
+-- by itself after three failed sign-in attempts, and only an administrator
+-- brings it back. Suspended is a decision about a person; locked is something
+-- that happened to an account. Keeping them apart is what lets the Users table
+-- say which of the two it is looking at.
 -- -----------------------------------------------------------------------------
 CREATE TABLE users (
   user_id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -59,7 +83,7 @@ CREATE TABLE users (
   password_hash   VARCHAR(255)  NOT NULL,
   contact_number  VARCHAR(30)       NULL,
   role            ENUM('user','staff','admin') NOT NULL DEFAULT 'user',
-  account_status  ENUM('active','suspended')   NOT NULL DEFAULT 'active',
+  account_status  ENUM('active','suspended','locked') NOT NULL DEFAULT 'active',
   preferred_location VARCHAR(120)   NULL,
 
   -- Which updates this person wants to be told about. Three booleans rather
@@ -434,6 +458,144 @@ CREATE TABLE moderation_cases (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
+-- -----------------------------------------------------------------------------
+-- 12. login_attempts — the three-attempt counter
+--
+-- Keyed by the email address that was TYPED, not by the account. That is the
+-- whole point of it: an address belonging to no account is counted exactly the
+-- same way, so "one attempt left" can be said to everybody without that
+-- sentence revealing which addresses are registered.
+--
+-- `user_id` is filled in when the address does belong to an account, which is
+-- what lets an administrator unlock by account rather than by string.
+--
+-- The column inherits utf8mb4_unicode_ci, which compares case-insensitively,
+-- so MARIA@example.com and maria@example.com are one row. Otherwise changing
+-- the capitalisation would hand out three fresh attempts.
+-- -----------------------------------------------------------------------------
+CREATE TABLE login_attempts (
+  attempt_id      INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  email           VARCHAR(190) NOT NULL,
+  user_id         INT UNSIGNED     NULL,
+  failed_count    TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  first_failed_at TIMESTAMP        NULL,
+  last_failed_at  TIMESTAMP        NULL,
+  locked_at       TIMESTAMP        NULL,
+
+  PRIMARY KEY (attempt_id),
+  UNIQUE KEY uq_attempts_email (email),
+
+  CONSTRAINT fk_attempts_user
+    FOREIGN KEY (user_id) REFERENCES users (user_id)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+
+  KEY idx_attempts_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- -----------------------------------------------------------------------------
+-- 13. audit_logs — who did what, and when
+--
+-- `status_logs` records what happened to a REPORT. This records what happened
+-- to an ACCOUNT: who signed in, who failed to, who was locked out, who
+-- unlocked them, who changed somebody's role, who suspended whom.
+--
+-- Appended to and never updated or deleted. An audit trail that can be edited
+-- is not one.
+--
+-- `actor_user_id` is SET NULL rather than CASCADE on purpose: deleting an
+-- account must not delete the record of what that account did. `actor_email`
+-- survives, so the row still means something afterwards.
+-- -----------------------------------------------------------------------------
+CREATE TABLE audit_logs (
+  audit_id      INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  actor_user_id INT UNSIGNED     NULL,   -- NULL when the sign-in failed
+  actor_email   VARCHAR(190)     NULL,
+
+  -- Account events first, then the case events added by migration 004. The
+  -- order matters: MySQL stores an ENUM as the position of the word, so moving
+  -- one of these rewrites the meaning of every row already in the table.
+  action        ENUM('login','login_failed','account_locked','account_unlocked',
+                     'logout','register','role_changed','account_suspended',
+                     'account_reinstated',
+                     'report_status_changed','match_decided',
+                     'moderation_resolved','category_changed') NOT NULL,
+
+  target_type   ENUM('user','report','match','category','moderation_case') NULL,
+  target_id     INT UNSIGNED     NULL,
+  outcome       ENUM('success','failure') NOT NULL DEFAULT 'success',
+
+  -- A short sentence in plain language: "user -> admin", "3 failed attempts".
+  -- Never a password, never a token, never a session id.
+  detail        VARCHAR(255)     NULL,
+  ip_address    VARCHAR(45)      NULL,   -- 45 characters, because IPv6
+  created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (audit_id),
+  CONSTRAINT fk_audit_actor
+    FOREIGN KEY (actor_user_id) REFERENCES users (user_id)
+    ON DELETE SET NULL ON UPDATE CASCADE,
+
+  KEY idx_audit_created (created_at),
+  KEY idx_audit_action (action, created_at),
+  KEY idx_audit_target (target_type, target_id),
+  KEY idx_audit_actor (actor_user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- -----------------------------------------------------------------------------
+-- 14. privacy_consents — who agreed to the privacy notice, and to which one
+--
+-- The Data Privacy Act expects a person to be told, before their personal
+-- information is processed, what is collected and why. Paws&Found asks for
+-- that acknowledgement at registration; this is where the answer is kept.
+--
+-- A table rather than a column on `users`, because the notice has a version.
+-- If the wording changes in a way that matters, we need to know who agreed to
+-- WHICH version and WHEN — and a column would be overwritten by the second
+-- agreement, losing the first. That is the opposite of what a consent record
+-- is for.
+--
+-- CASCADE, unlike audit_logs: a consent record only means something attached
+-- to the person who gave it. An orphaned "somebody agreed to something"
+-- protects nobody, and is one more piece of personal data kept for no reason.
+-- -----------------------------------------------------------------------------
+CREATE TABLE privacy_consents (
+  consent_id     INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id        INT UNSIGNED NOT NULL,
+  notice_version VARCHAR(20)  NOT NULL,   -- PRIVACY_NOTICE_VERSION in api/config.php
+  consented_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  ip_address     VARCHAR(45)      NULL,
+
+  PRIMARY KEY (consent_id),
+  UNIQUE KEY uq_consent_user_version (user_id, notice_version),
+
+  CONSTRAINT fk_consent_user
+    FOREIGN KEY (user_id) REFERENCES users (user_id)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+
+  KEY idx_consent_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- -----------------------------------------------------------------------------
+-- Infrastructure, not a domain table, and not on the ERD.
+--
+-- A database built from this file already contains everything the migrations
+-- in database/migrations/ would add, so they are recorded as applied here. A
+-- database built before those migrations existed gets the same rows from the
+-- migration files themselves.
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  version    VARCHAR(20) NOT NULL,
+  applied_at TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (version)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO schema_migrations (version) VALUES ('001'), ('002'), ('003')
+  ON DUPLICATE KEY UPDATE version = version;
+
+
 -- =============================================================================
 -- Reference data
 --
@@ -467,7 +629,8 @@ INSERT INTO pet_breeds (category_id, breed_name) VALUES
 -- =============================================================================
 -- Verification
 --
--- Run after importing. Expect 11 tables and a non-zero foreign key count.
+-- Run after importing. Expect 15 tables — the 14 on the ERD plus
+-- schema_migrations — and a non-zero foreign key count.
 -- =============================================================================
 
 -- SELECT COUNT(*) AS tables_created

@@ -29,6 +29,55 @@ const REPORT_SORTS = [
     'updated' => 'r.updated_at DESC',
 ];
 
+/**
+ * Which status a report may move to, from the one it is in — for a change made
+ * by a PERSON through PATCH /reports/{id}.
+ *
+ *     active  ──────────────┐
+ *        │                  ├──▶ returned ──▶ closed
+ *        ▼                  │
+ *     possible_match ───────┘
+ *        │                  │
+ *        └──────────────────┴──▶ closed          (closed is the end)
+ *
+ * Two transitions are deliberately absent, because they are not a person's to
+ * make:
+ *
+ *   active ──▶ possible_match   the matching algorithm decides this, in
+ *                               api/matching.php, when it finds a candidate.
+ *   possible_match ──▶ active   the system does this in api/matches.php when
+ *                               the last open pairing on a report is ruled out.
+ *
+ * Both of those run as `UPDATE ... WHERE status = 'the expected one'`, so they
+ * cannot skip a step either. They are simply not reachable from the browser,
+ * which is the point: a report cannot be talked into claiming it has a possible
+ * match by anybody who can send an HTTP request.
+ *
+ * `closed` is terminal. A closed report is not reopened — the case history
+ * stays readable and a new report is filed instead. That is also why the list
+ * is empty rather than missing: the rule is written down, not implied.
+ */
+const REPORT_TRANSITIONS = [
+    'active' => ['returned', 'closed'],
+    'possible_match' => ['returned', 'closed'],
+    'returned' => ['closed'],
+    'closed' => [],
+];
+
+/**
+ * What each status is called when it has to appear in a sentence.
+ *
+ * The same four words the status pill shows (REPORT_STATUS_LABELS in
+ * src/constants/index.js), so a refusal names the state the person is actually
+ * looking at rather than the value in the column.
+ */
+const REPORT_STATUS_WORDS = [
+    'active' => 'Active',
+    'possible_match' => 'Possible Match',
+    'returned' => 'Returned',
+    'closed' => 'Closed',
+];
+
 function handle_reports(string $method, ?string $identifier, ?string $sub = null): never
 {
     if ($method === 'GET' && $identifier === null) {
@@ -204,6 +253,22 @@ function report_update(int $id): never
         json_error('Only the person who filed a report can edit it.', 403);
     }
 
+    // A case that has finished stops accepting edits. Changing the description
+    // of a pet that went home two weeks ago rewrites what a coordinator, and
+    // possibly a moderation decision, was looking at when they decided —
+    // and the case history beside it would still show the old story.
+    //
+    // Checked after ownership, so somebody else's closed report answers 403
+    // rather than telling them what state it is in.
+    if (in_array($report['status'], ['returned', 'closed'], true)) {
+        json_error(
+            'This report shows “' . REPORT_STATUS_WORDS[$report['status']]
+            . '”, and a finished report can no longer be edited.',
+            409,
+            ['status' => $report['status']]
+        );
+    }
+
     $body = request_body();
 
     // Only these columns may be changed, and each is written as a bound value.
@@ -271,6 +336,34 @@ function report_set_status(int $id): never
         json_error('Say which status the report should move to.', 422);
     }
 
+    // The status is a real one. Whether it is a real *move* from where this
+    // report actually is, is a separate question — and the one that matters,
+    // because the interface only ever offers the moves it should. A request
+    // built by hand is not limited to what the interface offers, so the rule
+    // has to live here.
+    $current = (string) $report['status'];
+
+    if ($status === $current) {
+        json_error(
+            'That report already shows “' . REPORT_STATUS_WORDS[$current] . '”. Nothing to change.',
+            409,
+            ['status' => $current]
+        );
+    }
+
+    if (!in_array($status, REPORT_TRANSITIONS[$current], true)) {
+        $allowed = REPORT_TRANSITIONS[$current];
+
+        json_error(
+            $allowed === []
+                ? 'That report is closed, and a closed report does not reopen. File a new report instead.'
+                : 'A report showing “' . REPORT_STATUS_WORDS[$current] . '” cannot be moved to “'
+                  . REPORT_STATUS_WORDS[$status] . '”.',
+            409,
+            ['status' => $current, 'allowed' => $allowed]
+        );
+    }
+
     $pdo = db();
     $pdo->beginTransaction();
 
@@ -292,6 +385,17 @@ function report_set_status(int $id): never
         $pdo->rollBack();
         throw $exception;
     }
+
+    // After the commit, like every other audit entry: the trail records what
+    // happened, not what was attempted.
+    //
+    // Only this route logs. `status_logs` also carries the row written when a
+    // report is created and the one written when matching moves a report to
+    // "possible match" on its own — neither is a person changing something,
+    // and an audit log full of the system talking to itself is harder to read
+    // than one that is not.
+    audit_log('report_status_changed', (int) $user['user_id'], $user['email'],
+        'report', $id, 'success', "{$report['status']} -> {$status}");
 
     report_detail($id);
 }

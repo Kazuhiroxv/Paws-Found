@@ -114,6 +114,16 @@ L.push('')
 L.push('USE pawsandfound;')
 L.push('')
 L.push('-- Re-runnable: clear in reverse dependency order first.')
+L.push('--')
+L.push('-- audit_logs and login_attempts are cleared here rather than left to')
+L.push('-- cascade. login_attempts would go with its account anyway, but')
+L.push('-- audit_logs is ON DELETE SET NULL — the trail deliberately outlives the')
+L.push('-- accounts it describes — so reseeding would otherwise leave every')
+L.push('-- previous run\'s sign-ins behind. Resetting the demonstration should')
+L.push('-- produce the same database every time, including an empty log.')
+L.push('DELETE FROM audit_logs;')
+L.push('DELETE FROM login_attempts;')
+L.push('DELETE FROM privacy_consents;')
 L.push('DELETE FROM moderation_cases;')
 L.push('DELETE FROM notifications;')
 L.push('DELETE FROM status_logs;')
@@ -140,6 +150,18 @@ L.push('INSERT INTO users (user_id, full_name, email, password_hash, contact_num
 L.push(users.map((u, i) =>
   `  (${i + 1}, ${q(u.fullName)}, ${q(u.email)}, ${q(hash)}, ${q(u.phone)}, ${q(u.role)}, ` +
   `${q(u.accountStatus ?? 'active')}, ${q(u.preferredLocation)}, ${ts(u.createdAt) === 'NULL' ? 'CURRENT_TIMESTAMP' : ts(u.createdAt)})`
+).join(',\n') + ';')
+L.push('')
+
+// Every account carries the acknowledgement it would have given when it
+// registered. Without this, a reseeded demonstration shows ten accounts and no
+// consent on file — which reads as a bug in the very thing the consent record
+// exists to prove.
+L.push('-- The privacy acknowledgement each demonstration account gave when it')
+L.push('-- registered, dated to the account rather than to today.')
+L.push('INSERT INTO privacy_consents (user_id, notice_version, consented_at) VALUES')
+L.push(users.map((u, i) =>
+  `  (${i + 1}, '2026-09-23', ${ts(u.createdAt) === 'NULL' ? 'CURRENT_TIMESTAMP' : ts(u.createdAt)})`
 ).join(',\n') + ';')
 L.push('')
 

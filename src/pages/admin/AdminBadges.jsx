@@ -10,6 +10,11 @@ const STATES = {
   account: {
     active: ['Active', 'bg-success-soft text-success-ink', 'bg-status-returned'],
     suspended: ['Suspended', 'bg-danger-soft text-danger-hover', 'bg-danger'],
+    // Locked is not suspended, and must not look like it. Suspended is a
+    // decision an administrator made about a person; locked is what happened
+    // to an account after three failed sign-in attempts. Amber, the colour
+    // this system already uses for "needs attention", rather than red.
+    locked: ['Locked', 'bg-accent-soft text-lost', 'bg-status-match'],
   },
   moderation: {
     open: ['Awaiting review', 'bg-accent-soft text-lost', 'bg-status-match'],
@@ -41,7 +46,7 @@ function StatePill({ kind, state, className }) {
   )
 }
 
-/** Active or Suspended. */
+/** Active, Suspended or Locked. */
 export function AccountStatusBadge({ status, className }) {
   return <StatePill kind="account" state={status} className={className} />
 }

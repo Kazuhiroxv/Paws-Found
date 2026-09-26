@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 
 import { RootLayout } from '@/layouts/RootLayout'
@@ -7,6 +7,7 @@ import { loadDashboardCounts } from '@/pages/dashboard/dashboardSummary'
 import { loadAdminCounts } from '@/pages/admin/adminCounts'
 import { loadStaffCounts } from '@/pages/staff/staffCounts'
 import { RequireAccess } from '@/components/RequireAccess'
+import { useSession } from '@/hooks/useSession'
 import { ROLES } from '@/constants'
 import { ADMIN_NAV, STAFF_NAV, USER_NAV } from '@/constants/navigation'
 import { userService } from '@/services'
@@ -18,6 +19,7 @@ import { ReportFoundPage } from '@/pages/public/ReportFoundPage'
 import { PetDetailPage } from '@/pages/public/PetDetailPage'
 import { AboutPage } from '@/pages/public/AboutPage'
 import { HelpPage } from '@/pages/public/HelpPage'
+import { PrivacyPage } from '@/pages/public/PrivacyPage'
 import { LoginPage } from '@/pages/public/LoginPage'
 import { RegisterPage } from '@/pages/public/RegisterPage'
 
@@ -54,33 +56,13 @@ import { UnauthorizedPage } from '@/pages/system/UnauthorizedPage'
  * report. Filing a report, and every workspace, requires signing in.
  */
 export default function App() {
-  // The session now lives on the server as a PHP session, so the app has to ask
-  // who is signed in rather than remembering it in a variable. `undefined`
-  // means "not asked yet" — distinct from null, which means "nobody".
-  const [user, setUser] = useState(undefined)
-
-  useEffect(() => {
-    let cancelled = false
-
-    userService
-      .getCurrentUser()
-      .then((signedIn) => {
-        if (!cancelled) setUser(signedIn)
-      })
-      .catch(() => {
-        if (!cancelled) setUser(null)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  /** Sign out. A real action, available in every build. */
-  const signOut = useCallback(async () => {
-    await userService.signOut()
-    setUser(null)
-  }, [])
+  // The session lives on the server as a PHP session, so the app has to ask who
+  // is signed in rather than remembering it in a variable — and has to keep
+  // asking. The same account may be open on three devices while an
+  // administrator changes it on a fourth; the API refuses those devices
+  // immediately, and this is what makes their screens agree
+  // (src/hooks/useSession.js).
+  const { user, notice, dismissNotice, refresh, setSignedInUser, signOut } = useSession()
 
   /**
    * The development role selector.
@@ -91,19 +73,21 @@ export default function App() {
    * project is built, so this whole branch — and the demo password it uses —
    * is removed from the production bundle rather than merely hidden.
    */
-  const changeRole = useCallback(async (nextRole) => {
-    if (!import.meta.env.DEV) return
+  const changeRole = useCallback(
+    async (nextRole) => {
+      if (!import.meta.env.DEV) return
 
-    if (!nextRole) {
-      await userService.signOut()
-      setUser(null)
-      return
-    }
+      if (!nextRole) {
+        await signOut()
+        return
+      }
 
-    const accounts = await userService.getDemoAccounts()
-    const account = accounts[nextRole]
-    setUser(await userService.signInAsDemoAccount(account.email))
-  }, [])
+      const accounts = await userService.getDemoAccounts()
+      const account = accounts[nextRole]
+      setSignedInUser(await userService.signInAsDemoAccount(account.email))
+    },
+    [signOut, setSignedInUser],
+  )
 
   const role = user?.role ?? null
 
@@ -131,18 +115,34 @@ export default function App() {
     // starts; without this every route would be matched against the wrong path.
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
-        <Route element={<RootLayout role={role} onRoleChange={changeRole} onSignOut={signOut} user={user} />}>
+        <Route
+          element={
+            <RootLayout
+              role={role}
+              onRoleChange={changeRole}
+              onSignOut={signOut}
+              user={user}
+              notice={notice}
+              onDismissNotice={dismissNotice}
+              // Every route change re-asks who is signed in, so opening a page
+              // is itself a check rather than something the timer catches up
+              // with a few seconds later.
+              onRouteChange={refresh}
+            />
+          }
+        >
           {/* Public */}
           <Route path="/" element={<HomePage />} />
           <Route path="/explore" element={<ExplorePage />} />
           <Route path="/pet/:id" element={<PetDetailPage role={role} />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/help" element={<HelpPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
           <Route
             path="/login"
-            element={<LoginPage onSignedIn={setUser} onDemoSignIn={changeRole} />}
+            element={<LoginPage onSignedIn={setSignedInUser} onDemoSignIn={changeRole} />}
           />
-          <Route path="/register" element={<RegisterPage onSignedIn={setUser} />} />
+          <Route path="/register" element={<RegisterPage onSignedIn={setSignedInUser} />} />
 
           {/* Filing a report requires an account, so a report can be traced
               back to a person and followed up. Any signed-in role may file. */}
@@ -193,6 +193,10 @@ export default function App() {
                   label="Staff workspace"
                   items={STAFF_NAV}
                   loadCounts={loadStaffCounts}
+                  // Its own chrome: the public bar comes off inside a tool.
+                  standalone
+                  user={user}
+                  onSignOut={signOut}
                 />
               </RequireAccess>
             }
@@ -225,6 +229,9 @@ export default function App() {
                   label="Administration"
                   items={ADMIN_NAV}
                   loadCounts={loadAdminCounts}
+                  standalone
+                  user={user}
+                  onSignOut={signOut}
                 />
               </RequireAccess>
             }

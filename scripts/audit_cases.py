@@ -6,6 +6,7 @@ import sys
 import urllib.parse
 import zlib
 
+import audit
 from audit import (PROJECT, check, file_report, multipart, reseed, results,
                    session, sql, status)
 
@@ -45,13 +46,17 @@ def input_validation():
     status(C, 'IV-08', 'Sort key outside the whitelist', 'guest', 'GET', '/reports?sort=bogus', None, 422)
     status(C, 'IV-09', 'Status filter outside the ENUM', 'guest', 'GET', '/reports?status=nonsense', None, 422)
     status(C, 'IV-10', 'Registration password under 8 characters', 'guest', 'POST', '/auth/register',
-           {'full_name': 'Audit', 'email': 'audit.short@example.com', 'password': 'short'}, 422)
+           {'full_name': 'Audit', 'email': 'audit.short@example.com', 'password': 'short',
+            'privacy_consent': True}, 422)
     status(C, 'IV-11', 'Registration with a malformed email', 'guest', 'POST', '/auth/register',
-           {'full_name': 'Audit', 'email': 'not-an-email', 'password': 'longenough1'}, 422)
+           {'full_name': 'Audit', 'email': 'not-an-email', 'password': 'longenough1',
+            'privacy_consent': True}, 422)
     status(C, 'IV-12', 'Registration with no name', 'guest', 'POST', '/auth/register',
-           {'full_name': '', 'email': 'audit.noname@example.com', 'password': 'longenough1'}, 422)
+           {'full_name': '', 'email': 'audit.noname@example.com', 'password': 'longenough1',
+            'privacy_consent': True}, 422)
     status(C, 'IV-13', 'Registration reusing an existing email', 'guest', 'POST', '/auth/register',
-           {'full_name': 'Audit', 'email': 'maria.santos@example.com', 'password': 'longenough1'}, 409)
+           {'full_name': 'Audit', 'email': 'maria.santos@example.com', 'password': 'longenough1',
+            'privacy_consent': True}, 409)
     status(C, 'IV-14', 'Sign in with both fields blank', 'guest', 'POST', '/auth/login',
            {'email': '', 'password': ''}, 422)
     status(C, 'IV-15', 'Profile update with no email', 'customer', 'PATCH', '/users/me',
@@ -100,9 +105,16 @@ def sql_injection():
     check(C, 'SQL-11', 'pet_reports table intact afterwards', '32 rows',
           sql('SELECT COUNT(*) FROM pet_reports;') + ' rows',
           sql('SELECT COUNT(*) FROM pet_reports;') == '32')
-    check(C, 'SQL-12', 'Schema intact afterwards', '11 tables',
+    # 15: the 14 tables on the ERD, plus schema_migrations, which is
+    # infrastructure rather than a domain table (database/migrations/README.md).
+    check(C, 'SQL-12', 'Schema intact afterwards', '15 tables',
           sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='pawsandfound';") + ' tables',
-          sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='pawsandfound';") == '11')
+          sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='pawsandfound';") == '15')
+    # The ERD claims 23. A diagram cannot be wrong quietly if the suite counts
+    # the same thing the diagram is drawing.
+    fks = sql("SELECT COUNT(*) FROM information_schema.table_constraints "
+              "WHERE table_schema='pawsandfound' AND constraint_type='FOREIGN KEY';")
+    check(C, 'SQL-14', 'Foreign keys match the ERD', '23 keys', fks + ' keys', fks == '23')
     roles = sql('SELECT GROUP_CONCAT(role ORDER BY user_id) FROM users WHERE user_id<=3;')
     check(C, 'SQL-13', 'No account was promoted', 'user,user,user', roles, roles == 'user,user,user')
 
@@ -110,7 +122,7 @@ def sql_injection():
 # =========================================================== C. AUTHENTICATION
 def authentication():
     C = 'C. Authentication'
-    from audit import Session
+    from audit import ACCOUNTS, PW, Session
     status(C, 'AU-01', 'Sign in with correct credentials', 'guest', 'POST', '/auth/login',
            {'email': 'maria.santos@example.com', 'password': 'demo1234'}, 200)
     status(C, 'AU-02', 'Sign in with a wrong password', 'guest', 'POST', '/auth/login',
@@ -118,6 +130,10 @@ def authentication():
     status(C, 'AU-03', 'Sign in with an account that does not exist', 'guest', 'POST',
            '/auth/login', {'email': 'nobody@example.com', 'password': 'demo1234'}, 401)
 
+    # Both addresses start from a clean counter, or the two messages would
+    # differ only because one of them had already failed more often — which
+    # would make this test pass or fail by accident rather than on its merits.
+    sql("DELETE FROM login_attempts;")
     _, a = session('guest').call('POST', '/auth/login',
                                  {'email': 'maria.santos@example.com', 'password': 'wrong'})
     _, b = session('guest').call('POST', '/auth/login',
@@ -125,6 +141,7 @@ def authentication():
     same = a.get('error') == b.get('error')
     check(C, 'AU-04', 'Both failures give the same message (no account enumeration)',
           'identical', 'identical' if same else 'different', same)
+    sql("DELETE FROM login_attempts;")
 
     fresh = Session()
     fresh.call('POST', '/auth/login', {'email': 'maria.santos@example.com', 'password': 'demo1234'})
@@ -143,7 +160,8 @@ def authentication():
     reg = Session()
     code, _ = reg.call('POST', '/auth/register', {
         'full_name': 'Audit Registrant', 'email': 'audit.new@example.com',
-        'password': 'auditpass123', 'contact_number': '+63 917 000 0000'})
+        'password': 'auditpass123', 'contact_number': '+63 917 000 0000',
+        'privacy_consent': True})
     check(C, 'AU-09', 'Register a new account', 201, code, code == 201)
     role = sql("SELECT role FROM users WHERE email='audit.new@example.com';")
     check(C, 'AU-10', 'New account is signed in immediately', 'session started',
@@ -153,7 +171,8 @@ def authentication():
     esc = Session()
     esc.call('POST', '/auth/register', {
         'full_name': 'Audit Escalator', 'email': 'audit.esc@example.com',
-        'password': 'auditpass123', 'role': 'admin', 'account_status': 'active'})
+        'password': 'auditpass123', 'role': 'admin', 'account_status': 'active',
+        'privacy_consent': True})
     got = sql("SELECT role FROM users WHERE email='audit.esc@example.com';")
     check(C, 'AU-11', 'Register sending "role":"admin" in the body', 'user', got, got == 'user')
 
@@ -166,6 +185,163 @@ def authentication():
                         {'email': 'liza.ocampo@example.com', 'password': 'demo1234'})
     check(C, 'AU-13', 'A suspended account cannot sign in', 403, code, code == 403)
     sql("UPDATE users SET account_status='active' WHERE user_id=3;")
+
+    # ---------------------------------------------------- the three-attempt lock
+    #
+    # Kenneth Villanueva files no reports in the demonstration data, so locking
+    # and unlocking him disturbs nothing else the suite checks.
+    sql("DELETE FROM login_attempts;")
+    sql("UPDATE users SET account_status='active' WHERE user_id=5;")
+    target = {'email': 'kenneth.villanueva@example.com', 'password': 'wrong'}
+
+    codes, bodies = [], []
+    for _ in range(3):
+        code, body = session('guest').call('POST', '/auth/login', target)
+        codes.append(code)
+        bodies.append(body)
+
+    check(C, 'AU-14', 'First failure reports the attempts remaining', 2,
+          bodies[0].get('attempts_remaining'), bodies[0].get('attempts_remaining') == 2)
+    check(C, 'AU-15', 'Second failure reports one attempt left', 1,
+          bodies[1].get('attempts_remaining'), bodies[1].get('attempts_remaining') == 1)
+    check(C, 'AU-16', 'Third failure locks the account', '403 locked',
+          f'{codes[2]} {"locked" if bodies[2].get("locked") else "not locked"}',
+          codes[2] == 403 and bodies[2].get('locked') is True)
+
+    got = sql("SELECT account_status FROM users WHERE user_id=5;")
+    check(C, 'AU-17', 'The lock is recorded in the database, not the session',
+          'locked', got, got == 'locked')
+
+    # The point of the whole feature: knowing the password is not a way out.
+    code, _ = session('guest').call(
+        'POST', '/auth/login',
+        {'email': 'kenneth.villanueva@example.com', 'password': 'demo1234'})
+    check(C, 'AU-18', 'The correct password does not lift the lock', 403, code, code == 403)
+
+    # A locked account's existing sessions die too, because current_user()
+    # re-reads the account on every request.
+    sql("DELETE FROM login_attempts;")
+    sql("UPDATE users SET account_status='active' WHERE user_id=5;")
+    from audit import Session as _S
+    live = _S()
+    live.call('POST', '/auth/login',
+              {'email': 'kenneth.villanueva@example.com', 'password': 'demo1234'})
+    sql("UPDATE users SET account_status='locked' WHERE user_id=5;")
+    code, _ = live.call('GET', '/notifications')
+    check(C, 'AU-19', 'An open session on another device loses access at once',
+          401, code, code == 401)
+
+    # An unknown address must walk the same three steps, word for word, or the
+    # countdown becomes a way of asking which addresses are registered.
+    sql("DELETE FROM login_attempts;")
+    unknown = []
+    for _ in range(3):
+        _, body = session('guest').call(
+            'POST', '/auth/login',
+            {'email': 'no.such.person@example.com', 'password': 'wrong'})
+        unknown.append(body.get('error'))
+    real = [b.get('error') for b in bodies]
+    check(C, 'AU-20', 'An unknown address gives the identical three messages',
+          'identical', 'identical' if unknown == real else 'different', unknown == real)
+
+    # Unlocking is an administrator action, and it clears the counter with it —
+    # otherwise the next wrong password locks the account straight back up.
+    sql("UPDATE users SET account_status='locked' WHERE user_id=5;")
+    code, _ = session('admin').call('PATCH', '/users/5', {'account_status': 'active'})
+    check(C, 'AU-21', 'An administrator unlocks the account', 200, code, code == 200)
+    code, _ = session('guest').call(
+        'POST', '/auth/login',
+        {'email': 'kenneth.villanueva@example.com', 'password': 'demo1234'})
+    check(C, 'AU-22', 'Signing in works again after the unlock', 200, code, code == 200)
+
+    # A customer must not be able to unlock anybody, including themselves.
+    sql("UPDATE users SET account_status='locked' WHERE user_id=5;")
+    code, _ = session('customer').call('PATCH', '/users/5', {'account_status': 'active'})
+    check(C, 'AU-23', 'A customer cannot unlock an account', 403, code, code == 403)
+    sql("UPDATE users SET account_status='active' WHERE user_id=5;")
+    sql("DELETE FROM login_attempts;")
+
+    # --------------------------------------------- the privacy acknowledgement
+    #
+    # The checkbox on the form is a convenience. What makes the consent record
+    # trustworthy is that the account cannot be created without it here.
+    status(C, 'AU-25', 'Registering without the privacy acknowledgement',
+           'guest', 'POST', '/auth/register',
+           {'full_name': 'Consent Audit', 'email': 'audit.consent@example.com',
+            'password': 'auditpass123'}, 422)
+    status(C, 'AU-26', 'Sending the acknowledgement as a string rather than true',
+           'guest', 'POST', '/auth/register',
+           {'full_name': 'Consent Audit', 'email': 'audit.consent@example.com',
+            'password': 'auditpass123', 'privacy_consent': 'true'}, 422)
+
+    none_yet = sql("SELECT COUNT(*) FROM users WHERE email='audit.consent@example.com';")
+    check(C, 'AU-27', 'Neither refusal created an account', '0', none_yet, none_yet == '0')
+
+    status(C, 'AU-28', 'Registering with the acknowledgement given',
+           'guest', 'POST', '/auth/register',
+           {'full_name': 'Consent Audit', 'email': 'audit.consent@example.com',
+            'password': 'auditpass123', 'privacy_consent': True}, 201)
+
+    recorded = sql("""SELECT c.notice_version FROM privacy_consents c
+                        JOIN users u ON u.user_id = c.user_id
+                       WHERE u.email = 'audit.consent@example.com';""")
+    check(C, 'AU-29', 'The agreement is recorded against a notice version',
+          'a version', recorded or 'nothing recorded', bool(recorded))
+
+    # ----------------------------------------- cross-site request forgery
+    #
+    # The session cookie alone proves the request came from a signed-in
+    # browser, not that the person meant to make it. These send a perfectly
+    # valid request from a perfectly valid session, with the token left off —
+    # which is exactly what a form on somebody else's site can manage.
+    forged = Session()
+    forged.call('POST', '/auth/login', {'email': ACCOUNTS['customer'], 'password': PW})
+
+    code, body = forged.call('PATCH', '/users/me',
+                             {'full_name': 'Forged Name', 'email': ACCOUNTS['customer']},
+                             csrf=False)
+    check(C, 'AU-30', 'A write from a signed-in session with no token', '403 marked csrf',
+          f'{code} {"marked" if body.get("csrf") else "unmarked"}',
+          code == 403 and body.get('csrf') is True)
+
+    code, _ = forged.call('POST', '/reports',
+                          {'report_type': 'lost', 'species': 'dog', 'pet_name': 'Forged',
+                           'incident_date': '2026-09-01', 'city': 'Cebu City', 'province': 'Cebu'},
+                          csrf=False)
+    check(C, 'AU-31', 'Filing a report with no token', 403, code, code == 403)
+
+    # A token belonging to a different session is no better than none.
+    stranger = Session()
+    stranger.prime_csrf()
+    borrowed = dict(forged.__dict__)                       # keep the real one
+    forged.csrf = stranger.csrf
+    code, _ = forged.call('PATCH', '/users/me',
+                          {'full_name': 'Forged Name', 'email': ACCOUNTS['customer']})
+    check(C, 'AU-32', "Another session's token", 403, code, code == 403)
+    forged.csrf = borrowed['csrf']
+
+    # And the control: the same request, with the right token, goes through.
+    forged.prime_csrf()
+    code, _ = forged.call('PATCH', '/users/me',
+                          {'full_name': 'Maria Santos', 'email': ACCOUNTS['customer'],
+                           'contact_number': '+63 917 010 0101',
+                           'preferred_location': 'Makati City, Metro Manila'})
+    check(C, 'AU-33', 'Control: the same write with the token', 200, code, code == 200)
+
+    unchanged = sql("SELECT full_name FROM users WHERE email='%s';" % ACCOUNTS['customer'])
+    check(C, 'AU-34', 'None of the forged writes changed anything',
+          'Maria Santos', unchanged, unchanged == 'Maria Santos')
+
+    # Reads need no token, or every page would have to ask permission to load.
+    code, _ = Session().call('GET', '/reports')
+    check(C, 'AU-35', 'Reading still needs no token', 200, code, code == 200)
+
+    logged = sql("SELECT GROUP_CONCAT(DISTINCT action ORDER BY action) FROM audit_logs;")
+    wanted = {'account_locked', 'account_unlocked', 'login', 'login_failed'}
+    have = set(logged.split(',')) if logged and logged != 'NULL' else set()
+    check(C, 'AU-24', 'The audit log recorded the lock and the unlock',
+          'locked, unlocked, login, login_failed',
+          ', '.join(sorted(have & wanted)) or 'nothing logged', wanted <= have)
 
 
 # ============================================================ D. AUTHORIZATION
@@ -387,6 +563,40 @@ def functional():
            {'full_name': 'Maria Santos', 'email': 'maria.santos@example.com',
             'contact_number': '+63 917 010 0101', 'preferred_location': 'Makati City, Metro Manila'}, 200)
 
+    # ------------------------------------------------- the report state machine
+    #
+    # The interface only ever offers the moves that are allowed. These requests
+    # are built by hand, which the interface cannot prevent — so the rule has to
+    # be the server's, and this is where that is demonstrated.
+    #
+    # Report 18 is Maria's and Active; report 10 is hers and Returned.
+    sql("UPDATE pet_reports SET status='active' WHERE report_id=18;")
+    sql("UPDATE pet_reports SET status='returned' WHERE report_id=10;")
+
+    status(C, 'FN-27', 'Active cannot be pushed to Possible Match by hand',
+           'customer', 'PATCH', '/reports/18', {'status': 'possible_match'}, 409)
+    status(C, 'FN-28', 'A returned report cannot go back to Active',
+           'customer', 'PATCH', '/reports/10', {'status': 'active'}, 409)
+    status(C, 'FN-29', 'Moving a report to the status it already has',
+           'customer', 'PATCH', '/reports/18', {'status': 'active'}, 409)
+    status(C, 'FN-30', 'A finished report can no longer be edited',
+           'customer', 'PUT', '/reports/10', {'description': 'rewritten afterwards'}, 409)
+
+    # Closed is the end of the line, and the refusal says so rather than
+    # listing alternatives there are none of.
+    status(C, 'FN-31', 'The reporter closes an open report',
+           'customer', 'PATCH', '/reports/18', {'status': 'closed'}, 200)
+    code, body = session('customer').call('PATCH', '/reports/18', {'status': 'active'})
+    check(C, 'FN-32', 'A closed report does not reopen', '409 with no moves left',
+          f'{code} with {len(body.get("allowed", ["?"]))} moves left',
+          code == 409 and body.get('allowed') == [])
+
+    after = sql('SELECT status FROM pet_reports WHERE report_id=18;')
+    check(C, 'FN-33', 'A refused move changes nothing in the database',
+          'closed', after, after == 'closed')
+
+    sql("UPDATE pet_reports SET status='active' WHERE report_id=18;")
+
 
 # ============================================================ H. ERROR HANDLING
 def error_handling():
@@ -402,6 +612,16 @@ def error_handling():
     clean = not any(w in text for w in ('select ', 'pdo', 'c:\\', '.php', 'sqlstate'))
     check(C, 'EH-06', 'Errors disclose no SQL, path or exception text', 'clean',
           'clean' if clean else 'LEAKS DETAIL', clean)
+
+    # Only /reports/{id}/photos has a third path segment. Every other handler
+    # takes the resource and the identifier, so an extra segment used to be
+    # dropped and the request answered as though it had not been typed:
+    # /matches/1/claims returned the match. A URL that does not exist has to
+    # say so, or the API quietly invents endpoints it does not have.
+    status(C, 'EH-07', 'An invented sub-path on a real resource', 'guest', 'GET', '/matches/1/claims', None, 404)
+    status(C, 'EH-08', 'An invented sub-path on a protected resource', 'admin', 'GET', '/users/1/password', None, 404)
+    status(C, 'EH-09', 'A fourth path segment', 'customer', 'POST', '/reports/1/photos/extra', None, 404)
+    status(C, 'EH-10', 'The one real sub-path still works', 'guest', 'GET', '/matches/1', None, 200)
 
 
 
@@ -446,6 +666,30 @@ def report():
 
 if __name__ == '__main__':
     print('Paws&Found — system audit')
+    print(f'  API: {audit.API}')
+
+    # Forty-nine of these assertions read the database directly, and that is
+    # the point of them: a response that says a row was written proves nothing
+    # on its own. Without the database this suite would run about two thirds of
+    # itself and print a smaller total as though it were the whole thing, which
+    # is a worse outcome than not running.
+    if not audit.db_reachable():
+        print()
+        print('  Cannot reach the database, so this suite will not run.')
+        print()
+        print('  It needs BOTH the API and the MySQL server that API is using.')
+        print('  Against a hosted site that usually means turning on the host')
+        print('  control panel\'s "Remote MySQL" for this machine, then:')
+        print()
+        print('    PAWS_API=https://<domain>/api \\')
+        print('    PAWS_MYSQL_ARGS="-u <dbuser> -p<password> -h <dbhost>" \\')
+        print('    python scripts/audit_cases.py')
+        print()
+        print('  Or run it on the host itself. `npm run multi-device` needs only')
+        print('  the API and is the one to reach for when the database is not')
+        print('  reachable from here.')
+        sys.exit(2)
+
     reseed()
     input_validation()
     sql_injection()

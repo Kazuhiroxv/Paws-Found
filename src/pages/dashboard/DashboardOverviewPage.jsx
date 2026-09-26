@@ -3,6 +3,7 @@ import { ArrowRight, HandHeart, Heart, PawPrint, TriangleAlert } from 'lucide-re
 import photoPlaceholder from '@/assets/pet-photo-placeholder.png'
 import { Button, EmptyState, LoadingSkeleton } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
+import { RadarOrnament } from '@/components/Ornament'
 import { PetCard } from '@/components/PetCard'
 import { MATCH_STATUSES, REPORT_STATUSES, REPORT_TYPES, speciesLabel } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
@@ -10,6 +11,7 @@ import { petService } from '@/services'
 import { cn } from '@/utils/cn'
 import { formatDate, formatShortDate } from '@/utils/date'
 import { loadDashboardSummary } from './dashboardSummary'
+import companions from '@/assets/img-020-companions.webp'
 
 /** How many timeline entries the Overview shows. It summarises; it is not the log. */
 const TIMELINE_LIMIT = 5
@@ -79,11 +81,48 @@ export function DashboardOverviewPage() {
 
   return (
     <div className="flex flex-col gap-10">
-      <PageHeader
-        title={`Welcome back, ${user.fullName.split(' ')[0]}.`}
-        description="Here is where your cases stand today."
-        compact
-      />
+      {/* A warm welcome band with the two things somebody might have come to
+          do inside it, rather than a heading followed by a "Quick actions"
+          strip three sections down. This is the customer's own room: it should
+          greet them and then get out of the way. */}
+      <section className="hero-ground relative isolate overflow-hidden rounded-[1.5rem] border border-accent/20 px-5 py-6 sm:px-8 sm:py-8">
+        <RadarOrnament tone="amber" size={420} strength={2.6} className="-top-24 -right-20" />
+
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between lg:gap-10">
+          <div className="flex min-w-0 flex-col gap-2">
+            <h1 className="text-[2rem] leading-[1.1] font-semibold tracking-tight text-balance text-fg sm:text-[2.4rem]">
+              Welcome back, {user.fullName.split(' ')[0]}.
+            </h1>
+            <p className="text-lg text-fg-muted">Here is where your cases stand today.</p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-6">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button as={Link} to="/report/lost" variant="accent" size="lg">
+                <TriangleAlert size={18} aria-hidden="true" />
+                Report a lost pet
+              </Button>
+              <Button as={Link} to="/report/found" size="lg">
+                <HandHeart size={18} aria-hidden="true" />
+                Report a found pet
+              </Button>
+            </div>
+
+            {/* IMG-020, at the far end of the greeting. Decoration with a
+                subject rather than content — it carries no alt text because it
+                says nothing the heading beside it does not. Shown from `xl`
+                only: below that the buttons need the width. */}
+            <img
+              src={companions}
+              alt=""
+              aria-hidden="true"
+              loading="lazy"
+              decoding="async"
+              className="hidden h-32 w-auto shrink-0 xl:block"
+            />
+          </div>
+        </div>
+      </section>
 
       {/* 1. Summary — small personal status, not analytics. Each tile goes to
           the page that explains it. The unread tile appears only when there is
@@ -114,24 +153,6 @@ export function DashboardOverviewPage() {
             <SummaryTile value={unread} label="Unread updates" to="/dashboard/notifications" />
           )}
         </ul>
-      </section>
-
-      {/* 2. Quick actions — still amber for lost and teal for found, but sized
-          as buttons rather than banners. */}
-      <section aria-labelledby="actions-heading" className="flex flex-col gap-3">
-        <h2 id="actions-heading" className="text-sm font-semibold text-fg-muted">
-          Quick actions
-        </h2>
-        <div className="flex flex-wrap gap-3">
-          <Button as={Link} to="/report/lost" variant="accent">
-            <TriangleAlert size={16} aria-hidden="true" />
-            Report a lost pet
-          </Button>
-          <Button as={Link} to="/report/found">
-            <HandHeart size={16} aria-hidden="true" />
-            Report a found pet
-          </Button>
-        </div>
       </section>
 
       {/* 3. Possible matches — the actionable part of the page. */}

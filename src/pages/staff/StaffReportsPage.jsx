@@ -136,27 +136,53 @@ export function StaffReportsPage() {
     <div className="flex flex-col gap-6">
       {header}
 
-      <div className="flex flex-wrap gap-1 overflow-x-auto border-b border-border" role="tablist">
-        {TABS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === item.id}
-            onClick={() => setTab(item.id)}
-            className={cn(
-              '-mb-px shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors',
-              tab === item.id
-                ? 'border-brand font-medium text-brand-hover'
-                : 'border-transparent text-fg-muted hover:text-fg',
-            )}
-          >
-            {item.label}
-            <span className="ml-1.5 rounded-pill bg-surface-muted px-1.5 text-xs font-semibold text-fg tabular-nums">
-              {countFor(item.id)}
-            </span>
-          </button>
-        ))}
+      {/* The queue summary and the queue filter are the same control.
+          
+          These were a strip of small text tabs with the count tucked beside
+          the word — legible, but they read as navigation rather than as the
+          state of the queue. The reference design puts a row of counts at the
+          top of a workspace, so the counts became the tabs: the number leads,
+          the word explains it, and choosing one still filters the table.
+          
+          Splitting them into a display row plus a separate tab strip would
+          have printed every number on the page twice. */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" role="tablist">
+        {TABS.map((item) => {
+          const isCurrent = tab === item.id
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={isCurrent}
+              onClick={() => setTab(item.id)}
+              className={cn(
+                'flex flex-col items-start gap-0.5 rounded-card border px-4 py-3 text-left transition-colors',
+                isCurrent
+                  ? 'border-brand/40 bg-brand-soft'
+                  : 'border-border bg-panel hover:border-border-strong',
+              )}
+            >
+              <span
+                className={cn(
+                  'text-2xl leading-none font-semibold tabular-nums',
+                  isCurrent ? 'text-brand-hover' : 'text-fg',
+                )}
+              >
+                {countFor(item.id)}
+              </span>
+              <span
+                className={cn(
+                  'text-sm',
+                  isCurrent ? 'font-medium text-brand-hover' : 'text-fg-muted',
+                )}
+              >
+                {item.label}
+              </span>
+            </button>
+          )
+        })}
       </div>
 
       {/* Utility row: search and two filters over the loaded queue. */}

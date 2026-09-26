@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Outlet, useLocation, useNavigationType } from 'react-router-dom'
 import { Navbar } from '@/components/Navbar'
 import { Footer } from '@/components/Footer'
+import { SessionNotice } from '@/components/SessionNotice'
 import { cn } from '@/utils/cn'
 
 /**
@@ -30,10 +31,29 @@ function canvasFor(pathname) {
  * @param {(role: string) => void} props.onRoleChange  Development only.
  * @param {() => void} props.onSignOut
  * @param {Object|null} props.user
+ * @param {Object|null} [props.notice]  A change to the account made elsewhere.
+ * @param {() => void} [props.onDismissNotice]
+ * @param {() => void} [props.onRouteChange]  Re-check who is signed in.
  */
-export function RootLayout({ role, onRoleChange, onSignOut, user }) {
+export function RootLayout({
+  role,
+  onRoleChange,
+  onSignOut,
+  user,
+  notice,
+  onDismissNotice,
+  onRouteChange,
+}) {
   const { pathname, hash } = useLocation()
   const navigationType = useNavigationType()
+
+  // Opening a page asks the server who this is, so arriving somewhere is itself
+  // a check. Without it, a device left on one page could show a workspace the
+  // account no longer has until the next poll — and the first thing anybody
+  // does when they pick a device back up is navigate.
+  useEffect(() => {
+    onRouteChange?.()
+  }, [pathname, onRouteChange])
 
   // Open every page at the top. A single-page app keeps the scroll position
   // when the route changes, so following a link from halfway down a long list
@@ -47,19 +67,34 @@ export function RootLayout({ role, onRoleChange, onSignOut, user }) {
     window.scrollTo({ top: 0, left: 0 })
   }, [pathname, hash, navigationType])
 
+  // The Pet Coordinator and Administration areas bring their own chrome
+  // (src/layouts/WorkspaceShell.jsx): a branded rail that carries navigation,
+  // the account and the way back out. The public bar would be a second,
+  // competing navigation above it, so it comes off — along with the public
+  // footer and the page padding, both of which belong to a website rather
+  // than to a tool.
+  const isWorkspace = pathname.startsWith('/staff') || pathname.startsWith('/admin')
+
   return (
     <div className="page-ground flex min-h-screen flex-col bg-surface">
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
 
-      <Navbar role={role} onRoleChange={onRoleChange} onSignOut={onSignOut} user={user} />
+      {!isWorkspace && (
+        <Navbar role={role} onRoleChange={onRoleChange} onSignOut={onSignOut} user={user} />
+      )}
+
+      {/* Directly under the navigation, above everything else: a change made to
+          this account somewhere else is the most important thing on the page
+          at the moment it arrives. */}
+      <SessionNotice notice={notice} onDismiss={onDismissNotice} />
 
       {/* The environment layer: grain plus the two glows for this area of the
           site. It is behind the page, above the ground, and fades out well
           before the content ends — the atmosphere belongs to the top of a
           page, not to the whole scroll. */}
-      <main id="main-content" className={cn('relative isolate flex-1 py-8')}>
+      <main id="main-content" className={cn('relative isolate flex-1', !isWorkspace && 'py-8')}>
         <span
           aria-hidden="true"
           className={cn(
@@ -70,7 +105,7 @@ export function RootLayout({ role, onRoleChange, onSignOut, user }) {
         <Outlet />
       </main>
 
-      <Footer />
+      {!isWorkspace && <Footer />}
     </div>
   )
 }

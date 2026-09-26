@@ -48,6 +48,140 @@ replaced it in the redesign and the file has been deleted.
 | ID | File | Used by | Priority | Status |
 | --- | --- | --- | --- | --- |
 | IMG-013 | `pet-009-rex.jpg` | Report 009 (Rex) — the only seeded report still without a photograph | Medium | Needed |
+| IMG-018 | `img-018-hero-environment.webp` | Homepage hero — the illustrated ground the whole page stands on | **High** | **Delivered** |
+| IMG-019 | `img-019-footer-horizon.webp` | The footer band on every public page | **High** | **Delivered**, trimmed 2000×667 → 2000×517 |
+| IMG-020 | `img-020-companions.webp` | Dog and cat pair, cut out — dashboard greeting, auth, header bands | **High** | **Delivered**, not yet placed |
+| IMG-021 | `img-021-landscape-strip.webp` | Reusable header band: report wizard, customer dashboard, workspace headers | Medium | **Delivered** at 1908x824, not yet placed |
+| IMG-022 | `img-022-workspace-foot.png` | The illustration at the bottom of the staff and admin rails | Medium | Needed |
+| IMG-023 | `pawsfound-logo-mark-v2.webp`, `-horizontal`, `-on-dark` | Logo refresh — mark in the navbar, footer and workspace rails; the other two not yet placed | Medium | **Delivered** |
+| IMG-024 | `empty-no-matches.webp` | `EmptyState` — no possible matches yet | Low | **Delivered**, text cropped off |
+| IMG-025 | `empty-no-notifications.webp` | `EmptyState` — nothing unread | Low | **Delivered**, text cropped off |
+| IMG-026 | `empty-queue-clear.webp` | `EmptyState` — nothing awaiting a coordinator | Low | **Delivered**, text cropped off |
+| IMG-027 | `img-027-homepage-reunion.webp` | The homepage hero photograph | **High** | **Delivered** at 1448×1086, placed |
+| IMG-028 | `img-028-help-safety.webp` | The Help & community safety hero band | **High** | **Delivered** at 1896×829, placed |
+| IMG-029 | `img-029-about-community-hero.webp` | The About page hero band | **High** | **Delivered** at 2000×434, placed |
+
+### What the generated mockups need, in detail
+
+A pass over all eleven reference screens, 25 September 2026. The three marked
+High are the reason the built pages read as "same structure, thinner
+atmosphere": the references are **illustrated environments**, and what we have
+to build them from is a photograph plus line art at `stroke-opacity` 0.028 to
+0.1. No amount of CSS closes that.
+
+**IMG-018 — homepage hero environment.** Flat vector illustration: a soft sky
+grading into rolling hills, small houses and trees along the horizon, a dashed
+route wandering across it with two or three map pins. Teal and amber only, the
+palette in `src/index.css`. **No animals** — the photograph sits on top of it.
+The left third must stay pale and uncluttered or the headline loses contrast.
+Landscape, **2400x1100**, transparent or pale-cream background. This is the one
+that changes the homepage most.
+
+**IMG-027 — homepage reunion.** Replaced IMG-006, which was a good photograph
+of a person with two pets — ownership, not the moment this site exists for. The
+new one is the reunion itself: a brown Aspin leaning into its owner's hands on a
+Philippine residential street in late-afternoon light, the owner crouched with
+their face outside the frame so the animal is what you look at. Placed on the
+homepage at `object-[52%_42%]`, which centres the crop on the dog's head.
+
+**IMG-028 — Help & safety.** A semi-flat illustration in the logo family:
+shield and check, clipboard, map pin, phone, a handover handshake, a dog. Used
+as the full-bleed ground of the Help hero rather than as an inset picture —
+Explore's header is a rounded panel with its illustration on the right, and
+Help had been copying that shape exactly. The left 45% of the artwork is clear
+cream, which is where the heading sits. Below `lg` it is hidden and the band
+keeps the cream on its own.
+
+**Asked for as deep teal with cream text; delivered light.** The composition
+carries the difference from Explore instead — full bleed, no card edge, and a
+search field stepping off the lower edge. Keying the cream out to put the
+artwork on teal was tried and abandoned: the route ribbon and the hills are
+drawn in near-white and came away with the background, leaving a pale wedge
+through the middle. A teal version would have to be generated as one.
+
+**IMG-029 — About community hero.** A wide illustrated band: a neighbourhood,
+a map pin, two people greeting a dog at a gate. Used as the ground of the About
+hero. Its left 45% is open sky, which is where the eyebrow, heading and
+paragraph sit; the scrim over it is what guarantees they stay readable, because
+the bottom-left corner is a stand of dark leaves that the text reaches at 1366
+and 1920. Below `lg` it is hidden and the band keeps the cream on its own.
+
+The four public bands now read as four different things, which was the point of
+generating them separately: **IMG-027** the reunion on the homepage, **IMG-008**
+discovery on Explore, **IMG-028** guidance on Help, **IMG-029** the community
+on About.
+
+**IMG-019 — footer horizon.** Dark teal band: hills, trees, a dog and a cat in
+silhouette, a warm low sun. The top edge should be a gentle wave rather than a
+straight cut, so it meets the page like the reference does. Wide banner,
+**2400x420**, transparent above the horizon so it can sit on our own dark
+fill. Used on every public page, so it is worth getting right once.
+
+**IMG-020 — companions, cut out.** The dog and cat pair as one illustrated
+group, facing left, **transparent background**, no ground or scenery. Wanted
+separately from IMG-018 so it can be reused at different sizes on the
+dashboard greeting, the auth page and the header bands without dragging a
+landscape along with it. **1400x1400 PNG.**
+
+**IMG-021 — landscape strip.** A shallower cousin of IMG-018 for page headers:
+horizon, a few houses and trees, the dashed route. No animals, nothing in the
+left third. **2400x520.** One asset serving the wizard, the dashboard and the
+workspace headers — the references show slightly different scenes per page,
+but one strip tinted differently per area is more consistent and far less to
+maintain.
+
+**IMG-022 — workspace rail foot.** A small scene for the bottom of the staff
+and administration sidebars, where the references put one: low hills, a house
+or two, a dog and cat silhouette. **Transparent PNG, 480x360**, quiet enough
+to sit under navigation without competing with it.
+
+**IMG-023 — logo.** Three files: the mark alone, a horizontal lockup with the
+wordmark, and a **light-on-dark variant** — the current mark is dark ink and
+disappears against the new footer and any dark rail. The reference mark is a
+paw whose pads carry both brand colours with a location pin worked into it,
+which is close to what we already have, so this is a refresh rather than a
+redesign.
+
+**IMG-024 to IMG-026 — empty states.** CLAUDE.md §20 asks for a designed empty
+state everywhere, and we have exactly one (`empty-no-reports.png`). The three
+most often seen are no possible matches, no unread notifications and an empty
+coordinator queue. Same illustration family as IMG-003. **900x700**,
+transparent. Low priority — the copy already carries these; the pictures make
+them feel finished.
+
+### Deliberately NOT images
+
+Four things in the references look like assets and should not be:
+
+**The handwritten lines** — "Different paths, same home", "A kinder community
+for happier endings", "Help bring Luna home", "Real pets. Real people." These
+appear on nearly every reference screen. They are a **font**, not artwork:
+Caveat or Kalam from Google Fonts, both already permitted by our stylesheet
+rules. Generating them as images would mean a separate file per phrase, text a
+screen reader cannot read, and no way to change a word without regenerating
+the picture.
+
+**The polaroid photographs** on the homepage — the existing seeded pet photos
+in rotated, shadowed frames. CSS.
+
+**The map pins** — already custom `divIcon`s built from HTML in
+`src/components/mapSetup.js`, not Leaflet's default PNGs. Nothing to generate.
+
+**The section waves** — `SectionCurve` already draws these as SVG. If they
+want to be more pronounced that is a number to change, not a file to make.
+
+### Two recommendations against
+
+**Photographic user avatars.** The references show faces in the account rows;
+we show initials. Keep the initials. Generating faces for ten fictional people
+means putting invented likenesses in a submitted academic project, and §18 of
+CLAUDE.md already rules out photographs of identifiable individuals. The
+initials are honest and cost nothing.
+
+**Extra social icons.** The references show Facebook, Instagram, X and
+YouTube; we carry two. Rather than generating the missing two, the better
+question is why a student project links to social accounts that do not exist.
+Removing all four would be more honest than completing the set.
 
 ### IMG-011 — the second batch of pet photographs  *(delivered)*
 

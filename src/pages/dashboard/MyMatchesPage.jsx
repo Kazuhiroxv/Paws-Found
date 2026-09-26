@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { ArrowRight, CircleCheck, Hourglass, HeartHandshake, Heart, Info } from 'lucide-react'
+import { ArrowRight, CircleCheck, Hourglass, HeartHandshake, Info } from 'lucide-react'
 import { Button, EmptyState, LoadingSkeleton } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { MatchPairCard, StatusStrip } from '@/components/MatchComparison'
@@ -8,6 +8,7 @@ import { MATCH_STATUSES } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
 import { matchService, petService, userService } from '@/services'
 import { cn } from '@/utils/cn'
+import emptyNoMatches from '@/assets/empty-no-matches.webp'
 
 /**
  * The three stages a pairing moves through, from the owner's side. Built from
@@ -94,8 +95,7 @@ export function MyMatchesPage() {
       <div className="flex flex-col gap-6">
         {header}
         <EmptyState
-          icon={Heart}
-          title="No possible matches yet"
+illustration={emptyNoMatches}          title="No possible matches yet"
           description="When a report is filed that shares enough characteristics with one of yours, it will appear here with an explanation of what lines up."
           action={
             <Button as={Link} to="/dashboard/reports" variant="secondary">

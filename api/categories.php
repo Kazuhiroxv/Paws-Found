@@ -119,7 +119,7 @@ function validated_category_label(mixed $value): string
 
 function category_create(): never
 {
-    require_role('admin');
+    $admin = require_role('admin');
 
     $body = request_body();
     $label = validated_category_label($body['label'] ?? '');
@@ -151,8 +151,16 @@ function category_create(): never
         throw $exception;
     }
 
+    // The species list is what every report form and every filter offers, so a
+    // change to it is felt across the whole site by people who did not make it.
+    // Unlike a report or a pairing, a category keeps no history of its own —
+    // this row is the only record that it was ever added, renamed or removed.
+    $newId = (int) db()->lastInsertId();
+    audit_log('category_changed', (int) $admin['user_id'], $admin['email'],
+        'category', $newId, 'success', "created: {$label}");
+
     json_response(['data' => [
-        'category_id' => (int) db()->lastInsertId(),
+        'category_id' => $newId,
         'code' => $code,
         'label' => $label,
         'is_active' => true,
@@ -168,7 +176,7 @@ function category_create(): never
  */
 function category_update(string $code): never
 {
-    require_role('admin');
+    $admin = require_role('admin');
 
     $body = request_body();
     $category = find_category_or_404($code);
@@ -195,6 +203,16 @@ function category_update(string $code): never
     );
     $statement->execute($params);
 
+    // What changed, in the words the administrator used, so the entry can be
+    // read without looking anything else up.
+    $what = [];
+    if (array_key_exists('label', $body)) $what[] = "renamed to {$params[':name']}";
+    if (array_key_exists('is_active', $body)) $what[] = $params[':active'] ? 'made active' : 'retired';
+
+    audit_log('category_changed', (int) $admin['user_id'], $admin['email'],
+        'category', (int) $category['category_id'], 'success',
+        "{$category['category_name']}: " . implode(', ', $what));
+
     json_response(['data' => category_row($code)]);
 }
 
@@ -208,7 +226,7 @@ function category_update(string $code): never
  */
 function category_delete(string $code): never
 {
-    require_role('admin');
+    $admin = require_role('admin');
 
     $category = find_category_or_404($code);
 
@@ -226,6 +244,10 @@ function category_delete(string $code): never
 
     $delete = db()->prepare('DELETE FROM pet_categories WHERE category_id = :id');
     $delete->execute([':id' => $category['category_id']]);
+
+    audit_log('category_changed', (int) $admin['user_id'], $admin['email'],
+        'category', (int) $category['category_id'], 'success',
+        "deleted: {$category['category_name']}");
 
     // 200 with a small body rather than 204: json_response() always writes
     // one, and a 204 carrying content is not a 204.

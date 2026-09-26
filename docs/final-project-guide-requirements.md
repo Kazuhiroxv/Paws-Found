@@ -14,7 +14,7 @@ Topic: **Campus Lost-and-Found System** — assigned to this group as Paws&Found
 | 2 | Login / logout | **Simulated only** | `userService` + `RequireAccess`; needs real PHP sessions |
 | 3 | Minimum 3 user roles | **Done** | Customer/User, Staff/Pet Coordinator, Administrator |
 | 4 | MySQL database | **Not started** | Next deliverable |
-| 5 | Minimum 8 related tables | **Not started** | Draft ERD has 8; app needs ~11 |
+| 5 | Minimum 8 related tables | **Done** | 15 tables, 23 foreign keys, counted from `information_schema`. Fourteen are on the ERD; the fifteenth, `schema_migrations`, is infrastructure. |
 | 6 | CRUD operations | **Frontend only** | Service layer exists; needs SQL behind it |
 | 7 | Server-side processing (PHP) | **Not started** | Routing, sessions, auth, authorization |
 | 8 | JavaScript interaction | **Done** | React 19 + Vite, client-side routing, dynamic content |

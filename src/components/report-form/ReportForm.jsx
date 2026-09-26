@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Check, CircleCheck } from 'lucide-react'
-import { Button, Card, CardBody, CardFooter } from '@/components/ui'
+import { Button, Card, CardBody, CardFooter, RequiredNote } from '@/components/ui'
 import { REPORT_TYPES } from '@/constants'
 import { categoryService, userService, petService } from '@/services'
 import { useAsync } from '@/hooks/useAsync'
@@ -21,6 +21,14 @@ import {
 const loadActiveCategories = () => categoryService.getActiveCategories()
 
 /**
+ * The steps that contain at least one required field.
+ *
+ * Photographs are optional — a finder often has no chance to take one — and
+ * the review step only repeats what has already been entered.
+ */
+const STEPS_WITH_REQUIRED_FIELDS = ['details', 'incident']
+
+/**
  * The lost/found reporting wizard.
  *
  * One component serves both report types — the fields that differ are handled
@@ -38,8 +46,12 @@ const loadActiveCategories = () => categoryService.getActiveCategories()
  * @param {Object} props
  * @param {'lost'|'found'} [props.reportType]  Required when creating.
  * @param {Object} [props.report]  Pass to edit an existing report.
+ * @param {React.ReactNode} [props.guidance]  Rendered beside the step. The
+ *   form owns the two-column layout rather than the page, so the step
+ *   indicator can span both columns above it — which is what stops the
+ *   guidance reading as an unrelated card parked next to a form.
  */
-export function ReportForm({ reportType, report }) {
+export function ReportForm({ reportType, report, guidance }) {
   const isEditing = Boolean(report)
   const navigate = useNavigate()
 
@@ -86,6 +98,29 @@ export function ReportForm({ reportType, report }) {
   const goToStep = (index) => {
     setErrors({})
     setStepIndex(index)
+  }
+
+  /**
+   * Enter, inside a single-line field, moves to the next step.
+   *
+   * The wizard is not a `<form>`, so until now Enter did nothing at all —
+   * which is its own kind of broken: somebody finishes typing, presses Enter
+   * out of habit, and the page sits there.
+   *
+   * Three deliberate exclusions:
+   *   * the review step, where Enter would file the report. Submitting is a
+   *     decision, and it stays a deliberate click.
+   *   * textareas, where Enter is a new line and always should be.
+   *   * buttons and links, which have their own Enter behaviour already.
+   */
+  const handleKeyDown = (event) => {
+    if (event.key !== 'Enter' || isLastStep || isSubmitting) return
+
+    const target = event.target
+    if (!(target instanceof HTMLInputElement)) return
+
+    event.preventDefault()
+    handleNext()
   }
 
   const handleNext = () => {
@@ -146,9 +181,14 @@ export function ReportForm({ reportType, report }) {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    // onKeyDown on the wrapper rather than on each field: one rule, in one
+    // place, for every control the wizard will ever contain.
+    <div className="flex flex-col gap-7" onKeyDown={handleKeyDown}>
+      {/* Full width, above both columns: the progress belongs to the whole
+          task, not to the column the fields happen to be in. */}
       <Stepper steps={STEPS} currentIndex={stepIndex} />
 
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">
       <Card>
         <div className="border-b border-border px-6 py-5">
           <p className="text-xs font-medium tracking-wide text-fg-muted uppercase">
@@ -162,6 +202,13 @@ export function ReportForm({ reportType, report }) {
             {step.label}
           </h2>
           <p className="mt-1.5 text-fg-muted">{STEP_HINTS[step.id]}</p>
+
+          {/* Only on the steps that actually have a required field. Saying it
+              above the photographs step, which has none, would teach the
+              reader to stop reading it. */}
+          {STEPS_WITH_REQUIRED_FIELDS.includes(step.id) && (
+            <RequiredNote className="mt-2 text-sm text-fg-muted" />
+          )}
         </div>
 
         <CardBody className="flex flex-col gap-6 px-6 py-6">
@@ -226,6 +273,9 @@ export function ReportForm({ reportType, report }) {
           )}
         </CardFooter>
       </Card>
+
+      {guidance}
+      </div>
     </div>
   )
 }
@@ -236,6 +286,14 @@ function submitLabel(isEditing, isSubmitting) {
 }
 
 /** One line of context per step, shown under its heading. */
+/** Four words under the step you are on, so the progress says what it wants. */
+const STEP_SUBLABELS = {
+  details: 'What the animal looks like',
+  incident: 'Where and when',
+  photos: 'Add clear photographs',
+  review: 'Check and submit',
+}
+
 const STEP_HINTS = {
   details: 'What the animal looks like. These are the details the system compares against other reports.',
   incident: 'When and where it happened, and how people can reach you.',
@@ -277,9 +335,13 @@ function Stepper({ steps, currentIndex }) {
                 <span
                   aria-current={isCurrent ? 'step' : undefined}
                   className={cn(
-                    'flex size-10 shrink-0 items-center justify-center rounded-full border-2 text-base font-semibold',
+                    'flex size-11 shrink-0 items-center justify-center rounded-full border-2 text-base font-semibold transition-colors',
                     isDone && 'border-brand bg-brand text-fg-inverted',
-                    isCurrent && 'border-brand bg-panel text-brand',
+                    // Filled, not outlined. An outlined circle beside a filled
+                    // "done" one reads as the weaker of the two, which is the
+                    // wrong way round: where you ARE matters more than where
+                    // you have been. The ring lifts it off the rail.
+                    isCurrent && 'border-brand bg-brand text-fg-inverted ring-4 ring-brand-soft',
                     !isDone && !isCurrent && 'border-border bg-panel text-fg-muted',
                   )}
                 >
@@ -297,13 +359,22 @@ function Stepper({ steps, currentIndex }) {
                 />
               </div>
 
-              <span
-                className={cn(
-                  'hidden text-center text-sm sm:block',
-                  isCurrent ? 'font-medium text-fg' : 'text-fg-muted',
+              <span className="hidden flex-col items-center gap-0.5 text-center sm:flex">
+                <span
+                  className={cn(
+                    'text-sm',
+                    isCurrent ? 'font-semibold text-fg' : 'text-fg-muted',
+                  )}
+                >
+                  {step.label}
+                </span>
+                {/* Only under the step you are on. Under all four it became a
+                    paragraph of small print holding the progress apart. */}
+                {isCurrent && (
+                  <span className="max-w-40 text-xs leading-snug text-fg-muted">
+                    {STEP_SUBLABELS[step.id]}
+                  </span>
                 )}
-              >
-                {step.label}
               </span>
             </li>
           )

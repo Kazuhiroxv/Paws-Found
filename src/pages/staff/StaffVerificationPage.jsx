@@ -1,12 +1,25 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { BadgeCheck, Check, CircleX, HeartHandshake, Lock, Mail, Phone, ShieldCheck, X } from 'lucide-react'
+import {
+  BadgeCheck,
+  Check,
+  CircleAlert,
+  CircleCheck,
+  CircleX,
+  HeartHandshake,
+  Lock,
+  Mail,
+  Phone,
+  X,
+} from 'lucide-react'
 import { Button, EmptyState, LoadingSkeleton, Modal, Textarea } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { MatchPairCard, MatchStatusBadge, PairingName, StatusStrip } from '@/components/MatchComparison'
 import { MATCH_STATUSES_AWAITING_STAFF } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
 import { matchService, userService } from '@/services'
+import { hasCoordinates } from '@/utils/location'
+import emptyQueueClear from '@/assets/empty-queue-clear.webp'
 
 async function loadVerificationQueue() {
   const [staff, pairings] = await Promise.all([
@@ -130,29 +143,39 @@ export function StaffVerificationPage() {
 
       {waiting.length === 0 ? (
         <EmptyState
-          icon={ShieldCheck}
+          illustration={emptyQueueClear}
           title="Nothing waiting"
           description="When a reporter asks for a possible match to be checked, it will appear here."
         />
       ) : (
-        <ul className="flex flex-col gap-8">
+        <ul className="flex flex-col gap-10">
           {waiting.map((item) => (
             <li key={item.match.id} id={`match-${item.match.id}`} className="scroll-mt-24">
-              <MatchPairCard
-                match={item.match}
-                lost={item.lostReport}
-                found={item.foundReport}
-                badge={<MatchStatusBadge status={item.match.status} />}
-              >
+              {/* Case on the left, inspector on the right.
+                  
+                  The decision used to sit UNDER the comparison, full width, so
+                  deciding meant scrolling past the evidence and then scrolling
+                  back up to check it. A coordinator reads and decides in the
+                  same breath; the two belong side by side. */}
+              <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
+                <MatchPairCard
+                  match={item.match}
+                  lost={item.lostReport}
+                  found={item.foundReport}
+                  badge={<MatchStatusBadge status={item.match.status} />}
+                />
+
                 <DecisionPanel
                   match={item.match}
                   staff={staff}
+                  lost={item.lostReport}
+                  found={item.foundReport}
                   owner={reportersById[item.lostReport.reporterId]}
                   finder={reportersById[item.foundReport.reporterId]}
                   onDecided={(outcome) => onDecided(item, outcome)}
                   onUpdated={reload}
                 />
-              </MatchPairCard>
+              </div>
             </li>
           ))}
         </ul>
@@ -161,7 +184,7 @@ export function StaffVerificationPage() {
   )
 }
 
-function DecisionPanel({ match, staff, owner, finder, onDecided, onUpdated }) {
+function DecisionPanel({ match, staff, lost, found, owner, finder, onDecided, onUpdated }) {
   const [note, setNote] = useState(match.staffNotes ?? '')
   const [busyAction, setBusyAction] = useState(null)
   const [actionError, setActionError] = useState(null)
@@ -195,21 +218,21 @@ function DecisionPanel({ match, staff, owner, finder, onDecided, onUpdated }) {
   return (
     <section
       aria-labelledby={`decision-${match.id}`}
-      className="flex flex-col gap-5 rounded-card border border-border-strong bg-surface p-4 sm:p-5"
+      className="flex flex-col gap-5 rounded-card border border-border-strong bg-panel p-4 shadow-card sm:p-5 xl:sticky xl:top-6"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
         <h3 id={`decision-${match.id}`} className="text-lg font-semibold text-fg">
           Coordinator decision
         </h3>
-        <span className="text-sm text-fg-muted">
-          Currently <MatchStatusBadge status={match.status} className="ml-1 px-2.5 py-0.5 text-xs" />
-        </span>
+        <MatchStatusBadge status={match.status} className="px-2.5 py-0.5 text-xs" />
       </div>
 
       <p className="rounded-control bg-accent-soft px-3 py-2 text-sm text-fg">
         This is a suggestion, not a confirmation. Check ownership with both people before any
         handover is arranged.
       </p>
+
+      <Completeness lost={lost} found={found} match={match} />
 
       {/* Contact details: staff only. */}
       <div className="flex flex-col gap-3">
@@ -347,6 +370,109 @@ function DecidedStrip({ lost, found, outcome }) {
           been notified, and the reports carry on being searched.
         </p>
       </div>
+    </div>
+  )
+}
+
+/**
+ * What the system can actually tell a coordinator about this pairing before
+ * they decide.
+ *
+ * Every line is computed from the two reports in front of it. The reference
+ * design puts a verification checklist in this position with items like
+ * "auto-screening completed" and "contact verified" — we have neither of
+ * those, and a tick beside a check nobody ran would be worse than no panel at
+ * all. So the composition is kept and filled with what is true:
+ *
+ *   * whether each side has a photograph — the one thing an owner recognises;
+ *   * whether each side has a map pin, or only a city;
+ *   * whether anyone has given contact details, which decides whether a
+ *     handover can be arranged at all;
+ *   * how many characteristics the matching algorithm found aligned, which
+ *     is already stored per signal in `match_signals`.
+ *
+ * "Needs a look" is amber and never red: none of these is a failure. A found
+ * report with no photograph is still a real sighting, and the panel's job is
+ * to say where the thin evidence is, not to grade it.
+ */
+function Completeness({ lost, found, match }) {
+  const aligned = match.signals.filter((signal) => signal.matched).length
+  const bothPinned = hasCoordinates(lost.location) && hasCoordinates(found.location)
+  const photoCount = [lost, found].filter((report) => report.photos.length > 0).length
+  const contactable = [lost, found].filter(
+    (report) =>
+      report.contactPreferences.showPhone ||
+      report.contactPreferences.showEmail ||
+      report.contactPreferences.allowPlatformContact,
+  ).length
+
+  const checks = [
+    {
+      ok: photoCount === 2,
+      label: 'Photographs on both reports',
+      detail:
+        photoCount === 2
+          ? 'Both sides can be compared by eye.'
+          : photoCount === 1
+            ? 'Only one side has a photograph — ask the other for one.'
+            : 'Neither side has a photograph.',
+    },
+    {
+      ok: bothPinned,
+      label: 'Both locations mapped',
+      detail: bothPinned
+        ? `${lost.location.city} and ${found.location.city}, both pinned.`
+        : 'At least one side gave a city but no map pin, so distance is approximate.',
+    },
+    {
+      ok: contactable === 2,
+      label: 'Both reporters reachable',
+      detail:
+        contactable === 2
+          ? 'Both agreed to be contacted, at least through a coordinator.'
+          : 'One side has shared no way of being reached.',
+    },
+    {
+      ok: aligned >= 5,
+      label: `${aligned} of ${match.signals.length} characteristics align`,
+      detail:
+        aligned >= 5
+          ? 'The algorithm found broad agreement across the details.'
+          : 'Fewer details agree than usual — read the comparison carefully.',
+    },
+  ]
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <h4 className="text-sm font-semibold text-fg">What we can check automatically</h4>
+
+      <ul className="flex flex-col gap-2.5">
+        {checks.map((check) => (
+          <li key={check.label} className="flex items-start gap-2.5">
+            {check.ok ? (
+              <CircleCheck
+                size={17}
+                className="mt-0.5 shrink-0 text-success"
+                aria-hidden="true"
+              />
+            ) : (
+              <CircleAlert size={17} className="mt-0.5 shrink-0 text-lost" aria-hidden="true" />
+            )}
+            <span className="flex min-w-0 flex-col">
+              <span className="text-sm font-medium text-fg">
+                {check.label}
+                {/* The word, not only the icon and its colour. */}
+                <span className="sr-only">{check.ok ? ' — fine' : ' — needs a look'}</span>
+              </span>
+              <span className="text-sm text-fg-muted">{check.detail}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <p className="text-sm text-fg-muted">
+        None of this proves ownership. It only says where the evidence is thin.
+      </p>
     </div>
   )
 }

@@ -33,6 +33,26 @@ const photoByFilename = Object.fromEntries(
  */
 const API_BASE = `${import.meta.env.BASE_URL}api`
 
+/**
+ * This session's CSRF token.
+ *
+ * The API hands it out in the body of `/auth/me`, `/auth/login`,
+ * `/auth/register` and `/auth/logout`, and requires it back in a header on
+ * every request that changes something. Kept in a module variable rather than
+ * in storage on purpose: it belongs to the session the server is holding, so
+ * one that outlived the page would be stale anyway.
+ */
+let csrfToken = null
+
+/** Ask for the token when there is none yet, or when the one we had was refused. */
+async function primeCsrf() {
+  const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
+  const payload = await response.json().catch(() => null)
+
+  csrfToken = payload?.csrf_token ?? null
+  return csrfToken
+}
+
 /** Resolve a stored image filename to something an `<img src>` can load. */
 export function assetUrl(filename) {
   if (!filename) return null
@@ -46,16 +66,28 @@ export function assetUrl(filename) {
  * every request would look anonymous and the workspaces would 401.
  */
 export async function apiFetch(path, options = {}) {
-  // A FormData body must set its own Content-Type: the browser adds the
-  // multipart boundary, and naming the type here would strip it and leave the
-  // server unable to parse the upload.
-  const isUpload = options.body instanceof FormData
+  const method = (options.method ?? 'GET').toUpperCase()
+  const changesSomething = !['GET', 'HEAD', 'OPTIONS'].includes(method)
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    credentials: 'include',
-    headers: options.body && !isUpload ? { 'Content-Type': 'application/json' } : undefined,
-    ...options,
-  })
+  // The first action of a freshly loaded page could be a submission, so the
+  // token is fetched here if the app has not already picked one up.
+  if (changesSomething && !csrfToken) await primeCsrf()
+
+  let response = await send(path, options, method, changesSomething)
+
+  // A token can go stale — the session was rotated, or the tab sat open while
+  // somebody signed in and out elsewhere. That is a nuisance rather than an
+  // attack, so it is worth exactly one retry with a fresh token. The server
+  // marks this case with `csrf: true`; any other 403 is a real refusal and is
+  // left alone.
+  if (response.status === 403 && changesSomething) {
+    const peek = await response.clone().json().catch(() => null)
+
+    if (peek?.csrf) {
+      await primeCsrf()
+      response = await send(path, options, method, changesSomething)
+    }
+  }
 
   // A 204 has no body to parse.
   if (response.status === 204) return null
@@ -66,6 +98,9 @@ export async function apiFetch(path, options = {}) {
   } catch {
     throw new Error('The server sent a response that could not be read.')
   }
+
+  // Any response may carry a new token — signing in and out both rotate it.
+  if (payload?.csrf_token) csrfToken = payload.csrf_token
 
   if (!response.ok) {
     // The API always answers errors as { error: "..." }, written for a person.
@@ -80,10 +115,33 @@ export async function apiFetch(path, options = {}) {
     // server is broken". Without it every failure looks the same.
     error.status = response.status
 
+    // The rest of what the server said, for the few refusals that carry more
+    // than a sentence — a failed sign-in reports how many attempts remain and
+    // whether the account is now locked, and the form draws that.
+    error.payload = payload
+
     throw error
   }
 
   return payload
+}
+
+/** One attempt at the request, with the headers this call needs. */
+function send(path, options, method, changesSomething) {
+  // A FormData body must set its own Content-Type: the browser adds the
+  // multipart boundary, and naming the type here would strip it and leave the
+  // server unable to parse the upload.
+  const isUpload = options.body instanceof FormData
+
+  const headers = { ...options.headers }
+  if (options.body && !isUpload) headers['Content-Type'] = 'application/json'
+
+  // A header, not a form field. An HTML form on somebody else's site can post
+  // to this API and the browser will send the session cookie with it, but it
+  // cannot add a header — which is what makes this worth doing.
+  if (changesSomething && csrfToken) headers['X-CSRF-Token'] = csrfToken
+
+  return fetch(`${API_BASE}${path}`, { credentials: 'include', ...options, method, headers })
 }
 
 /** Build a query string, leaving out anything empty. */

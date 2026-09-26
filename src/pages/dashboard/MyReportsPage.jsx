@@ -234,6 +234,9 @@ function ReportCaseCard({ report, openMatches, onClose }) {
   const photo = report.photos.find((item) => item.isPrimary) ?? report.photos[0]
   const firstMatch = openMatches[0]
   const canClose = report.status !== REPORT_STATUSES.CLOSED
+  // A finished case stops accepting edits, and the API refuses them with a 409.
+  // Offering a button that can only fail is worse than not offering it.
+  const canEdit = OPEN_STATUSES.includes(report.status)
   const kind = [speciesLabel(report.species), report.breed].filter(Boolean).join(' · ')
 
   const primary = firstMatch ? (
@@ -318,19 +321,23 @@ function ReportCaseCard({ report, openMatches, onClose }) {
               moves into More, so the row is one button and a menu. The
               visibility lives on a wrapper: `cn` does not resolve conflicting
               utilities, and the Button's own `inline-flex` beat `hidden`. */}
-          <span className="hidden sm:contents">
-            <Button
-              as={Link}
-              to={`/dashboard/reports/${report.id}/edit`}
-              variant="secondary"
-              size="sm"
-            >
-              <Pencil size={14} aria-hidden="true" />
-              Edit
-            </Button>
-          </span>
+          {canEdit && (
+            <span className="hidden sm:contents">
+              <Button
+                as={Link}
+                to={`/dashboard/reports/${report.id}/edit`}
+                variant="secondary"
+                size="sm"
+              >
+                <Pencil size={14} aria-hidden="true" />
+                Edit
+              </Button>
+            </span>
+          )}
 
-          <div className={cn(!canClose && 'sm:hidden')}>
+          {/* The menu holds the phone-only Edit and, when it applies, Close. A
+              closed report has neither, so the menu goes with them. */}
+          <div className={cn(!canClose && 'hidden')}>
             <NavDropdown
               align="right"
               showChevron={false}
@@ -344,15 +351,17 @@ function ReportCaseCard({ report, openMatches, onClose }) {
             >
               {(close) => (
                 <>
-                  <NavDropdownItem
-                    as={Link}
-                    to={`/dashboard/reports/${report.id}/edit`}
-                    onClick={close}
-                    className="sm:hidden"
-                  >
-                    <Pencil size={15} aria-hidden="true" />
-                    Edit report
-                  </NavDropdownItem>
+                  {canEdit && (
+                    <NavDropdownItem
+                      as={Link}
+                      to={`/dashboard/reports/${report.id}/edit`}
+                      onClick={close}
+                      className="sm:hidden"
+                    >
+                      <Pencil size={15} aria-hidden="true" />
+                      Edit report
+                    </NavDropdownItem>
+                  )}
                   {canClose && (
                     <NavDropdownItem
                       as="button"

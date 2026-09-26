@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { LogOut, Menu, X } from 'lucide-react'
-import logoMark from '@/assets/pawsfound-logo-mark.png'
+import logoLockup from '@/assets/pawsfound-logo-horizontal.webp'
 import { Button, Container } from '@/components/ui'
 import { DemoRoleSelector } from './DemoRoleSelector'
 import { NavDropdown, NavDropdownItem } from './NavDropdown'
@@ -72,12 +72,13 @@ export function Navbar({ role, onRoleChange, onSignOut, user }) {
     >
       <Container className="flex h-[4.5rem] items-center gap-6">
         {/* 1. Brand */}
-        <Link
-          to="/"
-          className="mr-2 flex shrink-0 items-center gap-3 text-xl font-semibold tracking-tight text-fg"
-        >
-          <img src={logoMark} alt="" className="size-11 shrink-0" />
-          Paws&amp;Found
+        {/* The lockup rather than the mark beside typed-out text: the mark
+            alone is a dog, a cat, a heart and a pin, and at the 36px a navbar
+            gives it those collapse into a blob. The lockup carries its own
+            wordmark, so the brand is legible at the size it actually appears.
+            The alt text is the name — the image IS the name here. */}
+        <Link to="/" className="mr-2 flex shrink-0 items-center">
+          <img src={logoLockup} alt="Paws&Found" className="h-11 w-auto" />
         </Link>
 
         {/* 2. Public navigation */}

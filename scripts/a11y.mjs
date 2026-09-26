@@ -24,6 +24,7 @@ const PAGES = [
   ['guest', '/pet/1', 'Report detail'],
   ['guest', '/about', 'About'],
   ['guest', '/help', 'Help'],
+  ['guest', '/privacy', 'Privacy Notice'],
   ['guest', '/login', 'Sign in'],
   ['guest', '/register', 'Register'],
   ['guest', '/no-such-page', 'Not found'],

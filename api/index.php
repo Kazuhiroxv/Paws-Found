@@ -22,6 +22,12 @@ require_once __DIR__ . '/helpers.php';
 
 send_cors_headers();
 
+// Every request that changes something must carry this session's CSRF token.
+// Checked here, once, rather than inside each handler — so an endpoint added
+// later is protected by existing rather than by somebody remembering to add a
+// line to it. Reads pass straight through.
+verify_csrf();
+
 // Work out the path relative to this API, whatever folder it is installed in.
 // .htaccess passes it as ?_route=..., and the query string fallback keeps the
 // API usable if mod_rewrite is ever unavailable.
@@ -33,6 +39,15 @@ $identifier = $segments[1] ?? null;
 // A third segment, for the one route that needs it: /reports/12/photos.
 $sub = $segments[2] ?? null;
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+
+// That is the *only* route with a third segment. Every other handler takes
+// just the resource and the identifier, so without this check a third segment
+// was silently dropped and the request answered as though it had not been
+// typed: GET /matches/1/claims returned the match, and GET /users/1/password
+// returned the user. A URL that does not exist has to say so.
+if (count($segments) > 3 || ($sub !== null && $resource !== 'reports')) {
+    json_error('No such endpoint.', 404);
+}
 
 try {
     switch ($resource) {

@@ -52,7 +52,7 @@ function users_list(): never
         $params[':role'] = $role;
     }
 
-    $status = require_one_of(query_string_param('status'), ['active', 'suspended'], 'status');
+    $status = require_one_of(query_string_param('status'), ['active', 'suspended', 'locked'], 'status');
     if ($status !== null) {
         $where[] = 'account_status = :status';
         $params[':status'] = $status;
@@ -205,33 +205,80 @@ function user_update(int $id): never
         json_error('You cannot change your own role or suspend your own account.', 422);
     }
 
-    $exists = db()->prepare('SELECT user_id FROM users WHERE user_id = :id');
+    // The current values, so the audit entries below can say what changed
+    // rather than only what it changed to.
+    $exists = db()->prepare('SELECT user_id, email, role, account_status FROM users WHERE user_id = :id');
     $exists->execute([':id' => $id]);
-    if (!$exists->fetch()) {
+    $before = $exists->fetch();
+
+    if (!$before) {
         json_error('That account does not exist.', 404);
     }
 
     $sets = [];
     $params = [':id' => $id];
+    $newRole = null;
+    $newStatus = null;
 
     if (array_key_exists('role', $body)) {
-        $role = require_one_of(trim((string) $body['role']), ['user', 'staff', 'admin'], 'role');
+        $newRole = require_one_of(trim((string) $body['role']), ['user', 'staff', 'admin'], 'role');
         $sets[] = 'role = :role';
-        $params[':role'] = $role;
+        $params[':role'] = $newRole;
     }
 
     if (array_key_exists('account_status', $body)) {
-        $status = require_one_of(trim((string) $body['account_status']), ['active', 'suspended'], 'account_status');
+        // 'locked' is missing from this list on purpose. Nobody chooses it: an
+        // account arrives there by failing to sign in three times, and the only
+        // way out is an administrator setting it back to active. Offering it
+        // here would make it look like a punishment an administrator hands out,
+        // which is what 'suspended' is for.
+        $newStatus = require_one_of(trim((string) $body['account_status']), ['active', 'suspended'], 'account_status');
         $sets[] = 'account_status = :status';
-        $params[':status'] = $status;
+        $params[':status'] = $newStatus;
     }
 
     if ($sets === []) {
         json_error('Nothing to change.', 422);
     }
 
-    $statement = db()->prepare('UPDATE users SET ' . implode(', ', $sets) . ' WHERE user_id = :id');
-    $statement->execute($params);
+    $pdo = db();
+    $pdo->beginTransaction();
+
+    try {
+        $statement = $pdo->prepare('UPDATE users SET ' . implode(', ', $sets) . ' WHERE user_id = :id');
+        $statement->execute($params);
+
+        // Reactivating a locked account is the unlock, so the counter that
+        // locked it has to go with it. Leaving the row behind would lock the
+        // account again on the very next failed attempt, which is not what
+        // "unlocked" means to the person who did it.
+        if ($newStatus === 'active' && $before['account_status'] === 'locked') {
+            clear_login_attempts($before['email']);
+        }
+
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        $pdo->rollBack();
+        throw $exception;
+    }
+
+    // Logged after the change is committed, so the trail records what happened
+    // rather than what was attempted.
+    if ($newRole !== null && $newRole !== $before['role']) {
+        audit_log('role_changed', (int) $admin['user_id'], $admin['email'], 'user', $id, 'success',
+            "{$before['role']} -> {$newRole}");
+    }
+
+    if ($newStatus !== null && $newStatus !== $before['account_status']) {
+        $action = match (true) {
+            $newStatus === 'suspended' => 'account_suspended',
+            $before['account_status'] === 'locked' => 'account_unlocked',
+            default => 'account_reinstated',
+        };
+
+        audit_log($action, (int) $admin['user_id'], $admin['email'], 'user', $id, 'success',
+            "{$before['account_status']} -> {$newStatus}");
+    }
 
     user_detail($id);
 }

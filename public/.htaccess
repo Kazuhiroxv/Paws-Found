@@ -8,6 +8,15 @@
 # The React app does its own routing. Apache only has to hand it index.html for
 # any address that is not a real file, and stay out of the way of the API.
 
+# ONE LINE TO CHANGE WHEN DEPLOYING
+#
+# RewriteBase must match the `base` the site was built with (see
+# vite.config.js). They are the only two places the install path is written
+# down, and them disagreeing is the classic first-deployment failure: the page
+# loads, every asset 404s, and the screen is blank.
+#
+#   deployed at a domain root   ->  RewriteBase /        + VITE_BASE=/
+#   local Apache subfolder      ->  RewriteBase /pawsandfound/
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /pawsandfound/

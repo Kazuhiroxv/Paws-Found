@@ -8,6 +8,10 @@ dist-ssr
 .env.*
 !.env.example
 
+# The deployed API's real database credentials. config.example.php is the
+# template and IS tracked; the filled-in copy never is.
+api/config.local.php
+
 # Logs
 logs
 *.log
@@ -35,3 +39,4 @@ api/uploads/*
 
 # Python bytecode from the audit scripts
 __pycache__/
+scripts/.local/

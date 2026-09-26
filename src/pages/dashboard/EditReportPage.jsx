@@ -5,7 +5,12 @@ import { Button, Container, EmptyState, LoadingSkeleton } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { ReportForm } from '@/components/report-form/ReportForm'
 import { useAsync } from '@/hooks/useAsync'
+import { REPORT_STATUS_LABELS, REPORT_STATUSES } from '@/constants'
 import { petService, userService } from '@/services'
+
+/** The two states a report does not come back from. Mirrors REPORT_TRANSITIONS
+ *  in api/reports.php, which is what actually enforces it. */
+const FINISHED_STATUSES = [REPORT_STATUSES.RETURNED, REPORT_STATUSES.CLOSED]
 
 /**
  * Edit one of your own reports.
@@ -69,6 +74,34 @@ export function EditReportPage() {
             <Button as={Link} to={`/pet/${report.id}`} variant="secondary">
               View the report
             </Button>
+          }
+        />
+      </div>
+    )
+  }
+
+  // A returned or closed case no longer accepts edits, and the API answers 409
+  // if one is attempted. Reaching this page by typing the address is the only
+  // way to get here now, so it explains rather than simply failing on save.
+  if (FINISHED_STATUSES.includes(report.status)) {
+    const word = REPORT_STATUS_LABELS[report.status]
+
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title="This case is finished" />
+        <EmptyState
+          icon={Lock}
+          title={`This report shows “${word}”`}
+          description="A finished report keeps the details it had when it was decided, so the case history beside it still describes what happened. If something about it is wrong, a Pet Coordinator can look at it — or file a new report if the pet is missing again."
+          action={
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Button as={Link} to={`/pet/${report.id}`} variant="secondary">
+                View the report
+              </Button>
+              <Button as={Link} to="/dashboard/reports" variant="ghost">
+                Back to my reports
+              </Button>
+            </div>
           }
         />
       </div>

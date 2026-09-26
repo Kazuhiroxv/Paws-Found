@@ -266,6 +266,14 @@ function moderation_decide(int $id): never
         throw $exception;
     }
 
+    // A moderation decision can suspend an account or close somebody's report,
+    // so it belongs in the same trail as the account events rather than only
+    // on the case row it resolved. The report it was about goes in the detail:
+    // the target here is the case, and a case is the thing an administrator
+    // acted on.
+    audit_log('moderation_resolved', (int) $admin['user_id'], $admin['email'],
+        'moderation_case', $id, 'success', "{$action} on report {$case['report_id']}");
+
     json_response(['data' => ['case_id' => $id, 'action' => $action]]);
 }
 
