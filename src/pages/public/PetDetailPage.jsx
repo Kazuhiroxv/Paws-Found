@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import {
   Bird,
   CalendarDays,
@@ -14,6 +14,7 @@ import {
   History,
   Link as LinkIcon,
   Link2,
+  Lock,
   Maximize2,
   MapPin,
   Mail,
@@ -72,6 +73,7 @@ import { cn } from '@/utils/cn'
  */
 export function PetDetailPage({ role }) {
   const { id } = useParams()
+  const location = useLocation()
   const [isFlagOpen, setIsFlagOpen] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -112,6 +114,13 @@ export function PetDetailPage({ role }) {
   const mapReports = useMemo(() => (data ? [data.report] : []), [data])
 
   if (isLoading) return <DetailSkeleton />
+
+  // A guest reached a report from a card or a map pin. The list and the map are
+  // public; the full report is for members (the API answers 401), so say so
+  // and offer the way in. Sign-in brings them back here afterwards.
+  if (error?.payload?.code === 'auth_required') {
+    return <SignInGate from={location.pathname} />
+  }
 
   if (error) {
     // A missing report and a broken server are different things, and used to
@@ -599,6 +608,45 @@ export function PetDetailPage({ role }) {
           reportId={report.id}
         />
       )}
+    </Container>
+  )
+}
+
+/**
+ * What a guest sees instead of a report.
+ *
+ * The card or pin they followed showed a photo, the kind of pet, the area and
+ * the date. The rest — description, markings, all the photos, the case
+ * history, the reporter's name and any contact details they chose to share —
+ * is for signed-in members, so the people and pets involved are not laid out
+ * for anyone who happens past. Enforced by the API, not by this page.
+ */
+function SignInGate({ from }) {
+  return (
+    <Container width="prose" className="flex flex-col gap-6">
+      <PageHeader title="Sign in to see this report" />
+      <EmptyState
+        icon={Lock}
+        title="Full reports are for members"
+        description="Anyone can browse the map and the list. Signing in shows the full description, every photo, the case history and any contact details the reporter chose to share. It is free, and it keeps the people and pets involved from being laid out for anyone passing by."
+        action={
+          <div className="flex flex-wrap justify-center gap-3">
+            {/* `from` is what LoginPage returns to after a successful sign-in. */}
+            <Button as={Link} to="/login" state={{ from }}>
+              Sign in
+            </Button>
+            <Button as={Link} to="/register" variant="secondary">
+              Create an account
+            </Button>
+          </div>
+        }
+      />
+      <Link
+        to="/explore"
+        className="self-center text-sm font-medium text-brand hover:underline"
+      >
+        Back to all reports
+      </Link>
     </Container>
   )
 }

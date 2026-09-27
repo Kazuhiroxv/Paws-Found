@@ -409,9 +409,9 @@ def authorization():
     C = 'D. Authorization'
     cases = [
         ('AZ-01', 'guest', 'GET', '/reports', 200, 'Anyone may browse reports'),
-        ('AZ-02', 'guest', 'GET', '/reports/1', 200, 'Anyone may open a report'),
+        ('AZ-02', 'guest', 'GET', '/reports/1', 401, 'A full report needs a session'),
         ('AZ-03', 'guest', 'GET', '/categories', 200, 'Anyone may read the species list'),
-        ('AZ-04', 'guest', 'GET', '/matches', 200, 'Pairings are public by design'),
+        ('AZ-04', 'guest', 'GET', '/matches', 401, 'Pairings need a session'),
         ('AZ-05', 'guest', 'POST', '/reports', 401, 'Filing needs a session'),
         ('AZ-06', 'guest', 'GET', '/notifications', 401, 'Notifications need a session'),
         ('AZ-07', 'guest', 'GET', '/reports/stats', 401, 'Dashboard figures need a session'),
@@ -488,7 +488,7 @@ def xss():
     check(C, 'XSS-02', 'Payload stored verbatim (escaping belongs at output)',
           payloads['pet_name'], stored, stored == payloads['pet_name'])
 
-    _, body = session('guest').call('GET', f'/reports/{rid}')
+    _, body = session('finder').call('GET', f'/reports/{rid}')
     returned = body.get('data', {}).get('pet_name')
     check(C, 'XSS-03', 'API returns it as data, not markup', payloads['pet_name'],
           returned, returned == payloads['pet_name'])
@@ -720,8 +720,8 @@ def functional():
     check(C, 'FN-41', 'The owner is told the stored preference, not the masked value',
           True, prefs.get('show_phone') if prefs else '(absent)',
           bool(prefs) and prefs.get('show_phone') is True)
-    _, public_view = session('guest').call('GET', '/reports/1')
-    check(C, 'FN-42', 'A visitor is told nothing about preferences', True,
+    _, public_view = session('finder').call('GET', '/reports/1')
+    check(C, 'FN-42', 'Another member is told nothing about preferences', True,
           'contact_preferences' not in (public_view.get('data') or {}),
           'contact_preferences' not in (public_view.get('data') or {}))
 
@@ -775,16 +775,15 @@ def location_privacy():
     _, point = published('guest', '/reports?city=Audit%20Town&per_page=50')
     check(C, 'LP-02', 'Anonymous list: the grid point, not the pin', 'grid point', str(point),
           None not in point and point != pin and all(map(on_grid, point)))
-    _, detail = published('guest', f'/reports/{lost}')
-    check(C, 'LP-03', 'Anonymous detail: the grid point, not the pin', 'grid point', str(detail),
-          None not in detail and detail != pin and all(map(on_grid, detail)))
+    code, _ = published('guest', f'/reports/{lost}')
+    check(C, 'LP-03', 'Anonymous detail is refused, pin and all', 401, code, code == 401)
+    _, detail = published('finder', f'/reports/{lost}')
     gap = metres(pin, detail) if None not in detail else 1e9
-    check(C, 'LP-04', 'The grid point is within the 400 m circle', f'<= {worst_m} m',
-          f'{gap:.0f} m', gap <= worst_m)
-
-    _, other = published('finder', f'/reports/{lost}')
-    check(C, 'LP-05', 'Another signed-in user gets no more than a guest', str(detail), str(other),
-          other == detail)
+    check(C, 'LP-04', "Another member's detail: a grid point in the circle",
+          f'grid, <= {worst_m} m', f'{gap:.0f} m',
+          detail != pin and None not in detail and all(map(on_grid, detail)) and gap <= worst_m)
+    check(C, 'LP-05', 'Another member gets no more than the public list', str(point), str(detail),
+          detail == point)
     _, own = published('customer', f'/reports/{lost}')
     check(C, 'LP-06', 'The reporter still sees their own pin (edit form)', str(pin), str(own),
           own == pin)
@@ -796,6 +795,131 @@ def location_privacy():
                  f'AND m.lost_report_id = {lost} AND m.found_report_id = {found};')
     check(C, 'LP-08', 'Matching measures from the stored pin (14.93 km, not 15.14)', '1',
           signal or 'no pairing', signal == '1')
+
+
+def access_control():
+    """Who receives what: the guest summary, members, owners, staff, pairings."""
+    C = 'J. Report access'
+    maria = int(sql("SELECT user_id FROM users WHERE email = 'maria.santos@example.com';"))
+    noel = int(sql("SELECT user_id FROM users WHERE email = 'noel.aguilar@example.com';"))
+    # Everybody whose name could appear on a history as staff or admin.
+    names = set(sql("SELECT GROUP_CONCAT(full_name SEPARATOR '|') FROM users "
+                    "WHERE role IN ('staff', 'admin');").split('|'))
+
+    # ---- the guest summary
+    summary = {'report_id', 'report_type', 'status', 'pet_name', 'species', 'species_label',
+               'breed', 'size', 'sex', 'primary_color', 'secondary_color', 'incident_date',
+               'location', 'primary_image', 'primary_image_alt'}
+    _, body = session('guest').call('GET', '/reports?per_page=50')
+    rows = body.get('data') or []
+    keys = set().union(*(r.keys() for r in rows)) if rows else set()
+    check(C, 'RA-01', 'A guest list row is the public summary, exactly', 'summary keys',
+          'extra: ' + ','.join(sorted(keys - summary)) if keys - summary else 'summary keys',
+          bool(rows) and keys == summary)
+    loc_keys = set().union(*(r['location'].keys() for r in rows)) if rows else set()
+    check(C, 'RA-02', 'Its location has no place label', 'city,lat,lng,province',
+          ','.join(sorted(loc_keys)), loc_keys == {'city', 'province', 'lat', 'lng'})
+    code, body = session('guest').call('GET', '/reports/1')
+    check(C, 'RA-03', 'A guest opening a real report: 401 auth_required', '401 auth_required',
+          f'{code} {body.get("code")}', code == 401 and body.get('code') == 'auth_required')
+    status(C, 'RA-04', 'A guest opening a missing report: still 404', 'guest', 'GET',
+           '/reports/99999', None, 404)
+    status(C, 'RA-05', 'A guest cannot list reports by account', 'guest', 'GET',
+           f'/reports?reporter_id={maria}', None, 401)
+
+    # A word that exists only in a description, and one only in the markings.
+    rid, _ = file_report('customer', description='Answers to a whistle; zephyrine collar charm.',
+                         distinct_features='A quillonbar-shaped scar on the muzzle')
+    for tid, word in (('RA-06', 'zephyrine'), ('RA-07', 'quillonbar')):
+        _, g = session('guest').call('GET', f'/reports?q={word}')
+        _, m = session('finder').call('GET', f'/reports?q={word}')
+        gt, mt = g.get('meta', {}).get('total'), m.get('meta', {}).get('total')
+        check(C, tid, f'Guest search cannot find a hidden word ({word})', 'guest 0, member 1+',
+              f'guest {gt}, member {mt}', gt == 0 and (mt or 0) >= 1)
+
+    # ---- another signed-in customer
+    _, body = session('finder').call('GET', '/reports?per_page=50')
+    leaked = [r['report_id'] for r in body.get('data') or []
+              if 'reporter_id' in r and r['reporter_id'] != noel]
+    check(C, 'RA-08', "A member's list: no one else's reporter_id", 'none', str(leaked[:5]) or 'none',
+          not leaked)
+    status(C, 'RA-09', "A member cannot list someone else's reports", 'finder', 'GET',
+           f'/reports?reporter_id={maria}', None, 403)
+    status(C, 'RA-10', 'A member can list their own', 'finder', 'GET',
+           f'/reports?reporter_id={noel}', None, 200)
+
+    _, other = session('finder').call('GET', '/reports/1')
+    data = other.get('data') or {}
+    check(C, 'RA-11', "Another member's detail: no reporter_id anywhere", 'absent',
+          'absent' if 'reporter_id' not in data and 'user_id' not in (data.get('reporter') or {})
+          else 'PRESENT', 'reporter_id' not in data and 'user_id' not in (data.get('reporter') or {}))
+    history = data.get('history') or []
+    notes = [h['note'] for h in history if h.get('note')]
+    check(C, 'RA-12', 'Another member sees every status change', '>= 2 entries', len(history),
+          len(history) >= 2)
+    check(C, 'RA-13', '...but no notes written with them', '0 notes', f'{len(notes)} notes',
+          not notes)
+    actors = {h.get('actor_name') for h in history}
+    check(C, 'RA-14', '...and roles, not names', 'roles only', ','.join(sorted(map(str, actors))),
+          actors <= {None, 'Reporter', 'Pet Coordinator', 'Administrator'})
+
+    # ---- the owner, and staff
+    _, own = session('customer').call('GET', '/reports/1')
+    own_history = (own.get('data') or {}).get('history') or []
+    own_names = {h.get('actor_name') for h in own_history} & names
+    check(C, 'RA-15', 'The owner sees the coordinator by name', 'a staff name',
+          ','.join(own_names) or 'none', bool(own_names))
+    check(C, 'RA-16', 'The owner sees the notes on their case', '1+ notes',
+          sum(1 for h in own_history if h.get('note')), any(h.get('note') for h in own_history))
+    check(C, 'RA-17', 'The owner still gets their reporter_id', maria,
+          (own.get('data') or {}).get('reporter_id'), (own.get('data') or {}).get('reporter_id') == maria)
+    _, staff = session('staff').call('GET', '/reports/1')
+    sd = staff.get('data') or {}
+    check(C, 'RA-18', 'Staff see names, notes and reporter_id', 'all three',
+          'all three' if sd.get('reporter_id') == maria and any(h.get('note') for h in sd.get('history') or [])
+          and ({h.get('actor_name') for h in sd.get('history') or []} & names) else 'missing',
+          sd.get('reporter_id') == maria and any(h.get('note') for h in sd.get('history') or [])
+          and bool({h.get('actor_name') for h in sd.get('history') or []} & names))
+
+    # ---- contact details still follow the per-report choice
+    sql(f"UPDATE users SET contact_number = '+63 917 555 0101' WHERE user_id = {maria};")
+    shown, _ = file_report('customer', show_email=True, show_phone=False)
+    hidden, _ = file_report('customer', show_email=False, show_phone=True)
+    a = (session('finder').call('GET', f'/reports/{shown}')[1].get('data') or {}).get('reporter') or {}
+    b = (session('finder').call('GET', f'/reports/{hidden}')[1].get('data') or {}).get('reporter') or {}
+    check(C, 'RA-19', 'Email shared, phone not: exactly that', 'email only',
+          f"email {'yes' if a.get('email') else 'no'}, phone {'yes' if a.get('phone') else 'no'}",
+          bool(a.get('email')) and a.get('phone') is None)
+    check(C, 'RA-20', 'Phone shared, email not: exactly that', 'phone only',
+          f"email {'yes' if b.get('email') else 'no'}, phone {'yes' if b.get('phone') else 'no'}",
+          b.get('email') is None and bool(b.get('phone')))
+
+    # ---- pairings
+    status(C, 'RA-21', 'A guest cannot list pairings', 'guest', 'GET', '/matches', None, 401)
+    status(C, 'RA-22', 'A guest cannot open one', 'guest', 'GET', '/matches/1', None, 401)
+    mine = {int(x) for x in sql(f'SELECT GROUP_CONCAT(report_id) FROM pet_reports '
+                                f'WHERE user_id = {maria};').split(',')}
+    _, body = session('customer').call('GET', '/matches')
+    pairs = body.get('data') or []
+    stray = [p['match_id'] for p in pairs
+             if p['lost_report_id'] not in mine and p['found_report_id'] not in mine]
+    check(C, 'RA-23', "A member's pairings all involve their own reports", 'none stray',
+          f'{len(pairs)} pairings, stray {stray}', bool(pairs) and not stray)
+    status(C, 'RA-24', "A member cannot ask for someone else's", 'customer', 'GET',
+           f'/matches?user_id={noel}', None, 403)
+    foreign = sql('SELECT m.match_id FROM match_claims m '
+                  'JOIN pet_reports l ON l.report_id = m.lost_report_id '
+                  'JOIN pet_reports f ON f.report_id = m.found_report_id '
+                  f'WHERE l.user_id <> {maria} AND f.user_id <> {maria} LIMIT 1;')
+    if foreign:
+        status(C, 'RA-25', "...or open a pairing they are not in", 'customer', 'GET',
+               f'/matches/{foreign}', None, 403)
+    total = int(sql('SELECT COUNT(*) FROM match_claims;'))
+    _, body = session('staff').call('GET', '/matches')
+    check(C, 'RA-26', 'Staff see every pairing', total, len(body.get('data') or []),
+          len(body.get('data') or []) == total)
+    status(C, 'RA-27', 'An administrator can open any pairing', 'admin', 'GET',
+           f'/matches/{foreign or 1}', None, 200)
 
 
 def error_handling():
@@ -820,7 +944,7 @@ def error_handling():
     status(C, 'EH-07', 'An invented sub-path on a real resource', 'guest', 'GET', '/matches/1/claims', None, 404)
     status(C, 'EH-08', 'An invented sub-path on a protected resource', 'admin', 'GET', '/users/1/password', None, 404)
     status(C, 'EH-09', 'A fourth path segment', 'customer', 'POST', '/reports/1/photos/extra', None, 404)
-    status(C, 'EH-10', 'The one real sub-path still works', 'guest', 'GET', '/matches/1', None, 200)
+    status(C, 'EH-10', 'The one real sub-path still works', 'staff', 'GET', '/matches/1', None, 200)
 
 
 
@@ -899,6 +1023,7 @@ if __name__ == '__main__':
     functional()
     error_handling()
     location_privacy()
+    access_control()
     total, passed = report()
 
     reseed()

@@ -99,6 +99,29 @@ per push, and would happen mid-demonstration.
 
 ## Security
 
+### Guests see a summary; members see the report
+
+A lost-pet report describes a person's home area, their pet's markings and,
+sometimes, how to reach them. The list and the map stay public, because being
+found by strangers is the point, but they carry only what identifies a pet at a
+glance: photo, species, breed, colours, area, date and status. The full report
+needs an account. It is free, and it means the details are read by people who
+have signed up to a community with rules rather than by anyone passing by.
+
+It is enforced by the API rather than the page. `GET /api/reports` trims each
+row for a guest. `GET /api/reports/{id}` answers `401 auth_required` after the
+existence check, so a missing report is still a 404. Guest search looks only in
+the fields a guest can see, because matching a hidden description would reveal
+it one search at a time. `GET /api/matches` needs a session too: the comparison
+sentences restate the reports ("Both locations are in Barangay San Antonio"),
+so a public pairing endpoint would have been a way around the gate.
+
+Signing in is not the same as being on the case. Another member sees every
+status change on a report, but not the note written with it or the name of
+whoever made it; those go to the reporter, coordinators and administrators. The
+rule is decided by who is viewing, never by what a note says. A customer sees
+only pairings that involve their own reports.
+
 ### Turnstile, not a homemade CAPTCHA
 
 Registration is the one endpoint an anonymous stranger can use to create rows.

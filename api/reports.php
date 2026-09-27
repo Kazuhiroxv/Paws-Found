@@ -3,8 +3,10 @@
  * Lost and found reports.
  *
  *   GET   /api/reports        list, with search, filters, sorting and paging
+ *                             (a guest gets the public summary of each row)
  *   GET   /api/reports/activity  recent changes across the caller's reports
  *   GET   /api/reports/12     one report, with photos, location and case history
+ *                             (must be signed in)
  *   POST  /api/reports        file a report (must be signed in)
  *   PUT   /api/reports/12     edit a report (the reporter only)
  *   PATCH /api/reports/12     change its status (the reporter, or a coordinator)
@@ -93,6 +95,14 @@ const REPORT_STATUS_WORDS = [
  * and the real pin is within ~80 m of any point on it.
  */
 const PUBLIC_COORDINATE_GRID = 0.004;
+
+/**
+ * The columns a guest's free-text search may look in: exactly the text fields
+ * the guest summary shows. See shape_for_viewer().
+ */
+const GUEST_SEARCH_COLUMNS = [
+    'r.pet_name', 'b.breed_name', 'r.primary_color', 'r.secondary_color', 'l.city', 'l.province',
+];
 
 function handle_reports(string $method, ?string $identifier, ?string $sub = null): never
 {
@@ -856,6 +866,11 @@ function is_valid_date(string $value): bool
 
 function reports_list(): never
 {
+    // Who is asking decides how much of each row they get (see
+    // shape_for_viewer) and which columns free text may search.
+    $viewer = current_user();
+    $isStaff = $viewer !== null && in_array($viewer['role'], ['staff', 'admin'], true);
+
     // ---- Filters -------------------------------------------------------------
     // Each one appends a condition AND a bound parameter, so the SQL text is
     // fixed no matter what the caller sends.
@@ -903,8 +918,16 @@ function reports_list(): never
         $params[':colour2'] = '%' . $colour . '%';
     }
 
-    // Someone's own reports, for the dashboard.
+    // Someone's own reports, for the dashboard. Only your own: listing a
+    // stranger's reports by account id would group them by person, which the
+    // payload no longer does. Staff and administrators may ask for anybody's.
     if (($reporter = query_string_param('reporter_id')) !== null) {
+        if ($viewer === null) {
+            json_error('You need to be signed in to do that.', 401, ['code' => 'auth_required']);
+        }
+        if (!$isStaff && (int) $reporter !== (int) $viewer['user_id']) {
+            json_error('You can only list your own reports that way.', 403);
+        }
         $where[] = 'r.user_id = :reporter_id';
         $params[':reporter_id'] = (int) $reporter;
     }
@@ -923,10 +946,16 @@ function reports_list(): never
     if (($text = query_string_param('q')) !== null) {
         // One placeholder per column, for the same reason as the colour filter
         // above: a native prepared statement binds each marker once.
-        $columns = [
-            'r.pet_name', 'r.description', 'r.distinct_features',
-            'r.primary_color', 'b.breed_name', 'l.city', 'l.label',
-        ];
+        //
+        // A guest searches only what a guest can see. Matching a word in a
+        // description they are not shown would tell them it is there, one
+        // search at a time.
+        $columns = $viewer === null
+            ? GUEST_SEARCH_COLUMNS
+            : [
+                'r.pet_name', 'r.description', 'r.distinct_features',
+                'r.primary_color', 'b.breed_name', 'l.city', 'l.label',
+            ];
 
         $conditions = [];
         foreach ($columns as $index => $column) {
@@ -995,7 +1024,10 @@ function reports_list(): never
     $statement->execute();
 
     json_response([
-        'data' => array_map('shape_report_row', $statement->fetchAll()),
+        'data' => array_map(
+            fn ($row) => shape_for_viewer(shape_report_row($row), (int) $row['reporter_id'], $viewer),
+            $statement->fetchAll()
+        ),
         'meta' => [
             'page' => $page,
             'per_page' => $perPage,
@@ -1028,6 +1060,16 @@ function report_detail(int $id): never
         json_error('That report does not exist.', 404);
     }
 
+    // After the existence check on purpose: a missing report stays a 404 for
+    // everybody, and whether one exists is no secret — the public list names
+    // every report. What a guest may not have is the detail.
+    $viewer = current_user();
+    if ($viewer === null) {
+        json_error("Sign in or create an account to see this report's details.", 401, [
+            'code' => 'auth_required',
+        ]);
+    }
+
     $report = shape_report_row($row);
 
     // Photographs.
@@ -1048,14 +1090,15 @@ function report_detail(int $id): never
     // Case history, oldest first, with the name of whoever made each change.
     $history = db()->prepare(
         'SELECT s.log_id, s.previous_status, s.new_status, s.note, s.created_at,
-                u.full_name AS actor_name
+                u.full_name AS actor_name, s.updated_by_user_id AS actor_id,
+                u.role AS actor_role
            FROM status_logs s
       LEFT JOIN users u ON u.user_id = s.updated_by_user_id
           WHERE s.report_id = :id
           ORDER BY s.created_at ASC, s.log_id ASC'
     );
     $history->execute([':id' => $id]);
-    $report['history'] = $history->fetchAll();
+    $historyRows = $history->fetchAll();
 
     // Contact details are private unless the reporter chose to publish them
     // (CLAUDE.md §14). The columns are filtered out here, on the server, so an
@@ -1079,11 +1122,40 @@ function report_detail(int $id): never
     //
     // Only for somebody entitled to edit the report. To everybody else the
     // payload is byte-for-byte what it was.
-    $viewer = current_user();
-    $mayEdit = $viewer !== null && (
-        (int) $viewer['user_id'] === (int) $row['reporter_id']
-        || in_array($viewer['role'], ['staff', 'admin'], true)
-    );
+    $mayEdit = (int) $viewer['user_id'] === (int) $row['reporter_id']
+        || in_array($viewer['role'], ['staff', 'admin'], true);
+
+    // The case history. Everybody signed in sees every status change and when
+    // it happened. The people on the case — the reporter, coordinators,
+    // administrators — also see who made each change and the note written
+    // with it. Anybody else sees a role instead of a name and no note: a
+    // closure reason or a moderation decision is written for the reporter,
+    // not for the neighbourhood. Decided by who is viewing, never by what the
+    // note happens to say.
+    $report['history'] = array_map(function (array $entry) use ($mayEdit, $row): array {
+        $actorId = $entry['actor_id'] === null ? null : (int) $entry['actor_id'];
+        $shaped = [
+            'log_id' => (int) $entry['log_id'],
+            'previous_status' => $entry['previous_status'],
+            'new_status' => $entry['new_status'],
+            'note' => $entry['note'],
+            'created_at' => $entry['created_at'],
+            'actor_name' => $entry['actor_name'],
+        ];
+
+        if (!$mayEdit) {
+            $shaped['note'] = null;
+            $shaped['actor_name'] = match (true) {
+                $actorId === null => null,
+                $actorId === (int) $row['reporter_id'] => 'Reporter',
+                $entry['actor_role'] === 'staff' => 'Pet Coordinator',
+                $entry['actor_role'] === 'admin' => 'Administrator',
+                default => null,
+            };
+        }
+
+        return $shaped;
+    }, $historyRows);
 
     if ($mayEdit) {
         $report['contact_preferences'] = [
@@ -1097,9 +1169,42 @@ function report_detail(int $id): never
         // Nobody else receives more than the published grid point.
         $report['location']['lat'] = $row['latitude'] === null ? null : (float) $row['latitude'];
         $report['location']['lng'] = $row['longitude'] === null ? null : (float) $row['longitude'];
+    } else {
+        // Which account filed it is the reporter's and staff's business. The
+        // name is still shown — the profile says it will be — and contact
+        // details still follow the per-report choices above.
+        unset($report['reporter_id'], $report['reporter']['user_id']);
     }
 
     json_response(['data' => $report]);
+}
+
+/**
+ * Cut a list row down to what this viewer may have.
+ *
+ *   guest            the public summary: what identifies a pet at a glance, and
+ *                    where roughly. No description, markings, condition, time,
+ *                    place name or account id — those need a session.
+ *   signed in        the full row, but `reporter_id` only on their own reports.
+ *   staff, admin     everything; the records and queues need the account id.
+ */
+function shape_for_viewer(array $report, int $reporterId, ?array $viewer): array
+{
+    if ($viewer === null) {
+        unset(
+            $report['description'], $report['distinct_features'], $report['has_collar'],
+            $report['condition'], $report['incident_time'], $report['updated_at'],
+            $report['reporter_id'], $report['location']['label']
+        );
+        return $report;
+    }
+
+    $isStaff = in_array($viewer['role'], ['staff', 'admin'], true);
+    if (!$isStaff && $reporterId !== (int) $viewer['user_id']) {
+        unset($report['reporter_id']);
+    }
+
+    return $report;
 }
 
 /** A stored coordinate, snapped to PUBLIC_COORDINATE_GRID. */

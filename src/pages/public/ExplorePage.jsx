@@ -225,7 +225,7 @@ export function ExplorePage() {
                 aria-keyshortcuts="/"
                 value={searchDraft}
                 onChange={(event) => setSearchDraft(event.target.value)}
-                placeholder="Search by breed, colour, markings, pet name or place"
+                placeholder="Search by pet name, breed, colour or place"
                 className="h-12 w-full rounded-control border border-border-strong bg-panel pr-4 pl-11 text-base text-fg shadow-raised placeholder:text-fg-muted"
               />
             </div>

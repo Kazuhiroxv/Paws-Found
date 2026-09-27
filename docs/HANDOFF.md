@@ -71,7 +71,7 @@ broken, the cause is on Railway, not on a laptop.
 
 | Role | What it is |
 | --- | --- |
-| **Guest** | Not signed in. Can browse reports, search, filter, view the map and read a report. Cannot file anything. |
+| **Guest** | Not signed in. Can browse the list and the map, search and filter, and see each report's public summary (photo, species, breed, colours, area, date, status). Opening a full report asks them to sign in; the API answers `401 auth_required`. Cannot file anything. |
 | **Customer / User** | A community member. Files lost and found reports, uploads photos, reviews possible matches, submits and answers match claims, manages their own reports and profile. |
 | **Staff / Pet Coordinator** | Reviews reports and possible matches, compares a lost case against a found one, requests more information, moves statuses, keeps case notes. Not an administrator. |
 | **Administrator** | Manages accounts and roles, manages pet categories, moderates flagged content, reviews system activity. Not everyday case processing. |
@@ -448,10 +448,10 @@ All run on 27 September 2026 unless noted. Commands and prerequisites:
 | `npm run build` | green | — |
 | `npm run test:contract` | **13/13** | nothing running |
 | `npm run test:mail` | **15/15** | `php` on PATH; one check calls Brevo |
-| `npm run audit` | **178/178** | API + database |
+| `npm run audit` | **205/205** | API + database |
 | `python scripts/auth_lifecycle.py` | **53/53** | API + database, local only |
 | `npm run multi-device` | **55/55** local | API + database |
-| `npm run a11y` | 29 pages, **zero violations** | the dev build |
+| `npm run a11y` | 31 pages, **zero violations** | the dev build (`PAWS_BASE=http://localhost:5173`) |
 | `docker build --pull --no-cache` | clean, one MPM, `Syntax OK` | Docker |
 | `npm run verify:deploy` against production | **25/25 + 3 skipped** (read-only default; `--upload` for 28) | the live URL |
 
@@ -519,3 +519,10 @@ Stated plainly so nobody rediscovers them the hard way.
   demonstration; the reason the live URL should not be shared widely while they
   exist.
 - **`origin`'s push URL is disabled on purpose.** Do not re-enable it casually.
+- **`match_claims.staff_notes` can be written but not read.** A coordinator's
+  note on a pairing decision is stored, and no endpoint returns it to anybody,
+  staff included. That is safe, not leaky; it becomes a gap only if the staff
+  UI needs to show those notes. Left alone on purpose until it does.
+- **`htdocs/pawsandfound` holds a stale copy of the frontend** (its `api/` is a
+  symlink to the repository, the rest is a September 25 build). `npm run a11y`
+  defaults to it; point it at the dev server instead, as above.

@@ -70,7 +70,7 @@ skips that one check when there is no network.
 
 **Mutates nothing.** Sends no real email.
 
-### `npm run audit` — 178 checks
+### `npm run audit` — 205 checks
 
 The security and functional suite, against the running API and database.
 
@@ -85,6 +85,17 @@ The security and functional suite, against the running API and database.
 | G. Functional | 44 |
 | H. Error handling | 10 |
 | I. Location privacy | 8 |
+| J. Report access | 27 |
+
+`RA-01`–`RA-27` pin down who receives what. A guest's list row is exactly the
+public summary, a guest opening a report gets `401 auth_required` (a missing
+one is still 404), and guest search cannot find a word that exists only in a
+description or the markings. Another member gets no `reporter_id`, no history
+notes, and roles instead of names; the owner and staff still get all three.
+Contact details still follow each report's sharing choice. Pairings need a
+session, a customer sees only pairings involving their own reports, and staff
+and administrators see all of them. Run against the previous API, 19 of these
+fail.
 
 `LP-01`–`LP-08` pin down the location promise. The database keeps the pin as
 dropped. Anybody who is not the reporter or staff (a guest or another signed-in
@@ -139,10 +150,17 @@ locally.
 
 **Mutates data.** Restores at the end.
 
-### `npm run a11y` — 29 pages
+### `npm run a11y` — 31 pages
 
 axe-core over every page in every role. Zero violations is the standard, not
-the aspiration.
+the aspiration. The report page is audited three ways: the guest sign-in gate,
+the owner's view and another member's view.
+
+Point it at the current code: `PAWS_BASE=http://localhost:5173 npm run a11y`
+with the dev server running. Its default, `localhost/pawsandfound`, serves
+whatever frontend was last copied into htdocs. It fails outright if a signed-in
+page bounces to /login, which is how it once reported sixteen workspaces clean
+while auditing the sign-in form.
 
 axe cannot judge text over a photograph, which is why contrast on the hero was
 measured separately by sampling pixels.
@@ -201,10 +219,10 @@ lint                                     clean
 build                                    green
 test:contract                            13/13
 test:mail                                15/15
-audit                                   178/178
+audit                                   205/205
 auth_lifecycle                           53/53
 multi-device                             55/55   (53/53 + 2 skipped vs a remote)
-a11y                                     29 pages, 0 violations
+a11y                                     31 pages, 0 violations
 docker build --pull --no-cache           clean, curl present, one MPM, Syntax OK
 verify:deploy vs production              25/25 + 3 skipped (read-only default)
 verify:deploy --upload vs local XAMPP    27/28   (7.1, correctly, on plain HTTP)

@@ -10,6 +10,21 @@ const DOT_COLOURS = {
 }
 
 /**
+ * What each status means, for an entry that arrives without a note.
+ *
+ * Somebody who is not on the case gets the status and the date but not the
+ * note written with it — the API withholds it (a closure or moderation reason
+ * is for the reporter, not the neighbourhood). The line is derived from the
+ * status alone, so it can never say more than the status does.
+ */
+const STATUS_COPY = {
+  [REPORT_STATUSES.ACTIVE]: 'The report is open and being compared with new reports.',
+  [REPORT_STATUSES.POSSIBLE_MATCH]: 'A possible match is being reviewed.',
+  [REPORT_STATUSES.RETURNED]: 'Marked as returned home.',
+  [REPORT_STATUSES.CLOSED]: 'The report was closed.',
+}
+
+/**
  * A report's history, oldest first.
  *
  * Rendered straight from `statusHistory`, which is appended to and never
@@ -48,7 +63,7 @@ export function Timeline({ entries, actorNames = {} }) {
               <p className="text-sm font-medium text-fg">
                 {REPORT_STATUS_LABELS[entry.status] ?? entry.status}
               </p>
-              {entry.note && <p className="text-sm text-fg-muted">{entry.note}</p>}
+              <p className="text-sm text-fg-muted">{entry.note || STATUS_COPY[entry.status]}</p>
               <p className="text-sm text-fg-muted">
                 {formatDateTime(entry.createdAt)}
                 {actorNames[entry.actorId] && ` · ${actorNames[entry.actorId]}`}

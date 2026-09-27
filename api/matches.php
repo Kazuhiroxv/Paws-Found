@@ -7,6 +7,9 @@
  *   GET   /api/matches/3             one pairing
  *   PATCH /api/matches/3             act on a pairing (see ACTIONS below)
  *
+ * Every route needs a session. A customer reads only pairings that involve one
+ * of their own reports; staff and administrators read all of them.
+ *
  * Every response carries the seven comparison signals, because the wording rule
  * (CLAUDE.md §6.5) requires this to be shown as a *possible* match with its
  * reasoning visible — never as a conclusion.
@@ -428,10 +431,29 @@ function notify_both(array $match, string $type, string $title, ?string $body): 
     }
 }
 
+/**
+ * Pairings are not public.
+ *
+ * They used to be: anybody could list every pairing, and the comparison
+ * sentences restate what the two reports say ("Both locations are in Barangay
+ * San Antonio, Makati City"), so a guest could read through here what the
+ * report detail no longer shows them. A customer sees only the pairings that
+ * involve one of their own reports; coordinators and administrators see all
+ * of them, which their workspaces need.
+ */
 function matches_list(): never
 {
+    $viewer = require_login();
+    $isStaff = in_array($viewer['role'], ['staff', 'admin'], true);
+
     $where = [];
     $params = [];
+
+    if (!$isStaff) {
+        $where[] = '(lr.user_id = :me_a OR fr.user_id = :me_b)';
+        $params[':me_a'] = (int) $viewer['user_id'];
+        $params[':me_b'] = (int) $viewer['user_id'];
+    }
 
     if (($reportId = query_string_param('report_id')) !== null) {
         $where[] = '(m.lost_report_id = :report_a OR m.found_report_id = :report_b)';
@@ -440,6 +462,11 @@ function matches_list(): never
     }
 
     if (($userId = query_string_param('user_id')) !== null) {
+        // Asking by somebody else's id is refused rather than quietly answered
+        // with your own pairings, so a mistake is visible as one.
+        if (!$isStaff && (int) $userId !== (int) $viewer['user_id']) {
+            json_error('You can only list your own pairings.', 403);
+        }
         $where[] = '(lr.user_id = :user_a OR fr.user_id = :user_b)';
         $params[':user_a'] = (int) $userId;
         $params[':user_b'] = (int) $userId;
@@ -471,15 +498,13 @@ function matches_list(): never
     $statement->execute($params);
     $rows = $statement->fetchAll();
 
-    // Read once, not per row: with_signals() would otherwise re-query the
-    // account for every pairing in the list.
-    $viewer = current_user();
-
     json_response(['data' => array_map(fn ($row) => with_signals($row, $viewer), $rows)]);
 }
 
 function match_detail(int $id): never
 {
+    $viewer = require_login();
+
     $statement = db()->prepare(
         'SELECT m.match_id, m.lost_report_id, m.found_report_id, m.match_score,
                 m.match_status, m.proof_notes, m.created_at, m.updated_at,
@@ -497,17 +522,22 @@ function match_detail(int $id): never
         json_error('That match does not exist.', 404);
     }
 
-    json_response(['data' => with_signals($row, current_user())]);
+    // The same people who may read the proof: the two reporters and staff.
+    if (!may_read_proof($row, $viewer)) {
+        json_error('You can only see pairings that involve one of your reports.', 403);
+    }
+
+    json_response(['data' => with_signals($row, $viewer)]);
 }
 
 /**
  * May this viewer read the proof a claimant offered?
  *
  * Only the two people whose reports are paired, and the coordinators who have
- * to judge the claim. The pairing itself is public — both reports already are,
- * and the signals only restate what those reports say — but the identifying
- * detail somebody gives to prove ownership is exactly what an impostor would
- * need in order to repeat it (CLAUDE.md §6.6).
+ * to judge the claim. Since pairings stopped being public the same rule also
+ * decides who may see a pairing at all. The proof still matters most: the
+ * identifying detail somebody gives to prove ownership is exactly what an
+ * impostor would need in order to repeat it (CLAUDE.md §6.6).
  */
 function may_read_proof(array $row, ?array $viewer): bool
 {
