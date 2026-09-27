@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ChevronDown,
   Flag,
@@ -228,8 +228,32 @@ const TOPIC_ICON_INK = {
   'reporting-abuse': 'text-danger-hover',
 }
 
+/**
+ * The search placeholder, sized to the field. The full example did not fit a
+ * phone-width input and was cut off mid-word; shrinking the text to make it
+ * fit would have made the field harder to read, so the words change instead.
+ * 640px is Tailwind's `sm`, where the field is wide enough for the long one.
+ */
+const WIDE_ENOUGH = '(min-width: 640px)'
+const PLACEHOLDER_LONG = 'Search help topics, e.g. collar, match or handover'
+const PLACEHOLDER_SHORT = 'Search help topics'
+
+function useSearchPlaceholder() {
+  const [isWide, setIsWide] = useState(() => window.matchMedia(WIDE_ENOUGH).matches)
+
+  useEffect(() => {
+    const query = window.matchMedia(WIDE_ENOUGH)
+    const update = () => setIsWide(query.matches)
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
+
+  return isWide ? PLACEHOLDER_LONG : PLACEHOLDER_SHORT
+}
+
 export function HelpPage() {
   const [query, setQuery] = useState('')
+  const placeholder = useSearchPlaceholder()
   const needle = query.trim().toLowerCase()
 
   // Matches a topic by its own words or by any of its questions, so typing
@@ -300,7 +324,7 @@ export function HelpPage() {
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search help — try “collar”, “match” or “handover”"
+                placeholder={placeholder}
                 className="h-14 w-full rounded-control border border-border-strong bg-panel pr-4 pl-12 text-base text-fg shadow-raised placeholder:text-fg-muted"
               />
             </label>
