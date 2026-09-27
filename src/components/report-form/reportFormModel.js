@@ -64,7 +64,10 @@ export function createEmptyValues(reportType) {
     lat: null,
     lng: null,
     condition: '',
-    hasCollar: 'unknown',
+    // Unanswered until the finder answers. "Not sure" is a real answer, so it
+    // must be chosen, not assumed: preselecting it meant a finder who skipped
+    // the question was recorded as having looked and not known.
+    hasCollar: '',
     photos: [],
     allowPlatformContact: true,
     showPhone: false,
@@ -110,6 +113,10 @@ export function valuesFromReport(report) {
 
 const required = (value) => !String(value ?? '').trim()
 
+/** The species code for the catch-all category, and the collar answers. */
+export const OTHER_SPECIES = 'other'
+const COLLAR_ANSWERS = ['yes', 'no', 'unknown']
+
 /**
  * Validate one step. Returns `{ field: message }` — empty means the step passes.
  *
@@ -129,6 +136,14 @@ export function validateStep(stepId, values) {
       errors.petName = "Enter your pet's name, so people know what to call out."
     }
     if (required(values.species)) errors.species = 'Choose the kind of animal.'
+    // "Other" names no animal, so the breed field becomes "Please specify
+    // animal" and is required: the report has to say what it is about.
+    if (values.species === OTHER_SPECIES && required(values.breed)) {
+      errors.breed = 'Tell us what kind of animal this is.'
+    }
+    if (isFound && !COLLAR_ANSWERS.includes(values.hasCollar)) {
+      errors.hasCollar = 'Choose Yes, No, or Not sure.'
+    }
     if (required(values.size)) errors.size = 'Choose a size.'
     if (required(values.primaryColor)) {
       errors.primaryColor = 'Enter the main colour — it is one of the first things people notice.'
@@ -160,6 +175,11 @@ export function validateStep(stepId, values) {
         : 'Describe where your pet was last seen.'
     }
     if (required(values.city)) errors.city = 'Enter the city or municipality.'
+    // A report nobody can answer helps nobody. Any one way will do; which is
+    // the reporter's choice.
+    if (!values.allowPlatformContact && !values.showPhone && !values.showEmail) {
+      errors.contact = 'Choose at least one way people or Pet Coordinators can reach you.'
+    }
     if (required(values.province)) errors.province = 'Enter the province.'
 
     if (required(values.description)) {

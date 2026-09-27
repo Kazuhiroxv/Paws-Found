@@ -70,7 +70,7 @@ skips that one check when there is no network.
 
 **Mutates nothing.** Sends no real email.
 
-### `npm run audit` — 253 checks
+### `npm run audit` — 261 checks
 
 The security and functional suite, against the running API and database.
 
@@ -88,6 +88,7 @@ The security and functional suite, against the running API and database.
 | J. Report access | 27 |
 | K. Information requests | 17 |
 | L. Report editing | 31 |
+| M. Report QA rules | 8 |
 
 `RA-01`–`RA-27` pin down who receives what. A guest's list row is exactly the
 public summary, a guest opening a report gets `401 auth_required` (a missing
@@ -118,6 +119,11 @@ earliest left; five is the limit; another report's photo cannot be touched;
 and no report anywhere ends up with zero or several main photos. Non-owners get
 403, guests 401, and a closed report refuses edits, photo changes and uploads.
 Run against the API before this change, 20 of them fail.
+
+`QA-01`–`QA-08` are the final QA rules, enforced by the server as well as the
+form: a found report must answer the collar question, and "not sure" is a
+valid answer; a report must keep at least one contact method, on filing and on
+edit; and "Other" stores the named animal in breed.
 
 `LP-01`–`LP-08` pin down the location promise. The database keeps the pin as
 dropped. Anybody who is not the reporter or staff (a guest or another signed-in
@@ -241,7 +247,7 @@ lint                                     clean
 build                                    green
 test:contract                            13/13
 test:mail                                15/15
-audit                                   253/253
+audit                                   261/261
 auth_lifecycle                           53/53
 multi-device                             55/55   (53/53 + 2 skipped vs a remote)
 a11y                                     31 pages, 0 violations

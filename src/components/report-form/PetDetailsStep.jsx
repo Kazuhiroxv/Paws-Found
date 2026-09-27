@@ -1,7 +1,7 @@
 import { Input, Select, Textarea } from '@/components/ui'
 import { PET_SEX_LABELS, PET_SIZE_LABELS, REPORT_TYPES } from '@/constants'
 import { optionsFromLabels } from '@/utils/options'
-import { LIMITS } from './reportFormModel'
+import { LIMITS, OTHER_SPECIES } from './reportFormModel'
 
 /**
  * Step 1 — what the animal looks like.
@@ -37,20 +37,41 @@ export function PetDetailsStep({ values, errors, onChange, speciesOptions = [] }
           label="Species"
           required
           value={values.species}
-          onChange={(event) => onChange('species', event.target.value)}
+          onChange={(event) => {
+            const next = event.target.value
+            // Switching into or out of "Other" changes what the next field
+            // means, so its value goes: "Turtle" is not a dog's breed, and a
+            // dog's breed is not an animal.
+            if ((values.species === OTHER_SPECIES) !== (next === OTHER_SPECIES)) onChange('breed', '')
+            onChange('species', next)
+          }}
           error={errors.species}
           placeholder="Choose one"
           options={speciesOptions}
         />
 
-        <Input
-          label="Breed"
-          value={values.breed}
-          onChange={(event) => onChange('breed', event.target.value)}
-          maxLength={LIMITS.breed}
-          placeholder="e.g. Shih Tzu, Aspin, Puspin"
-          hint="An honest guess is fine."
-        />
+        {/* The same `breed` value either way; for "Other" it names the animal
+            (the API stores it under the Other category just like a breed). */}
+        {values.species === OTHER_SPECIES ? (
+          <Input
+            label="Please specify animal"
+            required
+            value={values.breed}
+            onChange={(event) => onChange('breed', event.target.value)}
+            maxLength={LIMITS.breed}
+            placeholder="e.g. Rabbit, Parrot, Turtle"
+            error={errors.breed}
+          />
+        ) : (
+          <Input
+            label="Breed"
+            value={values.breed}
+            onChange={(event) => onChange('breed', event.target.value)}
+            maxLength={LIMITS.breed}
+            placeholder="e.g. Shih Tzu, Aspin, Puspin"
+            hint="An honest guess is fine."
+          />
+        )}
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
@@ -115,8 +136,11 @@ export function PetDetailsStep({ values, errors, onChange, speciesOptions = [] }
         <div className="grid gap-5 sm:grid-cols-2">
           <Select
             label="Was it wearing a collar?"
+            required
             value={values.hasCollar}
             onChange={(event) => onChange('hasCollar', event.target.value)}
+            placeholder="Choose one"
+            error={errors.hasCollar}
             options={[
               { value: 'yes', label: 'Yes' },
               { value: 'no', label: 'No' },

@@ -2,6 +2,7 @@ import { Checkbox, Input, Textarea } from '@/components/ui'
 import { LocationPicker } from '@/components/LazyMaps'
 import { REPORT_TYPES } from '@/constants'
 import { todayAsInputValue } from '@/utils/date'
+import { cn } from '@/utils/cn'
 import { LIMITS } from './reportFormModel'
 
 /**
@@ -95,8 +96,17 @@ export function LocationDateStep({ values, errors, onChange }) {
         hint="What happened, and how the pet behaves around strangers."
       />
 
-      <fieldset className="flex flex-col gap-3 rounded-card border border-border p-4">
-        <legend className="px-1 text-sm font-medium text-fg">How can people reach you?</legend>
+      <fieldset
+        className={cn(
+          'flex flex-col gap-3 rounded-card border p-4',
+          errors.contact ? 'border-danger' : 'border-border',
+        )}
+        aria-describedby={errors.contact ? 'contact-error' : undefined}
+        aria-invalid={errors.contact ? true : undefined}
+      >
+        <legend className="px-1 text-sm font-medium text-fg">
+          How can people reach you? <span className="text-danger" aria-hidden="true">*</span>
+        </legend>
 
         <p className="text-sm text-fg-muted">
           Nothing here is shown publicly unless you tick it. Messages through the platform
@@ -119,6 +129,12 @@ export function LocationDateStep({ values, errors, onChange }) {
           checked={values.showEmail}
           onChange={(event) => onChange('showEmail', event.target.checked)}
         />
+
+        {errors.contact && (
+          <p id="contact-error" className="text-sm font-medium text-danger">
+            {errors.contact}
+          </p>
+        )}
       </fieldset>
     </div>
   )

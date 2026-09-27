@@ -14,6 +14,7 @@ import { Button, Modal } from '@/components/ui'
  * @param {() => void} props.onConfirm
  * @param {string} props.title         e.g. "Suspend Rico Panganiban?"
  * @param {string} props.confirmLabel  The action, in words.
+ * @param {string} [props.cancelLabel]  The way back, in words. "Cancel" by default.
  * @param {'danger'|'primary'} [props.tone]  Red for anything destructive.
  * @param {boolean} [props.isBusy]
  * @param {boolean} [props.confirmDisabled]
@@ -27,6 +28,7 @@ export function ConfirmDialog({
   onConfirm,
   title,
   confirmLabel,
+  cancelLabel = 'Cancel',
   tone = 'danger',
   isBusy = false,
   confirmDisabled = false,
@@ -42,7 +44,7 @@ export function ConfirmDialog({
       footer={
         <>
           <Button variant="ghost" onClick={onCancel} disabled={isBusy} data-autofocus>
-            Cancel
+            {cancelLabel}
           </Button>
           <Button variant={tone} isLoading={isBusy} disabled={confirmDisabled} onClick={onConfirm}>
             {confirmLabel}

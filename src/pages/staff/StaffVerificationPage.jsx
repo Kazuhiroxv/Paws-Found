@@ -299,17 +299,20 @@ function DecisionPanel({ match, staff, lost, found, owner, finder, replies, onDe
         </p>
       )}
 
-      {/* Confirm and ask sit together on the left; ruling out sits apart on
-          the right from `sm`, and below a divider on a phone, so it is never
-          a slip away from Confirm. */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Button onClick={() => setAsking('confirm')} disabled={Boolean(busyAction)}>
+      {/* One column, full width, at every size. Side by side, three long
+          labels were squeezed into this 24rem panel until they wrapped into
+          each other and "Not the same pet" showed as "the same". Confirm and
+          ask sit together; ruling out sits below a divider, so it is never a
+          slip away from Confirm. */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
+          <Button onClick={() => setAsking('confirm')} disabled={Boolean(busyAction)} fullWidth>
             <Check size={16} aria-hidden="true" />
             Confirm match
           </Button>
           <Button
             variant="secondary"
+            fullWidth
             isLoading={busyAction === 'info'}
             disabled={Boolean(busyAction) || !note.trim()}
             onClick={() =>
@@ -323,12 +326,12 @@ function DecisionPanel({ match, staff, lost, found, owner, finder, replies, onDe
             Request more information
           </Button>
         </div>
-        <div className="border-t border-border pt-3 sm:ml-auto sm:border-0 sm:pt-0">
+        <div className="border-t border-border pt-3">
           <Button
             variant="danger"
             onClick={() => setAsking('reject')}
             disabled={Boolean(busyAction)}
-            className="w-full sm:w-auto"
+            fullWidth
           >
             <X size={16} aria-hidden="true" />
             Not the same pet

@@ -1113,6 +1113,33 @@ def report_editing():
     check(C, 'ED-31', '...and new photos', 409, code, code == 409)
 
 
+def qa_rules():
+    """Avery's QA rules, held by the server as well as the form."""
+    C = 'M. Report QA rules'
+    _, code = file_report('finder', report_type='found', pet_name=None, has_collar=None)
+    check(C, 'QA-01', 'A found report must answer the collar question', 422, code, code == 422)
+    rid, code = file_report('finder', report_type='found', pet_name=None, has_collar='unknown')
+    check(C, 'QA-02', '"Not sure" is a valid, deliberate answer', 200, code, code == 200)
+    status(C, 'QA-03', "A found report's collar answer cannot be blanked on edit", 'finder', 'PUT',
+           f'/reports/{rid}', {'has_collar': ''}, 422)
+
+    _, code = file_report('customer', allow_platform_contact=False, show_phone=False, show_email=False)
+    check(C, 'QA-04', 'A report nobody can reach is refused', 422, code, code == 422)
+    _, code = file_report('customer', allow_platform_contact=False, show_email=True)
+    check(C, 'QA-05', 'Any one way is enough (email only)', 200, code, code == 200)
+    mine, _ = file_report('customer')
+    status(C, 'QA-06', 'An edit cannot switch off every way', 'customer', 'PUT', f'/reports/{mine}',
+           {'allow_platform_contact': False, 'show_phone': False, 'show_email': False}, 422)
+    kept = sql(f'SELECT CONCAT(allow_platform_contact, show_phone, show_email) FROM pet_reports WHERE report_id = {mine};')
+    check(C, 'QA-07', '...and the report keeps its contact method', '100', kept, kept == '100')
+
+    other, code = file_report('customer', species='other', breed='Turtle', pet_name='Shelly')
+    got = sql('SELECT CONCAT(c.category_code, "/", b.breed_name) FROM pet_reports r '
+              'JOIN pet_categories c ON c.category_id = r.category_id '
+              f'JOIN pet_breeds b ON b.breed_id = r.breed_id WHERE r.report_id = {other};')
+    check(C, 'QA-08', '"Other" stores the named animal in breed', 'other/Turtle', got, got == 'other/Turtle')
+
+
 def error_handling():
     C = 'H. Error handling'
     status(C, 'EH-01', 'A report that does not exist', 'guest', 'GET', '/reports/99999', None, 404)
@@ -1217,6 +1244,7 @@ if __name__ == '__main__':
     access_control()
     information_reply()
     report_editing()
+    qa_rules()
     total, passed = report()
 
     reseed()

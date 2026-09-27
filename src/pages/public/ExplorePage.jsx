@@ -270,9 +270,11 @@ export function ExplorePage() {
                 value={searchDraft}
                 onChange={(event) => setSearchDraft(event.target.value)}
                 placeholder={placeholder}
-                className="h-12 w-full rounded-control border border-border-strong bg-panel pr-4 pl-11 text-base text-fg shadow-raised placeholder:text-fg-muted"
+                className="h-13 w-full rounded-control border border-border-strong bg-panel pr-4 pl-11 text-base text-fg shadow-raised placeholder:text-fg-muted"
               />
             </div>
+            {/* The field is 52px, the large button's height, so the two meet
+                edge to edge; it was 48px beside a 52px button. */}
             <Button type="submit" size="lg" className="sm:min-w-30">
               Search
             </Button>

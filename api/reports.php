@@ -170,7 +170,8 @@ function report_create(): never
 
     $size = require_one_of(blank_to_null($body['size'] ?? null), ['small', 'medium', 'large'], 'size');
     $sex = require_one_of(blank_to_null($body['sex'] ?? null), ['male', 'female', 'unknown'], 'sex') ?? 'unknown';
-    $collar = require_one_of(blank_to_null($body['has_collar'] ?? null), ['yes', 'no', 'unknown'], 'has_collar') ?? 'unknown';
+    $collar = report_collar($body['has_collar'] ?? null, $type);
+    $contact = report_contact_choices($body, null);
 
     $pdo = db();
 
@@ -226,9 +227,9 @@ function report_create(): never
             ':pet_condition' => blank_to_null($body['condition'] ?? null),
             ':incident_date' => $incidentDate,
             ':incident_time' => blank_to_null($body['incident_time'] ?? null),
-            ':allow_contact' => !empty($body['allow_platform_contact']),
-            ':show_phone' => !empty($body['show_phone']),
-            ':show_email' => !empty($body['show_email']),
+            ':allow_contact' => $contact['allow_platform_contact'],
+            ':show_phone' => $contact['show_phone'],
+            ':show_email' => $contact['show_email'],
         ]);
         $reportId = (int) $pdo->lastInsertId();
 
@@ -264,7 +265,8 @@ function report_update(int $id): never
     report_open_for_owner($id, $user, 'Only the person who filed a report can edit it.');
 
     $current = db()->prepare(
-        'SELECT report_type, category_id, location_id
+        'SELECT report_type, category_id, location_id,
+                allow_platform_contact, show_phone, show_email
            FROM pet_reports WHERE report_id = :id'
     );
     $current->execute([':id' => $id]);
@@ -311,7 +313,7 @@ function report_update(int $id): never
         $report['pet_sex'] = require_one_of(blank_to_null($body['sex']), ['male', 'female', 'unknown'], 'sex') ?? 'unknown';
     }
     if (array_key_exists('has_collar', $body)) {
-        $report['has_collar'] = require_one_of(blank_to_null($body['has_collar']), ['yes', 'no', 'unknown'], 'has_collar') ?? 'unknown';
+        $report['has_collar'] = report_collar($body['has_collar'], $current['report_type']);
     }
     if (array_key_exists('incident_date', $body)) {
         $report['incident_date'] = report_incident_date($body['incident_date']);
@@ -327,12 +329,12 @@ function report_update(int $id): never
         $report['breed_id'] = breed_id_for((int) $current['category_id'], blank_to_null($body['breed']));
     }
 
-    // The three contact choices, each kept as it was unless it was sent.
-    // Integers, not PHP booleans: PDO binds false as '', which strict MySQL
-    // refuses for a BOOLEAN column.
+    // The three contact choices, each kept as it was unless it was sent, and
+    // never all three off afterwards.
     foreach (['allow_platform_contact', 'show_phone', 'show_email'] as $field) {
         if (array_key_exists($field, $body)) {
-            $report[$field] = empty($body[$field]) ? 0 : 1;
+            $report = [...$report, ...report_contact_choices($body, $current)];
+            break;
         }
     }
 
@@ -1032,6 +1034,48 @@ function report_incident_date(mixed $value): string
     }
 
     return $date;
+}
+
+/**
+ * Whether a found pet wore a collar: yes, no or unknown ("not sure"), and a
+ * finder must say which. Not sure is a real answer, so it is not assumed. A
+ * lost report does not ask, and keeps 'unknown'.
+ */
+function report_collar(mixed $value, string $type): string
+{
+    $answer = blank_to_null($value);
+    if ($type === 'found' && $answer === null) {
+        json_error('Say whether the pet was wearing a collar: yes, no or not sure.', 422, [
+            'fields' => ['has_collar' => 'Choose Yes, No, or Not sure.'],
+        ]);
+    }
+
+    return require_one_of($answer, ['yes', 'no', 'unknown'], 'has_collar') ?? 'unknown';
+}
+
+/**
+ * The three ways a report can be answered, never all three off: a report
+ * nobody can reach helps nobody. Each is taken from the request when sent,
+ * otherwise kept from the report (on an edit) or off (on a new one).
+ * Integers, not PHP booleans: PDO binds false as '', which strict MySQL
+ * refuses for a BOOLEAN column.
+ */
+function report_contact_choices(array $body, ?array $current): array
+{
+    $choices = [];
+    foreach (['allow_platform_contact', 'show_phone', 'show_email'] as $field) {
+        $choices[$field] = array_key_exists($field, $body)
+            ? (empty($body[$field]) ? 0 : 1)
+            : (int) ($current[$field] ?? 0);
+    }
+
+    if (array_sum($choices) === 0) {
+        json_error('Choose at least one way people or Pet Coordinators can reach you.', 422, [
+            'fields' => ['contact' => 'Choose at least one way people or Pet Coordinators can reach you.'],
+        ]);
+    }
+
+    return $choices;
 }
 
 /** A city or province: required, never blank. Create and edit. */

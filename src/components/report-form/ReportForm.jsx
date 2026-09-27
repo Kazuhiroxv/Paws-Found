@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Check, CircleCheck, X } from 'lucide-react'
 import { Button, Card, CardBody, CardFooter, RequiredNote } from '@/components/ui'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { REPORT_TYPES } from '@/constants'
 import { categoryService, userService, petService } from '@/services'
 import { useAsync } from '@/hooks/useAsync'
@@ -28,6 +29,9 @@ const loadActiveCategories = () => categoryService.getActiveCategories()
  */
 const STEPS_WITH_REQUIRED_FIELDS = ['details', 'incident']
 
+/** The three contact checkboxes, which are validated as one group. */
+const CONTACT_FIELDS = ['allowPlatformContact', 'showPhone', 'showEmail']
+
 /**
  * The lost/found reporting wizard.
  *
@@ -53,6 +57,7 @@ const STEPS_WITH_REQUIRED_FIELDS = ['details', 'incident']
  */
 export function ReportForm({ reportType, report, guidance }) {
   const isEditing = Boolean(report)
+  const [isAskingAboutPhoto, setIsAskingAboutPhoto] = useState(false)
   const navigate = useNavigate()
 
   const [values, setValues] = useState(() =>
@@ -90,10 +95,13 @@ export function ReportForm({ reportType, report, guidance }) {
     setValues((current) => ({ ...current, [field]: value }))
     // Clear a field's error as soon as it is touched, rather than making the
     // reporter press Next again to find out whether they fixed it.
+    // The contact choices share one error: ticking any of the three answers
+    // it, so touching any of them clears it.
+    const key = CONTACT_FIELDS.includes(field) ? 'contact' : field
     setErrors((current) => {
-      if (!current[field]) return current
+      if (!current[key]) return current
       const next = { ...current }
-      delete next[field]
+      delete next[key]
       return next
     })
   }
@@ -130,6 +138,22 @@ export function ReportForm({ reportType, report, guidance }) {
     const stepErrors = validateStep(step.id, values)
     setErrors(stepErrors)
     if (Object.keys(stepErrors).length > 0) return
+
+    // A new lost report with no photo gets one gentle question. Photos stay
+    // optional: somebody may have none to hand at 2am. Not asked of a finder,
+    // who may not have had the chance to take one, and not on an edit, where
+    // the owner has already been asked once.
+    if (
+      step.id === 'photos' &&
+      !isEditing &&
+      values.reportType === REPORT_TYPES.LOST &&
+      values.photos.length === 0 &&
+      !isAskingAboutPhoto
+    ) {
+      setIsAskingAboutPhoto(true)
+      return
+    }
+
     setStepIndex((index) => Math.min(index + 1, STEPS.length - 1))
   }
 
@@ -142,6 +166,11 @@ export function ReportForm({ reportType, report, guidance }) {
    * arrive before the navigation does, and a real report wizard is not the
    * place to invent a modal state machine for it.
    */
+  const continueWithoutPhoto = () => {
+    setIsAskingAboutPhoto(false)
+    setStepIndex((index) => Math.min(index + 1, STEPS.length - 1))
+  }
+
   const handleCancel = () => {
     const untouched = JSON.stringify(values) === JSON.stringify(startingValues.current)
     if (untouched || window.confirm('Discard this report? Nothing will be saved.')) {
@@ -265,7 +294,9 @@ export function ReportForm({ reportType, report, guidance }) {
 
           {Object.keys(errors).length > 0 && (
             <p role="alert" className="text-sm text-danger">
-              Please fix the highlighted {Object.keys(errors).length === 1 ? 'field' : 'fields'}{' '}
+              {/* "Check", not "fix" or "fill in": some of these are a date in
+                  the future or not enough to identify the pet, not blanks. */}
+              Please check the highlighted {Object.keys(errors).length === 1 ? 'field' : 'fields'}{' '}
               before continuing.
             </p>
           )}
@@ -319,6 +350,22 @@ export function ReportForm({ reportType, report, guidance }) {
 
       {guidance}
       </div>
+
+      {/* Never says a photo makes the matching faster: matching compares the
+          details, not the pictures. What a photo does is let people, and a
+          coordinator checking a claim, recognise the pet. */}
+      <ConfirmDialog
+        isOpen={isAskingAboutPhoto}
+        title="Continue without a photo?"
+        confirmLabel="Continue without photo"
+        cancelLabel="Go back and add a photo"
+        tone="primary"
+        onCancel={() => setIsAskingAboutPhoto(false)}
+        onConfirm={continueWithoutPhoto}
+      >
+        You can add one later. A clear photo makes it much easier for people and Pet
+        Coordinators to recognise and verify your pet.
+      </ConfirmDialog>
     </div>
   )
 }

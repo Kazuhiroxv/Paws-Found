@@ -191,6 +191,9 @@ def file_report(role, **overrides):
         'breed': 'Aspin (Philippine Native Dog)', 'size': 'medium', 'sex': 'male',
         'primary_color': 'Brown', 'distinct_features': 'A notched left ear',
         'incident_date': '2026-09-09', 'city': 'Pasay City', 'province': 'Metro Manila',
+        # As the form sends them: a report must be reachable some way, and a
+        # found report must answer the collar question (not sure is an answer).
+        'allow_platform_contact': True, 'has_collar': 'unknown',
     }
     body.update(overrides)
     code, payload = session(role).call('POST', '/reports', body)

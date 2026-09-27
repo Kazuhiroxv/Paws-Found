@@ -510,7 +510,9 @@ function SearchBand() {
           ]}
         />
 
-        <Button type="submit" size="lg" className="sm:min-w-32">
+        {/* The medium button, 44px, the height of the fields beside it; the
+            large one stood 8px taller than the select on its row. */}
+        <Button type="submit" size="md" className="sm:min-w-32">
           <Search size={18} aria-hidden="true" />
           Search
         </Button>

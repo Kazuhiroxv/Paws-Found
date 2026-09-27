@@ -33,8 +33,16 @@ export function LocationPicker({ reportType, lat, lng, onChange }) {
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium text-fg">Pin the area on a map</p>
+        {/* Removing the pin throws away where the pet was, so it looks like the
+            destructive action it is: the outlined danger style admin Suspend
+            uses, not a grey ghost that read as a label. */}
         {hasPin && (
-          <Button variant="ghost" size="sm" onClick={() => onChange(null, null)}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => onChange(null, null)}
+            className="border-danger/45 text-danger-hover hover:bg-danger-soft"
+          >
             <X size={14} aria-hidden="true" />
             Remove pin
           </Button>
