@@ -62,13 +62,20 @@ let signedInAs = null
 async function signIn(email) {
   if (signedInAs === email) return
   await page.goto(BASE + '/', { waitUntil: 'networkidle2' })
-  await page.evaluate(async (api, e) => {
-    await fetch(api + '/auth/login', {
+  // The API refuses any POST without the session's CSRF token, which /auth/me
+  // hands out. Without it this sign-in answered 403, every signed-in page
+  // redirected to /login, and the suite audited the sign-in form sixteen times
+  // while reporting sixteen workspaces clean.
+  const status = await page.evaluate(async (api, e) => {
+    const me = await (await fetch(api + '/auth/me', { credentials: 'include' })).json()
+    const response = await fetch(api + '/auth/login', {
       method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': me.csrf_token ?? '' },
       body: JSON.stringify({ email: e, password: 'demo1234' }),
     })
+    return response.status
   }, API, email)
+  if (status !== 200) throw new Error(`Could not sign in as ${email}: HTTP ${status}`)
   signedInAs = email
 }
 
@@ -81,6 +88,11 @@ for (const [who, route, label] of PAGES) {
   if (who !== 'guest') await signIn(who)
   await page.goto(BASE + route, { waitUntil: 'networkidle2' })
   await new Promise((r) => setTimeout(r, 1400))
+
+  // A signed-in page that bounced to /login is not the page this row names.
+  if (who !== 'guest' && new URL(page.url()).pathname.endsWith('/login')) {
+    throw new Error(`${label}: redirected to sign-in, so it was not audited`)
+  }
 
   await page.evaluate(AXE)
   // This callback runs inside the page, where window and document exist.
