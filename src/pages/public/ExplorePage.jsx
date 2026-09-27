@@ -172,11 +172,11 @@ export function ExplorePage() {
           heading above a form. */}
       <title>Explore reports · Paws&Found</title>
 
-      {/* IMG-008 is the whole band, not a cut-out: the cream-to-teal wave and
-          the dog and cat are one 3:1 illustration, with the left side left
-          clear for type. The text block is capped at half the width because
-          past that the artwork darkens and muted text would fall below AA. */}
-      <section className="relative isolate min-h-60 overflow-hidden rounded-card bg-brand-soft/60 lg:min-h-68">
+      {/* A compact band: this page's job is the results, and the hero used to
+          spend 272px on a heading before the map began. IMG-008 is now a
+          vignette on the right rather than the whole band — the search is the
+          subject, the dog and cat are the signature. */}
+      <section className="relative isolate overflow-hidden rounded-card bg-brand-soft/60">
         {/* Search sweeps behind the illustration, running off the band. */}
         <RadarOrnament tone="teal" size={460} className="-top-28 -left-24 lg:left-1/3" />
         {/* Shown from `lg` up only. The text column only narrows to half the
@@ -186,7 +186,7 @@ export function ExplorePage() {
         <img
           src={headerIllustration}
           alt=""
-          className="absolute inset-0 hidden size-full object-cover object-center lg:block"
+          className="absolute inset-y-0 right-0 hidden h-full w-[44%] object-cover object-[78%_50%] [mask-image:linear-gradient(to_right,transparent,black_30%)] lg:block"
         />
 
         {/* The illustration fades into the canvas instead of stopping at a
@@ -196,9 +196,9 @@ export function ExplorePage() {
           className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-surface"
         />
 
-        <div className="relative flex flex-col gap-6 px-6 py-8 sm:px-10 sm:py-10">
-          <div className="flex flex-col gap-2 lg:max-w-1/2">
-            <h1 className="text-[2.25rem] leading-[1.08] font-semibold tracking-tight text-balance text-fg sm:text-[2.75rem]">
+        <div className="relative flex flex-col gap-4 px-6 py-6 sm:px-8 sm:py-7">
+          <div className="flex flex-col gap-1.5 lg:max-w-[54%]">
+            <h1 className="text-[2rem] leading-[1.1] font-semibold tracking-tight text-balance text-fg sm:text-[2.25rem]">
               Explore reports
             </h1>
             {/* Full-strength ink, not `fg-muted`: on the tinted band muted text

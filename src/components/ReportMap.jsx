@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Circle, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
 import { ArrowRight, MapPinOff } from 'lucide-react'
@@ -76,6 +76,7 @@ export function ReportMap({ reports, showApproximateArea = false, height = 'h-96
         />
 
         <KeepMapSized />
+        <WheelZoomWhenChosen />
         <FitToReports positions={positions} />
 
         {mappable.map((report) => (
@@ -130,6 +131,66 @@ export function KeepMapSized() {
 }
 
 /**
+ * Mouse-wheel and trackpad zoom, once the map has been chosen.
+ *
+ * Always-on wheel zoom is a scroll trap: somebody scrolling down Explore lands
+ * the wheel on the map and it zooms instead of the page moving. So the wheel
+ * belongs to the page until the map is clicked or focused, and goes back to
+ * the page when the pointer leaves or focus moves on. A wheel over a map that
+ * has not been chosen yet says how to use it, briefly, instead of doing nothing.
+ *
+ * Unchanged: the +/− buttons, Leaflet's own keyboard controls (+, −, arrows
+ * once the map has focus), and pinch-zoom on a touchscreen, which is a separate
+ * handler. A trackpad pinch arrives as a wheel event and follows the same rule.
+ */
+export function WheelZoomWhenChosen() {
+  const map = useMap()
+  const [showHint, setShowHint] = useState(false)
+
+  useEffect(() => {
+    const container = map.getContainer()
+    let hintTimer
+
+    const enable = () => {
+      map.scrollWheelZoom.enable()
+      setShowHint(false)
+    }
+    const disable = () => map.scrollWheelZoom.disable()
+    const onWheel = () => {
+      if (map.scrollWheelZoom.enabled()) return
+      setShowHint(true)
+      clearTimeout(hintTimer)
+      hintTimer = setTimeout(() => setShowHint(false), 1600)
+    }
+
+    map.scrollWheelZoom.disable()
+    map.on('mousedown focus', enable)
+    map.on('mouseout blur', disable)
+    container.addEventListener('wheel', onWheel, { passive: true })
+
+    return () => {
+      clearTimeout(hintTimer)
+      map.off('mousedown focus', enable)
+      map.off('mouseout blur', disable)
+      container.removeEventListener('wheel', onWheel)
+    }
+  }, [map])
+
+  if (!showHint) return null
+
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 z-[1000] flex items-center justify-center bg-fg/25"
+    >
+      <p className="rounded-pill bg-panel px-4 py-2 text-sm font-medium text-fg shadow-raised">
+        Click the map to zoom with the scroll wheel
+      </p>
+    </div>
+  )
+}
+
+/**
  * Frame the map around whatever is being shown.
  *
  * Leaflet is an external system with its own imperative API, which is exactly
@@ -168,7 +229,7 @@ function ReportPopup({ report }) {
         <img
           src={photo?.url ?? photoPlaceholder}
           alt=""
-          className="aspect-4/3 w-full rounded-control bg-surface-muted object-cover"
+          className="aspect-4/3 w-full rounded-control bg-surface-muted object-cover object-[50%_35%]"
         />
         <ReportTypeBadge
           reportType={report.reportType}

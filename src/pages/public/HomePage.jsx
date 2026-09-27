@@ -61,7 +61,7 @@ export function HomePage() {
         {/* The richest environment on the site: two brand glows, the route
             pattern, and a search sweep running off the top-right corner. The
             hero panel is the foreground object standing on it. */}
-        <div className="hero-ground relative isolate overflow-hidden pb-4">
+        <div className="hero-ground relative isolate overflow-hidden">
           {/* IMG-018: the ground the opening stands on.
               
               Everything above this was an approximation of an illustration
@@ -292,7 +292,7 @@ function HeroFigure({ value, label }) {
  */
 function Promises() {
   return (
-    <section className="pb-14 sm:pb-16">
+    <section className="pb-10">
       <Container>
         <ul className="grid gap-x-6 gap-y-4 rounded-card border border-border/60 bg-panel/70 px-5 py-5 backdrop-blur-sm sm:px-7 md:grid-cols-3">
           {PROMISES.map((promise) => {
@@ -402,8 +402,16 @@ function ClosingCall() {
           </p>
         </div>
 
+        {/* The site-wide focus ring is brand teal, which is this band's own
+            background — on here it would be drawn and not seen. White instead. */}
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Button as={Link} to="/report/lost" variant="accent" size="lg">
+          <Button
+            as={Link}
+            to="/report/lost"
+            variant="accent"
+            size="lg"
+            className="focus-visible:outline-white"
+          >
             <TriangleAlert size={18} aria-hidden="true" />
             Report a lost pet
           </Button>
@@ -411,7 +419,7 @@ function ClosingCall() {
             as={Link}
             to="/report/found"
             size="lg"
-            className="border border-white/70 bg-white/10 text-fg-inverted hover:bg-white/20"
+            className="border border-white/70 bg-white/10 text-fg-inverted hover:bg-white/20 focus-visible:outline-white"
           >
             <PawPrint size={18} aria-hidden="true" />
             I found a pet
@@ -517,7 +525,7 @@ function RecentReports() {
   const { data: reports, error, isLoading } = useAsync(loadRecentReports)
 
   return (
-    <section className="pb-16 sm:pb-24">
+    <section className="pt-4 pb-14 sm:pb-16">
       {/* A sunken well behind the grid: the canvas dips, the cards stay white,
           and the group reads as one collection without another card around it. */}
       <Container className="flex flex-col gap-6">
@@ -612,13 +620,17 @@ function HowItWorks() {
   return (
     // A compact band: the four steps are a reference, not the reason anyone
     // came. The padding was spending more height than the content did.
-    <section className="relative isolate overflow-hidden bg-surface-alt py-12 sm:py-16">
+    <section className="relative isolate overflow-hidden bg-surface-alt pt-12 sm:pt-16">
       {/* The one band where the routes should be legible: this section is the
           search journey, so the pattern comes closer and the four steps are
           joined by a route rather than a dotted rule. */}
       <PatternVeil scale="near" fade={false} className="opacity-90" />
       <RadarOrnament tone="teal" size={460} className="-bottom-40 -left-40" />
-      <Container className="flex flex-col gap-8">
+      {/* Bottom padding on the content, not the section: the curve is the
+          section's real lower edge. With the padding below it, 64px of this
+          band's pale teal sat under the cream curve and read as a stray stripe
+          between the two chapters. */}
+      <Container className="flex flex-col gap-8 pb-12 sm:pb-16">
         <SectionHeading
           title="How Paws&Found works"
           description="Four steps from a missing pet to a confirmed reunion."
@@ -698,10 +710,11 @@ function Reunions() {
   const stories = reunions.slice(0, 3)
 
   return (
-    <section className="reunion-ground relative isolate overflow-hidden bg-warm-band py-14 sm:py-20">
+    <section className="reunion-ground relative isolate overflow-hidden bg-warm-band pt-14 sm:pt-16">
       <WovenVeil />
       <RouteOrnament tone="amber" size={520} className="-right-40 -bottom-16 rotate-6" />
-      <Container className="flex flex-col gap-10">
+      {/* Padding above the curve, as in HowItWorks, so the curve is the edge. */}
+      <Container className="flex flex-col gap-10 pb-14 sm:pb-16">
         {/* The chapter opening: what these cases are, and one photograph of
             what one looks like afterwards.
 
@@ -787,7 +800,7 @@ function ReunionStory({ report }) {
       <img
         src={photo?.url ?? photoPlaceholder}
         alt=""
-        className="aspect-16/10 w-full shrink-0 bg-surface-muted object-cover"
+        className="aspect-16/10 w-full shrink-0 bg-surface-muted object-cover object-[50%_35%]"
         loading="lazy"
       />
 

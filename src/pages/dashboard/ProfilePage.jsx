@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { Check, Lock, MailWarning, MapPin, Pencil, ShieldCheck, UserRound } from 'lucide-react'
+import {
+  Check, KeyRound, Lock, MailCheck, MailWarning, MapPin, Pencil, ShieldCheck, UserRound,
+} from 'lucide-react'
 import {
   Button, Card, CardBody, CardHeader, Checkbox, Input, LoadingSkeleton, RequiredNote,
 } from '@/components/ui'
@@ -13,7 +15,7 @@ const loadCurrentUser = () => userService.getCurrentUser()
 const header = (
   <PageHeader
     title="Profile"
-    description="Your contact details and what you want to be told about."
+    description="Your contact details, what you want to be told about, and your password."
     breadcrumb={[{ label: 'My dashboard', to: '/dashboard' }, { label: 'Profile' }]}
   />
 )
@@ -80,7 +82,89 @@ export function ProfilePage() {
     )
   }
 
-  return <ProfileForm key={user.id} user={user} onSaved={reload} />
+  return (
+    <div className="flex flex-col gap-6">
+      <ProfileForm key={user.id} user={user} onSaved={reload} />
+      <AccountSecurity email={user.email} />
+    </div>
+  )
+}
+
+/**
+ * Account & security: a password reset for somebody who is already signed in.
+ *
+ * Not a new password flow. It asks for exactly what "Forgot your password?"
+ * asks for — the same endpoint, the same one-hour link, the same rate limit,
+ * the same generic answer — sent to the verified address on this account. The
+ * reset itself happens on the page that link opens, and it bumps the account's
+ * session_version, which signs out every session including this one. The copy
+ * says so before anybody presses anything.
+ *
+ * Outside the profile form on purpose: that form is a disabled fieldset until
+ * "Edit profile" is pressed, and this should work without entering edit mode.
+ */
+function AccountSecurity({ email }) {
+  const [state, setState] = useState('idle') // idle | sending | sent
+  const [error, setError] = useState(null)
+
+  const sendLink = async () => {
+    setState('sending')
+    setError(null)
+
+    try {
+      await userService.forgotPassword(email)
+      setState('sent')
+    } catch (caught) {
+      // A rate limit (three an hour) or the server being unreachable. The
+      // server's own sentence says which, and when to try again.
+      setError(caught instanceof Error ? caught : new Error(String(caught)))
+      setState('idle')
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader titleAs="h2" title="Account & security" />
+      <CardBody className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-brand">
+            <KeyRound size={17} aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <h3 className="font-semibold text-fg">Reset password</h3>
+            <p className="mt-1 max-w-prose text-sm text-fg-muted">
+              We&apos;ll send a reset link to your verified email. Completing the reset will
+              sign you out on all devices.
+            </p>
+
+            {state === 'sent' && (
+              <p role="status" className="mt-3 flex items-start gap-2 text-sm text-success-ink">
+                <MailCheck size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+                <span>
+                  Check <strong className="font-medium">{email}</strong> for the link. It works
+                  once and expires in an hour; asking again replaces it.
+                </span>
+              </p>
+            )}
+            {error && (
+              <p role="alert" className="mt-3 text-sm text-danger">
+                The reset link could not be requested: {error.message}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <Button
+          variant="secondary"
+          onClick={sendLink}
+          isLoading={state === 'sending'}
+          className="w-full shrink-0 sm:w-auto"
+        >
+          {state === 'sending' ? 'Sending…' : state === 'sent' ? 'Send again' : 'Send reset link'}
+        </Button>
+      </CardBody>
+    </Card>
+  )
 }
 
 function ProfileForm({ user, onSaved }) {

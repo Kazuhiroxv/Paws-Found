@@ -60,6 +60,7 @@ replaced it in the redesign and the file has been deleted.
 | IMG-027 | `img-027-homepage-reunion.webp` | The homepage hero photograph | **High** | **Delivered** at 1448×1086, placed |
 | IMG-028 | `img-028-help-safety.webp` | The Help & community safety hero band | **High** | **Delivered** at 1896×829, placed |
 | IMG-029 | `img-029-about-community-hero.webp` | The About page hero band | **High** | **Delivered** at 2000×434, placed |
+| IMG-028b | `img-028b-help-guide.webp` | The Help hero's framed picture (replaces the IMG-028 crop) | **High** | Needed; IMG-028 stands in |
 
 ### What the generated mockups need, in detail
 
@@ -84,7 +85,28 @@ Philippine residential street in late-afternoon light, the owner crouched with
 their face outside the frame so the animal is what you look at. Placed on the
 homepage at `object-[52%_42%]`, which centres the crop on the dog's head.
 
-**IMG-028 — Help & safety.** A semi-flat illustration in the logo family:
+**IMG-028b — Help hero picture.** The Help hero is now a split layout: a pale
+teal band (`--color-surface-alt`, #f2f8f6), heading and search on the left, and
+the illustration framed as a picture on the right: a 4:3 card with rounded
+corners, a raised shadow and a hairline ring. It no longer sits behind any text.
+
+- **Source:** 1600×1200, 4:3 landscape. No text anywhere in the image.
+- **Rendered (measured):** 522×392 at 1366px and at 1920px (the container caps
+  it), 310×232 at 768px. Hidden below 768px.
+- **Safe area:** keep the subject inside the middle ~80%, since the corners are
+  rounded at 20px and the crop is exact 4:3.
+- **Subject:** instruction and safety, not the community story (that is About's
+  IMG-029). For example, a Pet Coordinator checking a photo on a phone with an
+  owner while a dog waits calmly, in a daylight public place: verification and a
+  safe handover.
+- **Palette:** teal-led (#157a78, #0e5d5b) and cream, with amber only as a small
+  accent. Edges near #f2f8f6 so the card sits comfortably on the band.
+
+Until it is delivered, the frame crops IMG-028 to its right-hand scene
+(`object-[80%_50%]`).
+
+**IMG-028 — Help & safety.** *Superseded as the Help hero by IMG-028b; kept as
+the stand-in.* A semi-flat illustration in the logo family:
 shield and check, clipboard, map pin, phone, a handover handshake, a dog. Used
 as the full-bleed ground of the Help hero rather than as an inset picture —
 Explore's header is a rounded panel with its illustration on the right, and

@@ -139,12 +139,24 @@ function PairSide({ report }) {
             onClick={() => setIsOpen(true)}
             className="block w-full cursor-zoom-in rounded-card"
           >
-            <img
-              src={photo.url}
-              alt={alt}
-              className="h-56 w-full rounded-card bg-surface-muted object-cover sm:h-72 lg:h-80"
-              loading="lazy"
-            />
+            {/* Contained, not cropped: two photos are being compared, and a
+                crop that hides an ear or a marking on one side defeats the
+                point. The blurred copy fills the frame's spare width. */}
+            <span className="relative block h-56 w-full overflow-hidden rounded-card bg-sunken sm:h-72 lg:h-80">
+              <img
+                src={photo.url}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 size-full scale-110 object-cover opacity-50 blur-2xl"
+                loading="lazy"
+              />
+              <img
+                src={photo.url}
+                alt={alt}
+                className="relative size-full object-contain"
+                loading="lazy"
+              />
+            </span>
             <span className="sr-only">View full photo</span>
           </button>
         ) : (

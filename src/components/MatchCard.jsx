@@ -120,7 +120,7 @@ function ReportSide({ report }) {
       <img
         src={primaryPhoto?.url ?? photoPlaceholder}
         alt=""
-        className="aspect-4/3 w-full rounded-card bg-surface-muted object-cover"
+        className="aspect-4/3 w-full rounded-card bg-surface-muted object-cover object-[50%_35%]"
         loading="lazy"
       />
 

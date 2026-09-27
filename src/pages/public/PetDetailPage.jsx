@@ -623,11 +623,26 @@ function PhotoGallery({ photos, petLabel }) {
           onClick={() => setIsFullscreen(true)}
           className="block w-full cursor-zoom-in"
         >
-          <img
-            src={active?.url ?? photoPlaceholder}
-            alt={altText}
-            className="aspect-4/3 max-h-96 w-full rounded-card bg-surface-muted object-cover shadow-raised"
-          />
+          {/* The whole photograph, never a crop. The frame is capped at 384px,
+              which at column width made it about 2.2:1, and `object-cover`
+              then cut 39% off the height of a 4:3 photo — usually the head.
+              Now it is contained, and the gap either side is filled with a
+              soft, blurred copy of the same photo rather than empty bars. */}
+          <span className="relative block aspect-4/3 max-h-96 w-full overflow-hidden rounded-card bg-sunken shadow-raised">
+            {active?.url && (
+              <img
+                src={active.url}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 size-full scale-110 object-cover opacity-50 blur-2xl"
+              />
+            )}
+            <img
+              src={active?.url ?? photoPlaceholder}
+              alt={altText}
+              className="relative size-full object-contain"
+            />
+          </span>
           <span className="sr-only">View full photo</span>
         </button>
 

@@ -22,6 +22,8 @@ import { cn } from '@/utils/cn'
  * @param {'left'|'right'} [props.align]    Which edge the panel lines up with.
  * @param {boolean} [props.showChevron]     Off for an icon-only trigger such as
  *   a "More" button, where the icon already says it opens something.
+ * @param {string} [props.panelClassName]   Extra styling for the open panel,
+ *   e.g. a wider minimum for the account menu's name and email.
  * @param {(close: () => void) => React.ReactNode} props.children  Rendered with
  *   a `close` function, so an item can dismiss the menu when it is chosen.
  */
@@ -31,6 +33,7 @@ export function NavDropdown({
   triggerClassName,
   align = 'left',
   showChevron = true,
+  panelClassName,
   children,
 }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -86,6 +89,7 @@ export function NavDropdown({
           className={cn(
             'absolute top-full z-50 mt-2 min-w-52 rounded-card border border-border bg-panel p-1.5 shadow-raised',
             align === 'right' ? 'right-0' : 'left-0',
+            panelClassName,
           )}
         >
           {children(() => setIsOpen(false))}

@@ -1,7 +1,7 @@
 import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet'
 import { MapPin, X } from 'lucide-react'
 import { Button } from '@/components/ui'
-import { KeepMapSized } from './ReportMap'
+import { KeepMapSized, WheelZoomWhenChosen } from './ReportMap'
 import {
   APPROXIMATE_RADIUS_M,
   FALLBACK_CENTER,
@@ -60,6 +60,7 @@ export function LocationPicker({ reportType, lat, lng, onChange }) {
           />
 
           <KeepMapSized />
+          <WheelZoomWhenChosen />
           <ClickToPlacePin onPick={onChange} />
 
           {hasPin && (

@@ -1,12 +1,28 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { LogOut, Menu, X } from 'lucide-react'
+import { LogOut, Menu, UserRound, X } from 'lucide-react'
 import logoLockup from '@/assets/pawsfound-logo-horizontal.webp'
 import { Button, Container } from '@/components/ui'
+import { Avatar } from './Avatar'
 import { DemoRoleSelector } from './DemoRoleSelector'
 import { NavDropdown, NavDropdownItem } from './NavDropdown'
+import { ROLES } from '@/constants'
 import { PUBLIC_NAV, WORKSPACE_BY_ROLE } from '@/constants/navigation'
 import { cn } from '@/utils/cn'
+
+/**
+ * The first word of a name, for the header. The fixed-width trigger used to
+ * carry the whole name and cut "Kyle Michael V. Austria" to "Kyle Michael
+ * Aust…", which reads as a bug. The full name is one click away in the menu.
+ */
+const firstName = (fullName) => String(fullName ?? '').trim().split(/\s+/)[0] || 'Account'
+
+/**
+ * Profile is a customer page (`/dashboard/profile` is guarded for the user
+ * role). Staff and administrators have their workspace link beside the menu
+ * and no profile route, so they are not offered one.
+ */
+const PROFILE_PATH = '/dashboard/profile'
 
 const linkClasses = ({ isActive }) =>
   cn(
@@ -138,16 +154,32 @@ export function Navbar({ role, onRoleChange, onSignOut, user }) {
           {user ? (
             <NavDropdown
               align="right"
+              panelClassName="w-72"
               label={
-                <span className="min-w-0 truncate" title={user.fullName}>
-                  {user.fullName}
+                <span className="flex min-w-0 items-center gap-2">
+                  <Avatar name={user.fullName} size="sm" />
+                  <span className="min-w-0 truncate">{firstName(user.fullName)}</span>
+                  <span className="sr-only">, account menu</span>
                 </span>
               }
-              triggerClassName="flex w-44 items-center justify-between gap-1.5 rounded-control border border-transparent px-2 py-1.5 text-left text-[0.9375rem] font-medium text-fg transition-colors hover:bg-surface-muted"
+              triggerClassName="flex w-44 items-center justify-between gap-1.5 rounded-control border border-transparent px-2 py-1 text-left text-[0.9375rem] font-medium text-fg transition-colors hover:bg-surface-muted"
             >
               {(close) => (
                 <>
-                  <p className="px-3 pt-1 pb-2 text-xs break-all text-fg-muted">{user.email}</p>
+                  <div className="flex items-center gap-3 px-3 pt-2 pb-3">
+                    <Avatar name={user.fullName} size="md" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold break-words text-fg">{user.fullName}</p>
+                      <p className="text-xs break-all text-fg-muted">{user.email}</p>
+                    </div>
+                  </div>
+                  <div className="mb-1.5 border-t border-border" />
+                  {role === ROLES.USER && (
+                    <NavDropdownItem as={Link} to={PROFILE_PATH} onClick={close}>
+                      <UserRound size={15} aria-hidden="true" />
+                      Profile &amp; account security
+                    </NavDropdownItem>
+                  )}
                   <NavDropdownItem
                     as="button"
                     type="button"
@@ -246,13 +278,26 @@ export function Navbar({ role, onRoleChange, onSignOut, user }) {
 
             <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4">
               {user ? (
-                <div className="flex items-center justify-between gap-3">
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-fg">
-                      {user.fullName}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span className="flex min-w-0 items-center gap-3">
+                    <Avatar name={user.fullName} size="md" />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-fg">
+                        {user.fullName}
+                      </span>
+                      <span className="block truncate text-xs text-fg-muted">{user.email}</span>
                     </span>
-                    <span className="block truncate text-xs text-fg-muted">{user.email}</span>
                   </span>
+                  {role === ROLES.USER && (
+                    <Link
+                      to={PROFILE_PATH}
+                      onClick={closeMenu}
+                      className="inline-flex items-center gap-1.5 rounded-control px-2 py-1.5 text-sm font-medium text-brand hover:bg-surface-muted"
+                    >
+                      <UserRound size={14} aria-hidden="true" />
+                      Profile
+                    </Link>
+                  )}
                   <Button
                     size="sm"
                     variant="secondary"

@@ -245,72 +245,57 @@ export function HelpPage() {
 
   return (
     <div className="-my-8 flex flex-col">
-      {/* Explore's header is a rounded panel with its illustration inset on the
-          right, the title and search on the left. This page had the same shape,
-          the same proportions and the same reading order, so the two pages were
-          telling the eye they were the same kind of place.
+      {/* Three pages, three compositions, so none of them reads as a copy of
+          another:
+            About   — a warm cream band with the scene full-bleed behind the text
+            Explore — a rounded tinted panel with the illustration faded in on
+                      the right
+            Help    — this: a pale teal band, the heading and search on the
+                      left, and the illustration framed as a picture on the
+                      right, like a page from a guide.
+          Teal rather than cream because this page is instructions and safety,
+          not the community story.
 
-          Here the artwork IS the ground: full bleed, no card edge, and the
-          search field steps off its lower edge onto the page rather than
-          sitting inside a box. Same content, different composition. */}
-      <section className="relative isolate border-b border-border">
-        {/* A floor under the band from `lg`, where the artwork is showing. The
-            heading alone made it ~310px, which cropped the illustration to
-            half its height and cut the phone and the dog's feet off. */}
-        <div className="relative isolate overflow-hidden bg-warm-band lg:min-h-[25rem]">
-          {/* IMG-028 from `lg` up, where the text column is capped well clear
-              of the artwork. Below that the band keeps the cream the artwork is
-              drawn on and the type has the width to itself — the illustration
-              is busy on the right, and text over it would not hold. */}
+          The frame is a 4:3 slot sized for IMG-028b (1600×1200, see
+          docs/image-requirements.md). Until that exists it crops the current
+          IMG-028 banner to its right-hand scene. Hidden below `md`: on a phone
+          the search and the answers matter more than a picture above them. */}
+      <section className="relative isolate overflow-hidden border-b border-border bg-surface-alt">
+        <PatternVeil />
+        <Container className="grid items-center gap-8 py-10 sm:py-12 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-14 lg:py-14">
+          <div className="flex min-w-0 flex-col gap-6">
+            <PageHeader
+              title="Help & community safety"
+              description="How to file a report that helps, how a match is checked, and how to stay safe arranging a handover."
+              onArtwork
+            />
+
+            <label className="relative block">
+              <span className="sr-only">Search help</span>
+              <Search
+                size={18}
+                className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-fg-muted"
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search help — try “collar”, “match” or “handover”"
+                className="h-14 w-full rounded-control border border-border-strong bg-panel pr-4 pl-12 text-base text-fg shadow-raised placeholder:text-fg-muted"
+              />
+            </label>
+          </div>
+
           <img
             src={helpIllustration}
             alt=""
-            className="absolute inset-0 hidden size-full object-cover object-[75%_50%] lg:block"
+            className="hidden aspect-4/3 w-full rounded-[1.25rem] bg-warm-band object-cover object-[80%_50%] shadow-raised ring-1 ring-black/5 md:block"
           />
-
-          {/* The same scrim the homepage and About heroes carry. The amber
-              route ribbon in IMG-028 runs left across the band at 1366px and
-              lands under the description, which measured 2.53:1 there — the
-              heading was fine, so looking at it would not have caught it. */}
-          <span
-            aria-hidden="true"
-            className="absolute inset-0 hidden bg-[linear-gradient(90deg,rgba(254,249,240,0.97)_0%,rgba(254,249,240,0.96)_38%,rgba(254,249,240,0.90)_50%,rgba(254,249,240,0.45)_60%,transparent_74%)] lg:block"
-          />
-
-          <Container className="relative flex flex-col justify-center py-11 sm:py-14 lg:min-h-[25rem] lg:pb-20">
-            <div className="lg:max-w-[46%]">
-              <PageHeader
-                title="Help & community safety"
-                description="How to file a report that helps, how a match is checked, and how to stay safe arranging a handover."
-                onArtwork
-              />
-            </div>
-          </Container>
-        </div>
-
-        {/* Straddling the band's lower edge. The overlap is the whole point:
-            it ties the search to the artwork above it instead of leaving it
-            floating on the page beneath. */}
-        <Container className="relative -mt-7 pb-10">
-          <label className="relative block max-w-xl">
-            <span className="sr-only">Search help</span>
-            <Search
-              size={18}
-              className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-fg-muted"
-              aria-hidden="true"
-            />
-            <input
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search help — try “collar”, “match” or “handover”"
-              className="h-14 w-full rounded-control border border-border-strong bg-panel pr-4 pl-12 text-base text-fg shadow-raised placeholder:text-fg-muted"
-            />
-          </label>
         </Container>
       </section>
 
-      <section className="hero-ground relative isolate border-b border-border pb-12">
+      <section className="hero-ground relative isolate border-b border-border pt-10 pb-12">
         <PatternVeil />
         <Container className="flex flex-col gap-10">
           {/* Jump links rather than a search box: with seven topics, scanning

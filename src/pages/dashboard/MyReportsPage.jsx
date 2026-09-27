@@ -266,7 +266,7 @@ function ReportCaseCard({ report, openMatches, onClose }) {
           src={photo?.url ?? photoPlaceholder}
           alt={photo ? photo.alt || '' : 'No photo was provided for this report'}
           loading="lazy"
-          className="aspect-16/9 w-full shrink-0 rounded-control bg-surface-muted object-cover sm:aspect-square sm:size-28"
+          className="aspect-16/9 w-full shrink-0 rounded-control bg-surface-muted object-cover object-[50%_35%] sm:aspect-square sm:size-28"
         />
 
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">

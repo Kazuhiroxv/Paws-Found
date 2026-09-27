@@ -47,7 +47,10 @@ export function PetCard({ report, statusVariant = 'dot', className }) {
           // The placeholder says nothing about this particular pet, so it is
           // announced as such rather than reusing the report's own alt text.
           alt={hasPhoto ? primaryPhoto.alt : 'No photo was provided for this report'}
-          className="aspect-4/3 w-full bg-surface-muted object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+          // Cropped a little above centre: a pet's face is usually in the
+          // upper half of the frame, and a dead-centre crop of a portrait
+          // phone photo takes the ears off. Same bias on every card thumbnail.
+          className="aspect-4/3 w-full bg-surface-muted object-cover object-[50%_35%] transition-transform duration-200 group-hover:scale-[1.02]"
           loading="lazy"
         />
 
