@@ -519,6 +519,12 @@ Stated plainly so nobody rediscovers them the hard way.
   demonstration; the reason the live URL should not be shared widely while they
   exist.
 - **`origin`'s push URL is disabled on purpose.** Do not re-enable it casually.
+- **Optional mobile polish, deliberately left for after the freeze** (found by
+  the final 390px sweep, none of them broken):
+  - Explore on a phone: Map view lists every result under the map as a
+    full-height card (32 cards, about 16,000px); List view pages at 9.
+  - Staff Overview "Recent cases": a status pill sometimes wraps under the name.
+  - Admin Overview: five stat tiles in a two-column grid leave the fifth alone.
 - **A reporter's answer to "request more information" lives only in
   notifications.** It is delivered to each active coordinator as a
   `verification_requested` notification (255 characters, the column's size) and
