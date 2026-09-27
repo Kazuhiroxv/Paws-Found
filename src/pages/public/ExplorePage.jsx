@@ -40,6 +40,40 @@ const MAP_RESULT_LIMIT = 50
 
 const loadActiveCategories = () => categoryService.getActiveCategories()
 
+/**
+ * The search placeholder, sized to the field. Below 640px (`sm`) the input sits
+ * beside the Search button and the full hint was cut off mid-word; below 360px
+ * (the narrowest common phone) there is room for about eight characters, so it
+ * steps down once more. The words change, not the text size. The 640px step
+ * matches the Help page's search. Two small copies, kept apart on purpose: they
+ * are the only two, and each reads on its own (CLAUDE.md §15).
+ *
+ * No "markings" in the hint: a guest's search does not look in them.
+ */
+const PLACEHOLDERS = [
+  ['(min-width: 640px)', 'Search by pet name, breed, colour or place'],
+  ['(min-width: 360px)', 'Search reports'],
+]
+const PLACEHOLDER_NARROWEST = 'Search'
+
+function currentPlaceholder() {
+  const match = PLACEHOLDERS.find(([query]) => window.matchMedia(query).matches)
+  return match ? match[1] : PLACEHOLDER_NARROWEST
+}
+
+function useSearchPlaceholder() {
+  const [placeholder, setPlaceholder] = useState(currentPlaceholder)
+
+  useEffect(() => {
+    const queries = PLACEHOLDERS.map(([query]) => window.matchMedia(query))
+    const update = () => setPlaceholder(currentPlaceholder())
+    queries.forEach((query) => query.addEventListener('change', update))
+    return () => queries.forEach((query) => query.removeEventListener('change', update))
+  }, [])
+
+  return placeholder
+}
+
 export function ExplorePage() {
   // The homepage search band hands off through the URL, so a search can also be
   // shared or bookmarked. Read once on mount: after that the page owns its own
@@ -54,6 +88,7 @@ export function ExplorePage() {
   }))
   const [searchDraft, setSearchDraft] = useState(() => searchParams.get('q') ?? '')
   const searchRef = useRef(null)
+  const placeholder = useSearchPlaceholder()
 
   // "/" puts the cursor in the search box, unless you are already typing
   // somewhere. This is a page people come back to repeatedly while a pet is
@@ -234,7 +269,7 @@ export function ExplorePage() {
                 aria-keyshortcuts="/"
                 value={searchDraft}
                 onChange={(event) => setSearchDraft(event.target.value)}
-                placeholder="Search by pet name, breed, colour or place"
+                placeholder={placeholder}
                 className="h-12 w-full rounded-control border border-border-strong bg-panel pr-4 pl-11 text-base text-fg shadow-raised placeholder:text-fg-muted"
               />
             </div>
