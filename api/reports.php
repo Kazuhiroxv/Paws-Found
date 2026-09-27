@@ -78,6 +78,22 @@ const REPORT_STATUS_WORDS = [
     'closed' => 'Closed',
 ];
 
+/**
+ * How finely a report's position is published, in degrees.
+ *
+ * The pin a reporter drops is stored as they dropped it — DECIMAL(9,6), about
+ * 0.1 m — because matching measures real distances from it. What leaves the
+ * server is that pin snapped to a 0.004° grid: cells about 445 m across, which
+ * is the "area of roughly 400 m" the report form promises. The published point
+ * is never more than ~314 m from the real one (half the cell's diagonal, at
+ * 5–21°N), so the 400 m circle the map draws around it always contains where
+ * the pet actually was, without saying where inside it.
+ *
+ * Three decimal places would not have kept that promise: that grid is 111 m,
+ * and the real pin is within ~80 m of any point on it.
+ */
+const PUBLIC_COORDINATE_GRID = 0.004;
+
 function handle_reports(string $method, ?string $identifier, ?string $sub = null): never
 {
     if ($method === 'GET' && $identifier === null) {
@@ -1075,9 +1091,25 @@ function report_detail(int $id): never
             'show_phone' => (bool) $row['show_phone'],
             'show_email' => (bool) $row['show_email'],
         ];
+
+        // The pin as it was dropped, for the people who may move it: the edit
+        // form shows it, and a coordinator arranging a handover may need it.
+        // Nobody else receives more than the published grid point.
+        $report['location']['lat'] = $row['latitude'] === null ? null : (float) $row['latitude'];
+        $report['location']['lng'] = $row['longitude'] === null ? null : (float) $row['longitude'];
     }
 
     json_response(['data' => $report]);
+}
+
+/** A stored coordinate, snapped to PUBLIC_COORDINATE_GRID. */
+function public_coordinate(mixed $value): ?float
+{
+    if ($value === null) {
+        return null;
+    }
+
+    return round(round((float) $value / PUBLIC_COORDINATE_GRID) * PUBLIC_COORDINATE_GRID, 6);
 }
 
 /**
@@ -1109,8 +1141,10 @@ function shape_report_row(array $row): array
             'label' => $row['location_label'],
             'city' => $row['city'],
             'province' => $row['province'],
-            'lat' => $row['latitude'] === null ? null : (float) $row['latitude'],
-            'lng' => $row['longitude'] === null ? null : (float) $row['longitude'],
+            // Approximate for everybody. report_detail() puts the stored pin
+            // back for the reporter and staff, who already know it.
+            'lat' => public_coordinate($row['latitude']),
+            'lng' => public_coordinate($row['longitude']),
         ],
         'primary_image' => $row['primary_image'] ?? null,
         'primary_image_alt' => $row['primary_image_alt'] ?? null,

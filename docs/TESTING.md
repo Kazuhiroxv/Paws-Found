@@ -70,7 +70,7 @@ skips that one check when there is no network.
 
 **Mutates nothing.** Sends no real email.
 
-### `npm run audit` — 170 checks
+### `npm run audit` — 178 checks
 
 The security and functional suite, against the running API and database.
 
@@ -84,6 +84,14 @@ The security and functional suite, against the running API and database.
 | F. File upload | 7 |
 | G. Functional | 44 |
 | H. Error handling | 10 |
+| I. Location privacy | 8 |
+
+`LP-01`–`LP-08` pin down the location promise. The database keeps the pin as
+dropped. Anybody who is not the reporter or staff (a guest or another signed-in
+user) gets it snapped to a 0.004° grid, which is always within the 400 m circle
+the map draws. The reporter and coordinators still get the stored pin. `LP-08`
+files a pair 14.93 km apart that the grid would put 15.14 km apart, either side
+of matching's 15 km cut-off, to prove the matcher measures from the stored pin.
 
 `SQL-12` and `SQL-14` assert the table and foreign-key counts, so the ERD
 cannot be wrong quietly. `AU-36`–`AU-38` assert that `GET /api/config` offers
@@ -179,7 +187,7 @@ lint                                     clean
 build                                    green
 test:contract                            13/13
 test:mail                                15/15
-audit                                   170/170
+audit                                   178/178
 auth_lifecycle                           53/53
 multi-device                             55/55   (53/53 + 2 skipped vs a remote)
 a11y                                     29 pages, 0 violations

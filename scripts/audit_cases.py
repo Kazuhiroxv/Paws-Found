@@ -726,6 +726,78 @@ def functional():
           'contact_preferences' not in (public_view.get('data') or {}))
 
 
+def location_privacy():
+    """The pin a reporter drops is stored exactly and published approximately.
+
+    The report form promises the pin is "shown publicly as an area of roughly
+    400 m". The API used to return it to anybody at the full DECIMAL(9,6).
+    """
+    import math
+    C = 'I. Location privacy'
+    grid, worst_m = 0.004, 314
+
+    def metres(a, b):
+        (la1, lo1), (la2, lo2) = a, b
+        p1, p2 = math.radians(la1), math.radians(la2)
+        h = (math.sin((p2 - p1) / 2) ** 2
+             + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lo2 - lo1) / 2) ** 2)
+        return 2 * 6371000 * math.asin(math.sqrt(h))
+
+    def on_grid(v):
+        return abs(v / grid - round(v / grid)) < 1e-6
+
+    # A pin the grid moves by ~218 m, and a second pin 14.93 km due north of it
+    # that the grid would put 15.14 km away: either side of the 15 km cut-off
+    # in api/matching.php, so the pairing's location signal says which
+    # coordinates the matcher measured from.
+    pin = (14.501937, 121.012345)
+    north = (14.636235, 121.012345)
+    common = dict(species='cat', breed='Puspin (Philippine Domestic Shorthair)', size='small',
+                  primary_color='Calico', distinct_features='Kinked tail, one white forepaw',
+                  city='Audit Town', province='Laguna', incident_date='2026-09-10')
+    lost, code = file_report('customer', pet_name='Audit Pinpoint', lat=pin[0], lng=pin[1], **common)
+    found, _ = file_report('finder', report_type='found', pet_name=None,
+                           lat=north[0], lng=north[1], **common)
+
+    stored = sql('SELECT CONCAT(l.latitude, ",", l.longitude) FROM pet_reports r '
+                 f'JOIN locations l ON l.location_id = r.location_id WHERE r.report_id = {lost};')
+    check(C, 'LP-01', 'The database keeps the pin as it was dropped',
+          '14.501937,121.012345', stored, stored == '14.501937,121.012345')
+
+    def published(role, path):
+        code, payload = session(role).call('GET', path)
+        data = payload.get('data')
+        if isinstance(data, list):
+            data = next((r for r in data if r['report_id'] == lost), None)
+        loc = (data or {}).get('location') or {}
+        return code, (loc.get('lat'), loc.get('lng'))
+
+    _, point = published('guest', '/reports?city=Audit%20Town&per_page=50')
+    check(C, 'LP-02', 'Anonymous list: the grid point, not the pin', 'grid point', str(point),
+          None not in point and point != pin and all(map(on_grid, point)))
+    _, detail = published('guest', f'/reports/{lost}')
+    check(C, 'LP-03', 'Anonymous detail: the grid point, not the pin', 'grid point', str(detail),
+          None not in detail and detail != pin and all(map(on_grid, detail)))
+    gap = metres(pin, detail) if None not in detail else 1e9
+    check(C, 'LP-04', 'The grid point is within the 400 m circle', f'<= {worst_m} m',
+          f'{gap:.0f} m', gap <= worst_m)
+
+    _, other = published('finder', f'/reports/{lost}')
+    check(C, 'LP-05', 'Another signed-in user gets no more than a guest', str(detail), str(other),
+          other == detail)
+    _, own = published('customer', f'/reports/{lost}')
+    check(C, 'LP-06', 'The reporter still sees their own pin (edit form)', str(pin), str(own),
+          own == pin)
+    _, staff = published('staff', f'/reports/{lost}')
+    check(C, 'LP-07', 'A coordinator still sees the pin', str(pin), str(staff), staff == pin)
+
+    signal = sql('SELECT s.is_matched FROM match_signals s JOIN match_claims m '
+                 'ON m.match_id = s.match_id WHERE s.signal_key = "location" '
+                 f'AND m.lost_report_id = {lost} AND m.found_report_id = {found};')
+    check(C, 'LP-08', 'Matching measures from the stored pin (14.93 km, not 15.14)', '1',
+          signal or 'no pairing', signal == '1')
+
+
 def error_handling():
     C = 'H. Error handling'
     status(C, 'EH-01', 'A report that does not exist', 'guest', 'GET', '/reports/99999', None, 404)
@@ -826,6 +898,7 @@ if __name__ == '__main__':
     uploads(rid)
     functional()
     error_handling()
+    location_privacy()
     total, passed = report()
 
     reseed()
