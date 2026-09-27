@@ -62,6 +62,12 @@ export function WorkspaceShell({ label, items, counts, user, onSignOut, children
               <span className="whitespace-nowrap">{item.label}</span>
               {count > 0 && (
                 <span className="ml-auto min-w-6 rounded-pill bg-surface-muted px-2 py-0.5 text-center text-xs font-medium text-fg tabular-nums">
+                  {/* Says what is counted when the page's own figures would
+                      not: "Open 25" rather than a bare 25 beside tiles that
+                      read 32, 19 and 6. */}
+                  {item.countLabel && (
+                    <span className="font-normal text-fg-muted">{item.countLabel} </span>
+                  )}
                   {count}
                   <span className="sr-only"> {count === 1 ? 'item' : 'items'}</span>
                 </span>

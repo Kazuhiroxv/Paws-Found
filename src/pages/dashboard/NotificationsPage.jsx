@@ -106,7 +106,9 @@ export function NotificationsPage({
     <div className="flex flex-col gap-6">
       {header}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
+      {/* Underlined tabs, like My Reports and Possible Matches. The action sits
+          on the same rule, lifted clear of it. */}
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border">
         <div className="flex gap-1" role="tablist" aria-label="Show">
           {[
             { id: 'all', label: 'All', count: notifications.length, unreadOnly: false },
@@ -122,21 +124,14 @@ export function NotificationsPage({
                 aria-selected={selected}
                 onClick={() => setShowUnreadOnly(tab.unreadOnly)}
                 className={cn(
-                  'inline-flex items-center gap-2 rounded-control px-3 py-1.5 text-sm transition-colors',
+                  '-mb-px border-b-2 px-3 py-2 text-sm transition-colors',
                   selected
-                    ? 'bg-brand-soft font-semibold text-brand-hover'
-                    : 'text-fg-muted hover:bg-surface-muted hover:text-fg',
+                    ? 'border-brand font-medium text-brand-hover'
+                    : 'border-transparent text-fg-muted hover:text-fg',
                 )}
               >
                 {tab.label}
-                <span
-                  className={cn(
-                    'min-w-5 rounded-pill px-1.5 text-center text-xs font-semibold tabular-nums',
-                    selected ? 'bg-panel text-brand-hover' : 'bg-surface-muted text-fg-muted',
-                  )}
-                >
-                  {tab.count}
-                </span>
+                <span className="ml-1.5 text-fg-muted tabular-nums">{tab.count}</span>
               </button>
             )
           })}
@@ -146,6 +141,7 @@ export function NotificationsPage({
           variant="secondary"
           size="sm"
           onClick={markAll}
+          className="mb-2"
           disabled={unreadCount === 0}
           isLoading={isBusy}
         >

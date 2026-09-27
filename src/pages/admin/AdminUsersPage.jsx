@@ -10,8 +10,16 @@ import { ROLES, ROLE_LABELS } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
 import { userService } from '@/services'
 import { optionsFromLabels } from '@/utils/options'
-import { formatShortDate } from '@/utils/date'
 import { AccountStatusBadge } from './AdminBadges'
+
+/**
+ * When an account was created, always with the year: accounts span years, and
+ * "Jun 1" beside "Jan 5" does not say which came first.
+ */
+const joinedOn = (value) =>
+  value
+    ? new Date(value).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+    : ''
 
 async function loadUsers() {
   const [users, currentUser] = await Promise.all([
@@ -305,7 +313,7 @@ export function AdminUsersPage() {
                       </td>
 
                       <td className="px-2 py-3 whitespace-nowrap text-fg-muted">
-                        {formatShortDate(user.createdAt)}
+                        {joinedOn(user.createdAt)}
                       </td>
 
                       <td className="px-4 py-3">
@@ -421,7 +429,7 @@ function AccountPanel({ user, isSelf, onAsk }) {
         </div>
         <div className="grid grid-cols-[7rem_1fr] gap-3">
           <dt className="text-fg-muted">Joined</dt>
-          <dd className="text-fg">{formatShortDate(user.createdAt)}</dd>
+          <dd className="text-fg">{joinedOn(user.createdAt)}</dd>
         </div>
       </dl>
 
@@ -467,9 +475,11 @@ function AccountPanel({ user, isSelf, onAsk }) {
 }
 
 /**
- * The two management actions. Suspending is destructive, so it is a quiet
- * button that only turns red on hover or focus — a column of red buttons made
- * the whole table look like a warning.
+ * The two management actions. Suspending is destructive, so it reads as one
+ * before anybody hovers: an outlined button in danger ink, the same shape as
+ * "Change role" beside it. Not filled red, because a column of solid red
+ * buttons made the whole table look like a warning. The confirmation dialog
+ * behind it is unchanged.
  */
 function RowActions({ user, isSelf, onAsk }) {
   if (isSelf) {
@@ -500,8 +510,8 @@ function RowActions({ user, isSelf, onAsk }) {
       </Button>
       <Button
         size="sm"
-        variant={isSuspended ? 'secondary' : 'ghost'}
-        className={isSuspended ? undefined : 'text-fg-muted hover:bg-danger-soft hover:text-danger-hover focus-visible:bg-danger-soft focus-visible:text-danger-hover'}
+        variant="secondary"
+        className={isSuspended ? undefined : 'border-danger/45 text-danger-hover hover:bg-danger-soft'}
         onClick={() => onAsk({ user, kind: 'status' })}
       >
         {isSuspended ? 'Reinstate' : 'Suspend'}
@@ -539,7 +549,7 @@ function UserCard({ user, isSelf, onAsk }) {
         </div>
         <div className="flex items-center gap-1.5">
           <dt className="text-fg-muted">Joined</dt>
-          <dd className="text-fg-muted">{formatShortDate(user.createdAt)}</dd>
+          <dd className="text-fg-muted">{joinedOn(user.createdAt)}</dd>
         </div>
       </dl>
 

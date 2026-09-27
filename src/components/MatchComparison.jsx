@@ -57,7 +57,7 @@ export function MatchPairCard({ match, lost, found, badge, headingAs: Heading = 
 
           <div className="flex flex-col items-center gap-1 text-center md:w-40">
             <span className="text-3xl font-semibold text-fg tabular-nums">{match.score}%</span>
-            <span className="text-sm font-medium text-fg">compatibility score</span>
+            <span className="text-sm font-medium text-fg">compatibility</span>
             <span className="text-sm text-fg-muted">
               {aligned} of {match.signals.length} characteristics align
             </span>

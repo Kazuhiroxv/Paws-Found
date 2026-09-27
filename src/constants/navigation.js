@@ -50,7 +50,8 @@ export const USER_NAV = [
 /** Sidebar links for a Staff / Pet Coordinator. */
 export const STAFF_NAV = [
   { to: '/staff', label: 'Overview', icon: Gauge, end: true },
-  { to: '/staff/reports', label: 'Report Queue', icon: FileText },
+  // The badge counts Active + Possible Match reports: the open ones.
+  { to: '/staff/reports', label: 'Report Queue', icon: FileText, countLabel: 'Open' },
   { to: '/staff/matches', label: 'Match Queue', icon: Heart },
   { to: '/staff/verification', label: 'Verification', icon: ShieldCheck },
   { to: '/staff/notifications', label: 'Notifications', icon: Bell },

@@ -57,7 +57,7 @@ export function MatchCard({ match, lostReport, foundReport, actions, headingAs =
             <span className="flex size-20 items-center justify-center rounded-full border-2 border-brand bg-brand-soft text-2xl font-semibold text-brand-hover">
               {match.score}%
             </span>
-            <span className="text-sm text-fg-muted">possible match</span>
+            <span className="text-sm text-fg-muted">compatibility</span>
           </div>
 
           <ReportSide report={foundReport} />

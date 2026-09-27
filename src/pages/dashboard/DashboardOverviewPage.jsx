@@ -5,6 +5,8 @@ import { Button, EmptyState, LoadingSkeleton } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { RadarOrnament } from '@/components/Ornament'
 import { PetCard } from '@/components/PetCard'
+import { ReportTypeBadge } from '@/components/ReportTypeBadge'
+import { StatusBadge } from '@/components/StatusBadge'
 import { MATCH_STATUSES, REPORT_STATUSES, REPORT_TYPES, speciesLabel } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
 import { petService } from '@/services'
@@ -88,16 +90,20 @@ export function DashboardOverviewPage() {
       <section className="hero-ground relative isolate overflow-hidden rounded-[1.5rem] border border-accent/20 px-5 py-6 sm:px-8 sm:py-8">
         <RadarOrnament tone="amber" size={420} strength={2.6} className="-top-24 -right-20" />
 
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between lg:gap-10">
-          <div className="flex min-w-0 flex-col gap-2">
-            <h1 className="text-[2rem] leading-[1.1] font-semibold tracking-tight text-balance text-fg sm:text-[2.4rem]">
-              Welcome back, {user.fullName.split(' ')[0]}.
-            </h1>
-            <p className="text-lg text-fg-muted">Here is where your cases stand today.</p>
-          </div>
+        {/* Two rows on the left: the greeting, then the two actions on a row of
+            their own. They used to share one line with the greeting, which
+            squeezed "Welcome back, Maria." onto two lines and the buttons into
+            the middle. The companions have the right-hand side to themselves. */}
+        <div className="flex items-center justify-between gap-8">
+          <div className="flex min-w-0 flex-col gap-5">
+            <div className="flex flex-col gap-2">
+              <h1 className="text-[2rem] leading-[1.1] font-semibold tracking-tight text-balance text-fg sm:text-[2.4rem]">
+                Welcome back, {user.fullName.split(' ')[0]}.
+              </h1>
+              <p className="text-lg text-fg-muted">Here is where your cases stand today.</p>
+            </div>
 
-          <div className="flex shrink-0 items-center gap-6">
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Button as={Link} to="/report/lost" variant="accent" size="lg">
                 <TriangleAlert size={18} aria-hidden="true" />
                 Report a lost pet
@@ -107,20 +113,19 @@ export function DashboardOverviewPage() {
                 Report a found pet
               </Button>
             </div>
-
-            {/* IMG-020, at the far end of the greeting. Decoration with a
-                subject rather than content — it carries no alt text because it
-                says nothing the heading beside it does not. Shown from `xl`
-                only: below that the buttons need the width. */}
-            <img
-              src={companions}
-              alt=""
-              aria-hidden="true"
-              loading="lazy"
-              decoding="async"
-              className="hidden h-32 w-auto shrink-0 xl:block"
-            />
           </div>
+
+          {/* IMG-020. Decoration with a subject rather than content — no alt
+              text, because it says nothing the heading beside it does not.
+              From `md`, now that the buttons no longer need its room. */}
+          <img
+            src={companions}
+            alt=""
+            aria-hidden="true"
+            loading="lazy"
+            decoding="async"
+            className="hidden h-36 w-auto shrink-0 md:block lg:h-44"
+          />
         </div>
       </section>
 
@@ -218,13 +223,24 @@ export function DashboardOverviewPage() {
             }
           />
         ) : (
-          <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {openReports.slice(0, 6).map((report) => (
-              <li key={report.id} className="flex">
-                <PetCard report={report} statusVariant="pill" className="w-full" />
-              </li>
-            ))}
-          </ul>
+          <>
+            {/* Phones: compact rows. Three full-height photo cards were about
+                1,300px of scrolling before anything else on the page. */}
+            <ul className="flex flex-col gap-2 sm:hidden">
+              {openReports.slice(0, 6).map((report) => (
+                <li key={report.id}>
+                  <ReportRow report={report} />
+                </li>
+              ))}
+            </ul>
+            <ul className="hidden gap-5 sm:grid sm:grid-cols-2 xl:grid-cols-3">
+              {openReports.slice(0, 6).map((report) => (
+                <li key={report.id} className="flex">
+                  <PetCard report={report} statusVariant="pill" className="w-full" />
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </Section>
 
@@ -300,8 +316,9 @@ function SummaryTile({ value, label, to, highlight = false }) {
 
 /**
  * One open match, as a single link to where it is decided. The score is shown
- * as a *match score*, beside a separate "Possible match" state, so "100%"
- * cannot be read as "100% this is your pet". The score itself is untouched.
+ * as "compatibility", the word every screen uses for it, beside a separate
+ * "Possible match" state, so "100%" cannot be read as "100% this is your pet".
+ * The score itself is untouched.
  */
 function MatchRow({ match, lost, found, userId }) {
   const mine = Number(lost.reporterId) === Number(userId) ? lost : found
@@ -330,7 +347,7 @@ function MatchRow({ match, lost, found, userId }) {
               Possible match
             </span>
             <span className="text-sm text-fg-muted">
-              <span className="font-semibold text-fg tabular-nums">{match.score}%</span> match score
+              <span className="font-semibold text-fg tabular-nums">{match.score}%</span> compatibility
             </span>
           </span>
           <span className="font-medium text-fg">
@@ -353,6 +370,36 @@ function MatchRow({ match, lost, found, userId }) {
         </span>
       </Link>
     </li>
+  )
+}
+
+/** A compact report row for phones: thumbnail, name, what it is, status. */
+function ReportRow({ report }) {
+  const name = report.petName ?? `${speciesLabel(report.species)} (name unknown)`
+
+  return (
+    <Link
+      to={`/pet/${report.id}`}
+      className="card-interactive flex items-center gap-3 rounded-card border border-border bg-panel p-2.5 shadow-card"
+    >
+      <img
+        src={primaryPhotoUrl(report) ?? photoPlaceholder}
+        alt=""
+        className="size-16 shrink-0 rounded-control bg-surface-muted object-cover object-[50%_35%]"
+        loading="lazy"
+      />
+      <span className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="truncate font-semibold text-fg">{name}</span>
+        <span className="truncate text-sm text-fg-muted">
+          {report.breed || speciesLabel(report.species)} · {report.location.city}
+        </span>
+        <span className="flex flex-wrap items-center gap-1.5">
+          <ReportTypeBadge reportType={report.reportType} size="sm" />
+          <StatusBadge status={report.status} variant="pill" />
+        </span>
+      </span>
+      <ArrowRight size={16} className="shrink-0 text-fg-subtle" aria-hidden="true" />
+    </Link>
   )
 }
 

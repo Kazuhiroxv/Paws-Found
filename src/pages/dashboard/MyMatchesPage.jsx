@@ -136,8 +136,10 @@ illustration={emptyNoMatches}          title="No possible matches yet"
       {header}
 
       {/* The stages, with their counts — "1 under review", "1 confirmed" — as
-          the tabs themselves, so the summary and the filter are one control. */}
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Match stage">
+          the tabs themselves, so the summary and the filter are one control.
+          Underlined, like My Reports and Notifications: one tab style across
+          the customer's pages. */}
+      <div className="flex flex-wrap gap-1 border-b border-border" role="tablist" aria-label="Match stage">
         {GROUPS.map((group) => {
           const count = grouped[group.id].length
           const selected = tab === group.id
@@ -152,21 +154,14 @@ illustration={emptyNoMatches}          title="No possible matches yet"
               aria-controls="matches-panel"
               onClick={() => setChosenTab(group.id)}
               className={cn(
-                'inline-flex items-center gap-2 rounded-pill border px-3.5 py-1.5 text-sm transition-colors',
+'-mb-px border-b-2 px-3 py-2 text-sm transition-colors',
                 selected
-                  ? 'border-brand-soft bg-brand-soft font-medium text-brand-hover'
-                  : 'border-border-strong bg-panel text-fg-muted hover:text-fg',
+                  ? 'border-brand font-medium text-brand-hover'
+                  : 'border-transparent text-fg-muted hover:text-fg',
               )}
             >
               {group.label}
-              <span
-                className={cn(
-                  'min-w-5 rounded-pill px-1.5 text-center text-xs font-semibold tabular-nums',
-                  selected ? 'bg-panel text-brand-hover' : 'bg-surface-muted text-fg-muted',
-                )}
-              >
-                {count}
-              </span>
+              <span className="ml-1.5 text-fg-muted tabular-nums">{count}</span>
             </button>
           )
         })}
