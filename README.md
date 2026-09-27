@@ -7,6 +7,14 @@ Community members report lost and found pets, search structured listings, review
 possible matches, and coordinate verification with a Pet Coordinator until the
 pet is reunited with its owner.
 
+**Live: https://paws-found-production.up.railway.app**
+
+It runs on Railway and needs nobody's laptop — no XAMPP, no `npm`, no Docker,
+no terminal. Those are for local development only.
+
+**New here?** Read [`docs/HANDOFF.md`](docs/HANDOFF.md) first. It describes the
+verified state of the system, the database, deployment and git.
+
 ## Status
 
 **The application runs on a real MySQL database through a PHP REST API we
@@ -160,13 +168,32 @@ with the password itself. On a built site everyone signs in through the form.
 | `npm run build` | Production build to `dist/` |
 | `npm run preview` | Serve the production build locally |
 | `npm run lint` | ESLint over the project |
-| `npm run audit` | 117 test cases against the live API and database (reseeds it) |
-| `npm run a11y` | axe-core accessibility scan of the deployed site |
+| `npm run audit` | 170 security and functional cases against the live API and database (**reseeds it**) |
+| `npm run test:contract` | 13 checks of the form/API contract — needs nothing running |
+| `npm run test:mail` | 15 checks of the mail transports (needs `php` on PATH) |
+| `npm run multi-device` | 55 checks across three independent sessions |
+| `npm run a11y` | axe-core over all 29 pages in every role |
+| `npm run verify:deploy <url>` | 28 checks that only fail on a real host |
+
+See [`docs/TESTING.md`](docs/TESTING.md) for prerequisites and what each one
+mutates.
 
 ## Stack
 
-React 19 · Vite 8 · JavaScript · Tailwind CSS 4 · React Router 7 · Lucide icons ·
-Leaflet + OpenStreetMap
+**Frontend** — React 19 · Vite 8 · JavaScript · Tailwind CSS 4 · React Router 7 ·
+Lucide icons · Leaflet + OpenStreetMap
+
+**Backend** — PHP 8.3 · PDO with prepared statements · file-backed sessions
+
+**Database** — MySQL. MariaDB 10.4 locally via XAMPP, MySQL 9.4 in production
+
+**Production** — one Docker image (Apache + PHP) on Railway, with a persistent
+volume for uploads and sessions, Brevo's HTTPS API for mail, and Cloudflare
+Turnstile on registration
+
+The architecture in one line: **the frontend displays state, PHP enforces
+state, MySQL owns state.** Route guards keep the interface coherent; every
+endpoint checks the session again. See [`docs/HANDOFF.md`](docs/HANDOFF.md).
 
 ## How the code is organised
 
@@ -225,6 +252,18 @@ Full rules for contributors and for AI assistance are in
 
 ## Documentation
 
+**Start here:**
+
+| File | Contents |
+| --- | --- |
+| [`docs/HANDOFF.md`](docs/HANDOFF.md) | The verified state of everything — architecture, database, auth, email, deployment, git, tests |
+| [`docs/PRODUCTION_RUNBOOK.md`](docs/PRODUCTION_RUNBOOK.md) | Operating the live site: presentation day, deploying, rolling back, troubleshooting |
+| [`docs/TESTING.md`](docs/TESTING.md) | Every suite, what it needs, what it mutates, the smoke test |
+| [`docs/UI_UX_POLISH.md`](docs/UI_UX_POLISH.md) | The current phase of work, and its boundaries |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | Why things are the way they are, and what was rejected |
+
+**Reference:**
+
 | File | Contents |
 | --- | --- |
 | [`CLAUDE.md`](CLAUDE.md) | Master project context and development rules |
@@ -236,6 +275,9 @@ Full rules for contributors and for AI assistance are in
 | [`docs/mock-data-guide.md`](docs/mock-data-guide.md) | How `src/mock/` feeds the database seed |
 | [`docs/image-requirements.md`](docs/image-requirements.md) | Every visual asset and where it is used |
 | [`docs/img-005-pet-photos.md`](docs/img-005-pet-photos.md) | Shot list for the 24 demo pet photos |
+| [`docs/erd-defense.md`](docs/erd-defense.md) | Every table, defended one by one |
+| [`docs/deployment-plan.md`](docs/deployment-plan.md) | The Railway procedure in full |
+| [`docs/presentation-defense.md`](docs/presentation-defense.md) | Nineteen questions and their answers |
 
 ## Demo data
 
