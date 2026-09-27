@@ -155,7 +155,7 @@ A clean image build. Two checks happen at build time and fail the build rather
 than shipping: exactly one Apache MPM is enabled, and `apache2ctl configtest`
 passes.
 
-### `npm run verify:deploy <url>` — 28 checks
+### `npm run verify:deploy <url>` — 28 checks, 25 by default
 
 The things that only fail on a host: whether the API answers JSON rather than a
 challenge page, whether a deep link refreshes, whether an uploaded photograph
@@ -164,10 +164,24 @@ and `SameSite` flags on the real domain, whether errors leak SQL or paths,
 whether CSRF survived the production build, whether `config.local.php` is
 readable over the web, and whether any demo password reached the bundle.
 
-**Uploads one small PNG.** Does not reseed.
+**Changes no data by default.** A normal run reports the three upload checks
+(`5.1`-`5.3`) as **SKIPPED**, so against production it reads **25/25 passed,
+3 skipped**. The upload path is tested only when asked:
 
-Against **plain HTTP it scores 27/28**, failing `7.1` — correctly, because
-localhost has no certificate. Against HTTPS, 28/28.
+```bash
+python scripts/verify_deployment.py https://paws-found-production.up.railway.app --upload
+```
+
+`--upload` attaches one small PNG to the demo account's newest report and
+leaves it there: there is no delete endpoint, and a report holds at most five
+photos. Before this was opt-in, every run did it, and report 1 (Milo) collected
+three blank test images and hit the cap, which is what `5.1` failing with a 422
+looks like. Use it after changing upload code or the storage volume, not as a
+routine health check.
+
+Against **plain HTTP** `7.1` fails, correctly, because localhost has no
+certificate: 24/25 with 3 skipped, or 27/28 with `--upload`. Against HTTPS,
+everything passes.
 
 > **A note on `7.1`.** It once reported a false failure against production:
 > `Actual: 301 ->`. The redirect was correct; the harness was reading
@@ -192,8 +206,8 @@ auth_lifecycle                           53/53
 multi-device                             55/55   (53/53 + 2 skipped vs a remote)
 a11y                                     29 pages, 0 violations
 docker build --pull --no-cache           clean, curl present, one MPM, Syntax OK
-verify:deploy vs production              28/28
-verify:deploy vs local container         27/28   (7.1, correctly, on plain HTTP)
+verify:deploy vs production              25/25 + 3 skipped (read-only default)
+verify:deploy --upload vs local XAMPP    27/28   (7.1, correctly, on plain HTTP)
 schema.sql vs migrated database          identical across all 17 tables
 schema.sql on MySQL 8.0.46 and 9.4.0     imports clean; 17 tables, 24 FKs
 ```

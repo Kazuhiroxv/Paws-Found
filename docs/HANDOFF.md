@@ -453,7 +453,7 @@ All run on 27 September 2026 unless noted. Commands and prerequisites:
 | `npm run multi-device` | **55/55** local | API + database |
 | `npm run a11y` | 29 pages, **zero violations** | the dev build |
 | `docker build --pull --no-cache` | clean, one MPM, `Syntax OK` | Docker |
-| `npm run verify:deploy` against production | **28/28** | the live URL |
+| `npm run verify:deploy` against production | **25/25 + 3 skipped** (read-only default; `--upload` for 28) | the live URL |
 
 ### Expected skips against a remote
 

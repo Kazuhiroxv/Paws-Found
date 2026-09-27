@@ -70,7 +70,9 @@ When everything is green:
 npm run verify:deploy https://paws-found-production.up.railway.app
 ```
 
-Target **28/28**.
+Target **25/25 passed, 3 skipped**. The skipped three are the upload checks,
+which write to production and run only with `--upload` (see TESTING.md). Add
+`--upload` only when the change touched uploads or the storage volume.
 
 5. Open the site and click through the smoke test.
 

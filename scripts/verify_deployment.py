@@ -14,10 +14,21 @@ of the response. For a page view that is invisible; for a REST API it means
 `audit_cases.py` can run at all. That is the single most useful thing to find
 out a week early rather than on the day.
 
-It signs in once and uploads one small PNG to a report the demo account
-already owns, because that is the only honest way to test the upload path —
-the seeded photographs are bundled with the frontend and never touch the
-server. Re-importing `database/seed.sql` clears it. Nothing else is written.
+By default it changes no data. It signs in once, which adds the usual line to
+the sign-in audit log like any sign-in does, and writes nothing else: no
+report, photo or account is touched, so it is safe to run against production
+as often as you like.
+
+    python scripts/verify_deployment.py https://... --upload
+
+adds the upload checks (5.1-5.3): one small PNG attached to the newest report
+the demo account owns, then fetched back as a signed-out visitor. That is the
+only honest test of the upload path, but it WRITES: the photo stays on that
+report (there is no delete endpoint), and a report holds at most five. Every
+earlier unconditional run left one on report 1 (Milo), which is how the live
+demo pet came to have three blank squares in its gallery. Use --upload once
+after changing the upload code or the storage volume, not as a routine check.
+Without it, 5.1-5.3 are reported as SKIPPED, not as passes.
 
 Stdlib only.
 """
@@ -32,7 +43,9 @@ import urllib.parse
 import urllib.request
 import zlib
 
-BASE = (sys.argv[1] if len(sys.argv) > 1 else 'http://localhost/pawsandfound').rstrip('/')
+ARGS = [a for a in sys.argv[1:] if not a.startswith('--')]
+UPLOAD = '--upload' in sys.argv[1:]
+BASE = (ARGS[0] if ARGS else 'http://localhost/pawsandfound').rstrip('/')
 API = BASE + '/api'
 DEMO_ACCOUNT = ('maria.santos@example.com', 'demo1234')
 
@@ -56,6 +69,12 @@ def check(step, what, expected, actual, ok, note=''):
           f'{"PASS" if ok else "FAIL"}')
     if note and not ok:
         print(f'        {note}')
+
+
+def skip(step, what, why):
+    """A check that was deliberately not run. Counted apart: not a pass."""
+    results.append((step, what, 'run', 'not run', None, why))
+    print(f'  {step:<5} {what:<52} {"":<20} {"":<26} SKIPPED')
 
 
 class Headers(dict):
@@ -280,7 +299,12 @@ try:
 except (json.JSONDecodeError, KeyError, IndexError):
     own_report = None
 
-if own_report is None:
+if not UPLOAD:
+    why = 'Read-only run. Pass --upload to test it; that attaches a photo to a demo report.'
+    skip('5.1', 'A photograph uploads', why)
+    skip('5.2', 'A signed-out visitor can fetch it', why)
+    skip('5.3', 'It is served as an image, with bytes', why)
+elif own_report is None:
     check('5.1', 'A report owned by the demo account was found', True, False, False,
           'GET /reports/activity returned nothing, so there is nothing to attach to.')
 else:
@@ -391,14 +415,17 @@ else:
           '        Everything about the Secure cookie flag is untested until then.')
 
 # ================================================================== summary
-passed = sum(1 for row in results if row[4])
+passed = sum(1 for row in results if row[4] is True)
+skipped = [row for row in results if row[4] is None]
+ran = len(results) - len(skipped)
 print()
 print('=' * 112)
-print(f'  {passed}/{len(results)} passed')
-if passed != len(results):
+print(f'  {passed}/{ran} passed' + (f', {len(skipped)} skipped (read-only run; --upload to include)'
+                                   if skipped else ''))
+if passed != ran:
     print()
     for step, what, expected, actual, ok, note in results:
-        if not ok:
+        if ok is False:
             print(f'  FAILED  {step}  {what}: expected {expected}, got {actual}')
     print()
     print('  Fix these before running the full suites against this deployment.')
@@ -407,4 +434,4 @@ else:
     print('  Now run the two suites against it:')
     print(f'    PAWS_API={API} PAWS_MYSQL_ARGS="..." python scripts/audit_cases.py')
     print(f'    PAWS_API={API} python scripts/multi_device.py')
-sys.exit(0 if passed == len(results) else 1)
+sys.exit(0 if passed == ran else 1)
