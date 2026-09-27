@@ -448,7 +448,7 @@ All run on 27 September 2026 unless noted. Commands and prerequisites:
 | `npm run build` | green | — |
 | `npm run test:contract` | **13/13** | nothing running |
 | `npm run test:mail` | **15/15** | `php` on PATH; one check calls Brevo |
-| `npm run audit` | **205/205** | API + database |
+| `npm run audit` | **222/222** | API + database |
 | `python scripts/auth_lifecycle.py` | **53/53** | API + database, local only |
 | `npm run multi-device` | **55/55** local | API + database |
 | `npm run a11y` | 31 pages, **zero violations** | the dev build (`PAWS_BASE=http://localhost:5173`) |
@@ -519,6 +519,13 @@ Stated plainly so nobody rediscovers them the hard way.
   demonstration; the reason the live URL should not be shared widely while they
   exist.
 - **`origin`'s push URL is disabled on purpose.** Do not re-enable it casually.
+- **A reporter's answer to "request more information" lives only in
+  notifications.** It is delivered to each active coordinator as a
+  `verification_requested` notification (255 characters, the column's size) and
+  is stored nowhere else, so that the other reporter never sees it. The
+  reporter sees a "sent" confirmation, not a history. That is a deliberate
+  no-migration choice made just before the freeze; a `match_responses` table is
+  the proper long-term shape (see DECISIONS.md).
 - **`match_claims.staff_notes` can be written but not read.** A coordinator's
   note on a pairing decision is stored, and no endpoint returns it to anybody,
   staff included. That is safe, not leaky; it becomes a gap only if the staff

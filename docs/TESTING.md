@@ -70,7 +70,7 @@ skips that one check when there is no network.
 
 **Mutates nothing.** Sends no real email.
 
-### `npm run audit` — 205 checks
+### `npm run audit` — 222 checks
 
 The security and functional suite, against the running API and database.
 
@@ -86,6 +86,7 @@ The security and functional suite, against the running API and database.
 | H. Error handling | 10 |
 | I. Location privacy | 8 |
 | J. Report access | 27 |
+| K. Information requests | 17 |
 
 `RA-01`–`RA-27` pin down who receives what. A guest's list row is exactly the
 public summary, a guest opening a report gets `401 auth_required` (a missing
@@ -96,6 +97,15 @@ Contact details still follow each report's sharing choice. Pairings need a
 session, a customer sees only pairings involving their own reports, and staff
 and administrators see all of them. Run against the previous API, 19 of these
 fail.
+
+`IR-01`–`IR-17` follow a coordinator's request for more information to its
+answer. Only a reporter in the pairing may answer (guest 401, unrelated
+customer and staff 403), only while the question is open (409 before it and on
+a decided pairing), not empty, and at most 255 characters (256 is refused, not
+cut). The answer reaches every active coordinator and nobody else: not the
+other reporter, whether through their notifications or the pairing they can
+open. The pairing stays under review, and proof_notes, staff_notes and both
+case histories are unchanged.
 
 `LP-01`–`LP-08` pin down the location promise. The database keeps the pin as
 dropped. Anybody who is not the reporter or staff (a guest or another signed-in
@@ -219,7 +229,7 @@ lint                                     clean
 build                                    green
 test:contract                            13/13
 test:mail                                15/15
-audit                                   205/205
+audit                                   222/222
 auth_lifecycle                           53/53
 multi-device                             55/55   (53/53 + 2 skipped vs a remote)
 a11y                                     31 pages, 0 violations

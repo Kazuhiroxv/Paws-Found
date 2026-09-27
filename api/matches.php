@@ -36,7 +36,21 @@ const MATCH_ACTIONS = [
     'confirm'             => ['staff'],
     'reject'              => ['staff'],
     'request_information' => ['staff'],
+    // The answer to request_information, from one of the two reporters. Only
+    // they may send it; a coordinator does not answer their own question.
+    'provide_information' => ['reporter'],
 ];
+
+/**
+ * The longest answer a reporter may send to a coordinator's question.
+ *
+ * The answer travels as the body of a notification to each coordinator, and
+ * notifications.body is VARCHAR(255). The context (who sent it, about which
+ * pairing) goes in the title and the report/match columns, so the whole body
+ * is the answer: 255 characters, counted as characters (mb_strlen), exactly as
+ * the column counts them. Longer is refused, never cut short.
+ */
+const PROVIDE_INFORMATION_MAX = 255;
 
 function handle_matches(string $method, ?string $identifier): never
 {
@@ -92,6 +106,12 @@ function match_decide(int $id): never
         json_error('Only someone involved in this pairing can do that.', 403);
     }
 
+    // Staff may act for a reporter elsewhere, but not here: this is the
+    // reporter's own answer to a coordinator's question.
+    if ($action === 'provide_information' && !$isReporter) {
+        json_error('Only someone involved in this pairing can answer.', 403);
+    }
+
     // A decided pairing is final. Without this, confirming twice runs the whole
     // cascade a second time: both reporters are told again, and each case
     // history gains a meaningless "returned -> returned" entry.
@@ -114,6 +134,26 @@ function match_decide(int $id): never
         json_error('Write what you need from the reporters before asking.', 422, [
             'fields' => ['note' => 'Say what you need from them.'],
         ]);
+    }
+
+    // An answer needs somewhere to go and something in it. It is only taken
+    // while a coordinator's question is open (under_review): at any other
+    // stage there is nobody waiting for it.
+    if ($action === 'provide_information') {
+        if ($match['match_status'] !== 'under_review') {
+            json_error('No Pet Coordinator is waiting for more information on this pairing.', 409);
+        }
+        if ($note === null) {
+            json_error('Write the information the Pet Coordinator asked for.', 422, [
+                'fields' => ['note' => 'Write your answer before sending it.'],
+            ]);
+        }
+        if (mb_strlen($note) > PROVIDE_INFORMATION_MAX) {
+            $max = PROVIDE_INFORMATION_MAX;
+            json_error("Keep it to {$max} characters.", 422, [
+                'fields' => ['note' => "Keep it to {$max} characters."],
+            ]);
+        }
     }
 
     if ($action === 'reject' && $note === null) {
@@ -153,6 +193,7 @@ function match_decide(int $id): never
             'dismiss'              => match_dismiss($id, $match, $user, $note),
             'reject'               => match_reject($id, $match, $user, $note),
             'request_information'  => match_request_information($id, $match, $user, $note),
+            'provide_information'  => match_provide_information($match, $user, $note),
             'confirm'              => match_confirm($id, $match, $user, $note),
         };
 
@@ -304,6 +345,48 @@ function match_request_information(int $id, array $match, array $user, ?string $
     match_set_status($id, 'under_review', $user, $note, $match['match_status']);
 
     notify_both($match, 'staff_reviewed', 'A Pet Coordinator needs more information', $note);
+}
+
+/**
+ * A reporter answers the coordinator's question.
+ *
+ * Delivered as a notification to every active Pet Coordinator, and nowhere
+ * else: not into proof_notes (which the other reporter in the pairing can
+ * read), not into staff_notes (the coordinator's own field), and not into a
+ * report's status history. The pairing's status does not move; it stays under
+ * review until a coordinator decides. Nobody else is told, so the other
+ * reporter never sees what this one wrote.
+ *
+ * `verification_requested` is the existing type for "a reporter has sent
+ * something to be verified", and the notification preferences are not
+ * consulted: this is a coordinator's work queue, not an optional update.
+ */
+function match_provide_information(array $match, array $user, string $answer): void
+{
+    $userId = (int) $user['user_id'];
+    $reportId = $userId === (int) $match['lost_user_id']
+        ? (int) $match['lost_report_id']
+        : (int) $match['found_report_id'];
+
+    $staff = db()->query(
+        "SELECT user_id FROM users WHERE role = 'staff' AND account_status = 'active'"
+    )->fetchAll(PDO::FETCH_COLUMN);
+
+    $statement = db()->prepare(
+        'INSERT INTO notifications (user_id, notification_type, title, body, report_id, match_id)
+         VALUES (:user_id, :type, :title, :body, :report_id, :match_id)'
+    );
+
+    foreach ($staff as $staffId) {
+        $statement->execute([
+            ':user_id' => (int) $staffId,
+            ':type' => 'verification_requested',
+            ':title' => $user['full_name'] . ' sent more information',
+            ':body' => $answer,
+            ':report_id' => $reportId,
+            ':match_id' => (int) $match['match_id'],
+        ]);
+    }
 }
 
 /**

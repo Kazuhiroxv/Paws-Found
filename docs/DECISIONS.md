@@ -122,6 +122,30 @@ whoever made it; those go to the reporter, coordinators and administrators. The
 rule is decided by who is viewing, never by what a note says. A customer sees
 only pairings that involve their own reports.
 
+### A reporter's answer to a coordinator travels as a notification
+
+When a coordinator asks for more information, the reporter answers from
+Possible Matches (`PATCH /api/matches/{id}`, `provide_information`). The
+answer has to reach the coordinators and must not reach the other reporter in
+the pairing: what an owner offers to prove a pet is theirs is what an impostor
+would need.
+
+No existing column could hold it that way. `proof_notes` is readable by both
+reporters, `staff_notes` is the coordinator's own field and is overwritten by
+each decision, and a status-history entry would add a phantom status change to
+the case. A `match_responses` table is the right shape, but it would have meant
+a production migration and new table and key counts on the ERD days before the
+freeze.
+
+So the answer is delivered as a `verification_requested` notification to each
+active coordinator, the existing type for "a reporter has sent something to be
+verified", and kept nowhere else. It is 255 characters at most, which is
+`notifications.body`, and is refused rather than cut. The Verification page
+shows each coordinator the answers in their own notifications that are dated
+after the pairing's `updated_at`: asking writes to the pairing, answering does
+not, so those are exactly the answers to the open question. The reporter gets a
+confirmation, not a message history.
+
 ### Turnstile, not a homemade CAPTCHA
 
 Registration is the one endpoint an anonymous stranger can use to create rows.

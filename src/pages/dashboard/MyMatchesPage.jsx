@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ArrowRight, CircleCheck, HeartHandshake, Hourglass, Info, ShieldAlert } from 'lucide-react'
-import { Button, EmptyState, LoadingSkeleton } from '@/components/ui'
+import { Button, EmptyState, LoadingSkeleton, Textarea } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { MatchPairCard, StatusStrip } from '@/components/MatchComparison'
-import { MATCH_STATUSES } from '@/constants'
+import { MATCH_STATUSES, NOTIFICATION_TYPES } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
-import { matchService, petService, userService } from '@/services'
+import { matchService, notificationService, petService, userService } from '@/services'
+import { PROVIDE_INFORMATION_MAX } from '@/services/matchService'
 import { cn } from '@/utils/cn'
 import emptyNoMatches from '@/assets/empty-no-matches.webp'
 
@@ -40,10 +41,24 @@ async function loadMatches() {
   const reportIds = [
     ...new Set(suggestions.flatMap((item) => [item.lostReportId, item.foundReportId])),
   ]
-  const reports = await Promise.all(reportIds.map((id) => petService.getReportById(id)))
+  const [reports, notifications] = await Promise.all([
+    Promise.all(reportIds.map((id) => petService.getReportById(id))),
+    notificationService.getNotifications(user.id),
+  ])
   const byId = Object.fromEntries(reports.map((report) => [report.id, report]))
 
-  return { user, suggestions, byId }
+  // The coordinator's question for each pairing, from this person's own
+  // notifications: `staff_reviewed` is only ever raised by "request more
+  // information", and the list is newest first, so the first per pairing is
+  // the latest. Nothing new is fetched from anywhere else.
+  const questions = {}
+  for (const notification of notifications) {
+    if (notification.type === NOTIFICATION_TYPES.STAFF_REVIEWED && notification.matchId) {
+      questions[notification.matchId] ??= notification.body
+    }
+  }
+
+  return { user, suggestions, byId, questions }
 }
 
 export function MyMatchesPage() {
@@ -88,7 +103,7 @@ export function MyMatchesPage() {
     )
   }
 
-  const { user, suggestions, byId } = data
+  const { user, suggestions, byId, questions } = data
 
   if (suggestions.length === 0) {
     return (
@@ -179,6 +194,7 @@ illustration={emptyNoMatches}          title="No possible matches yet"
                   lost={byId[suggestion.lostReportId]}
                   found={byId[suggestion.foundReportId]}
                   userId={user.id}
+                  question={questions[suggestion.id]}
                   isBusy={busyId === suggestion.id}
                   onRequestVerification={() =>
                     act(suggestion, (match) => matchService.requestVerification(match, user.id))
@@ -198,13 +214,14 @@ illustration={emptyNoMatches}          title="No possible matches yet"
  * One pairing, as the owner sees it: the shared comparison, with the owner's
  * own stage label and the owner's next step underneath.
  */
-function OwnerMatchCard({ match, lost, found, userId, isBusy, onRequestVerification, onDismiss }) {
+function OwnerMatchCard({ match, lost, found, userId, question, isBusy, onRequestVerification, onDismiss }) {
   const iAmFinder = Number(found.reporterId) === Number(userId)
 
   return (
     <MatchPairCard match={match} lost={lost} found={found} badge={<StageBadge status={match.status} />}>
       <StagePanel
         match={match}
+        question={question}
         iAmFinder={iAmFinder}
         isBusy={isBusy}
         onRequestVerification={onRequestVerification}
@@ -233,7 +250,7 @@ function StageBadge({ status }) {
  * suggestion; a confirmed one replaces it — saying "not a confirmation" beside
  * "Confirmed" contradicted itself.
  */
-function StagePanel({ match, iAmFinder, isBusy, onRequestVerification, onDismiss }) {
+function StagePanel({ match, question, iAmFinder, isBusy, onRequestVerification, onDismiss }) {
   const suggestionNote = (
     <p className="rounded-control bg-accent-soft px-3 py-2 text-sm text-fg">
       This is a suggestion, not a confirmation. A Pet Coordinator helps verify ownership before any
@@ -265,12 +282,22 @@ function StagePanel({ match, iAmFinder, isBusy, onRequestVerification, onDismiss
     return (
       <div className="flex flex-col gap-3">
         <StatusStrip tone="info" icon={Info} title="A Pet Coordinator asked for more information">
-          Their note is in your{' '}
-          <Link to="/dashboard/notifications" className="font-medium underline">
-            notifications
-          </Link>
-          . The pairing stays under review until they decide.
+          {question ? (
+            <>
+              <span className="block font-medium text-fg">“{question}”</span>
+              Answer below. The pairing stays under review until they decide.
+            </>
+          ) : (
+            <>
+              Their note is in your{' '}
+              <Link to="/dashboard/notifications" className="font-medium underline">
+                notifications
+              </Link>
+              . Answer below; the pairing stays under review until they decide.
+            </>
+          )}
         </StatusStrip>
+        <InformationReply matchId={match.id} />
         {suggestionNote}
       </div>
     )
@@ -302,6 +329,85 @@ function StagePanel({ match, iAmFinder, isBusy, onRequestVerification, onDismiss
         </Button>
       </div>
     </div>
+  )
+}
+
+/**
+ * The answer to a coordinator's question, sent from where the question is.
+ *
+ * It goes to the Pet Coordinators and to nobody else: the other person in this
+ * pairing never sees it. The server keeps no copy here to show again, so after
+ * sending, this says it went and offers to send more; it does not pretend to be
+ * a conversation. 255 characters at most, counted as you type, never cut short.
+ */
+function InformationReply({ matchId }) {
+  const [answer, setAnswer] = useState('')
+  const [state, setState] = useState('idle') // idle | sending | sent
+  const [error, setError] = useState(null)
+
+  const length = answer.trim().length
+  const tooLong = answer.length > PROVIDE_INFORMATION_MAX
+
+  const send = async (event) => {
+    event.preventDefault()
+    if (length === 0 || tooLong) return
+    setState('sending')
+    setError(null)
+
+    try {
+      await matchService.provideInformation(matchId, answer.trim())
+      setAnswer('')
+      setState('sent')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught : new Error(String(caught)))
+      setState('idle')
+    }
+  }
+
+  if (state === 'sent') {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-control border border-success/30 bg-success-soft px-3 py-2.5">
+        <p role="status" className="flex items-center gap-2 text-sm text-success-ink">
+          <CircleCheck size={16} className="shrink-0" aria-hidden="true" />
+          Sent to the Pet Coordinators. Only they can read it.
+        </p>
+        <Button size="sm" variant="ghost" onClick={() => setState('idle')}>
+          Add more
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={send} className="flex flex-col gap-2 rounded-control border border-border bg-panel p-3">
+      <Textarea
+        label="Your answer"
+        hint="Goes to the Pet Coordinators only. The other person in this pairing will not see it."
+        value={answer}
+        onChange={(event) => setAnswer(event.target.value)}
+        rows={3}
+        error={
+          error?.fields?.note
+          ?? (tooLong ? `Keep it to ${PROVIDE_INFORMATION_MAX} characters.` : undefined)
+        }
+      />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span
+          className={cn('text-sm tabular-nums', tooLong ? 'font-medium text-danger' : 'text-fg-muted')}
+          aria-live="polite"
+        >
+          {answer.length} / {PROVIDE_INFORMATION_MAX}
+        </span>
+        <Button type="submit" size="sm" isLoading={state === 'sending'} disabled={length === 0 || tooLong}>
+          {state === 'sending' ? 'Sending…' : 'Send information'}
+        </Button>
+      </div>
+      {error && !error.fields && (
+        <p role="alert" className="text-sm text-danger">
+          It could not be sent: {error.message}
+        </p>
+      )}
+    </form>
   )
 }
 

@@ -163,6 +163,16 @@ export async function requestMoreInformation(id, context = {}) {
   return decide(id, 'request_information', context.note)
 }
 
+/**
+ * A reporter's answer to requestMoreInformation. The server delivers it to the
+ * Pet Coordinators only; the other reporter never receives it.
+ */
+export const PROVIDE_INFORMATION_MAX = 255
+
+export async function provideInformation(id, answer) {
+  return decide(id, 'provide_information', answer)
+}
+
 export async function getMatchesWithReports(query = {}) {
   const payload = await apiFetch('/matches')
   let rows = payload.data.map(matchFromApi)

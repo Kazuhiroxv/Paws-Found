@@ -15,9 +15,10 @@ import {
 import { Button, EmptyState, LoadingSkeleton, Modal, Textarea } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { MatchPairCard, MatchStatusBadge, PairingName, StatusStrip } from '@/components/MatchComparison'
-import { MATCH_STATUSES_AWAITING_STAFF } from '@/constants'
+import { MATCH_STATUSES, MATCH_STATUSES_AWAITING_STAFF, NOTIFICATION_TYPES } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
-import { matchService, userService } from '@/services'
+import { matchService, notificationService, userService } from '@/services'
+import { formatDateTime } from '@/utils/date'
 import { hasCoordinates } from '@/utils/location'
 import emptyQueueClear from '@/assets/empty-queue-clear.webp'
 
@@ -31,13 +32,43 @@ async function loadVerificationQueue() {
   const reporterIds = [
     ...new Set(pairings.flatMap((p) => [p.lostReport.reporterId, p.foundReport.reporterId])),
   ]
-  const reporters = await Promise.all(reporterIds.map((id) => userService.getUserById(id)))
+  const [reporters, notifications] = await Promise.all([
+    Promise.all(reporterIds.map((id) => userService.getUserById(id))),
+    notificationService.getNotifications(staff.id),
+  ])
 
   return {
     staff,
     pairings,
     reportersById: Object.fromEntries(reporters.map((user) => [user.id, user])),
+    repliesByMatch: repliesSinceQuestion(pairings, notifications),
   }
+}
+
+/**
+ * What reporters have sent since a coordinator asked for more information.
+ *
+ * A reply reaches each coordinator as a `verification_requested` notification
+ * on the pairing, read here from this coordinator's own notifications. That
+ * type also means "a reporter asked for verification", so only notifications
+ * dated at or after the pairing's updated_at count: asking for information
+ * writes to the pairing (and moves that timestamp), while an answer writes
+ * nothing to it. So these are exactly the answers to the question now open,
+ * never an older request or an answer to an earlier question. MySQL gives
+ * both timestamps as 'YYYY-MM-DD HH:MM:SS', so they compare as strings.
+ */
+function repliesSinceQuestion(pairings, notifications) {
+  const replies = {}
+  for (const { match } of pairings) {
+    if (match.status !== MATCH_STATUSES.UNDER_REVIEW) continue
+    replies[match.id] = notifications.filter(
+      (n) =>
+        n.type === NOTIFICATION_TYPES.VERIFICATION_REQUESTED &&
+        n.matchId === match.id &&
+        n.createdAt >= match.updatedAt,
+    )
+  }
+  return replies
 }
 
 /** What each decision does, as the confirmation dialogs describe it. */
@@ -118,7 +149,7 @@ export function StaffVerificationPage() {
     )
   }
 
-  const { staff, pairings, reportersById } = data
+  const { staff, pairings, reportersById, repliesByMatch } = data
   const decidedIds = new Set(decided.map((item) => item.match.id))
   const waiting = pairings.filter((item) => !decidedIds.has(item.match.id))
 
@@ -174,6 +205,7 @@ export function StaffVerificationPage() {
                   found={item.foundReport}
                   owner={reportersById[item.lostReport.reporterId]}
                   finder={reportersById[item.foundReport.reporterId]}
+                  replies={repliesByMatch[item.match.id] ?? []}
                   onDecided={(outcome) => onDecided(item, outcome)}
                   onUpdated={reload}
                 />
@@ -186,7 +218,7 @@ export function StaffVerificationPage() {
   )
 }
 
-function DecisionPanel({ match, staff, lost, found, owner, finder, onDecided, onUpdated }) {
+function DecisionPanel({ match, staff, lost, found, owner, finder, replies, onDecided, onUpdated }) {
   const [note, setNote] = useState(match.staffNotes ?? '')
   const [busyAction, setBusyAction] = useState(null)
   const [actionError, setActionError] = useState(null)
@@ -235,6 +267,8 @@ function DecisionPanel({ match, staff, lost, found, owner, finder, onDecided, on
       </p>
 
       <Completeness lost={lost} found={found} match={match} />
+
+      {match.status === MATCH_STATUSES.UNDER_REVIEW && <Replies replies={replies} />}
 
       {/* Contact details: staff only. */}
       <div className="flex flex-col gap-3">
@@ -488,6 +522,38 @@ function Completeness({ lost, found, match }) {
       <p className="text-sm text-fg-muted">
         None of this proves ownership. It only says where the evidence is thin.
       </p>
+    </div>
+  )
+}
+
+/**
+ * Answers to the open question, newest first. Staff only: each reporter's
+ * answer reached the coordinators and nobody else, so it is shown here and not
+ * on anything a reporter can open.
+ */
+function Replies({ replies }) {
+  if (replies.length === 0) {
+    return (
+      <p className="rounded-control border border-border bg-sunken/70 px-3 py-2 text-sm text-fg-muted">
+        Waiting for an answer to your request for more information.
+      </p>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <h4 className="text-sm font-semibold text-fg">
+        Information received{replies.length > 1 ? ` (${replies.length})` : ''}
+      </h4>
+      <ul className="flex flex-col gap-2">
+        {replies.map((reply) => (
+          <li key={reply.id} className="rounded-control border border-brand/25 bg-brand-soft/60 px-3 py-2.5">
+            <p className="text-sm font-medium text-fg">{reply.title}</p>
+            <p className="mt-1 text-sm whitespace-pre-line text-fg">{reply.body}</p>
+            <p className="mt-1 text-xs text-fg-muted">{formatDateTime(reply.createdAt)}</p>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

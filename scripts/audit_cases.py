@@ -922,6 +922,90 @@ def access_control():
            f'/matches/{foreign or 1}', None, 200)
 
 
+def information_reply():
+    """A reporter answers a coordinator's request for more information.
+
+    The answer goes to the coordinators as notifications and nowhere else: not
+    to the other reporter, not into proof_notes, staff_notes or any history.
+    """
+    C = 'K. Information requests'
+    maria = int(sql("SELECT user_id FROM users WHERE email = 'maria.santos@example.com';"))
+    match = sql("SELECT m.match_id FROM match_claims m JOIN pet_reports l ON l.report_id = m.lost_report_id "
+                f"WHERE l.user_id = {maria} AND m.match_status IN ('suggested', 'verification_requested') "
+                "ORDER BY m.match_id LIMIT 1;")
+    if not match:
+        check(C, 'IR-00', 'A pairing to test with exists', 'a pairing', 'none', False)
+        return
+    counterpart = int(sql('SELECT f.user_id FROM match_claims m JOIN pet_reports f '
+                          f'ON f.report_id = m.found_report_id WHERE m.match_id = {match};'))
+    path = f'/matches/{match}'
+    answer = 'Milo has a small white patch under his chin and a bent left ear tip.'
+    # Whichever of the two other audit customers is NOT in this pairing is the
+    # unrelated one; the one who is, is the counterpart.
+    ids = {role: int(sql(f"SELECT user_id FROM users WHERE email = '{audit.ACCOUNTS[role]}';"))
+           for role in ('customer2', 'finder')}
+    other = next((r for r, i in ids.items() if i == counterpart), None)
+    unrelated = next(r for r, i in ids.items() if i != counterpart)
+
+    status(C, 'IR-01', 'Before any question is asked, an answer is refused', 'customer',
+           'PATCH', path, {'action': 'provide_information', 'note': answer}, 409)
+    status(C, 'IR-02', 'The coordinator asks for more information', 'staff', 'PATCH', path,
+           {'action': 'request_information', 'note': 'Describe two markings only the owner would know.'}, 200)
+
+    def snapshot():
+        return sql('SELECT CONCAT_WS("|", m.match_status, IFNULL(m.proof_notes, "-"), IFNULL(m.staff_notes, "-"), '
+                   '(SELECT COUNT(*) FROM status_logs s WHERE s.report_id IN (m.lost_report_id, m.found_report_id))) '
+                   f'FROM match_claims m WHERE m.match_id = {match};')
+    before = snapshot()
+
+    status(C, 'IR-03', 'A guest cannot answer', 'guest', 'PATCH', path,
+           {'action': 'provide_information', 'note': answer}, 401)
+    status(C, 'IR-04', 'An unrelated customer cannot answer', unrelated, 'PATCH', path,
+           {'action': 'provide_information', 'note': answer}, 403)
+    status(C, 'IR-05', 'A coordinator cannot answer their own question', 'staff', 'PATCH', path,
+           {'action': 'provide_information', 'note': answer}, 403)
+    status(C, 'IR-06', 'An empty answer is refused', 'customer', 'PATCH', path,
+           {'action': 'provide_information', 'note': '   '}, 422)
+    status(C, 'IR-07', 'An answer over 255 characters is refused, not cut', 'customer', 'PATCH', path,
+           {'action': 'provide_information', 'note': 'x' * 256}, 422)
+    status(C, 'IR-08', 'The involved customer can answer', 'customer', 'PATCH', path,
+           {'action': 'provide_information', 'note': answer}, 200)
+
+    after = snapshot()
+    check(C, 'IR-09', 'The pairing stays under review', 'under_review', after.split('|')[0],
+          after.split('|')[0] == 'under_review')
+    check(C, 'IR-10', 'No proof_notes, staff_notes or history written', 'unchanged',
+          'unchanged' if after == before else f'{before} -> {after}', after == before)
+
+    staff_ids = sql("SELECT GROUP_CONCAT(user_id) FROM users WHERE role = 'staff' AND account_status = 'active';")
+    got = sql('SELECT COUNT(*) FROM notifications WHERE notification_type = "verification_requested" '
+              f'AND match_id = {match} AND user_id IN ({staff_ids}) AND body = "{answer}";')
+    check(C, 'IR-11', 'Every active coordinator is notified with the answer',
+          len(staff_ids.split(',')), got, int(got) == len(staff_ids.split(',')))
+    leaked = sql(f'SELECT COUNT(*) FROM notifications WHERE body = "{answer}" '
+                 f'AND user_id NOT IN ({staff_ids});')
+    check(C, 'IR-12', 'Nobody else is sent it (counterpart, other customers)', '0', leaked, leaked == '0')
+
+    _, body = session('staff').call('GET', '/notifications')
+    mine = [n for n in (body.get('data') or []) if n.get('match_id') == int(match) and n.get('body') == answer]
+    check(C, 'IR-13', 'The coordinator can read it through the API', '1', len(mine), len(mine) == 1)
+    check(C, 'IR-14', 'The other reporter is one of the audit accounts', 'found', other or 'none',
+          other is not None)
+    _, body = session(other or unrelated).call('GET', '/notifications')
+    seen = [n for n in (body.get('data') or []) if n.get('body') == answer]
+    check(C, 'IR-15', "The other reporter's notifications do not carry it", '0', len(seen), not seen)
+    _, pairing = session(other or unrelated).call('GET', path)
+    check(C, 'IR-16', "...nor does the pairing they can open", 'absent',
+          'absent' if answer not in json.dumps(pairing) else 'PRESENT', answer not in json.dumps(pairing))
+
+    decided = sql("SELECT m.match_id FROM match_claims m JOIN pet_reports l ON l.report_id = m.lost_report_id "
+                  "JOIN pet_reports f ON f.report_id = m.found_report_id "
+                  f"WHERE {maria} IN (l.user_id, f.user_id) AND m.match_status IN ('confirmed', 'rejected') LIMIT 1;")
+    if decided:
+        status(C, 'IR-17', 'A confirmed or rejected pairing refuses an answer', 'customer', 'PATCH',
+               f'/matches/{decided}', {'action': 'provide_information', 'note': answer}, 409)
+
+
 def error_handling():
     C = 'H. Error handling'
     status(C, 'EH-01', 'A report that does not exist', 'guest', 'GET', '/reports/99999', None, 404)
@@ -1024,6 +1108,7 @@ if __name__ == '__main__':
     error_handling()
     location_privacy()
     access_control()
+    information_reply()
     total, passed = report()
 
     reseed()
