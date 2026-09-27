@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { List, Map as MapIcon, Search, SlidersHorizontal } from 'lucide-react'
 import emptyReportsImage from '@/assets/empty-no-reports.png'
-import headerIllustration from '@/assets/img-008-explore-header-illustration.jpg'
+import exploreHero from '@/assets/img-030-explore-hero.webp'
 import { Button, Container, EmptyState, LoadingSkeleton, Modal } from '@/components/ui'
 import { PetCard } from '@/components/PetCard'
 import { Pagination } from '@/components/Pagination'
@@ -172,31 +172,40 @@ export function ExplorePage() {
           heading above a form. */}
       <title>Explore reports · Paws&Found</title>
 
-      {/* A compact band: this page's job is the results, and the hero used to
-          spend 272px on a heading before the map began. IMG-008 is now a
-          vignette on the right rather than the whole band — the search is the
-          subject, the dog and cat are the signature. */}
-      <section className="relative isolate overflow-hidden rounded-card bg-brand-soft/60">
-        {/* Search sweeps behind the illustration, running off the band. */}
-        <RadarOrnament tone="teal" size={460} className="-top-28 -left-24 lg:left-1/3" />
-        {/* Shown from `lg` up only. The text column only narrows to half the
-            band at `lg`; from `md` it ran straight across the dog and cat. The
-            search row is capped too, or the input covers the animals' paws.
-            Below `lg` the band keeps its tint and the type has it to itself. */}
+      {/* A contained panel, lined up with the filters and the map below it, so
+          the hero and the results read as one working surface. About and Help
+          are full-bleed; this is deliberately not a third of those.
+
+          From `lg`: IMG-030 behind it: dog and cat on the right, the
+          neighbourhood and its pins in the middle, cream on the left for the
+          heading and search. The source is 2000x689 (about 2.9:1) and the
+          panel is about 5:1, so filling the width would have cut ~40% of the
+          height and the pets with it. Instead the art is scaled to the
+          panel's height and anchored right: 697x240, nothing cropped. The
+          panel is the art's own cream (warm-band), and the image's left edge,
+          already plain cream, fades into it, so there is no seam to see.
+
+          Below `lg`: no art, as before. The words and the search use the full
+          width there, and the results matter more than a picture above them. */}
+      <section className="relative isolate overflow-hidden rounded-card bg-brand-soft/60 lg:bg-warm-band">
+        {/* Search sweeps behind the tinted band on tablets. From `lg` the art
+            carries the search motif itself, and the rings would compete. */}
+        <RadarOrnament tone="teal" size={460} className="-top-28 -left-24 lg:hidden" />
         <img
-          src={headerIllustration}
+          src={exploreHero}
           alt=""
-          className="absolute inset-y-0 right-0 hidden h-full w-[44%] object-cover object-[78%_50%] [mask-image:linear-gradient(to_right,transparent,black_30%)] lg:block"
+          className="absolute inset-y-0 right-0 hidden h-full w-auto max-w-none [mask-image:linear-gradient(to_right,transparent,black_28%)] lg:block"
+          fetchPriority="high"
         />
 
-        {/* The illustration fades into the canvas instead of stopping at a
-            hard edge, so the search sits on the seam between the two. */}
+        {/* A short fade into the canvas, which ties the panel to the results
+            below it. Short on purpose: taller, it greyed out the pets' paws. */}
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-surface"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-b from-transparent to-surface"
         />
 
-        <div className="relative flex flex-col gap-4 px-6 py-6 sm:px-8 sm:py-7">
+        <div className="relative flex flex-col gap-4 px-6 py-6 sm:px-8 sm:py-7 lg:min-h-60 lg:justify-center">
           <div className="flex flex-col gap-1.5 lg:max-w-[54%]">
             <h1 className="text-[2rem] leading-[1.1] font-semibold tracking-tight text-balance text-fg sm:text-[2.25rem]">
               Explore reports

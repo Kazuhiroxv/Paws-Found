@@ -31,7 +31,7 @@ Assets in `src/assets/` and wired up.
 | IMG-017 | `img-017-auth-community.jpg` | Sign in / Register — a cat at an open door, beside the form from `lg` up. 1200×900, 139 KB, lazy | Delivered |
 | IMG-006 | `img-006-homepage-hero.jpg` | Homepage hero | Delivered |
 | IMG-007 | `img-007-about-intro.jpg` | About — "Why Paws&Found exists" | Delivered |
-| IMG-008 | `img-008-explore-header-illustration.jpg` | Explore — the whole header band | Delivered |
+| IMG-008 | `img-008-explore-header-illustration.jpg` | Explore — the previous header band | Delivered; **superseded by IMG-030**, no longer placed |
 
 IMG-006 was replaced with a second version in the homepage refinement pass. The
 first had its subjects hard right of frame, which only worked when text shared
@@ -60,6 +60,7 @@ replaced it in the redesign and the file has been deleted.
 | IMG-027 | `img-027-homepage-reunion.webp` | The homepage hero photograph | **High** | **Delivered** at 1448×1086, placed |
 | IMG-028 | `img-028-help-safety.webp` | The previous Help hero | **High** | Delivered at 1896×829; **superseded by IMG-028b**, no longer placed |
 | IMG-029 | `img-029-about-community-hero.webp` | The About page hero band | **High** | **Delivered** at 2000×434, placed |
+| IMG-030 | `img-030-explore-hero.webp` | The Explore hero panel | **High** | **Delivered** at 2000×689, placed |
 | IMG-028b | `img-028b-help-hero.webp` | The Help & community safety hero | **High** | **Delivered** at 2000×667, placed |
 
 ### What the generated mockups need, in detail
@@ -84,6 +85,27 @@ new one is the reunion itself: a brown Aspin leaning into its owner's hands on a
 Philippine residential street in late-afternoon light, the owner crouched with
 their face outside the frame so the animal is what you look at. Placed on the
 homepage at `object-[52%_42%]`, which centres the crop on the dog's head.
+
+**IMG-030 — Explore hero.** Delivered and placed as `img-030-explore-hero.webp`,
+used exactly as supplied (2000×689 WebP, 148.5 KB, not re-encoded). A golden
+dog and a grey tabby cat on a rock above a Philippine neighbourhood, a bay and
+a skyline, with amber and teal map pins over the rooftops. The left half is
+plain cream, and **there is no text or UI in the image**: the heading, copy,
+search field and button are the page's own HTML.
+
+The brief asked for 2560×512 (5:1). The delivered art is about 2.9:1, so
+filling the ~5:1 panel's width would have cut ~40% of its height, pets
+included. It is used differently instead:
+
+- **From `lg` (1024px):** the Explore panel stays contained (the 1216px column,
+  16px corners), 240px tall. The art is scaled to the panel's height and
+  anchored right: **697×240 at every desktop width**, uniform, nothing cropped.
+  The panel is `warm-band` cream, and the image's own cream left edge fades
+  into it over 28% of its width, so there is no seam.
+- **Below `lg`:** not shown; the tinted panel as before.
+- **Measured:** 168px of clear cream between the search field and the start of
+  the scene at 1366 and 1920, 60px at 1024. Heading 12.9:1 and paragraph
+  12.7:1 at worst over the art; no scrim needed.
 
 **IMG-028b — Help hero.** Delivered and placed as `img-028b-help-hero.webp`,
 used exactly as supplied (2000×667 WebP, 164 KB, not re-encoded). A wide
@@ -133,7 +155,7 @@ the bottom-left corner is a stand of dark leaves that the text reaches at 1366
 and 1920. Below `lg` it is hidden and the band keeps the cream on its own.
 
 The four public bands now read as four different things, which was the point of
-generating them separately: **IMG-027** the reunion on the homepage, **IMG-008**
+generating them separately: **IMG-027** the reunion on the homepage, **IMG-030**
 discovery on Explore, **IMG-028b** guidance on Help, **IMG-029** the community
 on About.
 
@@ -244,6 +266,8 @@ vector band as IMG-008, with the left half kept light for type — see the notes
 below, which apply unchanged.
 
 ## IMG-008 — the one illustrated asset
+
+*Superseded on Explore by IMG-030 and no longer placed; kept for the record.*
 
 Every other asset is a photograph; IMG-008 is flat vector-style artwork, and it
 is **the entire band**, not a cut-out pasted onto a coloured panel. The
