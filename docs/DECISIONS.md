@@ -122,6 +122,27 @@ whoever made it; those go to the reporter, coordinators and administrators. The
 rule is decided by who is viewing, never by what a note says. A customer sees
 only pairings that involve their own reports.
 
+### Editing saves everything the edit form offers
+
+The edit form showed every field of a report, but `PUT /api/reports/{id}`
+accepted seven of them. Species, breed, sex, collar, date and time, location,
+pin, contact choices and photos were dropped without a word, and "Save
+changes" still said it worked. For a system whose data is its whole value,
+false success is worse than a missing feature.
+
+So the update takes the same fields filing does, validated by the same
+functions (`report_category`, `report_incident_date`, `report_place`), through
+an explicit allowlist: nothing else in the body is read. A new species brings
+its breed with it. The location row the report already has is updated in
+place. Photos are changed with one `PATCH /api/reports/{id}/photos` (remove,
+choose main, describe), because the router takes no deeper path; every id
+must belong to the report, and a file is deleted only if this server generated
+its name. New photos use the existing upload endpoint. Finished reports refuse
+all of it, uploads included.
+
+The form saves the details first, then the photos. If a photo step fails, the
+owner lands on the report with a message saying which part did not save.
+
 ### A reporter's answer to a coordinator travels as a notification
 
 When a coordinator asks for more information, the reporter answers from

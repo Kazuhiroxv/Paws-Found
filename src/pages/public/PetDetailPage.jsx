@@ -158,6 +158,8 @@ export function PetDetailPage({ role }) {
 
   const { report, reporter, matches, counterparts, currentUser, actorNames } = data
   const isOwner = Boolean(currentUser) && currentUser.id === report.reporterId
+  // Set by the edit form when the details saved but a photo change did not.
+  const photoWarning = location.state?.photoWarning
   const isFound = report.reportType === REPORT_TYPES.FOUND
   const heading = report.petName ?? `${speciesLabel(report.species)} (name unknown)`
 
@@ -199,6 +201,11 @@ export function PetDetailPage({ role }) {
 
   return (
     <Container className="relative isolate flex flex-col gap-8">
+      {photoWarning && isOwner && (
+        <p role="alert" className="rounded-control border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-fg">
+          {photoWarning} Edit the report again to retry.
+        </p>
+      )}
       {/* The case header environment: the breadcrumb, the name and the
           photograph share one tinted ground — amber for a lost report, teal
           for a found one — which fades out before the details below it. It is

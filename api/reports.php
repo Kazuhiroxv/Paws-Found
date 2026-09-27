@@ -127,6 +127,7 @@ function handle_reports(string $method, ?string $identifier, ?string $sub = null
         $id = (int) $identifier;
 
         if ($method === 'POST' && $sub === 'photos') report_add_photos($id);
+        if ($method === 'PATCH' && $sub === 'photos') report_edit_photos($id);
 
         if ($sub === null) {
             if ($method === 'GET') report_detail($id);
@@ -155,18 +156,8 @@ function report_create(): never
         json_error('Say whether this is a lost or a found report.', 422);
     }
 
-    $categoryId = category_id_for_code(trim((string) ($body['species'] ?? '')));
-    if ($categoryId === null) {
-        json_error('Choose the kind of animal this report is about.', 422);
-    }
-
-    $incidentDate = trim((string) ($body['incident_date'] ?? ''));
-    if (!is_valid_date($incidentDate)) {
-        json_error('Give the date this happened, as YYYY-MM-DD.', 422);
-    }
-    if ($incidentDate > date('Y-m-d')) {
-        json_error('That date is in the future.', 422);
-    }
+    $categoryId = report_category($body['species'] ?? null);
+    $incidentDate = report_incident_date($body['incident_date'] ?? null);
 
     $petName = trim((string) ($body['pet_name'] ?? ''));
     // A found report must never require a name: the finder does not know it.
@@ -174,11 +165,8 @@ function report_create(): never
         json_error('Enter the name of the pet.', 422);
     }
 
-    $city = trim((string) ($body['city'] ?? ''));
-    $province = trim((string) ($body['province'] ?? ''));
-    if ($city === '' || $province === '') {
-        json_error('Enter at least the city and province where this happened.', 422);
-    }
+    $city = report_place($body['city'] ?? null);
+    $province = report_place($body['province'] ?? null);
 
     $size = require_one_of(blank_to_null($body['size'] ?? null), ['small', 'medium', 'large'], 'size');
     $sex = require_one_of(blank_to_null($body['sex'] ?? null), ['male', 'female', 'unknown'], 'sex') ?? 'unknown';
@@ -273,62 +261,133 @@ function report_create(): never
 function report_update(int $id): never
 {
     $user = require_login();
-    $report = find_report_or_404($id);
+    report_open_for_owner($id, $user, 'Only the person who filed a report can edit it.');
 
-    if ((int) $report['user_id'] !== (int) $user['user_id']) {
-        json_error('Only the person who filed a report can edit it.', 403);
-    }
-
-    // A case that has finished stops accepting edits. Changing the description
-    // of a pet that went home two weeks ago rewrites what a coordinator, and
-    // possibly a moderation decision, was looking at when they decided —
-    // and the case history beside it would still show the old story.
-    //
-    // Checked after ownership, so somebody else's closed report answers 403
-    // rather than telling them what state it is in.
-    if (in_array($report['status'], ['returned', 'closed'], true)) {
-        json_error(
-            'This report shows “' . REPORT_STATUS_WORDS[$report['status']]
-            . '”, and a finished report can no longer be edited.',
-            409,
-            ['status' => $report['status']]
-        );
-    }
+    $current = db()->prepare(
+        'SELECT report_type, category_id, location_id
+           FROM pet_reports WHERE report_id = :id'
+    );
+    $current->execute([':id' => $id]);
+    $current = $current->fetch();
 
     $body = request_body();
 
-    // Only these columns may be changed, and each is written as a bound value.
-    // Anything else in the request body is ignored rather than trusted.
-    $editable = [
-        'pet_name' => 'pet_name',
+    // Every field the edit form offers, and nothing else. Each is validated by
+    // the same rule filing uses, and anything else in the body is ignored.
+    // Absent means "leave it as it is"; present means "this is the new value".
+    //
+    // This used to accept seven fields while the form offered twenty-odd: an
+    // owner could change the species, the pin or the contact choices, press
+    // Save, be told it worked, and find nothing had changed.
+    $report = [];
+    $location = [];
+
+    foreach ([
         'primary_color' => 'primary_color',
         'secondary_color' => 'secondary_color',
         'distinct_features' => 'distinct_features',
         'description' => 'description',
         'condition' => 'pet_condition',
-    ];
-
-    $sets = [];
-    $params = [':id' => $id];
-
-    foreach ($editable as $field => $column) {
+        'incident_time' => 'incident_time',
+    ] as $field => $column) {
         if (array_key_exists($field, $body)) {
-            $sets[] = "{$column} = :{$column}";
-            $params[":{$column}"] = blank_to_null($body[$field]);
+            $report[$column] = blank_to_null($body[$field]);
         }
     }
 
-    if (array_key_exists('size', $body)) {
-        $sets[] = 'pet_size = :pet_size';
-        $params[':pet_size'] = require_one_of(blank_to_null($body['size']), ['small', 'medium', 'large'], 'size');
+    if (array_key_exists('pet_name', $body)) {
+        $petName = trim((string) ($body['pet_name'] ?? ''));
+        // The same rule as filing: a lost pet has a name; a found one may not.
+        if ($current['report_type'] === 'lost' && $petName === '') {
+            json_error('Enter the name of the pet.', 422);
+        }
+        $report['pet_name'] = $petName === '' ? null : $petName;
     }
 
-    if ($sets === []) {
+    if (array_key_exists('size', $body)) {
+        $report['pet_size'] = require_one_of(blank_to_null($body['size']), ['small', 'medium', 'large'], 'size');
+    }
+    if (array_key_exists('sex', $body)) {
+        $report['pet_sex'] = require_one_of(blank_to_null($body['sex']), ['male', 'female', 'unknown'], 'sex') ?? 'unknown';
+    }
+    if (array_key_exists('has_collar', $body)) {
+        $report['has_collar'] = require_one_of(blank_to_null($body['has_collar']), ['yes', 'no', 'unknown'], 'has_collar') ?? 'unknown';
+    }
+    if (array_key_exists('incident_date', $body)) {
+        $report['incident_date'] = report_incident_date($body['incident_date']);
+    }
+
+    // A breed belongs to a species, so a new species brings its breed with it:
+    // keeping the old breed_id would leave a "Shih Tzu" cat.
+    if (array_key_exists('species', $body)) {
+        $categoryId = report_category($body['species']);
+        $report['category_id'] = $categoryId;
+        $report['breed_id'] = breed_id_for($categoryId, blank_to_null($body['breed'] ?? null));
+    } elseif (array_key_exists('breed', $body)) {
+        $report['breed_id'] = breed_id_for((int) $current['category_id'], blank_to_null($body['breed']));
+    }
+
+    // The three contact choices, each kept as it was unless it was sent.
+    // Integers, not PHP booleans: PDO binds false as '', which strict MySQL
+    // refuses for a BOOLEAN column.
+    foreach (['allow_platform_contact', 'show_phone', 'show_email'] as $field) {
+        if (array_key_exists($field, $body)) {
+            $report[$field] = empty($body[$field]) ? 0 : 1;
+        }
+    }
+
+    // The location row this report already points at is updated in place, so
+    // an edit never leaves an orphaned location behind. The pin is stored as
+    // dropped; what leaves the server is still the public grid point.
+    if (array_key_exists('location_label', $body)) {
+        $location['label'] = blank_to_null($body['location_label']);
+    }
+    if (array_key_exists('city', $body)) {
+        $location['city'] = report_place($body['city']);
+    }
+    if (array_key_exists('province', $body)) {
+        $location['province'] = report_place($body['province']);
+    }
+    if (array_key_exists('lat', $body)) {
+        $location['latitude'] = numeric_or_null($body['lat']);
+    }
+    if (array_key_exists('lng', $body)) {
+        $location['longitude'] = numeric_or_null($body['lng']);
+    }
+
+    if ($report === [] && $location === []) {
         json_error('Nothing to change.', 422);
     }
 
-    $statement = db()->prepare('UPDATE pet_reports SET ' . implode(', ', $sets) . ' WHERE report_id = :id');
-    $statement->execute($params);
+    // The report and its location together, or neither.
+    $pdo = db();
+    $pdo->beginTransaction();
+
+    try {
+        $targets = [
+            ['pet_reports', $report, 'report_id', $id],
+            ['locations', $location, 'location_id', (int) $current['location_id']],
+        ];
+
+        foreach ($targets as [$table, $columns, $key, $keyValue]) {
+            if ($columns === []) {
+                continue;
+            }
+            // Column names come from the literal lists above, never from the
+            // request; only the values are bound.
+            $sets = implode(', ', array_map(fn ($column) => "`{$column}` = :{$column}", array_keys($columns)));
+            $params = [':row_key' => $keyValue];
+            foreach ($columns as $column => $value) {
+                $params[":{$column}"] = $value;
+            }
+            $pdo->prepare("UPDATE {$table} SET {$sets} WHERE {$key} = :row_key")->execute($params);
+        }
+
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        $pdo->rollBack();
+        throw $exception;
+    }
 
     report_detail($id);
 }
@@ -629,11 +688,7 @@ const PHOTO_TYPES = [
 function report_add_photos(int $id): never
 {
     $user = require_login();
-    $report = find_report_or_404($id);
-
-    if ((int) $report['user_id'] !== (int) $user['user_id']) {
-        json_error('Only the person who filed a report can add photographs to it.', 403);
-    }
+    report_open_for_owner($id, $user, 'Only the person who filed a report can add photographs to it.');
 
     if (empty($_FILES['photos'])) {
         json_error('No photographs were received.', 422);
@@ -749,7 +804,13 @@ function report_add_photos(int $id): never
         throw $exception;
     }
 
-    $rows = $pdo->prepare(
+    json_response(['data' => report_photo_list($id)], 201);
+}
+
+/** A report's photographs as the API returns them, primary first. */
+function report_photo_list(int $id): array
+{
+    $rows = db()->prepare(
         'SELECT image_id, image_path, alt_text, is_primary_photo
            FROM report_images
           WHERE report_id = :id
@@ -757,13 +818,154 @@ function report_add_photos(int $id): never
     );
     $rows->execute([':id' => $id]);
 
-    json_response(['data' => array_map(fn ($r) => [
+    return array_map(fn ($r) => [
         'image_id' => (int) $r['image_id'],
         'path' => $r['image_path'],
         'alt' => $r['alt_text'],
         'is_primary' => (bool) $r['is_primary_photo'],
-    ], $rows->fetchAll())], 201);
+    ], $rows->fetchAll());
 }
+
+/** alt_text is VARCHAR(180). */
+const PHOTO_ALT_MAX = 180;
+
+/**
+ * Change a report's existing photographs: remove some, choose the primary one,
+ * rewrite descriptions. Adding is POST to the same path.
+ *
+ *   PATCH /api/reports/12/photos
+ *   { "remove": [34, 35], "primary": 2, "alt": { "2": "Milo on the sofa" } }
+ *
+ * One request rather than one per photograph because the router takes at most
+ * /reports/{id}/photos, and because the three changes belong together: a
+ * removal can take the primary with it.
+ *
+ * Nothing is trusted from the client except which of this report's own
+ * photographs it means. Every id must belong to this report or the whole
+ * request is refused; the rows are deleted by report AND id; and a file is
+ * only ever removed from disk when it is one this server generated.
+ */
+function report_edit_photos(int $id): never
+{
+    $user = require_login();
+    report_open_for_owner($id, $user, 'Only the person who filed a report can change its photographs.');
+    $body = request_body();
+
+    $rows = db()->prepare('SELECT image_id, image_path FROM report_images WHERE report_id = :id');
+    $rows->execute([':id' => $id]);
+    $owned = [];
+    foreach ($rows->fetchAll() as $row) {
+        $owned[(int) $row['image_id']] = $row['image_path'];
+    }
+
+    // One of this report's own photographs, or the request stops here.
+    $mine = function (mixed $value) use ($owned): int {
+        if (!is_int($value) && !(is_string($value) && ctype_digit($value))) {
+            json_error('That photograph is not on this report.', 422);
+        }
+        if (!isset($owned[(int) $value])) {
+            json_error('That photograph is not on this report.', 422);
+        }
+
+        return (int) $value;
+    };
+
+    $remove = [];
+    if (array_key_exists('remove', $body)) {
+        if (!is_array($body['remove'])) {
+            json_error("'remove' must be a list of photograph ids.", 422);
+        }
+        $remove = array_values(array_unique(array_map($mine, $body['remove'])));
+    }
+
+    $alt = [];
+    if (array_key_exists('alt', $body)) {
+        if (!is_array($body['alt'])) {
+            json_error("'alt' must map photograph ids to descriptions.", 422);
+        }
+        foreach ($body['alt'] as $imageId => $text) {
+            $imageId = $mine((string) $imageId);
+            $text = blank_to_null(is_string($text) ? $text : null);
+            if ($text !== null && mb_strlen($text) > PHOTO_ALT_MAX) {
+                json_error('Keep each photo description to ' . PHOTO_ALT_MAX . ' characters.', 422);
+            }
+            $alt[$imageId] = $text;
+        }
+    }
+
+    $primary = null;
+    if (array_key_exists('primary', $body) && $body['primary'] !== null) {
+        $primary = $mine($body['primary']);
+        if (in_array($primary, $remove, true)) {
+            json_error('The main photograph cannot be one you are removing.', 422);
+        }
+    }
+
+    if ($remove === [] && $alt === [] && $primary === null) {
+        json_error('Nothing to change.', 422);
+    }
+
+    $pdo = db();
+    $pdo->beginTransaction();
+
+    try {
+        $delete = $pdo->prepare('DELETE FROM report_images WHERE report_id = :report AND image_id = :image');
+        foreach ($remove as $imageId) {
+            $delete->execute([':report' => $id, ':image' => $imageId]);
+        }
+
+        $describe = $pdo->prepare(
+            'UPDATE report_images SET alt_text = :alt WHERE report_id = :report AND image_id = :image'
+        );
+        foreach ($alt as $imageId => $text) {
+            if (!in_array($imageId, $remove, true)) {
+                $describe->execute([':alt' => $text, ':report' => $id, ':image' => $imageId]);
+            }
+        }
+
+        if ($primary !== null) {
+            $pdo->prepare(
+                'UPDATE report_images SET is_primary_photo = (image_id = :image) WHERE report_id = :report'
+            )->execute([':image' => $primary, ':report' => $id]);
+        }
+
+        // Exactly one primary whenever any photographs remain: removing the
+        // main one hands the role to the earliest that is left.
+        $count = $pdo->prepare('SELECT COUNT(*) FROM report_images WHERE report_id = :report AND is_primary_photo = 1');
+        $count->execute([':report' => $id]);
+        if ((int) $count->fetchColumn() !== 1) {
+            $pdo->prepare('UPDATE report_images SET is_primary_photo = 0 WHERE report_id = :report')
+                ->execute([':report' => $id]);
+            $pdo->prepare(
+                'UPDATE report_images SET is_primary_photo = 1
+                  WHERE report_id = :report ORDER BY image_id ASC LIMIT 1'
+            )->execute([':report' => $id]);
+        }
+
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        $pdo->rollBack();
+        throw $exception;
+    }
+
+    // The files go only after the rows are gone for good, and only files this
+    // server named: 32 hex characters and one of the three extensions. A
+    // seeded photograph ships with the frontend and is not in uploads/ at all,
+    // so its row is removed and nothing on disk is touched. Nothing a caller
+    // sends is ever used as a path.
+    foreach ($remove as $imageId) {
+        $name = $owned[$imageId];
+        if (preg_match('/^[a-f0-9]{32}\.(jpg|png|webp)$/', $name) === 1) {
+            $file = __DIR__ . '/uploads/' . $name;
+            if (is_file($file) && !@unlink($file)) {
+                error_log('[pawsandfound] could not remove uploads/' . $name . ' for report ' . $id);
+            }
+        }
+    }
+
+    json_response(['data' => report_photo_list($id)]);
+}
+
 
 /** Remove files written earlier in a request that is now failing. */
 function cleanup_uploads(array $paths): void
@@ -778,6 +980,70 @@ function cleanup_uploads(array $paths): void
 // -----------------------------------------------------------------------------
 // Small shared pieces
 // -----------------------------------------------------------------------------
+
+/**
+ * The checks every change to a filed report makes first: it exists, the caller
+ * filed it, and the case is still open. A returned or closed report stops
+ * accepting changes, photographs included: changing it would rewrite what a
+ * coordinator was looking at when they decided.
+ */
+function report_open_for_owner(int $id, array $user, string $notOwner): array
+{
+    $report = find_report_or_404($id);
+
+    if ((int) $report['user_id'] !== (int) $user['user_id']) {
+        json_error($notOwner, 403);
+    }
+
+    // Checked after ownership, so somebody else's closed report answers 403
+    // rather than telling them what state it is in.
+    if (in_array($report['status'], ['returned', 'closed'], true)) {
+        json_error(
+            'This report shows “' . REPORT_STATUS_WORDS[$report['status']]
+            . '”, and a finished report can no longer be edited.',
+            409,
+            ['status' => $report['status']]
+        );
+    }
+
+    return $report;
+}
+
+/** A species a report may be filed under: an active category. Create and edit. */
+function report_category(mixed $code): int
+{
+    $categoryId = category_id_for_code(trim((string) ($code ?? '')));
+    if ($categoryId === null) {
+        json_error('Choose the kind of animal this report is about.', 422);
+    }
+
+    return $categoryId;
+}
+
+/** The date something happened: a real date, not in the future. Create and edit. */
+function report_incident_date(mixed $value): string
+{
+    $date = trim((string) ($value ?? ''));
+    if (!is_valid_date($date)) {
+        json_error('Give the date this happened, as YYYY-MM-DD.', 422);
+    }
+    if ($date > date('Y-m-d')) {
+        json_error('That date is in the future.', 422);
+    }
+
+    return $date;
+}
+
+/** A city or province: required, never blank. Create and edit. */
+function report_place(mixed $value): string
+{
+    $place = trim((string) ($value ?? ''));
+    if ($place === '') {
+        json_error('Enter at least the city and province where this happened.', 422);
+    }
+
+    return $place;
+}
 
 function find_report_or_404(int $id): array
 {

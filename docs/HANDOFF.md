@@ -448,7 +448,7 @@ All run on 27 September 2026 unless noted. Commands and prerequisites:
 | `npm run build` | green | — |
 | `npm run test:contract` | **13/13** | nothing running |
 | `npm run test:mail` | **15/15** | `php` on PATH; one check calls Brevo |
-| `npm run audit` | **222/222** | API + database |
+| `npm run audit` | **253/253** | API + database |
 | `python scripts/auth_lifecycle.py` | **53/53** | API + database, local only |
 | `npm run multi-device` | **55/55** local | API + database |
 | `npm run a11y` | 31 pages, **zero violations** | the dev build (`PAWS_BASE=http://localhost:5173`) |
@@ -519,6 +519,13 @@ Stated plainly so nobody rediscovers them the hard way.
   demonstration; the reason the live URL should not be shared widely while they
   exist.
 - **`origin`'s push URL is disabled on purpose.** Do not re-enable it casually.
+- **Editing a report does not re-run matching.** Filing a report looks for
+  possible matches once. Editing now saves every field (species, location,
+  pin, colours and the rest), but existing pairings are not re-scored and new
+  ones are not searched for. A coordinator still sees the edited report.
+- **Removing a seeded photo removes its row, not a file.** The seed photos ship
+  with the frontend rather than living in `api/uploads/`; only files this server
+  generated (32 hex characters) are ever deleted from disk.
 - **Optional mobile polish, deliberately left for after the freeze** (found by
   the final 390px sweep, none of them broken):
   - Explore on a phone: Map view lists every result under the map as a

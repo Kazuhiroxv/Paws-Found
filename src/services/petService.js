@@ -67,6 +67,8 @@ function fromApi(row) {
     photos: row.photos
       ? row.photos.map((photo) => ({
           id: `photo-${photo.image_id}`,
+          // The server's id, so an edit can say which stored photo it means.
+          imageId: photo.image_id,
           url: assetUrl(photo.path),
           alt: photo.alt,
           isPrimary: photo.is_primary,
@@ -255,21 +257,111 @@ export async function uploadReportPhotos(reportId, photos = []) {
   return payload.data
 }
 
-export async function updateReport(id, changes) {
+/**
+ * Save an edited report: every field the edit form shows, in the same shape
+ * createReport() sends (minus report_type, which cannot change). It used to
+ * send seven of them, and the rest of an edit was silently dropped.
+ */
+export async function updateReport(id, input) {
   const payload = await apiFetch(`/reports/${id}`, {
     method: 'PUT',
     body: JSON.stringify({
-      pet_name: changes.petName,
-      size: changes.size,
-      primary_color: changes.primaryColor,
-      secondary_color: changes.secondaryColor,
-      distinct_features: changes.distinctiveMarkings,
-      description: changes.description,
-      condition: changes.condition,
+      species: input.species,
+      breed: input.breed,
+      pet_name: input.reportType === REPORT_TYPES.FOUND ? null : input.petName,
+      size: input.size,
+      sex: input.sex,
+      primary_color: input.primaryColor,
+      secondary_color: input.secondaryColor,
+      distinct_features: input.distinctiveMarkings,
+      description: input.description,
+      has_collar: input.hasCollar,
+      condition: input.condition,
+      incident_date: input.incidentDate,
+      incident_time: input.incidentTime,
+      location_label: input.location?.label,
+      city: input.location?.city,
+      province: input.location?.province,
+      lat: input.location?.lat,
+      lng: input.location?.lng,
+      allow_platform_contact: input.contactPreferences?.allowPlatformContact,
+      show_phone: input.contactPreferences?.showPhone,
+      show_email: input.contactPreferences?.showEmail,
     }),
   })
 
   return fromApi(payload.data)
+}
+
+/** Remove stored photos, choose the main one, rewrite descriptions. */
+async function editReportPhotos(reportId, changes) {
+  const payload = await apiFetch(`/reports/${reportId}/photos`, {
+    method: 'PATCH',
+    body: JSON.stringify(changes),
+  })
+  return payload.data
+}
+
+/**
+ * Save the photo side of an edit, as the difference between the photos the
+ * report had (`before`) and the ones the form now holds (`after`).
+ *
+ *   1. removals, description changes and a stored photo chosen as main
+ *   2. new files, uploaded through the same endpoint as filing uses
+ *   3. if the main photo is one of the new files, point at it now it has an id
+ *
+ * Removals go first so a slot freed by one can take a new file under the
+ * five-photo limit. Each step says which part failed, so an owner is never
+ * told everything saved when only the details did.
+ */
+export async function saveEditedPhotos(reportId, before, after) {
+  const kept = after.filter((photo) => photo.imageId)
+  const keptIds = new Set(kept.map((photo) => photo.imageId))
+  const remove = before.filter((photo) => !keptIds.has(photo.imageId)).map((photo) => photo.imageId)
+
+  const alt = {}
+  for (const photo of kept) {
+    const original = before.find((item) => item.imageId === photo.imageId)
+    if ((original?.alt ?? '') !== (photo.alt ?? '')) alt[photo.imageId] = photo.alt ?? ''
+  }
+
+  const chosen = after.find((photo) => photo.isPrimary)
+  const wasPrimary = before.find((photo) => photo.isPrimary)
+  const primary =
+    chosen?.imageId && chosen.imageId !== wasPrimary?.imageId ? chosen.imageId : null
+
+  if (remove.length > 0 || Object.keys(alt).length > 0 || primary !== null) {
+    try {
+      await editReportPhotos(reportId, { remove, alt, primary })
+    } catch (error) {
+      throw new Error(`Your details were saved, but the photo changes were not: ${error.message}`, { cause: error })
+    }
+  }
+
+  const fresh = after.filter((photo) => photo.file)
+  if (fresh.length === 0) return
+
+  let stored
+  try {
+    stored = await uploadReportPhotos(reportId, fresh)
+  } catch (error) {
+    throw new Error(`Your details were saved, but the new photos did not upload: ${error.message}`, { cause: error })
+  }
+
+  if (chosen?.file) {
+    // The new rows are the ids the report did not have before, in upload order.
+    const added = stored
+      .filter((photo) => !keptIds.has(photo.image_id))
+      .sort((a, b) => a.image_id - b.image_id)
+    const target = added[fresh.indexOf(chosen)]
+    if (target && !target.is_primary) {
+      try {
+        await editReportPhotos(reportId, { primary: target.image_id })
+      } catch (error) {
+        throw new Error(`The new photos uploaded, but the main photo was not changed: ${error.message}`, { cause: error })
+      }
+    }
+  }
 }
 
 export async function updateReportStatus(id, status, context = {}) {

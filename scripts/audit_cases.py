@@ -1006,6 +1006,113 @@ def information_reply():
                f'/matches/{decided}', {'action': 'provide_information', 'note': answer}, 409)
 
 
+def report_editing():
+    """If the edit form lets the owner change a field, the change must persist."""
+    C = 'L. Report editing'
+    rid, _ = file_report('customer', pet_name='Audit Edit', species='dog', breed='Beagle',
+                         sex='male', has_collar='no', incident_date='2026-09-01', incident_time='08:00',
+                         location_label='Near the old chapel', city='Pasig City', province='Metro Manila',
+                         lat=14.5601, lng=121.0801, allow_platform_contact=True)
+    path = f'/reports/{rid}'
+    loc_before = sql(f'SELECT location_id FROM pet_reports WHERE report_id = {rid};')
+    locations_before = sql('SELECT COUNT(*) FROM locations;')
+
+    code, _ = session('customer').call('PUT', path, {
+        'species': 'cat', 'breed': 'Persian', 'sex': 'female', 'has_collar': 'yes',
+        'incident_date': '2026-09-03', 'incident_time': '19:45',
+        'location_label': 'Behind the public market', 'city': 'Marikina City', 'province': 'Metro Manila',
+        'lat': 14.6507, 'lng': 121.1029,
+        'allow_platform_contact': False, 'show_phone': True, 'show_email': True,
+    })
+    check(C, 'ED-01', 'The owner saves an edit to every field group', 200, code, code == 200)
+
+    def col(expr):
+        return sql(f'SELECT {expr} FROM pet_reports r JOIN pet_categories c ON c.category_id = r.category_id '
+                   'LEFT JOIN pet_breeds b ON b.breed_id = r.breed_id JOIN locations l ON l.location_id = r.location_id '
+                   f'WHERE r.report_id = {rid};')
+    for tid, desc, expr, want in [
+        ('ED-02', 'Species and breed persist', 'CONCAT(c.category_code, "/", b.breed_name)', 'cat/Persian'),
+        ('ED-03', 'Sex persists', 'r.pet_sex', 'female'),
+        ('ED-04', 'Collar answer persists', 'r.has_collar', 'yes'),
+        ('ED-05', 'Date and time persist', 'CONCAT(r.incident_date, " ", r.incident_time)', '2026-09-03 19:45:00'),
+        ('ED-06', 'Label, city and province persist',
+         'CONCAT_WS("|", l.label, l.city, l.province)', 'Behind the public market|Marikina City|Metro Manila'),
+        ('ED-07', 'The map pin persists exactly', 'CONCAT(l.latitude, ",", l.longitude)', '14.650700,121.102900'),
+        ('ED-08', 'Contact choices persist', 'CONCAT(r.allow_platform_contact, r.show_phone, r.show_email)', '011'),
+    ]:
+        got = col(expr)
+        check(C, tid, desc, want, got, got == want)
+    same = sql(f'SELECT location_id FROM pet_reports WHERE report_id = {rid};') == loc_before
+    check(C, 'ED-09', 'The same location row is updated, none orphaned', 'same row, same count',
+          f'same={same}, locations {locations_before}->{sql("SELECT COUNT(*) FROM locations;")}',
+          same and sql('SELECT COUNT(*) FROM locations;') == locations_before)
+
+    status(C, 'ED-10', 'Someone else cannot edit it', 'finder', 'PUT', path, {'sex': 'male'}, 403)
+    status(C, 'ED-11', 'An inactive or invented species is refused', 'customer', 'PUT', path, {'species': 'dragon'}, 422)
+    status(C, 'ED-12', 'An invalid collar answer is refused', 'customer', 'PUT', path, {'has_collar': 'maybe'}, 422)
+    status(C, 'ED-13', 'A future date is refused', 'customer', 'PUT', path, {'incident_date': '2099-01-01'}, 422)
+    status(C, 'ED-14', "A lost pet's name cannot be emptied", 'customer', 'PUT', path, {'pet_name': '  '}, 422)
+    status(C, 'ED-15', 'A city cannot be emptied', 'customer', 'PUT', path, {'city': ''}, 422)
+
+    # ---- photographs
+    def upload(role, rid_, n):
+        body, ctype = multipart([('alt[]', f'Audit photo {i}') for i in range(n)],
+                                [('photos[]', f'p{i}.png', png(40 + i, 30)) for i in range(n)])
+        return session(role).call('POST', f'/reports/{rid_}/photos', raw=body, content_type=ctype)
+
+    code, payload = upload('customer', rid, 3)
+    ids = sorted(p['image_id'] for p in (payload.get('data') or []))
+    check(C, 'ED-16', 'Photos can be added to an existing report', '201, 3 photos',
+          f'{code}, {len(ids)} photos', code == 201 and len(ids) == 3)
+    first, second, third = ids
+    files = {i: sql(f'SELECT image_path FROM report_images WHERE image_id = {i};') for i in ids}
+
+    photos = f'{path}/photos'
+    code, _ = session('customer').call('PATCH', photos, {'alt': {str(second): 'Sitting on the steps'}})
+    alt = sql(f'SELECT alt_text FROM report_images WHERE image_id = {second};')
+    check(C, 'ED-17', 'Alt text persists', 'Sitting on the steps', alt, code == 200 and alt == 'Sitting on the steps')
+
+    session('customer').call('PATCH', photos, {'primary': second})
+    primaries = sql(f'SELECT GROUP_CONCAT(image_id) FROM report_images WHERE report_id = {rid} AND is_primary_photo = 1;')
+    check(C, 'ED-18', 'Choosing the main photo persists, and only one is main', str(second), primaries,
+          primaries == str(second))
+
+    code, _ = session('customer').call('PATCH', photos, {'remove': [second]})
+    left = sql(f'SELECT GROUP_CONCAT(image_id ORDER BY image_id) FROM report_images WHERE report_id = {rid};')
+    primaries = sql(f'SELECT GROUP_CONCAT(image_id) FROM report_images WHERE report_id = {rid} AND is_primary_photo = 1;')
+    check(C, 'ED-19', 'Removing a photo persists', f'{first},{third}', left, code == 200 and left == f'{first},{third}')
+    check(C, 'ED-20', 'Removing the main photo hands it to the earliest left', str(first), primaries,
+          primaries == str(first))
+    gone = not os.path.exists(os.path.join(PROJECT, 'api', 'uploads', files[second]))
+    check(C, 'ED-21', "The removed photo's file is deleted too", 'deleted', 'deleted' if gone else 'still there', gone)
+
+    code, _ = upload('customer', rid, 3)
+    check(C, 'ED-22', 'Up to five photos in total are allowed', 201, code, code == 201)
+    code, _ = upload('customer', rid, 1)
+    check(C, 'ED-23', 'A sixth photo is refused', 422, code, code == 422)
+
+    other = sql(f'SELECT image_id FROM report_images WHERE report_id <> {rid} LIMIT 1;')
+    before = sql('SELECT COUNT(*) FROM report_images;')
+    status(C, 'ED-24', "A photo from another report cannot be removed here", 'customer', 'PATCH', photos,
+           {'remove': [int(other)]}, 422)
+    check(C, 'ED-25', '...and nothing was deleted', before, sql('SELECT COUNT(*) FROM report_images;'),
+          sql('SELECT COUNT(*) FROM report_images;') == before)
+    status(C, 'ED-26', "Someone else cannot change this report's photos", 'finder', 'PATCH', photos,
+           {'primary': first}, 403)
+    status(C, 'ED-27', 'Editing photos needs a session', 'guest', 'PATCH', photos, {'primary': first}, 401)
+
+    bad = sql('SELECT COUNT(*) FROM (SELECT report_id FROM report_images GROUP BY report_id '
+              'HAVING SUM(is_primary_photo) <> 1) x;')
+    check(C, 'ED-28', 'No report anywhere has zero or several main photos', '0', bad, bad == '0')
+
+    # ---- a finished report stays finished
+    session('customer').call('PATCH', path, {'status': 'closed', 'note': 'Audit: closing to test edits.'})
+    status(C, 'ED-29', 'A closed report refuses edits', 'customer', 'PUT', path, {'sex': 'male'}, 409)
+    status(C, 'ED-30', '...photo changes', 'customer', 'PATCH', photos, {'primary': first}, 409)
+    code, _ = upload('customer', rid, 1)
+    check(C, 'ED-31', '...and new photos', 409, code, code == 409)
+
+
 def error_handling():
     C = 'H. Error handling'
     status(C, 'EH-01', 'A report that does not exist', 'guest', 'GET', '/reports/99999', None, 404)
@@ -1109,6 +1216,7 @@ if __name__ == '__main__':
     location_privacy()
     access_control()
     information_reply()
+    report_editing()
     total, passed = report()
 
     reseed()

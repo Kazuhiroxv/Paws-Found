@@ -70,7 +70,7 @@ skips that one check when there is no network.
 
 **Mutates nothing.** Sends no real email.
 
-### `npm run audit` — 222 checks
+### `npm run audit` — 253 checks
 
 The security and functional suite, against the running API and database.
 
@@ -87,6 +87,7 @@ The security and functional suite, against the running API and database.
 | I. Location privacy | 8 |
 | J. Report access | 27 |
 | K. Information requests | 17 |
+| L. Report editing | 31 |
 
 `RA-01`–`RA-27` pin down who receives what. A guest's list row is exactly the
 public summary, a guest opening a report gets `401 auth_required` (a missing
@@ -106,6 +107,17 @@ cut). The answer reaches every active coordinator and nobody else: not the
 other reporter, whether through their notifications or the pairing they can
 open. The pairing stays under review, and proof_notes, staff_notes and both
 case histories are unchanged.
+
+`ED-01`–`ED-31` hold the edit contract: whatever the edit form lets an owner
+change must persist. Species with breed, sex, collar, date and time, label,
+city, province, the pin and the three contact choices are each edited and read
+back from the database. The report's own location row is updated in place,
+with no orphaned locations. Photos can be added, described, made main and
+removed (the file goes too); removing the main one hands the role to the
+earliest left; five is the limit; another report's photo cannot be touched;
+and no report anywhere ends up with zero or several main photos. Non-owners get
+403, guests 401, and a closed report refuses edits, photo changes and uploads.
+Run against the API before this change, 20 of them fail.
 
 `LP-01`–`LP-08` pin down the location promise. The database keeps the pin as
 dropped. Anybody who is not the reporter or staff (a guest or another signed-in
@@ -229,7 +241,7 @@ lint                                     clean
 build                                    green
 test:contract                            13/13
 test:mail                                15/15
-audit                                   222/222
+audit                                   253/253
 auth_lifecycle                           53/53
 multi-device                             55/55   (53/53 + 2 skipped vs a remote)
 a11y                                     31 pages, 0 violations

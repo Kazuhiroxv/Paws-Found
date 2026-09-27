@@ -165,10 +165,22 @@ export function ReportForm({ reportType, report, guidance }) {
 
     try {
       if (isEditing) {
+        // Details first; if that fails nothing else is attempted and the error
+        // shows here. Then the photos, whose failure is carried to the report
+        // page rather than hidden: the details did save, and the owner should
+        // know exactly which part did not.
         await petService.updateReport(report.id, toReportInput(values, report.reporterId))
+
+        let photoWarning = null
+        try {
+          await petService.saveEditedPhotos(report.id, report.photos, values.photos)
+        } catch (photoFailed) {
+          photoWarning = photoFailed instanceof Error ? photoFailed.message : String(photoFailed)
+        }
+
         // Straight back to the report — an "edited!" screen would just be an
         // extra click between them and the thing they were fixing.
-        navigate(`/pet/${report.id}`)
+        navigate(`/pet/${report.id}`, photoWarning ? { state: { photoWarning } } : undefined)
         return
       }
 
