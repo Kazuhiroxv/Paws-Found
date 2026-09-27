@@ -405,7 +405,7 @@ At the moment of writing:
 
 | Where | Branch | Commit |
 | --- | --- | --- |
-| Local | `team/current` (checked out) | **`3ad16be`** |
+| Local | `team/current` (checked out) | **this documentation commit**, sitting directly on `3ad16be` |
 | Local | `feature/final-auth-hardening` | `aae0ce8` (merged; keep or delete) |
 | `portfolio` → `Kazuhiroxv/Paws-Found` | `team/current` | **`e97116b`** ← what Railway deploys |
 | `origin` → `Arkemic/paws-and-found` | `team/current` | `aae0ce8` |
@@ -415,8 +415,12 @@ At the moment of writing:
 Pushing to the team repository is not done from this clone by accident. Do not
 re-enable it without asking Kyle.
 
-**Unpushed at the time of writing:** `3ad16be` is on neither remote. The team
-repository is also two commits behind Kyle's.
+**Unpushed at the time of writing:** `3ad16be` and this documentation commit
+are on neither remote. The team repository (`origin`) is also behind Kyle's by
+those two plus `e97116b`.
+
+Run `git log --oneline portfolio/team/current..team/current` for the current
+answer rather than trusting this paragraph.
 
 ### The commits, and what each is
 
@@ -429,6 +433,7 @@ repository is also two commits behind Kyle's.
 | `aae0ce8` | **on both remotes** | The PowerShell UTF-8 seed corruption fix. Tip of `origin/team/current`. |
 | `e97116b` | **deployed** | Brevo HTTPS transport. Tip of `portfolio/team/current`; this is what production runs. |
 | `3ad16be` | **local only** | Case-insensitive response headers in `verify_deployment.py`. Test harness only — no application behaviour. |
+| *this commit* | **local only** | These five documents. Documentation only. |
 
 ---
 
