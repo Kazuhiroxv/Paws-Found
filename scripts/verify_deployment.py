@@ -58,8 +58,39 @@ def check(step, what, expected, actual, ok, note=''):
         print(f'        {note}')
 
 
+class Headers(dict):
+    """A response's headers, looked up without caring about capitalisation.
+
+    HTTP header names are case-insensitive, and servers disagree about which
+    capitalisation they like: Apache sends `Location`, Railway's edge sends
+    `location`. urllib hands back a case-insensitive object, but `dict()` of it
+    is an ordinary dict, and an ordinary dict is not. That cost a false failure
+    on 7.1 — the 301 redirect was read correctly, its target was not, and the
+    live site was reported as serving plain HTTP when it was doing exactly the
+    right thing.
+
+    Lowercasing on the way in and on the way out means no call site has to
+    remember, including ones nobody has written yet.
+    """
+
+    def __init__(self, source=()):
+        super().__init__((key.lower(), value) for key, value in dict(source).items())
+
+    def get(self, key, default=None):
+        return super().get(key.lower(), default)
+
+    def __getitem__(self, key):
+        return super().__getitem__(key.lower())
+
+    def __contains__(self, key):
+        return super().__contains__(key.lower())
+
+
 def fetch(url, method='GET', body=None, headers=None, follow=True):
-    """Returns (status, headers, text). Never raises for an HTTP status."""
+    """Returns (status, headers, text). Never raises for an HTTP status.
+
+    The headers come back case-insensitive; see Headers above.
+    """
     request = urllib.request.Request(url, method=method)
     for key, value in (headers or {}).items():
         request.add_header(key, value)
@@ -82,11 +113,11 @@ def fetch(url, method='GET', body=None, headers=None, follow=True):
 
     try:
         with use.open(request, timeout=30) as response:
-            return response.status, dict(response.headers), response.read().decode('utf-8', 'replace')
+            return response.status, Headers(response.headers), response.read().decode('utf-8', 'replace')
     except urllib.error.HTTPError as error:
-        return error.code, dict(error.headers), error.read().decode('utf-8', 'replace')
+        return error.code, Headers(error.headers), error.read().decode('utf-8', 'replace')
     except Exception as error:                                   # noqa: BLE001
-        return 0, {}, f'{type(error).__name__}: {error}'
+        return 0, Headers(), f'{type(error).__name__}: {error}'
 
 
 def banner(title):
@@ -103,8 +134,8 @@ print(f'  {BASE}')
 banner('1. The site itself')
 status, headers, page = fetch(BASE + '/')
 check('1.1', 'The homepage answers', 200, status, status == 200)
-check('1.2', 'It is HTML', True, 'text/html' in headers.get('Content-Type', ''),
-      'text/html' in headers.get('Content-Type', ''))
+check('1.2', 'It is HTML', True, 'text/html' in headers.get('content-type', ''),
+      'text/html' in headers.get('content-type', ''))
 check('1.3', 'It is the built app, not a host placeholder', True,
       'id="root"' in page or 'id=root' in page, 'id="root"' in page or 'id=root' in page,
       'A host parking page or an "account suspended" notice looks like a working site to curl.')
@@ -128,7 +159,7 @@ check('1.6', 'The deep link returns the app, not a directory listing', True,
 # ================================================================= 2. the API
 banner('2. The API answers JSON, not HTML')
 status, headers, body = fetch(API + '/')
-is_json = 'application/json' in headers.get('Content-Type', '')
+is_json = 'application/json' in headers.get('content-type', '')
 check('2.1', 'GET /api/ answers', 200, status, status == 200)
 check('2.2', 'Content-Type is application/json', True, is_json, is_json,
       'THE FREE-HOST TRAP. An HTML challenge page here breaks fetch() and the\n'
@@ -164,7 +195,7 @@ check('3.1', 'No SQL, path or exception text in error bodies', 'clean',
       'display_errors is on. Turn it off — see api/config.php and APP_ENV.')
 
 _, headers, _ = fetch(API + '/')
-cors = headers.get('Access-Control-Allow-Origin', '(none)')
+cors = headers.get('access-control-allow-origin', '(none)')
 check('3.2', 'No wildcard CORS header', True, cors, cors != '*',
       'Same-origin deployment should send no CORS header at all.')
 
@@ -313,7 +344,7 @@ else:
         url = f'{API}/uploads/{stored}'
         try:
             with anonymous.open(url, timeout=30) as response:
-                img_status, ctype, size = response.status, response.headers.get('Content-Type', ''), len(response.read())
+                img_status, ctype, size = response.status, response.headers.get('content-type', ''), len(response.read())
         except urllib.error.HTTPError as error:
             img_status, ctype, size = error.code, '', 0
         check('5.2', 'A signed-out visitor can fetch it', 200, img_status, img_status == 200, url)
@@ -350,7 +381,7 @@ banner('7. HTTPS')
 if BASE.startswith('https://'):
     plain = 'http://' + BASE.split('://', 1)[1]
     status, headers, _ = fetch(plain, follow=False)
-    location = headers.get('Location', '')
+    location = headers.get('location', '')
     check('7.1', 'http:// redirects to https://', True,
           f'{status} -> {location[:40]}' if status else 'no answer',
           status in (301, 302, 307, 308) and location.startswith('https://'))
