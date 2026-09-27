@@ -230,7 +230,7 @@ uploading a file and fetching it back as a signed-out visitor.
 
 | Suite | Cases | If we stay on MySQL | If we move to PostgreSQL |
 | --- | --- | --- | --- |
-| `npm run audit` | 167 | **Config only.** `PAWS_API` + `PAWS_MYSQL_ARGS` already exist | **Rewrite.** 49 assertions shell out to `mysql.exe`; 3 read `information_schema` with MySQL-specific column names |
+| `npm run audit` | 170 | **Config only.** `PAWS_API` + `PAWS_MYSQL_ARGS` already exist | **Rewrite.** 49 assertions shell out to `mysql.exe`; 3 read `information_schema` with MySQL-specific column names |
 | `npm run multi-device` | 55 | **Config only.** `PAWS_API` | Mostly config — it is nearly all API-level |
 | `npm run a11y` | 29 pages | None | None |
 | `npm run verify:deploy` | 28 | **None.** Takes a URL | None |
@@ -310,7 +310,7 @@ Regardless of route:
 * the CSRF check in `index.php` before the router;
 * `REPORT_TRANSITIONS` and the match decision state machine;
 * `may_read_proof()`;
-* the 167 + 55 + 53 case suites, as behaviour rather than as files.
+* the 170 + 55 + 53 + 15 case suites, as behaviour rather than as files.
 
 ---
 

@@ -55,11 +55,131 @@ function send_mail(string $toAddress, string $toName, string $subject, string $h
         return;
     }
 
+    if ($transport === 'brevo_api') {
+        if (BREVO_API_KEY === '' || MAIL_FROM_ADDRESS === '') {
+            throw new MailFailure('Mail is not configured on this server.');
+        }
+
+        brevo_send($toAddress, $toName, $subject, $html, $text);
+        return;
+    }
+
+    if ($transport !== 'smtp') {
+        // Without this, a typo in the variable — 'brevo-api', 'Brevo_API' — falls
+        // through to SMTP and fails fifteen seconds later complaining about a
+        // mail server nobody configured. Naming the real problem in the log is
+        // the difference between a two-minute fix and an evening.
+        error_log('[pawsandfound] unknown MAIL_TRANSPORT: ' . $transport);
+        throw new MailFailure('Mail is not configured on this server.');
+    }
+
     if (MAIL_HOST === '' || MAIL_FROM_ADDRESS === '') {
         throw new MailFailure('Mail is not configured on this server.');
     }
 
     smtp_send($toAddress, $toName, $subject, $html, $text);
+}
+
+/**
+ * Hand the message to Brevo over HTTPS instead of SMTP.
+ *
+ * WHY THIS EXISTS
+ *
+ * Railway's trial plan blocks outbound SMTP. Not slowly — the container cannot
+ * open a connection to smtp-relay.brevo.com:587 at all, and the attempt ends
+ * in a timeout after fifteen seconds. Every verification email failed, and the
+ * hosting plan is not something the code can argue with.
+ *
+ * Port 443 is not blocked, because the site is served over it. So the same
+ * message goes to the same provider through their HTTPS API instead. This is
+ * a transport, not a rewrite: the messages, the templates and every caller are
+ * unchanged, and `smtp` still works anywhere outbound 587 is allowed.
+ *
+ * cURL rather than a stream, to match `turnstile_or_fail()` in tokens.php. It
+ * is not an added dependency: ext-curl is compiled into the official
+ * php:8.3-apache image, `php -m` lists it in our built image, and Turnstile
+ * has been verifying through it in production already.
+ *
+ * @throws MailFailure unless Brevo accepts the message
+ */
+/**
+ * The JSON body Brevo expects.
+ *
+ * Separate from the request so the shape can be checked without sending
+ * anything. The names are Brevo's, not ours — `htmlContent`, `textContent`,
+ * and `to` as a list even for one recipient.
+ *
+ * Display names still go through mail_header_safe(). They cannot inject a
+ * header here the way they could into SMTP, but the name comes from an account
+ * and a stray newline in it has no business reaching a provider either way.
+ *
+ * @return array<string, mixed>
+ */
+function brevo_payload(string $toAddress, string $toName, string $subject, string $html, string $text): array
+{
+    return [
+        'sender' => [
+            'email' => MAIL_FROM_ADDRESS,
+            'name' => mail_header_safe(MAIL_FROM_NAME),
+        ],
+        'to' => [[
+            'email' => $toAddress,
+            'name' => mail_header_safe($toName) ?: $toAddress,
+        ]],
+        'subject' => mail_header_safe($subject),
+        'htmlContent' => $html,
+        'textContent' => $text,
+    ];
+}
+
+function brevo_send(string $toAddress, string $toName, string $subject, string $html, string $text): void
+{
+    $body = json_encode(
+        brevo_payload($toAddress, $toName, $subject, $html, $text),
+        JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+    );
+
+    if ($body === false) {
+        throw new MailFailure('The message could not be prepared.');
+    }
+
+    $request = curl_init('https://api.brevo.com/v3/smtp/email');
+    curl_setopt_array($request, [
+        CURLOPT_POST => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => MAIL_TIMEOUT,
+        CURLOPT_HTTPHEADER => [
+            'api-key: ' . BREVO_API_KEY,
+            'Content-Type: application/json',
+            'Accept: application/json',
+        ],
+        CURLOPT_POSTFIELDS => $body,
+    ]);
+
+    $response = curl_exec($request);
+    $status = (int) curl_getinfo($request, CURLINFO_RESPONSE_CODE);
+    $transportError = $response === false ? curl_error($request) : '';
+    curl_close($request);
+
+    if ($response === false) {
+        // The URL is safe to log and the key is not in it. curl_error() never
+        // contains the request headers, which is where the key lives.
+        error_log('[pawsandfound] could not reach the Brevo API: ' . $transportError);
+        throw new MailFailure('The mail service could not be reached.');
+    }
+
+    // Brevo answers 201 with a messageId when it has accepted the message for
+    // delivery. Anything else is a refusal, and the difference matters: the
+    // whole point of this file is that nobody is told their email is on its
+    // way when it is not.
+    if ($status < 200 || $status >= 300) {
+        // Their body explains the refusal to whoever reads the log — a wrong
+        // key, an unverified sender — and means nothing to a visitor. It is
+        // never returned to the browser. It does not contain the key.
+        error_log('[pawsandfound] Brevo refused the message, HTTP ' . $status . ': '
+            . substr((string) $response, 0, 400));
+        throw new MailFailure('The mail service refused the message.');
+    }
 }
 
 /**

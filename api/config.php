@@ -148,6 +148,13 @@ defined('MAIL_FROM_ADDRESS') || define('MAIL_FROM_ADDRESS', (string) env_setting
 defined('MAIL_FROM_NAME') || define('MAIL_FROM_NAME', (string) env_setting('MAIL_FROM_NAME', 'MAIL_FROM_NAME', 'Paws&Found'));
 // 'starttls' (port 587) or 'tls' (implicit, port 465).
 defined('MAIL_ENCRYPTION') || define('MAIL_ENCRYPTION', (string) env_setting('MAIL_ENCRYPTION', 'MAIL_ENCRYPTION', 'starttls'));
+
+// Brevo's HTTPS transactional API, used when MAIL_TRANSPORT is 'brevo_api'.
+// It exists because Railway's trial plan blocks outbound SMTP: port 587 times
+// out from the container, port 443 does not. The key is read here and used in
+// one request header in api/mail.php. It is never sent to the browser — GET
+// /api/config returns the Turnstile site key and nothing else.
+defined('BREVO_API_KEY') || define('BREVO_API_KEY', (string) env_setting('BREVO_API_KEY', 'BREVO_API_KEY', ''));
 defined('MAIL_TIMEOUT') || define('MAIL_TIMEOUT', 15);
 defined('MAIL_CAPTURE_DIR') || define('MAIL_CAPTURE_DIR', sys_get_temp_dir() . '/pawsandfound-mail');
 

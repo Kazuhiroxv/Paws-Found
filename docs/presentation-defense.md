@@ -206,7 +206,7 @@ everything through.
 
 Three things, and each one found something reading the code did not.
 
-**1. Endpoint-level testing found a router fault.** `npm run audit` — 167 cases
+**1. Endpoint-level testing found a router fault.** `npm run audit` — 170 cases
 in eight categories, run against the live system, restoring the data
 afterwards. Every handler in `api/` was correct **on its own**. But
 `api/index.php` passed only the first two path segments to most of them, so a

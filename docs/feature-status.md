@@ -30,6 +30,7 @@ rate limiting — 2026-09-27_
 | One-time links | `[x]` | `auth_tokens` stores only a SHA-256 of each link. Single use is one conditional `UPDATE`, not a `SELECT` then an `UPDATE`, so two clicks arriving together cannot both be honoured. Expiry is explicit since migration `006`. |
 | Rate limiting | `[x]` | `auth_rate_limits`, counted per action against an HMAC of the address, with a rolling window and a 429 carrying `Retry-After`. Separate from the three-attempt account lock, which is a different rule with a different consequence. |
 | Turnstile on registration | `[~]` | Implemented and verified server-side; **off until the group supplies keys**. The site key is served at run time by `GET /api/config`, never built into the bundle; the secret never leaves the server. Production refuses to start with `TURNSTILE_ENABLED=true` and no keys rather than silently allowing everything through. |
+| Email delivery | `[x]` | Four transports behind one `send_mail()`: `smtp`, `brevo_api` (HTTPS, because Railway's trial plan blocks outbound 587), `log` for a laptop and `capture` for the tests. Every path that cannot deliver throws — nothing returns a quiet false that a caller can forget to check, because the one unacceptable outcome is telling somebody their verification email is on its way when it is not. |
 | Session revocation | `[x]` | `users.session_version` against `$_SESSION['session_version']`, compared on every request. A password reset or a suspension ends every session everywhere without hunting through session files on disk. |
 
 ## Core workflows
@@ -76,13 +77,13 @@ it can be run again at any time.
 | --- | --- | --- |
 | A. Input validation | 19 | 19 |
 | B. SQL injection | 14 | 14 |
-| C. Authentication | 38 | 38 |
+| C. Authentication | 41 | 41 |
 | D. Authorization | 31 | 31 |
 | E. Cross-site scripting | 4 | 4 |
 | F. File upload | 7 | 7 |
 | G. Functional | 44 | 44 |
 | H. Error handling | 10 | 10 |
-| **Total** | **167** | **167** |
+| **Total** | **170** | **170** |
 
 Authentication grew with the three-attempt lockout and CSRF; error handling
 grew when a routing fault was found — see below; functional grew again in the
@@ -109,6 +110,18 @@ downgrade, a suspension, a three-attempt lock, an administrator unlock, a
 server-side session expiry, and five forbidden addresses. It takes `PAWS_API`
 so it can be pointed at the LAN address or at the hosted site.
 
+    npm run test:mail
+
+**15 checks over the one door every account email goes through.** `send_mail()`
+is shared by registration, resend, forgot password, reset and the email change,
+so what is worth testing is the door rather than five identical callers: the
+payload Brevo is sent, that a display name cannot smuggle a newline into it,
+and that every path which cannot deliver throws instead of returning quietly.
+One check really does call Brevo with a deliberately invalid key and insists on
+being refused — no credential is involved, and it proves what a fake server
+cannot: that the host can reach the API over 443 and that a refusal ends as a
+failure rather than as `email_sent: true`.
+
     npm run test:contract
 
 **13 checks with no server at all** — the shape of what the report form sends
@@ -131,8 +144,9 @@ is readable over the web, and whether any demo password reached the bundle.
 27/28 against the local deployment — the one failure is HTTPS, correctly,
 because localhost is plain HTTP.
 
-Last run in full on 27 September 2026 on the development laptop: 167/167,
-53/53, 55/55, 13/13, axe clean, lint clean, build green, 27/28 preflight.
+Last run in full on 27 September 2026 on the development laptop: 170/170,
+53/53, 55/55, 15/15, 13/13, axe clean, lint clean, build green, 27/28
+preflight.
 
 ## Cross-cutting
 

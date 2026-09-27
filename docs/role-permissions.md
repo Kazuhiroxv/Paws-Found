@@ -156,7 +156,7 @@ signed in is not enough; you have to be *in the case*.
 
 ## 5. How this was tested, and what the tests found
 
-`npm run audit` — **167 cases**, of which **31 are category D, Authorization**.
+`npm run audit` — **170 cases**, of which **31 are category D, Authorization**.
 Each one is a request made by the wrong person to a real endpoint, with the
 expected status code asserted.
 

@@ -34,6 +34,12 @@ same code and nothing else in this document will behave as described.
 Python 3 as well, if you want to run the test suites. The application itself
 does not need it.
 
+**Put PHP on your PATH.** XAMPP installs it but does not add it, so `php -v`
+fails in a fresh terminal even though Apache is happily running PHP. Add
+`C:\\xampp\\php` to the PATH environment variable and open a new terminal. Only
+`npm run test:mail` needs this — everything else goes through Apache — and the
+symptom is `'php' is not recognized`, not anything about mail.
+
 ---
 
 ## 2. If you have never cloned it
@@ -216,7 +222,8 @@ part of the system.
 ## 7. Running the checks
 
 ```bash
-npm run audit          # 167 cases against the running API and database
+npm run audit          # 170 cases against the running API and database
+npm run test:mail      # 15 checks over the mail transports (needs php on PATH)
 npm run multi-device   # 55 checks across three independent sessions
 npm run a11y           # axe-core over 29 pages in every role
 npm run lint
@@ -224,8 +231,9 @@ npm run build
 npm run verify:deploy http://localhost/pawsandfound
 ```
 
-As of 27 September 2026, on the development laptop: **167/167, 55/55, 53/53,
-13/13, axe clean over 29 pages, lint clean, build green, 27/28 preflight** —
+As of 27 September 2026, on the development laptop: **170/170, 55/55, 53/53,
+15/15, 13/13, axe clean over 29 pages, lint clean, build green, 27/28
+preflight** —
 the one preflight failure is HTTPS, correctly, because `localhost` has no
 certificate.
 

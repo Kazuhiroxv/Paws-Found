@@ -57,8 +57,8 @@ the new name.
 
 | Stale | Correct |
 | --- | --- |
-| 117 test cases | **167** |
-| C. Authentication: 13 | **38** |
+| 117 test cases | **170** |
+| C. Authentication: 13 | **41** |
 | G. Functional: 24 | **44** |
 | H. Error handling: 6 | **10** |
 | axe-core over 25 pages | **29 pages** |
@@ -69,14 +69,14 @@ Current table:
 | --- | --- | --- |
 | A. Input validation | 19 | 19 |
 | B. SQL injection | 14 | 14 |
-| C. Authentication | 38 | 38 |
+| C. Authentication | 41 | 41 |
 | D. Authorization | 31 | 31 |
 | E. Cross-site scripting | 4 | 4 |
 | F. File upload | 7 | 7 |
 | G. Functional | 44 | 44 |
 | H. Error handling | 10 | 10 |
 | SQL-14 (inside B) asserts the ERD's 24 foreign keys | | |
-| **Total** | **167** | **167** |
+| **Total** | **170** | **170** |
 
 Authentication grew with the three-attempt lockout and CSRF. Error handling
 grew when endpoint-level testing found a routing fault (§4). Functional grew

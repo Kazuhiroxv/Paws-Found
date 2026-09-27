@@ -36,7 +36,7 @@ Topic: **Campus Lost-and-Found System** — assigned to this group as Paws&Found
 | 14 | Dashboard | **Done** | Customer, staff and admin dashboards |
 | 15 | Reports | **Done** | `GET /api/reports/stats` — three SQL `GROUP BY` queries behind charts on the staff and administrator dashboards |
 | 16 | Form validation | **Done** | Report wizard, per-step, with error messages |
-| 17 | Security implementation | **Done** | bcrypt, PDO prepared statements with emulation off, server-side validation, CSRF, audit log. 167 cases in `npm run audit`, plus 53 in `scripts/auth_lifecycle.py` |
+| 17 | Security implementation | **Done** | bcrypt, PDO prepared statements with emulation off, server-side validation, CSRF, audit log. 170 cases in `npm run audit`, plus 53 in `scripts/auth_lifecycle.py` |
 | 18 | Error handling | **Done** | Loading, error and empty states on every async view; 401/403/404/409/422 from the API, with no SQL or paths in any response |
 | 19 | Deployment | **Ready; hosting pending** | Runs from Apache at `http://localhost/pawsandfound/`, one origin for site and API. Host-agnostic: `npm run build:deploy` + `api/config.local.php`. The eighteen-step runbook is `docs/deployment-plan.md` §3. **Not yet on a public URL.** |
 | 20 | Technical documentation | **Done** | `docs/` — ERD defence, database cheat sheet, role permissions, matching explanation, deployment plan, presentation defence, design system, feature status |
@@ -119,7 +119,7 @@ night before.
 | 1 — Proposal | Title, problem, users, features, roles, architecture, initial ERD, stack | Submitted |
 | 2 — Database + Backend | Database, tables, relationships, CRUD, authentication, basic backend | **Done** — 17 tables, 24 foreign keys, the REST API and real sessions |
 | 3 — Frontend + API | Responsive UI, JavaScript, API, AJAX/Fetch, validation, search/filter | **Done** — the UI calls the PHP API through `src/services/`; nothing is mock any more |
-| 4 — Security + Testing | Injection, auth, authorization, XSS, functional and usability testing | **Done** — 167 + 53 + 55 + 13 cases, all passing; axe-core clean over 29 pages |
+| 4 — Security + Testing | Injection, auth, authorization, XSS, functional and usability testing | **Done** — 170 + 53 + 55 + 15 + 13 cases, all passing; axe-core clean over 29 pages |
 | 5 — Final Presentation | 15–20 minute demonstration, presented as if to a real client | Prepared — `docs/presentation-defense.md`; not yet delivered |
 
 ## Other graded items

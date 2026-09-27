@@ -384,6 +384,25 @@ def authentication():
           'locked, unlocked, login, login_failed',
           ', '.join(sorted(have & wanted)) or 'nothing logged', wanted <= have)
 
+    # GET /api/config exists to hand the browser the Turnstile SITE key, which
+    # is meant to be public. Everything else the server is configured with is
+    # not, and this endpoint is the one place a secret could plausibly be added
+    # by accident - it is the only settings-shaped thing the frontend reads.
+    code, body = Session().call('GET', '/config')
+    data = body.get('data', {}) if isinstance(body, dict) else {}
+    check(C, 'AU-36', 'The public config answers', 200, code, code == 200)
+    check(C, 'AU-37', 'It offers only the Turnstile flag and site key',
+          'turnstile_enabled, turnstile_site_key',
+          ', '.join(sorted(data.keys())) or 'nothing',
+          set(data.keys()) == {'turnstile_enabled', 'turnstile_site_key'})
+
+    # Named rather than pattern-matched: a key is only a long string, and a
+    # rule that flags long strings would flag the site key, which belongs here.
+    leaked = [name for name in ('brevo', 'api_key', 'secret', 'password', 'mail_')
+              if name in json.dumps(body).lower()]
+    check(C, 'AU-38', 'No mail or secret setting reaches the browser', 'none',
+          ', '.join(leaked) or 'none', not leaked)
+
 
 # ============================================================ D. AUTHORIZATION
 def authorization():

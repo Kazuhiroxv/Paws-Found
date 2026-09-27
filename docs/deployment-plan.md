@@ -42,7 +42,7 @@ That preserves, with no migration:
 
     same-origin requests          the PHP API as written
     the current session model     the MySQL schema and every query
-    upload handling               the regression harness (167 + 55 + 53)
+    upload handling               the regression harness (170 + 55 + 53 + 15)
     the ERD                       the defence documents
 
 There is to be exactly one authoritative backend. No React → Supabase beside
@@ -95,6 +95,9 @@ MAIL_FROM_NAME=Paws&Found
 MAIL_ENCRYPTION=starttls
 ```
 
+On Railway, use `MAIL_TRANSPORT=brevo_api` and `BREVO_API_KEY` instead of the
+five SMTP lines — see below for why.
+
 `MAIL_ENCRYPTION` takes `starttls` (the default, and what port 587 wants),
 `tls` for implicit TLS on port 465, or anything else for an unencrypted
 connection, which no real provider will accept. Match it to the port: `587`
@@ -109,8 +112,34 @@ nothing in the app will complain.
 `MAIL_TRANSPORT` defaults to `log`, which writes the message to the error log
 instead of sending it. That is right on a laptop and wrong on a host: with it
 left at `log`, registration appears to work and no email ever arrives. The
-third value, `capture`, exists only for `scripts/auth_lifecycle.py` and must
-never be set in production.
+value `capture` exists only for `scripts/auth_lifecycle.py` and must never be
+set in production.
+
+**On Railway, `smtp` does not work, and the reason is the hosting plan.** The
+trial plan blocks outbound SMTP: the container cannot open a connection to
+`smtp-relay.brevo.com:587` at all, and the attempt ends in a timeout. Port 443
+is open, because the site is served over it. So the fourth transport sends the
+same message to the same provider over HTTPS instead:
+
+```
+MAIL_TRANSPORT=brevo_api
+BREVO_API_KEY=<the HTTPS API key, not the SMTP key>
+```
+
+They are different credentials. The SMTP key is the one ending up in
+`MAIL_PASSWORD`; the API key is issued separately under Brevo's **API Keys**
+page. With `brevo_api` set, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`,
+`MAIL_PASSWORD` and `MAIL_ENCRYPTION` are not read at all — harmless to leave
+in place, and worth leaving, because they are what `smtp` needs if the plan is
+ever upgraded or the host changed.
+
+`MAIL_FROM_ADDRESS` and `MAIL_FROM_NAME` are still used, and the from address
+must be a sender Brevo has verified or it refuses the message.
+
+A misspelled transport is refused by name rather than quietly attempted as
+SMTP — `[pawsandfound] unknown MAIL_TRANSPORT: brevo-api` in the log — because
+the failure that costs an evening is the one that looks like a mail server
+problem and is not.
 
 Turnstile is optional and **off** until the group has keys:
 
@@ -743,7 +772,7 @@ and that no demo password or development host is in the bundle.
 Everything it finds is something that only goes wrong on a host. Fix all of it
 before step 14.
 
-**14. Run the 167-case suite against production.**
+**14. Run the 170-case suite against production.**
 
 ```bash
 PAWS_API=https://<domain>/api \
