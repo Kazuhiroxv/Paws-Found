@@ -153,8 +153,18 @@ illustration={emptyNoMatches}          title="No possible matches yet"
       {/* The stages, with their counts — "1 under review", "1 confirmed" — as
           the tabs themselves, so the summary and the filter are one control.
           Underlined, like My Reports and Notifications: one tab style across
-          the customer's pages. */}
-      <div className="flex flex-wrap gap-1 border-b border-border" role="tablist" aria-label="Match stage">
+          the customer's pages.
+
+          One row that scrolls sideways on a narrow phone instead of wrapping:
+          wrapped, "Confirmed" dropped under the rule on its own. A scrolling
+          row clips whatever pokes out of it, so the rule is drawn inside it
+          (an inset shadow the active underline paints over) rather than as a
+          border the tabs overlap, and the focus ring is drawn inside each tab. */}
+      <div
+        className="flex gap-1 overflow-x-auto shadow-[inset_0_-1px_0_var(--color-border)]"
+        role="tablist"
+        aria-label="Match stage"
+      >
         {GROUPS.map((group) => {
           const count = grouped[group.id].length
           const selected = tab === group.id
@@ -168,8 +178,14 @@ illustration={emptyNoMatches}          title="No possible matches yet"
               aria-selected={selected}
               aria-controls="matches-panel"
               onClick={() => setChosenTab(group.id)}
+              // A tab reached with Tab on a narrow phone can sit half outside
+              // the scrolling row, and the browser leaves a partly visible
+              // element where it is. Bring the whole tab into view.
+              onFocus={(event) =>
+                event.currentTarget.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+              }
               className={cn(
-'-mb-px border-b-2 px-3 py-2 text-sm transition-colors',
+'shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors focus-visible:-outline-offset-2',
                 selected
                   ? 'border-brand font-medium text-brand-hover'
                   : 'border-transparent text-fg-muted hover:text-fg',
