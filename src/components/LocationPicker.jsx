@@ -35,13 +35,15 @@ export function LocationPicker({ reportType, lat, lng, onChange }) {
         <p className="text-sm font-medium text-fg">Pin the area on a map</p>
         {/* Removing the pin throws away where the pet was, so it looks like the
             destructive action it is: the outlined danger style admin Suspend
-            uses, not a grey ghost that read as a label. */}
+            uses, not a grey ghost that read as a label. The two danger
+            classes are marked important (!): cn() only joins classes, and the
+            button's own text-fg and hover colour otherwise won. */}
         {hasPin && (
           <Button
             variant="secondary"
             size="sm"
             onClick={() => onChange(null, null)}
-            className="border-danger/45 text-danger-hover hover:bg-danger-soft"
+            className="border-danger/45 text-danger-hover! hover:bg-danger-soft!"
           >
             <X size={14} aria-hidden="true" />
             Remove pin

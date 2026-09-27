@@ -479,7 +479,9 @@ function AccountPanel({ user, isSelf, onAsk }) {
  * before anybody hovers: an outlined button in danger ink, the same shape as
  * "Change role" beside it. Not filled red, because a column of solid red
  * buttons made the whole table look like a warning. The confirmation dialog
- * behind it is unchanged.
+ * behind it is unchanged. The two danger classes are marked important (!):
+ * cn() only joins classes, and the button's own text-fg otherwise won, which
+ * left a red border around dark text.
  */
 function RowActions({ user, isSelf, onAsk }) {
   if (isSelf) {
@@ -511,7 +513,7 @@ function RowActions({ user, isSelf, onAsk }) {
       <Button
         size="sm"
         variant="secondary"
-        className={isSuspended ? undefined : 'border-danger/45 text-danger-hover hover:bg-danger-soft'}
+        className={isSuspended ? undefined : 'border-danger/45 text-danger-hover! hover:bg-danger-soft!'}
         onClick={() => onAsk({ user, kind: 'status' })}
       >
         {isSuspended ? 'Reinstate' : 'Suspend'}
