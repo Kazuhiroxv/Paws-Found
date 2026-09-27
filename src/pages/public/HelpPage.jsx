@@ -13,7 +13,7 @@ import {
   TriangleAlert,
   Users,
 } from 'lucide-react'
-import helpIllustration from '@/assets/img-028-help-safety.webp'
+import helpHero from '@/assets/img-028b-help-hero.webp'
 import { Container } from '@/components/ui'
 import { PatternVeil } from '@/components/PatternVeil'
 import { PageHeader } from '@/components/PageHeader'
@@ -245,25 +245,44 @@ export function HelpPage() {
 
   return (
     <div className="-my-8 flex flex-col">
-      {/* Three pages, three compositions, so none of them reads as a copy of
-          another:
-            About   — a warm cream band with the scene full-bleed behind the text
-            Explore — a rounded tinted panel with the illustration faded in on
-                      the right
-            Help    — this: a pale teal band, the heading and search on the
-                      left, and the illustration framed as a picture on the
-                      right, like a page from a guide.
-          Teal rather than cream because this page is instructions and safety,
-          not the community story.
+      {/* IMG-028b, the Help hero, drawn for this page: a wide scene with the
+          left 45% left empty for the heading, and a man greeting a cat on the
+          right. It carries no text; the heading, copy and search are the
+          page's own, so they stay selectable, translatable and readable by a
+          screen reader.
 
-          The frame is a 4:3 slot sized for IMG-028b (1600×1200, see
-          docs/image-requirements.md). Until that exists it crops the current
-          IMG-028 banner to its right-hand scene. Hidden below `md`: on a phone
-          the search and the answers matter more than a picture above them. */}
-      <section className="relative isolate overflow-hidden border-b border-border bg-surface-alt">
-        <PatternVeil />
-        <Container className="grid items-center gap-8 py-10 sm:py-12 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-14 lg:py-14">
-          <div className="flex min-w-0 flex-col gap-6">
+          The same family as About (a full-bleed illustrated band with the
+          words on the open side of the picture) but not a copy of it: a
+          different scene, the search field in the hero, and teal carrying the
+          accents where About's are warm.
+
+          From `lg` the art is the band itself. Its source is 3:1 and the band
+          is always wider than 3:1 at these sizes, so `object-cover` trims only
+          a little top and bottom and never the sides; the floor heights keep
+          the man's head and the cat's feet inside the frame at 1024-1920px.
+          Below `lg` the words come first in normal flow and the art follows as
+          its own picture, cropped to the man and the cat. The whole 3:1 image
+          at 390px would make them a few pixels tall. */}
+      <section className="relative isolate overflow-hidden border-b border-border bg-warm-band">
+        <img
+          src={helpHero}
+          alt=""
+          className="absolute inset-0 hidden size-full object-cover object-[80%_55%] lg:block"
+          fetchPriority="high"
+        />
+        {/* A light hand on the left only, for the route ribbon and the leaves
+            that drift under the paragraph at some widths. Gone before the
+            scene begins, so the artwork keeps its own colours. */}
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 hidden bg-[linear-gradient(90deg,rgba(253,247,236,0.92)_0%,rgba(253,247,236,0.82)_32%,rgba(253,247,236,0.35)_46%,transparent_58%)] lg:block"
+        />
+
+        <Container className="relative flex flex-col justify-center gap-8 py-10 sm:py-12 lg:min-h-[26rem] lg:py-14 xl:min-h-[30rem]">
+          <div className="flex min-w-0 flex-col gap-6 lg:max-w-[40%]">
+            <p className="text-sm font-semibold tracking-[0.14em] text-brand uppercase">
+              Guidance &amp; safety
+            </p>
             <PageHeader
               title="Help & community safety"
               description="How to file a report that helps, how a match is checked, and how to stay safe arranging a handover."
@@ -287,10 +306,13 @@ export function HelpPage() {
             </label>
           </div>
 
+          {/* Phones and tablets: the scene as its own picture, below the words.
+              5:4 on a phone and 16:9 from `sm` both keep x ~1075-2000 of the
+              source, where the cat and the man are. */}
           <img
-            src={helpIllustration}
+            src={helpHero}
             alt=""
-            className="hidden aspect-4/3 w-full rounded-[1.25rem] bg-warm-band object-cover object-[80%_50%] shadow-raised ring-1 ring-black/5 md:block"
+            className="aspect-5/4 w-full rounded-card object-cover object-[92%_55%] sm:aspect-video lg:hidden"
           />
         </Container>
       </section>

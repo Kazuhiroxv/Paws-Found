@@ -58,9 +58,9 @@ replaced it in the redesign and the file has been deleted.
 | IMG-025 | `empty-no-notifications.webp` | `EmptyState` — nothing unread | Low | **Delivered**, text cropped off |
 | IMG-026 | `empty-queue-clear.webp` | `EmptyState` — nothing awaiting a coordinator | Low | **Delivered**, text cropped off |
 | IMG-027 | `img-027-homepage-reunion.webp` | The homepage hero photograph | **High** | **Delivered** at 1448×1086, placed |
-| IMG-028 | `img-028-help-safety.webp` | The Help & community safety hero band | **High** | **Delivered** at 1896×829, placed |
+| IMG-028 | `img-028-help-safety.webp` | The previous Help hero | **High** | Delivered at 1896×829; **superseded by IMG-028b**, no longer placed |
 | IMG-029 | `img-029-about-community-hero.webp` | The About page hero band | **High** | **Delivered** at 2000×434, placed |
-| IMG-028b | `img-028b-help-guide.webp` | The Help hero's framed picture (replaces the IMG-028 crop) | **High** | Needed; IMG-028 stands in |
+| IMG-028b | `img-028b-help-hero.webp` | The Help & community safety hero | **High** | **Delivered** at 2000×667, placed |
 
 ### What the generated mockups need, in detail
 
@@ -85,28 +85,32 @@ Philippine residential street in late-afternoon light, the owner crouched with
 their face outside the frame so the animal is what you look at. Placed on the
 homepage at `object-[52%_42%]`, which centres the crop on the dog's head.
 
-**IMG-028b — Help hero picture.** The Help hero is now a split layout: a pale
-teal band (`--color-surface-alt`, #f2f8f6), heading and search on the left, and
-the illustration framed as a picture on the right: a 4:3 card with rounded
-corners, a raised shadow and a hairline ring. It no longer sits behind any text.
+**IMG-028b — Help hero.** Delivered and placed as `img-028b-help-hero.webp`,
+used exactly as supplied (2000×667 WebP, 164 KB, not re-encoded). A wide
+watercolour scene: a man in a green jacket crouching to greet an orange-and-white
+cat on a neighbourhood street, with a map pin and a heart-shaped route ribbon.
+The left ~45% is open cream on purpose, and **there is no text in the image**:
+the heading, copy and search are the page's own HTML.
 
-- **Source:** 1600×1200, 4:3 landscape. No text anywhere in the image.
-- **Rendered (measured):** 522×392 at 1366px and at 1920px (the container caps
-  it), 310×232 at 768px. Hidden below 768px.
-- **Safe area:** keep the subject inside the middle ~80%, since the corners are
-  rounded at 20px and the crop is exact 4:3.
-- **Subject:** instruction and safety, not the community story (that is About's
-  IMG-029). For example, a Pet Coordinator checking a photo on a phone with an
-  owner while a dog waits calmly, in a daylight public place: verification and a
-  safe handover.
-- **Palette:** teal-led (#157a78, #0e5d5b) and cream, with amber only as a small
-  accent. Edges near #f2f8f6 so the card sits comfortably on the band.
+It replaced the 4:3 framed-picture brief this entry used to carry: the asset
+was drawn as a full-width hero, so the page uses it as one. It shares About's
+family (full-bleed art, words on the open side) but not its scene, and Help
+keeps the search in the hero and teal accents.
 
-Until it is delivered, the frame crops IMG-028 to its right-hand scene
-(`object-[80%_50%]`).
+- **From `lg` (1024px):** full-bleed behind the band, `object-cover` at
+  `object-[80%_55%]`, band height 26rem (30rem from `xl`). The band is always
+  wider than 3:1 there, so only a little top and bottom is trimmed, never the
+  sides. Measured: the man and cat stay whole at 1024, 1366 and 1920.
+- **Below `lg`:** the text in normal flow, then the scene as its own rounded
+  picture (5:4 on a phone, 16:9 from `sm`) at `object-[92%_55%]`, which keeps
+  source x ~1075-2000, where the cat and the man are.
+- **Scrim:** a light cream wash on the left only, for the ribbon and leaves
+  under the paragraph. Measured worst-case contrast over the art at 1024, 1366
+  and 1920: heading 12.3:1, paragraph 11.2:1, the teal eyebrow 4.65:1.
+- Decorative (`alt=""`): it sits beside the page's own heading and copy.
 
-**IMG-028 — Help & safety.** *Superseded as the Help hero by IMG-028b; kept as
-the stand-in.* A semi-flat illustration in the logo family:
+**IMG-028 — Help & safety.** *Superseded by IMG-028b and no longer placed; the
+file is kept for the record.* A semi-flat illustration in the logo family:
 shield and check, clipboard, map pin, phone, a handover handshake, a dog. Used
 as the full-bleed ground of the Help hero rather than as an inset picture —
 Explore's header is a rounded panel with its illustration on the right, and
@@ -130,7 +134,7 @@ and 1920. Below `lg` it is hidden and the band keeps the cream on its own.
 
 The four public bands now read as four different things, which was the point of
 generating them separately: **IMG-027** the reunion on the homepage, **IMG-008**
-discovery on Explore, **IMG-028** guidance on Help, **IMG-029** the community
+discovery on Explore, **IMG-028b** guidance on Help, **IMG-029** the community
 on About.
 
 **IMG-019 — footer horizon.** Dark teal band: hills, trees, a dog and a cat in
