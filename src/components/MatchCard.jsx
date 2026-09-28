@@ -3,9 +3,16 @@ import { Check, X } from 'lucide-react'
 import photoPlaceholder from '@/assets/pet-photo-placeholder.png'
 import { Card, CardBody, CardFooter, CardHeader } from '@/components/ui'
 import { ReportTypeBadge } from './ReportTypeBadge'
-import { MATCH_STATUS_LABELS, speciesLabel } from '@/constants'
+import { MATCH_STATUSES, MATCH_STATUS_LABELS, speciesLabel } from '@/constants'
 import { formatDate } from '@/utils/date'
 import { cn } from '@/utils/cn'
+
+/** A pairing still being decided; confirmed, rejected and dismissed are final. */
+const OPEN_MATCH_STATUSES = [
+  MATCH_STATUSES.SUGGESTED,
+  MATCH_STATUSES.VERIFICATION_REQUESTED,
+  MATCH_STATUSES.UNDER_REVIEW,
+]
 
 /**
  * Side-by-side comparison of a lost report and a found report.
@@ -32,6 +39,7 @@ export function MatchCard({ match, lostReport, foundReport, actions, headingAs =
   const SignalHeading = headingAs === 'h2' ? 'h3' : 'h4'
   const matchedSignals = match.signals.filter((signal) => signal.matched)
   const unmatchedSignals = match.signals.filter((signal) => !signal.matched)
+  const isOpen = match.isSuggestion || OPEN_MATCH_STATUSES.includes(match.status)
 
   return (
     <Card>
@@ -100,10 +108,15 @@ export function MatchCard({ match, lostReport, foundReport, actions, headingAs =
           </ul>
         </div>
 
-        <p className="rounded-control bg-accent-soft px-3 py-2 text-sm text-fg">
-          This is a suggestion, not a confirmation. A Pet Coordinator helps verify ownership
-          before any handover is arranged.
-        </p>
+        {/* Only while the pairing is still open. Beside "Confirmed" it
+            contradicted itself, and once a pairing is ruled out or dismissed
+            there is no handover left to verify. */}
+        {isOpen && (
+          <p className="rounded-control bg-accent-soft px-3 py-2 text-sm text-fg">
+            This is a suggestion, not a confirmation. A Pet Coordinator helps verify ownership
+            before any handover is arranged.
+          </p>
+        )}
       </CardBody>
 
       {actions && <CardFooter className="flex flex-wrap gap-2">{actions}</CardFooter>}

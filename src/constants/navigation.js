@@ -11,7 +11,7 @@ import {
   User,
   Users,
 } from 'lucide-react'
-import { ROLES } from './index'
+import { ROLES } from '@/constants'
 
 /**
  * Navigation link lists.
@@ -74,4 +74,23 @@ export const WORKSPACE_BY_ROLE = {
   [ROLES.USER]: { to: '/dashboard', label: 'My Dashboard' },
   [ROLES.STAFF]: { to: '/staff', label: 'Staff Workspace' },
   [ROLES.ADMIN]: { to: '/admin', label: 'Administration' },
+}
+
+/**
+ * Where to send somebody who has just signed in: back to the page they were
+ * headed for, unless it lies inside another role's workspace.
+ *
+ * Signing out inside a workspace bounces through the route guard, which
+ * remembers that workspace as the way back. Whoever signs in next may hold a
+ * different role, and returning them there only ever produced "No access".
+ * The guards themselves are unchanged: typing such an address still ends at
+ * /unauthorized.
+ */
+export function destinationAfterSignIn(role, from) {
+  const home = WORKSPACE_BY_ROLE[role].to
+  const isOtherWorkspace = Object.values(WORKSPACE_BY_ROLE).some(
+    ({ to }) => to !== home && (from === to || from?.startsWith(`${to}/`)),
+  )
+
+  return from && !isOtherWorkspace ? from : home
 }

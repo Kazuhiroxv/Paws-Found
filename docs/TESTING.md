@@ -35,7 +35,7 @@ from Docker when pointing at Railway.
 
 ESLint over everything; Vite production build. Touch nothing, need nothing.
 
-### `npm run test:contract` — 13 checks
+### `npm run test:contract` — 15 checks
 
 Node's built-in test runner. **No server, no database.** These exist because
 two real defects got through every other suite by being *agreements between two
@@ -43,6 +43,11 @@ files* rather than faults in either one: the collar answer (`"yes" | "no" |
 "unknown"` from the form through the API to MySQL and back) and the contact
 preferences. They assert the shape of what the form sends and what the API
 returns.
+
+`sign-in-destination.test.mjs` adds two: after signing in, somebody is sent
+back to the page they were headed for only when their role can open it. Signing
+out inside a workspace leaves that workspace as the way back, and the next
+person on the same browser may hold a different role.
 
 **Mutates nothing.**
 
@@ -256,7 +261,7 @@ everything passes.
 ```
 lint                                     clean
 build                                    green
-test:contract                            13/13
+test:contract                            15/15
 test:mail                                15/15
 audit                                   299/299
 auth_lifecycle                           53/53

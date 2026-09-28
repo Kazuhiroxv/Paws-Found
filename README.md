@@ -169,7 +169,7 @@ with the password itself. On a built site everyone signs in through the form.
 | `npm run preview` | Serve the production build locally |
 | `npm run lint` | ESLint over the project |
 | `npm run audit` | 299 security, functional, privacy, access, editing and integrity cases against the live API and database (**reseeds it**) |
-| `npm run test:contract` | 13 checks of the form/API contract — needs nothing running |
+| `npm run test:contract` | 15 checks of the form/API contract and the sign-in destination — needs nothing running |
 | `npm run test:mail` | 15 checks of the mail transports (needs `php` on PATH) |
 | `npm run multi-device` | 55 checks across three independent sessions |
 | `npm run a11y` | axe-core over all 31 pages in every role (`PAWS_BASE=http://localhost:5173` for the dev build) |

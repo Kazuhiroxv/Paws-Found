@@ -8,7 +8,7 @@ import { ResendVerification } from '@/pages/public/RegisterPage'
 import { ROLES, ROLE_LABELS } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
 import { userService } from '@/services'
-import { WORKSPACE_BY_ROLE } from '@/constants/navigation'
+import { destinationAfterSignIn } from '@/constants/navigation'
 
 const loadDemoAccounts = () => userService.getDemoAccounts()
 
@@ -63,10 +63,10 @@ export function LoginPage({ onSignedIn, onDemoSignIn }) {
     if (!isLocked) setError(null)
   }
 
-  /** Send whoever just signed in to where they were going. */
+  /** Send whoever just signed in to where they were going, if their role may go there. */
   const goToWorkspace = (user) => {
     onSignedIn(user)
-    navigate(returnTo ?? WORKSPACE_BY_ROLE[user.role].to, { replace: true })
+    navigate(destinationAfterSignIn(user.role, returnTo), { replace: true })
   }
 
   const submit = async (event) => {
@@ -87,7 +87,7 @@ export function LoginPage({ onSignedIn, onDemoSignIn }) {
 
   const signInAs = async (role) => {
     await onDemoSignIn(role)
-    navigate(returnTo ?? WORKSPACE_BY_ROLE[role].to, { replace: true })
+    navigate(destinationAfterSignIn(role, returnTo), { replace: true })
   }
 
   return (
