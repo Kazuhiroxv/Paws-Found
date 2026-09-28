@@ -512,11 +512,17 @@ function match_confirm(int $id, array $match, array $user, ?string $note): void
         );
     }
 
+    // The standard message says what happens next, because nothing else does:
+    // there is no messaging between members. A coordinator's own note replaces
+    // it (body is VARCHAR(255), so both cannot fit), and the confirmed banner in
+    // Possible Matches repeats the guidance either way.
     notify_both(
         $match,
         'match_confirmed',
         'Match confirmed — the pet is going home',
-        $note ?? 'A Pet Coordinator verified the pairing. Both reports are now closed as returned.'
+        $note ?? 'A Pet Coordinator verified the reports and will help arrange a safe handover. '
+            . 'If the other reporter shared contact details, you can find them on their report. '
+            . 'Meet in a public place, ideally in daylight, and bring someone you trust.'
     );
 }
 

@@ -276,8 +276,10 @@ function StagePanel({ match, question, iAmFinder, isBusy, onRequestVerification,
 
   if (match.status === MATCH_STATUSES.CONFIRMED) {
     return (
-      <StatusStrip tone="success" icon={HeartHandshake} title="Reunited successfully">
-        Ownership was verified and this case has been confirmed.
+      <StatusStrip tone="success" icon={HeartHandshake} title="Match confirmed">
+        A Pet Coordinator verified the reports and will help arrange a safe handover. If the other
+        reporter shared contact details, you can find them on their report. Meet in a public place,
+        ideally in daylight, and bring someone you trust.
       </StatusStrip>
     )
   }

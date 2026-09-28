@@ -289,8 +289,8 @@ function DecisionPanel({ match, staff, lost, found, owner, finder, replies, onDe
         onChange={(event) => setNote(event.target.value)}
         rows={3}
         maxLength={255}
-        placeholder="e.g. Asked the owner to describe the collar tag before contact details are shared."
-        hint="Required to request more information or to rule the pairing out: both reporters receive it. Optional when confirming, and not shown to the reporters."
+        placeholder="e.g. Please describe any tag or marking on the collar."
+        hint="Sent to both reporters. Required to request more information or to rule the pairing out. Optional when confirming: a note there replaces the standard handover message they receive, so say how the handover will be arranged."
       />
 
       {actionError && (
