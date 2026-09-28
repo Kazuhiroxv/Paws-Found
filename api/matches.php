@@ -90,6 +90,12 @@ function match_decide(int $id): never
     $match = find_match_or_404($id);
     $note = blank_to_null($body['note'] ?? null);
 
+    // Stored in a VARCHAR(255) and sent as a notification body of the same
+    // size: longer is refused here, not left for strict MySQL to turn into a 500.
+    if ($note !== null && mb_strlen($note) > 255) {
+        json_error('Keep the note to 255 characters.', 422, ['fields' => ['note' => 'Keep the note to 255 characters.']]);
+    }
+
     $isStaff = in_array($user['role'], ['staff', 'admin'], true);
     $isReporter = in_array((int) $user['user_id'], [
         (int) $match['lost_user_id'],
@@ -339,6 +345,73 @@ function release_reports_without_open_matches(array $match, array $user): void
     }
 }
 
+/**
+ * A report that has finished (returned or closed) takes its open pairings with
+ * it. Left behind, they sat in the coordinator's Verification queue and in the
+ * other reporter's Possible Matches, and confirming one could only ever fail:
+ * one side is no longer open. So each open pairing (suggested, verification
+ * requested, under review) is dismissed: nobody decided it was or was not the
+ * same pet; the case simply ended. Confirmed and rejected pairings are
+ * decisions and are left exactly as they were.
+ *
+ * The other report goes back to Active if nothing else is open on it, with a
+ * history line, and its reporter is told the pairing is no longer open. Called
+ * inside the caller's transaction, so it all happens with the status change
+ * or not at all.
+ *
+ * @param int|null $keep  A pairing to leave alone: the one being confirmed.
+ */
+function dismiss_open_pairings_for_report(int $reportId, array $user, ?int $keep = null): void
+{
+    $open = db()->prepare(
+        "SELECT m.match_id, m.match_status, m.lost_report_id, m.found_report_id,
+                lr.user_id AS lost_user_id, fr.user_id AS found_user_id
+           FROM match_claims m
+           JOIN pet_reports lr ON lr.report_id = m.lost_report_id
+           JOIN pet_reports fr ON fr.report_id = m.found_report_id
+          WHERE (m.lost_report_id = :a OR m.found_report_id = :b)
+            AND m.match_status IN ('suggested', 'verification_requested', 'under_review')"
+    );
+    $open->execute([':a' => $reportId, ':b' => $reportId]);
+
+    $dismiss = db()->prepare(
+        "UPDATE match_claims SET match_status = 'dismissed'
+          WHERE match_id = :id AND match_status = :expected"
+    );
+    $notify = db()->prepare(
+        'INSERT INTO notifications (user_id, notification_type, title, body, report_id, match_id)
+         VALUES (:user_id, :type, :title, :body, :report_id, :match_id)'
+    );
+
+    foreach ($open->fetchAll() as $match) {
+        if ($keep !== null && (int) $match['match_id'] === $keep) {
+            continue;
+        }
+
+        $dismiss->execute([':id' => (int) $match['match_id'], ':expected' => $match['match_status']]);
+        if ($dismiss->rowCount() === 0) {
+            continue;   // somebody else settled it a moment ago
+        }
+
+        release_reports_without_open_matches($match, $user);
+
+        // The other side is told, in words that give nothing away about why.
+        $isLost = (int) $match['lost_report_id'] === $reportId;
+        $otherUser = (int) ($isLost ? $match['found_user_id'] : $match['lost_user_id']);
+        $otherReport = (int) ($isLost ? $match['found_report_id'] : $match['lost_report_id']);
+        if (wants_notification($otherUser, 'status_changed')) {
+            $notify->execute([
+                ':user_id' => $otherUser,
+                ':type' => 'status_changed',
+                ':title' => 'A possible match is no longer open',
+                ':body' => 'The other report in this pairing has been closed or marked returned, so the pairing was withdrawn. Your report stays open.',
+                ':report_id' => $otherReport,
+                ':match_id' => (int) $match['match_id'],
+            ]);
+        }
+    }
+}
+
 /** The coordinator needs something more before deciding. */
 function match_request_information(int $id, array $match, array $user, ?string $note): void
 {
@@ -398,6 +471,12 @@ function match_provide_information(array $match, array $user, string $answer): v
 function match_confirm(int $id, array $match, array $user, ?string $note): void
 {
     match_set_status($id, 'confirmed', $user, $note, $match['match_status']);
+
+    // Both reports are about to be returned, so any other pairing still open
+    // on either of them has nothing left to decide.
+    foreach (['lost_report_id', 'found_report_id'] as $key) {
+        dismiss_open_pairings_for_report((int) $match[$key], $user, $id);
+    }
 
     foreach (['lost_report_id', 'found_report_id'] as $key) {
         $reportId = (int) $match[$key];

@@ -36,7 +36,9 @@ import {
   Container,
   EmptyState,
   LoadingSkeleton,
+  Textarea,
 } from '@/components/ui'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PageHeader } from '@/components/PageHeader'
 import { PatternVeil } from '@/components/PatternVeil'
 import { RadarOrnament, RouteOrnament } from '@/components/Ornament'
@@ -61,6 +63,9 @@ import { NotFoundError, matchService, petService, userService } from '@/services
 import { formatDate } from '@/utils/date'
 import { cn } from '@/utils/cn'
 
+/** What the history says when a reporter closes a report without a reason. */
+const DEFAULT_CLOSE_REASON = 'Closed by the reporter.'
+
 /**
  * The central case page for one report.
  *
@@ -76,6 +81,15 @@ export function PetDetailPage({ role }) {
   const location = useLocation()
   const [isFlagOpen, setIsFlagOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [finishing, setFinishing] = useState(null) // 'returned' | 'closed' | null
+  const [isFinishing, setIsFinishing] = useState(false)
+  const [finishError, setFinishError] = useState(null)
+  const [closeReason, setCloseReason] = useState('')
+  const openFinish = (kind) => {
+    setFinishError(null)
+    setCloseReason('')
+    setFinishing(kind)
+  }
 
   const loadCase = useCallback(async () => {
     const report = await petService.getReportById(id)
@@ -184,23 +198,69 @@ export function PetDetailPage({ role }) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  // Marking returned goes through matchService, because resolving a case can
-  // also close the other half of a confirmed pairing.
-  const markReturned = async () => {
-    await matchService.markReportReturned(report.id, currentUser.id)
-    reload()
-  }
-
-  const closeReport = async () => {
-    await petService.updateReportStatus(report.id, REPORT_STATUSES.CLOSED, {
-      actorId: currentUser.id,
-      note: 'Closed by the reporter.',
-    })
-    reload()
+  // Finishing a case is one-way: a returned or closed report can no longer be
+  // edited or reopened, and any possible match still open on it is withdrawn.
+  // So both actions ask first, show that they are working, and say so if they
+  // fail — they used to fire on the first click, silently.
+  const finish = async () => {
+    setIsFinishing(true)
+    setFinishError(null)
+    try {
+      if (finishing === 'returned') {
+        await matchService.markReportReturned(report.id, currentUser.id)
+      } else {
+        await petService.updateReportStatus(report.id, REPORT_STATUSES.CLOSED, {
+          actorId: currentUser.id,
+          note: closeReason.trim() || DEFAULT_CLOSE_REASON,
+        })
+      }
+      setFinishing(null)
+      reload()
+    } catch (caught) {
+      setFinishError(caught instanceof Error ? caught : new Error(String(caught)))
+    } finally {
+      setIsFinishing(false)
+    }
   }
 
   return (
     <Container className="relative isolate flex flex-col gap-8">
+      <ConfirmDialog
+        isOpen={Boolean(finishing)}
+        title={finishing === 'returned' ? `Mark ${heading} as returned?` : `Close ${heading}?`}
+        confirmLabel={finishing === 'returned' ? 'Mark as returned' : 'Close report'}
+        cancelLabel="Go back"
+        tone={finishing === 'returned' ? 'primary' : 'danger'}
+        isBusy={isFinishing}
+        error={finishError}
+        onCancel={() => !isFinishing && setFinishing(null)}
+        onConfirm={finish}
+      >
+        {finishing === 'returned' ? (
+          <p>
+            The report will show Returned. That is a finished state: it can no longer be edited
+            or reopened, it stops being compared with new reports, and any possible match still
+            open on it is withdrawn.
+          </p>
+        ) : (
+          <>
+            <p>
+              The report will show Closed. That is a finished state: it can no longer be edited or
+              reopened, it stops being compared with new reports, and any possible match still
+              open on it is withdrawn. It stays visible, with its history.
+            </p>
+            <Textarea
+              label="Reason (optional)"
+              value={closeReason}
+              onChange={(event) => setCloseReason(event.target.value)}
+              rows={2}
+              maxLength={255}
+              hint={`Added to the report's history. Left blank, it says “${DEFAULT_CLOSE_REASON}”`}
+            />
+          </>
+        )}
+      </ConfirmDialog>
+
       {photoWarning && isOwner && (
         <p role="alert" className="rounded-control border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-fg">
           {photoWarning} Edit the report again to retry.
@@ -562,12 +622,12 @@ export function PetDetailPage({ role }) {
               <CardHeader titleAs="h2" title="Your report" />
               <CardBody className="flex flex-col gap-2">
                 {report.status !== REPORT_STATUSES.RETURNED && (
-                  <Button onClick={markReturned} fullWidth>
+                  <Button onClick={() => openFinish('returned')} fullWidth>
                     <Check size={16} aria-hidden="true" />
                     Mark as returned
                   </Button>
                 )}
-                <Button variant="secondary" fullWidth onClick={closeReport}>
+                <Button variant="secondary" fullWidth onClick={() => openFinish('closed')}>
                   Close this report
                 </Button>
                 <p className="text-sm text-fg-muted">

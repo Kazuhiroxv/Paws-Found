@@ -70,7 +70,7 @@ skips that one check when there is no network.
 
 **Mutates nothing.** Sends no real email.
 
-### `npm run audit` — 261 checks
+### `npm run audit` — 299 checks
 
 The security and functional suite, against the running API and database.
 
@@ -89,6 +89,7 @@ The security and functional suite, against the running API and database.
 | K. Information requests | 17 |
 | L. Report editing | 31 |
 | M. Report QA rules | 8 |
+| N. Final integrity | 38 |
 
 `RA-01`–`RA-27` pin down who receives what. A guest's list row is exactly the
 public summary, a guest opening a report gets `401 auth_required` (a missing
@@ -124,6 +125,16 @@ Run against the API before this change, 20 of them fail.
 form: a found report must answer the collar question, and "not sure" is a
 valid answer; a report must keep at least one contact method, on filing and on
 edit; and "Other" stores the named animal in breed.
+
+`FI-01`–`FI-38` are the final integrity rules. A hand-built request cannot skip
+anything the form requires (every required field, breed-or-feature, naming an
+"Other" animal, sex), every text field over its limit is a 422 rather than a 500,
+and impossible times and map pins are refused, on filing and on edit. "Show
+phone" does not count when the account has no phone. Ruling out a pairing needs
+a note, and notes over 255 characters are refused. When a report is marked
+returned or closed, its open pairings are dismissed, the other report goes back
+to Active, and its reporter is told; unrelated and already-decided pairings are
+untouched. Moderation removal needs a reason.
 
 `LP-01`–`LP-08` pin down the location promise. The database keeps the pin as
 dropped. Anybody who is not the reporter or staff (a guest or another signed-in
@@ -247,7 +258,7 @@ lint                                     clean
 build                                    green
 test:contract                            13/13
 test:mail                                15/15
-audit                                   261/261
+audit                                   299/299
 auth_lifecycle                           53/53
 multi-device                             55/55   (53/53 + 2 skipped vs a remote)
 a11y                                     31 pages, 0 violations

@@ -1140,6 +1140,119 @@ def qa_rules():
     check(C, 'QA-08', '"Other" stores the named animal in breed', 'other/Turtle', got, got == 'other/Turtle')
 
 
+def final_integrity():
+    """The final batch: the server holds every rule the form does, finished
+    reports end their pairings, and destructive decisions need a reason."""
+    C = 'N. Final integrity'
+
+    # ---- A4: a hand-built request cannot skip what the form requires
+    for tid, field, value, why in [
+        ('FI-01', 'pet_name', '', "A lost pet's name"), ('FI-02', 'species', '', 'Species'),
+        ('FI-03', 'size', '', 'Size'), ('FI-04', 'primary_color', '', 'Main colour'),
+        ('FI-05', 'incident_date', '', 'Date'), ('FI-06', 'location_label', '', 'Where it happened'),
+        ('FI-07', 'city', '', 'City'), ('FI-08', 'province', '', 'Province'),
+        ('FI-09', 'description', '', 'Description'), ('FI-10', 'sex', None, 'Sex (B4)'),
+    ]:
+        _, code = file_report('customer', **{field: value})
+        check(C, tid, f'{why} is required by the server', 422, code, code == 422)
+    _, code = file_report('customer', breed='', distinct_features='')
+    check(C, 'FI-11', 'A breed or a distinctive feature is required', 422, code, code == 422)
+    _, code = file_report('customer', species='other', breed='')
+    check(C, 'FI-12', '"Other" must name the animal', 422, code, code == 422)
+    _, code = file_report('customer', sex='unknown')
+    check(C, 'FI-13', '"Unknown" sex is a valid answer', 200, code, code == 200)
+
+    limits = {'pet_name': 40, 'breed': 60, 'primary_color': 30, 'secondary_color': 30,
+              'distinct_features': 300, 'description': 1000, 'location_label': 120,
+              'city': 60, 'province': 60, 'condition': 300}
+    over = {f: file_report('customer', **{f: 'x' * (n + 1)})[1] for f, n in limits.items()}
+    check(C, 'FI-14', 'Every text field over its limit is a 422, never a 500', 'all 422',
+          ','.join(f'{f}={c}' for f, c in over.items() if c != 422) or 'all 422',
+          all(c == 422 for c in over.values()))
+    _, code = file_report('customer', incident_time='25:99')
+    check(C, 'FI-15', 'An impossible time is refused', 422, code, code == 422)
+    _, code = file_report('customer', lat=123.4, lng=121.0)
+    check(C, 'FI-16', 'An impossible map pin is refused', 422, code, code == 422)
+
+    rid, _ = file_report('customer')
+    path = f'/reports/{rid}'
+    status(C, 'FI-17', 'An edit cannot blank a required field', 'customer', 'PUT', path, {'description': '  '}, 422)
+    status(C, 'FI-18', 'An edit cannot leave neither breed nor feature', 'customer', 'PUT', path,
+           {'breed': '', 'distinct_features': ''}, 422)
+    status(C, 'FI-19', 'An edit to "Other" must name the animal', 'customer', 'PUT', path, {'species': 'other'}, 422)
+    status(C, 'FI-20', 'An edit over a length limit is a 422', 'customer', 'PUT', path, {'city': 'x' * 61}, 422)
+
+    # ---- B5: a phone that does not exist is not a way to be reached
+    liza = sql("SELECT user_id FROM users WHERE email = 'liza.ocampo@example.com';")
+    phone = sql(f'SELECT contact_number FROM users WHERE user_id = {liza};')
+    sql(f'UPDATE users SET contact_number = NULL WHERE user_id = {liza};')
+    _, code = file_report('customer2', allow_platform_contact=False, show_phone=True)
+    check(C, 'FI-21', '"Show phone" with no phone on the account is refused', 422, code, code == 422)
+    _, code = file_report('customer2', allow_platform_contact=True, show_phone=False)
+    check(C, 'FI-22', '...another way to be reached still works', 200, code, code == 200)
+    sql(f"UPDATE users SET contact_number = '{phone}' WHERE user_id = {liza};")
+
+    # ---- B6 and note limits
+    open_pair = sql("SELECT match_id FROM match_claims WHERE match_status IN ('suggested','verification_requested') LIMIT 1;")
+    status(C, 'FI-23', 'Ruling a pairing out needs a note (server)', 'staff', 'PATCH', f'/matches/{open_pair}',
+           {'action': 'reject'}, 422)
+    status(C, 'FI-24', 'A coordinator note over 255 characters is refused', 'staff', 'PATCH', f'/matches/{open_pair}',
+           {'action': 'request_information', 'note': 'x' * 256}, 422)
+
+    # ---- B7: a finished report ends its open pairings
+    def pair(city):
+        common = dict(species='cat', breed='Puspin (Philippine Domestic Shorthair)', size='small',
+                      primary_color='Orange', incident_date='2026-09-05', city=city, province='Iloilo')
+        lost, _ = file_report('customer', pet_name='Audit Mingming', distinct_features='White bib, crooked whisker pad', **common)
+        found, _ = file_report('finder', report_type='found', pet_name=None,
+                               distinct_features='White bib under the chin, crooked whisker pad', **common)
+        m = sql(f'SELECT match_id FROM match_claims WHERE lost_report_id = {lost} AND found_report_id = {found};')
+        return lost, found, m
+
+    others_before = sql("SELECT COUNT(*) FROM match_claims WHERE match_status IN ('suggested','verification_requested','under_review');")
+    decided_before = sql("SELECT GROUP_CONCAT(CONCAT(match_id, ':', match_status) ORDER BY match_id) FROM match_claims "
+                         "WHERE match_status IN ('confirmed','rejected');")
+
+    lost, found, m = pair('Audit Returned City')
+    check(C, 'FI-25', '(a pairing was raised to test with)', 'a pairing', m or 'none', bool(m))
+    status(C, 'FI-26', 'The owner marks the lost pet returned', 'customer', 'PATCH', f'/reports/{lost}',
+           {'status': 'returned', 'note': 'Came home on its own.'}, 200)
+    got = sql(f'SELECT match_status FROM match_claims WHERE match_id = {m};') if m else ''
+    check(C, 'FI-27', '...its open pairing is dismissed', 'dismissed', got, got == 'dismissed')
+    back = sql(f'SELECT status FROM pet_reports WHERE report_id = {found};')
+    check(C, 'FI-28', '...and the other report goes back to Active', 'active', back, back == 'active')
+    _, body = session('staff').call('GET', '/matches?status=verification_requested')
+    queue = [x['match_id'] for x in (body.get('data') or [])]
+    check(C, 'FI-29', '...it is not in the Verification queue', 'absent', 'present' if m and int(m) in queue else 'absent',
+          not (m and int(m) in queue))
+    status(C, 'FI-30', '...and the other reporter cannot act on it', 'finder', 'PATCH', f'/matches/{m}',
+           {'action': 'request_verification'}, 409)
+    told = sql(f"SELECT COUNT(*) FROM notifications WHERE match_id = {m} AND title = 'A possible match is no longer open';")
+    check(C, 'FI-31', '...who is told it is no longer open', '1', told, told == '1')
+
+    lost2, _, m2 = pair('Audit Closed City')
+    status(C, 'FI-32', 'The owner closes a report', 'customer', 'PATCH', f'/reports/{lost2}',
+           {'status': 'closed', 'note': 'Found another way.'}, 200)
+    got = sql(f'SELECT match_status FROM match_claims WHERE match_id = {m2};') if m2 else ''
+    check(C, 'FI-33', '...its open pairing is dismissed too', 'dismissed', got, got == 'dismissed')
+
+    others_after = sql("SELECT COUNT(*) FROM match_claims WHERE match_status IN ('suggested','verification_requested','under_review');")
+    check(C, 'FI-34', 'Unrelated open pairings are untouched', others_before, others_after, others_after == others_before)
+    decided_after = sql("SELECT GROUP_CONCAT(CONCAT(match_id, ':', match_status) ORDER BY match_id) FROM match_claims "
+                        "WHERE match_status IN ('confirmed','rejected');")
+    check(C, 'FI-35', 'Confirmed and rejected pairings are untouched', 'unchanged',
+          'unchanged' if decided_after == decided_before else 'CHANGED', decided_after == decided_before)
+
+    # ---- B8: removal needs a reason
+    case = sql("SELECT case_id FROM moderation_cases WHERE case_status = 'open' LIMIT 1;")
+    status(C, 'FI-36', 'Removing a flagged report needs a reason', 'admin', 'PATCH', f'/moderation/{case}',
+           {'action': 'remove'}, 422)
+    status(C, 'FI-37', 'Remove and suspend needs a reason', 'admin', 'PATCH', f'/moderation/{case}',
+           {'action': 'suspend'}, 422)
+    still = sql(f'SELECT case_status FROM moderation_cases WHERE case_id = {case};')
+    check(C, 'FI-38', '...and the case is still open', 'open', still, still == 'open')
+
+
 def error_handling():
     C = 'H. Error handling'
     status(C, 'EH-01', 'A report that does not exist', 'guest', 'GET', '/reports/99999', None, 404)
@@ -1245,6 +1358,7 @@ if __name__ == '__main__':
     information_reply()
     report_editing()
     qa_rules()
+    final_integrity()
     total, passed = report()
 
     reseed()

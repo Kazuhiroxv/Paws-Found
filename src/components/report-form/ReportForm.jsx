@@ -20,6 +20,7 @@ import {
 } from './reportFormModel'
 
 const loadActiveCategories = () => categoryService.getActiveCategories()
+const loadReporter = () => userService.getCurrentUser()
 
 /**
  * The steps that contain at least one required field.
@@ -76,6 +77,15 @@ export function ReportForm({ reportType, report, guidance }) {
   // Species come from the managed category list, not a hard-coded constant, so
   // a category an administrator adds is immediately fileable against.
   const { data: categories } = useAsync(loadActiveCategories)
+
+  // Whether "show my phone number" can mean anything: only if the account has
+  // a number. Without one the option is off and disabled, and a report filed
+  // before this rule that still says "show phone" is switched off here, so
+  // the form never counts a number that does not exist as a way to be reached.
+  const { data: reporter } = useAsync(loadReporter)
+  const hasPhone = !reporter || Boolean(reporter.phone?.trim())
+  // What is checked and saved: never "show phone" without a phone.
+  const effectiveValues = hasPhone ? values : { ...values, showPhone: false }
   const speciesOptions = (categories ?? []).map((category) => ({
     value: category.id,
     label: category.label,
@@ -135,7 +145,7 @@ export function ReportForm({ reportType, report, guidance }) {
   }
 
   const handleNext = () => {
-    const stepErrors = validateStep(step.id, values)
+    const stepErrors = validateStep(step.id, effectiveValues)
     setErrors(stepErrors)
     if (Object.keys(stepErrors).length > 0) return
 
@@ -181,7 +191,7 @@ export function ReportForm({ reportType, report, guidance }) {
   const handleSubmit = async () => {
     // Re-check every step, in case someone jumped back and emptied a field.
     for (const candidate of STEPS) {
-      const stepErrors = validateStep(candidate.id, values)
+      const stepErrors = validateStep(candidate.id, effectiveValues)
       if (Object.keys(stepErrors).length > 0) {
         setErrors(stepErrors)
         setStepIndex(STEPS.indexOf(candidate))
@@ -198,7 +208,7 @@ export function ReportForm({ reportType, report, guidance }) {
         // shows here. Then the photos, whose failure is carried to the report
         // page rather than hidden: the details did save, and the owner should
         // know exactly which part did not.
-        await petService.updateReport(report.id, toReportInput(values, report.reporterId))
+        await petService.updateReport(report.id, toReportInput(effectiveValues, report.reporterId))
 
         let photoWarning = null
         try {
@@ -214,7 +224,7 @@ export function ReportForm({ reportType, report, guidance }) {
       }
 
       const user = await userService.getCurrentUser()
-      const created = await petService.createReport(toReportInput(values, user.id))
+      const created = await petService.createReport(toReportInput(effectiveValues, user.id))
 
       // The photographs go up separately, once the report has an id. A failure
       // here is reported on its own rather than as a failed submission: the
@@ -282,12 +292,17 @@ export function ReportForm({ reportType, report, guidance }) {
             />
           )}
           {step.id === 'incident' && (
-            <LocationDateStep values={values} errors={errors} onChange={handleChange} />
+            <LocationDateStep
+              values={values}
+              errors={errors}
+              onChange={handleChange}
+              hasPhone={hasPhone}
+            />
           )}
           {step.id === 'photos' && <PhotosStep values={values} onChange={handleChange} />}
           {step.id === 'review' && (
             <ReviewStep
-              values={values}
+              values={effectiveValues}
               onEditStep={(id) => goToStep(STEPS.findIndex((item) => item.id === id))}
             />
           )}

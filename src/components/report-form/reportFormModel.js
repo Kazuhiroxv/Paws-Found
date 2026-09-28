@@ -49,7 +49,7 @@ export function createEmptyValues(reportType) {
     petName: '',
     species: '',
     breed: '',
-    sex: PET_SEXES.UNKNOWN,
+    sex: '',
     size: '',
     primaryColor: '',
     secondaryColor: '',
@@ -116,6 +116,7 @@ const required = (value) => !String(value ?? '').trim()
 /** The species code for the catch-all category, and the collar answers. */
 export const OTHER_SPECIES = 'other'
 const COLLAR_ANSWERS = ['yes', 'no', 'unknown']
+const SEX_ANSWERS = [PET_SEXES.MALE, PET_SEXES.FEMALE, PET_SEXES.UNKNOWN]
 
 /**
  * Validate one step. Returns `{ field: message }` — empty means the step passes.
@@ -145,6 +146,7 @@ export function validateStep(stepId, values) {
       errors.hasCollar = 'Choose Yes, No, or Not sure.'
     }
     if (required(values.size)) errors.size = 'Choose a size.'
+    if (!SEX_ANSWERS.includes(values.sex)) errors.sex = 'Choose Male, Female, or Unknown.'
     if (required(values.primaryColor)) {
       errors.primaryColor = 'Enter the main colour — it is one of the first things people notice.'
     }

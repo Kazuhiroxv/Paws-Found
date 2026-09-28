@@ -12,7 +12,7 @@ import { LIMITS } from './reportFormModel'
  * pin on a map is Phase 8; the fields here already match what the map will
  * fill in, so nothing needs restructuring then.
  */
-export function LocationDateStep({ values, errors, onChange }) {
+export function LocationDateStep({ values, errors, onChange, hasPhone = true }) {
   const isFound = values.reportType === REPORT_TYPES.FOUND
 
   return (
@@ -120,8 +120,9 @@ export function LocationDateStep({ values, errors, onChange }) {
         />
         <Checkbox
           label="Show my phone number on the report"
-          hint="Faster, but anyone can see it."
-          checked={values.showPhone}
+          hint={hasPhone ? 'Faster, but anyone can see it.' : 'Add a phone number in your profile to use this option.'}
+          checked={values.showPhone && hasPhone}
+          disabled={!hasPhone}
           onChange={(event) => onChange('showPhone', event.target.checked)}
         />
         <Checkbox

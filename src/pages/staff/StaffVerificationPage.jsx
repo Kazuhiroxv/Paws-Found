@@ -288,7 +288,7 @@ function DecisionPanel({ match, staff, lost, found, owner, finder, replies, onDe
         value={note}
         onChange={(event) => setNote(event.target.value)}
         rows={3}
-        maxLength={500}
+        maxLength={255}
         placeholder="e.g. Asked the owner to describe the collar tag before contact details are shared."
         hint="Sent to both reporters when you request more information. Otherwise it stays on the case, for staff."
       />
@@ -327,10 +327,13 @@ function DecisionPanel({ match, staff, lost, found, owner, finder, replies, onDe
           </Button>
         </div>
         <div className="border-t border-border pt-3">
+          {/* Needs the note before the dialog, like "Request more information":
+              the server refuses a rejection without one, and finding that out
+              after confirming was a dead end. */}
           <Button
             variant="danger"
             onClick={() => setAsking('reject')}
-            disabled={Boolean(busyAction)}
+            disabled={Boolean(busyAction) || !note.trim()}
             fullWidth
           >
             <X size={16} aria-hidden="true" />
@@ -348,12 +351,12 @@ function DecisionPanel({ match, staff, lost, found, owner, finder, replies, onDe
         <dt className="font-medium text-fg">Request more information</dt>
         <dd>Keeps the case open and sends your note to both reporters.</dd>
         <dt className="font-medium text-fg">Not the same pet</dt>
-        <dd>Rules the pairing out. Each report goes back to Active and the search continues.</dd>
+        <dd>Rules the pairing out and sends your note to both reporters. Each report goes back to Active unless another pairing is open on it.</dd>
       </dl>
 
       {!note.trim() && (
         <p className="-mt-2 text-sm text-fg-muted">
-          Write a case note to request more information — it is what the reporters receive.
+          Write a case note to request more information or to rule the pairing out. Both reporters receive it.
         </p>
       )}
 

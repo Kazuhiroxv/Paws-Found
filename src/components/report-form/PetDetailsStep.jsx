@@ -85,10 +85,16 @@ export function PetDetailsStep({ values, errors, onChange, speciesOptions = [] }
           options={optionsFromLabels(PET_SIZE_LABELS)}
         />
 
+        {/* Unanswered until answered, like the collar question: "Unknown" is
+            a real answer (a finder often cannot tell), not something to
+            assume for someone who skipped the field. */}
         <Select
           label="Sex"
+          required
           value={values.sex}
           onChange={(event) => onChange('sex', event.target.value)}
+          error={errors.sex}
+          placeholder="Choose one"
           options={optionsFromLabels(PET_SEX_LABELS)}
         />
       </div>

@@ -156,22 +156,8 @@ function report_create(): never
         json_error('Say whether this is a lost or a found report.', 422);
     }
 
-    $categoryId = report_category($body['species'] ?? null);
-    $incidentDate = report_incident_date($body['incident_date'] ?? null);
-
-    $petName = trim((string) ($body['pet_name'] ?? ''));
-    // A found report must never require a name: the finder does not know it.
-    if ($type === 'lost' && $petName === '') {
-        json_error('Enter the name of the pet.', 422);
-    }
-
-    $city = report_place($body['city'] ?? null);
-    $province = report_place($body['province'] ?? null);
-
-    $size = require_one_of(blank_to_null($body['size'] ?? null), ['small', 'medium', 'large'], 'size');
-    $sex = require_one_of(blank_to_null($body['sex'] ?? null), ['male', 'female', 'unknown'], 'sex') ?? 'unknown';
-    $collar = report_collar($body['has_collar'] ?? null, $type);
-    $contact = report_contact_choices($body, null);
+    // Every rule the form has, checked again here (report_validated()).
+    $v = report_validated($body, $type, reporter_phone((int) $user['user_id']), !empty($body['show_phone']));
 
     $pdo = db();
 
@@ -185,11 +171,11 @@ function report_create(): never
              VALUES (:label, :city, :province, :lat, :lng, :precision)'
         );
         $location->execute([
-            ':label' => blank_to_null($body['location_label'] ?? null),
-            ':city' => $city,
-            ':province' => $province,
-            ':lat' => numeric_or_null($body['lat'] ?? null),
-            ':lng' => numeric_or_null($body['lng'] ?? null),
+            ':label' => $v['label'],
+            ':city' => $v['city'],
+            ':province' => $v['province'],
+            ':lat' => $v['latitude'],
+            ':lng' => $v['longitude'],
             // The reporter pins an area, never a doorstep (CLAUDE.md §14).
             ':precision' => 'approximate',
         ]);
@@ -211,25 +197,25 @@ function report_create(): never
         );
         $report->execute([
             ':user_id' => $user['user_id'],
-            ':category_id' => $categoryId,
-            ':breed_id' => breed_id_for($categoryId, blank_to_null($body['breed'] ?? null)),
+            ':category_id' => $v['category_id'],
+            ':breed_id' => breed_id_for($v['category_id'], $v['breed']),
             ':location_id' => $locationId,
             ':report_type' => $type,
             ':status' => 'active',
-            ':pet_name' => $petName === '' ? null : $petName,
-            ':pet_size' => $size,
-            ':pet_sex' => $sex,
-            ':primary_color' => blank_to_null($body['primary_color'] ?? null),
-            ':secondary_color' => blank_to_null($body['secondary_color'] ?? null),
-            ':distinct_features' => blank_to_null($body['distinct_features'] ?? null),
-            ':description' => blank_to_null($body['description'] ?? null),
-            ':has_collar' => $collar,
-            ':pet_condition' => blank_to_null($body['condition'] ?? null),
-            ':incident_date' => $incidentDate,
-            ':incident_time' => blank_to_null($body['incident_time'] ?? null),
-            ':allow_contact' => $contact['allow_platform_contact'],
-            ':show_phone' => $contact['show_phone'],
-            ':show_email' => $contact['show_email'],
+            ':pet_name' => $v['pet_name'],
+            ':pet_size' => $v['pet_size'],
+            ':pet_sex' => $v['pet_sex'],
+            ':primary_color' => $v['primary_color'],
+            ':secondary_color' => $v['secondary_color'],
+            ':distinct_features' => $v['distinct_features'],
+            ':description' => $v['description'],
+            ':has_collar' => $v['has_collar'],
+            ':pet_condition' => $v['pet_condition'],
+            ':incident_date' => $v['incident_date'],
+            ':incident_time' => $v['incident_time'],
+            ':allow_contact' => $v['allow_platform_contact'],
+            ':show_phone' => $v['show_phone'],
+            ':show_email' => $v['show_email'],
         ]);
         $reportId = (int) $pdo->lastInsertId();
 
@@ -264,104 +250,90 @@ function report_update(int $id): never
     $user = require_login();
     report_open_for_owner($id, $user, 'Only the person who filed a report can edit it.');
 
-    $current = db()->prepare(
-        'SELECT report_type, category_id, location_id,
-                allow_platform_contact, show_phone, show_email
-           FROM pet_reports WHERE report_id = :id'
+    // The report as it stands, in the API's own field names, so the request's
+    // changes can be laid over it and the result checked as a whole.
+    $statement = db()->prepare(
+        "SELECT r.report_type, r.location_id,
+                r.pet_name, c.category_code AS species, b.breed_name AS breed,
+                r.pet_size AS size, r.pet_sex AS sex,
+                r.primary_color, r.secondary_color, r.distinct_features, r.description,
+                r.has_collar, r.pet_condition AS `condition`,
+                r.incident_date, r.incident_time,
+                l.label AS location_label, l.city, l.province,
+                l.latitude AS lat, l.longitude AS lng,
+                r.allow_platform_contact, r.show_phone, r.show_email
+           FROM pet_reports r
+           JOIN pet_categories c ON c.category_id = r.category_id
+           JOIN locations l      ON l.location_id = r.location_id
+      LEFT JOIN pet_breeds b     ON b.breed_id    = r.breed_id
+          WHERE r.report_id = :id"
     );
-    $current->execute([':id' => $id]);
-    $current = $current->fetch();
+    $statement->execute([':id' => $id]);
+    $current = $statement->fetch();
 
     $body = request_body();
 
-    // Every field the edit form offers, and nothing else. Each is validated by
-    // the same rule filing uses, and anything else in the body is ignored.
-    // Absent means "leave it as it is"; present means "this is the new value".
-    //
-    // This used to accept seven fields while the form offered twenty-odd: an
-    // owner could change the species, the pin or the contact choices, press
-    // Save, be told it worked, and find nothing had changed.
-    $report = [];
-    $location = [];
-
-    foreach ([
-        'primary_color' => 'primary_color',
-        'secondary_color' => 'secondary_color',
-        'distinct_features' => 'distinct_features',
-        'description' => 'description',
-        'condition' => 'pet_condition',
-        'incident_time' => 'incident_time',
-    ] as $field => $column) {
-        if (array_key_exists($field, $body)) {
-            $report[$column] = blank_to_null($body[$field]);
-        }
-    }
-
-    if (array_key_exists('pet_name', $body)) {
-        $petName = trim((string) ($body['pet_name'] ?? ''));
-        // The same rule as filing: a lost pet has a name; a found one may not.
-        if ($current['report_type'] === 'lost' && $petName === '') {
-            json_error('Enter the name of the pet.', 422);
-        }
-        $report['pet_name'] = $petName === '' ? null : $petName;
-    }
-
-    if (array_key_exists('size', $body)) {
-        $report['pet_size'] = require_one_of(blank_to_null($body['size']), ['small', 'medium', 'large'], 'size');
-    }
-    if (array_key_exists('sex', $body)) {
-        $report['pet_sex'] = require_one_of(blank_to_null($body['sex']), ['male', 'female', 'unknown'], 'sex') ?? 'unknown';
-    }
-    if (array_key_exists('has_collar', $body)) {
-        $report['has_collar'] = report_collar($body['has_collar'], $current['report_type']);
-    }
-    if (array_key_exists('incident_date', $body)) {
-        $report['incident_date'] = report_incident_date($body['incident_date']);
-    }
-
-    // A breed belongs to a species, so a new species brings its breed with it:
-    // keeping the old breed_id would leave a "Shih Tzu" cat.
-    if (array_key_exists('species', $body)) {
-        $categoryId = report_category($body['species']);
-        $report['category_id'] = $categoryId;
-        $report['breed_id'] = breed_id_for($categoryId, blank_to_null($body['breed'] ?? null));
-    } elseif (array_key_exists('breed', $body)) {
-        $report['breed_id'] = breed_id_for((int) $current['category_id'], blank_to_null($body['breed']));
-    }
-
-    // The three contact choices, each kept as it was unless it was sent, and
-    // never all three off afterwards.
-    foreach (['allow_platform_contact', 'show_phone', 'show_email'] as $field) {
-        if (array_key_exists($field, $body)) {
-            $report = [...$report, ...report_contact_choices($body, $current)];
-            break;
-        }
-    }
-
-    // The location row this report already points at is updated in place, so
-    // an edit never leaves an orphaned location behind. The pin is stored as
-    // dropped; what leaves the server is still the public grid point.
-    if (array_key_exists('location_label', $body)) {
-        $location['label'] = blank_to_null($body['location_label']);
-    }
-    if (array_key_exists('city', $body)) {
-        $location['city'] = report_place($body['city']);
-    }
-    if (array_key_exists('province', $body)) {
-        $location['province'] = report_place($body['province']);
-    }
-    if (array_key_exists('lat', $body)) {
-        $location['latitude'] = numeric_or_null($body['lat']);
-    }
-    if (array_key_exists('lng', $body)) {
-        $location['longitude'] = numeric_or_null($body['lng']);
-    }
-
-    if ($report === [] && $location === []) {
+    // Every field the edit form offers, and nothing else: anything else in the
+    // body is ignored. Absent means "leave it as it is".
+    $editable = [
+        'pet_name', 'species', 'breed', 'size', 'sex', 'primary_color', 'secondary_color',
+        'distinct_features', 'description', 'has_collar', 'condition',
+        'incident_date', 'incident_time', 'location_label', 'city', 'province', 'lat', 'lng',
+        'allow_platform_contact', 'show_phone', 'show_email',
+    ];
+    $sent = array_values(array_filter($editable, fn ($key) => array_key_exists($key, $body)));
+    if ($sent === []) {
         json_error('Nothing to change.', 422);
     }
 
-    // The report and its location together, or neither.
+    $merged = $current;
+    foreach ($sent as $key) {
+        $merged[$key] = $body[$key];
+    }
+    // A breed belongs to a species: a new species without a breed has none,
+    // rather than keeping the old one ("a Shih Tzu cat").
+    if (in_array('species', $sent, true) && !in_array('breed', $sent, true)) {
+        $merged['breed'] = null;
+    }
+
+    // The same rules as filing, applied to the report as it would be.
+    $v = report_validated(
+        $merged,
+        $current['report_type'],
+        reporter_phone((int) $user['user_id']),
+        in_array('show_phone', $sent, true) && !empty($body['show_phone'])
+    );
+
+    // Only the columns this request changes are written.
+    $report = [];
+    $location = [];
+    $columns = [
+        'pet_name' => 'pet_name', 'size' => 'pet_size', 'sex' => 'pet_sex',
+        'primary_color' => 'primary_color', 'secondary_color' => 'secondary_color',
+        'distinct_features' => 'distinct_features', 'description' => 'description',
+        'has_collar' => 'has_collar', 'condition' => 'pet_condition',
+        'incident_date' => 'incident_date', 'incident_time' => 'incident_time',
+        'allow_platform_contact' => 'allow_platform_contact',
+        'show_phone' => 'show_phone', 'show_email' => 'show_email',
+    ];
+    foreach ($columns as $key => $column) {
+        if (in_array($key, $sent, true)) {
+            $report[$column] = $v[$column];
+        }
+    }
+    if (in_array('species', $sent, true) || in_array('breed', $sent, true)) {
+        $report['category_id'] = $v['category_id'];
+        $report['breed_id'] = breed_id_for($v['category_id'], $v['breed']);
+    }
+    foreach (['location_label' => 'label', 'city' => 'city', 'province' => 'province',
+              'lat' => 'latitude', 'lng' => 'longitude'] as $key => $column) {
+        if (in_array($key, $sent, true)) {
+            $location[$column] = $v[$column];
+        }
+    }
+
+    // The report and its location together, or neither. The location row it
+    // already has is updated in place, so an edit never orphans one.
     $pdo = db();
     $pdo->beginTransaction();
 
@@ -371,15 +343,15 @@ function report_update(int $id): never
             ['locations', $location, 'location_id', (int) $current['location_id']],
         ];
 
-        foreach ($targets as [$table, $columns, $key, $keyValue]) {
-            if ($columns === []) {
+        foreach ($targets as [$table, $values, $key, $keyValue]) {
+            if ($values === []) {
                 continue;
             }
             // Column names come from the literal lists above, never from the
             // request; only the values are bound.
-            $sets = implode(', ', array_map(fn ($column) => "`{$column}` = :{$column}", array_keys($columns)));
+            $sets = implode(', ', array_map(fn ($column) => "`{$column}` = :{$column}", array_keys($values)));
             $params = [':row_key' => $keyValue];
-            foreach ($columns as $column => $value) {
+            foreach ($values as $column => $value) {
                 $params[":{$column}"] = $value;
             }
             $pdo->prepare("UPDATE {$table} SET {$sets} WHERE {$key} = :row_key")->execute($params);
@@ -453,6 +425,12 @@ function report_set_status(int $id): never
 
     $note = blank_to_null($body['note'] ?? null);
 
+    // Stored in a VARCHAR(255) and sent as a notification body of the same
+    // size: longer is refused here, not left for strict MySQL to turn into a 500.
+    if ($note !== null && mb_strlen($note) > 255) {
+        json_error('Keep the note to 255 characters.', 422, ['fields' => ['note' => 'Keep the note to 255 characters.']]);
+    }
+
     // Closing a report ends a case, and "closed" on its own explains nothing to
     // the reporter reading their own history later. Returned does not need one:
     // the reason is in the word.
@@ -494,6 +472,12 @@ function report_set_status(int $id): never
             $status,
             $note
         );
+
+        // A finished case ends its open pairings in the same transaction.
+        if (in_array($status, ['returned', 'closed'], true)) {
+            require_once __DIR__ . '/matches.php';
+            dismiss_open_pairings_for_report($id, $user);
+        }
 
         $pdo->commit();
     } catch (Throwable $exception) {
@@ -828,8 +812,8 @@ function report_photo_list(int $id): array
     ], $rows->fetchAll());
 }
 
-/** alt_text is VARCHAR(180). */
-const PHOTO_ALT_MAX = 180;
+/** The form's limit (LIMITS.photoAlt), inside the column's 180. */
+const PHOTO_ALT_MAX = 120;
 
 /**
  * Change a report's existing photographs: remove some, choose the primary one,
@@ -1011,82 +995,188 @@ function report_open_for_owner(int $id, array $user, string $notOwner): array
     return $report;
 }
 
-/** A species a report may be filed under: an active category. Create and edit. */
-function report_category(mixed $code): int
+/**
+ * The longest each text field may be, in characters: the same numbers as
+ * LIMITS in src/components/report-form/reportFormModel.js, which the form
+ * applies as maxLength. Checked here too, so a request built by hand gets a
+ * 422 naming the field instead of strict MySQL refusing a too-long value and
+ * the caller seeing a generic 500.
+ */
+const REPORT_LIMITS = [
+    'pet_name' => 40,
+    'breed' => 60,
+    'primary_color' => 30,
+    'secondary_color' => 30,
+    'distinct_features' => 300,
+    'description' => 1000,
+    'location_label' => 120,
+    'city' => 60,
+    'province' => 60,
+    'condition' => 300,
+];
+
+/**
+ * Every rule the report form enforces, enforced again here, for filing and for
+ * editing alike, so the two can never drift and the browser can be bypassed
+ * without the database ever seeing an incomplete report.
+ *
+ * `$v` is the report as it WOULD be: the whole request when filing; on an edit,
+ * the stored report with the request's changes laid over it. That is what lets
+ * a rule about a pair of fields (a breed OR a distinctive feature; "Other"
+ * naming its animal) hold whichever one an edit touches.
+ *
+ * Returns the values cleaned up, or answers 422 with every field that failed,
+ * worded as the form words it.
+ *
+ * @param array  $v      Report fields, keyed by their API names.
+ * @param string $type   'lost' or 'found'.
+ * @param string|null $phone  The reporter's phone number, if they have one.
+ * @param bool $phoneAsked  Whether this request itself asks to show the phone.
+ *   A report filed before this rule may say "show phone" with no number; that
+ *   stale setting must not block an unrelated edit, so only asking for it
+ *   now is refused. It never counts as a way to be reached either way.
+ */
+function report_validated(array $v, string $type, ?string $phone, bool $phoneAsked): array
 {
-    $categoryId = category_id_for_code(trim((string) ($code ?? '')));
+    $errors = [];
+    $text = fn (string $key) => trim((string) ($v[$key] ?? ''));
+
+    foreach (REPORT_LIMITS as $key => $max) {
+        if (mb_strlen($text($key)) > $max) {
+            $errors[$key] = "Keep this to {$max} characters.";
+        }
+    }
+
+    $petName = $text('pet_name');
+    // A found report never requires a name: the finder does not know it.
+    if ($type === 'lost' && $petName === '') {
+        $errors['pet_name'] = "Enter your pet's name, so people know what to call out.";
+    }
+
+    $speciesCode = $text('species');
+    $categoryId = $speciesCode === '' ? null : category_id_for_code($speciesCode);
     if ($categoryId === null) {
-        json_error('Choose the kind of animal this report is about.', 422);
+        $errors['species'] = 'Choose the kind of animal.';
     }
 
-    return $categoryId;
-}
+    $breed = $text('breed');
+    // "Other" names no animal, so the breed field names it instead.
+    if ($speciesCode === 'other' && $breed === '') {
+        $errors['breed'] = 'Tell us what kind of animal this is.';
+    }
 
-/** The date something happened: a real date, not in the future. Create and edit. */
-function report_incident_date(mixed $value): string
-{
-    $date = trim((string) ($value ?? ''));
+    $size = blank_to_null($v['size'] ?? null);
+    if (!in_array($size, ['small', 'medium', 'large'], true)) {
+        $errors['size'] = 'Choose a size.';
+    }
+
+    $sex = blank_to_null($v['sex'] ?? null);
+    if (!in_array($sex, ['male', 'female', 'unknown'], true)) {
+        $errors['sex'] = 'Choose Male, Female, or Unknown.';
+    }
+
+    if ($text('primary_color') === '') {
+        $errors['primary_color'] = 'Enter the main colour — it is one of the first things people notice.';
+    }
+
+    // Colour alone matches hundreds of animals.
+    if ($breed === '' && $text('distinct_features') === '') {
+        $errors['distinct_features'] = 'Add a breed or at least one distinctive feature.';
+    }
+
+    $collar = blank_to_null($v['has_collar'] ?? null);
+    if ($type === 'found' && !in_array($collar, ['yes', 'no', 'unknown'], true)) {
+        $errors['has_collar'] = 'Choose Yes, No, or Not sure.';
+    } elseif ($collar !== null && !in_array($collar, ['yes', 'no', 'unknown'], true)) {
+        $errors['has_collar'] = 'Choose Yes, No, or Not sure.';
+    }
+
+    $date = $text('incident_date');
     if (!is_valid_date($date)) {
-        json_error('Give the date this happened, as YYYY-MM-DD.', 422);
-    }
-    if ($date > date('Y-m-d')) {
-        json_error('That date is in the future.', 422);
+        $errors['incident_date'] = 'Enter a valid date.';
+    } elseif ($date > date('Y-m-d')) {
+        $errors['incident_date'] = 'The date cannot be in the future.';
     }
 
-    return $date;
+    $time = $text('incident_time');
+    if ($time !== '' && preg_match('/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/', $time) !== 1) {
+        $errors['incident_time'] = 'Enter a time such as 07:30.';
+    }
+
+    if ($text('location_label') === '') {
+        $errors['location_label'] = 'Describe the area.';
+    }
+    if ($text('city') === '') {
+        $errors['city'] = 'Enter the city or municipality.';
+    }
+    if ($text('province') === '') {
+        $errors['province'] = 'Enter the province.';
+    }
+    if ($text('description') === '') {
+        $errors['description'] = 'Add a short description — behaviour, temperament, anything that helps.';
+    }
+
+    // A pin is both coordinates or neither, and on the planet.
+    $lat = $v['lat'] ?? null;
+    $lng = $v['lng'] ?? null;
+    $hasLat = $lat !== null && $lat !== '';
+    $hasLng = $lng !== null && $lng !== '';
+    if ($hasLat !== $hasLng
+        || ($hasLat && (!is_numeric($lat) || abs((float) $lat) > 90))
+        || ($hasLng && (!is_numeric($lng) || abs((float) $lng) > 180))) {
+        $errors['lat'] = 'That map pin is not a valid position.';
+    }
+
+    // At least one way to be reached that actually works. A coordinator can
+    // always be reached; a phone number only counts if the reporter has one.
+    $platform = !empty($v['allow_platform_contact']);
+    $showPhone = !empty($v['show_phone']);
+    $showEmail = !empty($v['show_email']);
+    $hasPhone = trim((string) $phone) !== '';
+    if ($phoneAsked && $showPhone && !$hasPhone) {
+        $errors['show_phone'] = 'Add a phone number in your profile to use this option.';
+    }
+    if (!$platform && !($showPhone && $hasPhone) && !$showEmail) {
+        $errors['contact'] = 'Choose at least one way people or Pet Coordinators can reach you.';
+    }
+
+    if ($errors !== []) {
+        json_error(reset($errors), 422, ['fields' => $errors]);
+    }
+
+    return [
+        'category_id' => $categoryId,
+        'breed' => $breed === '' ? null : $breed,
+        'pet_name' => $petName === '' ? null : $petName,
+        'pet_size' => $size,
+        'pet_sex' => $sex,
+        'primary_color' => $text('primary_color'),
+        'secondary_color' => $text('secondary_color') === '' ? null : $text('secondary_color'),
+        'distinct_features' => $text('distinct_features') === '' ? null : $text('distinct_features'),
+        'description' => $text('description'),
+        'has_collar' => $collar ?? 'unknown',
+        'pet_condition' => $text('condition') === '' ? null : $text('condition'),
+        'incident_date' => $date,
+        'incident_time' => $time === '' ? null : $time,
+        'label' => $text('location_label'),
+        'city' => $text('city'),
+        'province' => $text('province'),
+        'latitude' => $hasLat ? (float) $lat : null,
+        'longitude' => $hasLng ? (float) $lng : null,
+        'allow_platform_contact' => $platform ? 1 : 0,
+        'show_phone' => $showPhone ? 1 : 0,
+        'show_email' => $showEmail ? 1 : 0,
+    ];
 }
 
-/**
- * Whether a found pet wore a collar: yes, no or unknown ("not sure"), and a
- * finder must say which. Not sure is a real answer, so it is not assumed. A
- * lost report does not ask, and keeps 'unknown'.
- */
-function report_collar(mixed $value, string $type): string
+/** The reporter's phone number, or null. It decides whether "show phone" can work. */
+function reporter_phone(int $userId): ?string
 {
-    $answer = blank_to_null($value);
-    if ($type === 'found' && $answer === null) {
-        json_error('Say whether the pet was wearing a collar: yes, no or not sure.', 422, [
-            'fields' => ['has_collar' => 'Choose Yes, No, or Not sure.'],
-        ]);
-    }
+    $statement = db()->prepare('SELECT contact_number FROM users WHERE user_id = :id');
+    $statement->execute([':id' => $userId]);
+    $phone = $statement->fetchColumn();
 
-    return require_one_of($answer, ['yes', 'no', 'unknown'], 'has_collar') ?? 'unknown';
-}
-
-/**
- * The three ways a report can be answered, never all three off: a report
- * nobody can reach helps nobody. Each is taken from the request when sent,
- * otherwise kept from the report (on an edit) or off (on a new one).
- * Integers, not PHP booleans: PDO binds false as '', which strict MySQL
- * refuses for a BOOLEAN column.
- */
-function report_contact_choices(array $body, ?array $current): array
-{
-    $choices = [];
-    foreach (['allow_platform_contact', 'show_phone', 'show_email'] as $field) {
-        $choices[$field] = array_key_exists($field, $body)
-            ? (empty($body[$field]) ? 0 : 1)
-            : (int) ($current[$field] ?? 0);
-    }
-
-    if (array_sum($choices) === 0) {
-        json_error('Choose at least one way people or Pet Coordinators can reach you.', 422, [
-            'fields' => ['contact' => 'Choose at least one way people or Pet Coordinators can reach you.'],
-        ]);
-    }
-
-    return $choices;
-}
-
-/** A city or province: required, never blank. Create and edit. */
-function report_place(mixed $value): string
-{
-    $place = trim((string) ($value ?? ''));
-    if ($place === '') {
-        json_error('Enter at least the city and province where this happened.', 422);
-    }
-
-    return $place;
+    return $phone === false ? null : $phone;
 }
 
 function find_report_or_404(int $id): array
@@ -1163,10 +1253,6 @@ function breed_id_for(int $categoryId, ?string $name): ?int
     return (int) db()->lastInsertId();
 }
 
-function numeric_or_null(mixed $value): ?float
-{
-    return is_numeric($value) ? (float) $value : null;
-}
 
 function is_valid_date(string $value): bool
 {

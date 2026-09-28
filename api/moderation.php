@@ -190,6 +190,12 @@ function moderation_decide(int $id): never
     $note = trim((string) ($body['note'] ?? ''));
     $note = $note === '' ? null : $note;
 
+    // Stored in a VARCHAR(255) and sent as a notification body of the same
+    // size: longer is refused here, not left for strict MySQL to turn into a 500.
+    if ($note !== null && mb_strlen($note) > 255) {
+        json_error('Keep the note to 255 characters.', 422, ['fields' => ['note' => 'Keep the note to 255 characters.']]);
+    }
+
     $statement = db()->prepare(
         'SELECT c.case_id, c.report_id, c.case_status,
                 r.user_id AS owner_id, r.status AS report_status
@@ -206,6 +212,15 @@ function moderation_decide(int $id): never
 
     if ($case['case_status'] !== 'open') {
         json_error('That case has already been decided.', 409);
+    }
+
+    // Removing someone's report, and suspending them, needs a reason: the
+    // same rule as suspending from the Users page. It is what the reporter is
+    // told and what the audit trail says; a stock sentence explains nothing.
+    if (in_array($action, ['remove', 'suspend'], true) && $note === null) {
+        json_error('Write why this report is being removed.', 422, [
+            'fields' => ['note' => 'The reporter is told this, and it is kept in the audit log.'],
+        ]);
     }
 
     $pdo = db();
@@ -280,10 +295,15 @@ function moderation_decide(int $id): never
 /** Removing closes the report and records why on its history. */
 function moderation_close_report(array $case, array $admin, ?string $note): void
 {
-    $reason = $note ?? 'Removed by an administrator following a moderation review.';
+    // Always a real reason now: moderation_decide() refuses removal without one.
+    $reason = $note;
 
     $update = db()->prepare("UPDATE pet_reports SET status = 'closed' WHERE report_id = :id");
     $update->execute([':id' => (int) $case['report_id']]);
+
+    // A removed report's open pairings end with it (see matches.php).
+    require_once __DIR__ . '/matches.php';
+    dismiss_open_pairings_for_report((int) $case['report_id'], $admin);
 
     $log = db()->prepare(
         'INSERT INTO status_logs (report_id, updated_by_user_id, previous_status, new_status, note)

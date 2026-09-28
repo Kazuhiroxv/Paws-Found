@@ -194,6 +194,7 @@ def file_report(role, **overrides):
         # As the form sends them: a report must be reachable some way, and a
         # found report must answer the collar question (not sure is an answer).
         'allow_platform_contact': True, 'has_collar': 'unknown',
+        'location_label': 'Near the barangay hall', 'description': 'Filed by the automated audit.',
     }
     body.update(overrides)
     code, payload = session(role).call('POST', '/reports', body)

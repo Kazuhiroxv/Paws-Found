@@ -286,9 +286,9 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
               value={note}
               onChange={(event) => setNote(event.target.value)}
               rows={2}
-              maxLength={500}
+              maxLength={255}
               placeholder="Explain what you decided and why."
-              hint="Sent to the person who filed the report, whichever decision you make."
+              hint="Sent to the person who filed the report, whichever decision you make. Required to remove the report."
             />
 
             {actionError && (
@@ -325,10 +325,15 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
                   <AlertTriangle size={15} className="shrink-0 text-danger" aria-hidden="true" />
                   These close the report
                 </p>
+                {/* The same rule as suspending from Users, and the server
+                    enforces it: removal needs a reason the reporter can read. */}
+                {!note.trim() && (
+                  <p className="text-sm text-fg-muted">Write a decision note above to remove the report.</p>
+                )}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
                   <Button
                     variant="danger"
-                    disabled={Boolean(busyAction)}
+                    disabled={Boolean(busyAction) || !note.trim()}
                     onClick={() => setAsking('remove')}
                   >
                     {DECISIONS.remove.label}
@@ -337,7 +342,7 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
                       two used to sit side by side in the same red. */}
                   <Button
                     variant="danger"
-                    disabled={Boolean(busyAction)}
+                    disabled={Boolean(busyAction) || !note.trim()}
                     onClick={() => setAsking('suspend')}
                     className="sm:ml-auto"
                   >
@@ -373,11 +378,7 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
                     the account.
                   </p>
                 )}
-                <p className="text-fg-muted">
-                  {note.trim()
-                    ? 'Your decision note is sent to them.'
-                    : 'No decision note was written, so they receive the standard wording.'}
-                </p>
+                <p className="text-fg-muted">Your decision note is sent to them.</p>
               </ConfirmDialog>
             )}
           </>

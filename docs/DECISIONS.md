@@ -122,6 +122,27 @@ whoever made it; those go to the reporter, coordinators and administrators. The
 rule is decided by who is viewing, never by what a note says. A customer sees
 only pairings that involve their own reports.
 
+### The server holds every rule the form holds
+
+`report_validated()` in `api/reports.php` is the one place a report's rules
+live on the server: required fields, breed-or-feature, naming an "Other"
+animal, the collar and sex answers, at least one contact method that works (a
+phone only counts if the account has one), and the form's length limits. Filing
+checks the request; an edit checks the report as it would be after the change,
+so a rule about a pair of fields holds whichever one is edited. A request built
+by hand gets the same 422 the form would have shown, never an incomplete report
+and never a 500 from strict MySQL.
+
+### A finished report ends its open pairings
+
+When a report becomes returned or closed (by its owner, by a coordinator, by a
+moderation removal, or by confirming a different pairing), every pairing still
+open on it is dismissed. Nobody decided those were or were not the same pet;
+the case simply ended. The other report goes back to Active if nothing else is
+open on it, and its reporter is told the pairing was withdrawn. Confirmed and
+rejected pairings are decisions and are never touched. Before this, a finished
+report left pairings in the Verification queue that could only fail with 409.
+
 ### Editing saves everything the edit form offers
 
 The edit form showed every field of a report, but `PUT /api/reports/{id}`
