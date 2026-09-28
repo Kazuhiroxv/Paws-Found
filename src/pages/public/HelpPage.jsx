@@ -122,7 +122,7 @@ const TOPICS = [
     faqs: [
       {
         q: 'Is my phone number or email shown?',
-        a: 'Only if you choose to share it. Otherwise the page offers to pass a message through Paws&Found instead.',
+        a: 'Only if you choose to share it, report by report. Otherwise the report says you prefer to be reached through a Pet Coordinator, who can see how to contact you when checking a possible match. There is no messaging between members.',
       },
       {
         q: 'Does the map show where I live?',

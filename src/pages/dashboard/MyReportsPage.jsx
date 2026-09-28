@@ -177,7 +177,7 @@ export function MyReportsPage() {
         description="Closing marks the case as finished. It will no longer be compared against new reports for possible matches. It stays visible with a Closed status, and you can still open it from the Closed tab."
         footer={
           <>
-            <Button variant="ghost" onClick={() => setClosing(null)} disabled={isClosingBusy}>
+            <Button variant="ghost" onClick={() => setClosing(null)} disabled={isClosingBusy} data-autofocus>
               Keep it open
             </Button>
             <Button variant="danger" onClick={confirmClose} isLoading={isClosingBusy}>

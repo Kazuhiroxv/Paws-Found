@@ -290,7 +290,7 @@ function DecisionPanel({ match, staff, lost, found, owner, finder, replies, onDe
         rows={3}
         maxLength={255}
         placeholder="e.g. Asked the owner to describe the collar tag before contact details are shared."
-        hint="Sent to both reporters when you request more information. Otherwise it stays on the case, for staff."
+        hint="Required to request more information or to rule the pairing out: both reporters receive it. Optional when confirming, and not shown to the reporters."
       />
 
       {actionError && (
@@ -369,7 +369,7 @@ function DecisionPanel({ match, staff, lost, found, owner, finder, replies, onDe
         footer={
           asking && (
             <>
-              <Button variant="ghost" onClick={() => setAsking(null)} disabled={Boolean(busyAction)}>
+              <Button variant="ghost" onClick={() => setAsking(null)} disabled={Boolean(busyAction)} data-autofocus>
                 Go back
               </Button>
               <Button

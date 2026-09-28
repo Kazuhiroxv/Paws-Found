@@ -15,6 +15,8 @@ import { Button, Modal } from '@/components/ui'
  * @param {string} props.title         e.g. "Suspend Rico Panganiban?"
  * @param {string} props.confirmLabel  The action, in words.
  * @param {string} [props.cancelLabel]  The way back, in words. "Cancel" by default.
+ * @param {'ghost'|'primary'} [props.cancelVariant]  "primary" when going back is the
+ *   recommended choice (e.g. adding a photo), so it is the strongest button.
  * @param {'danger'|'primary'} [props.tone]  Red for anything destructive.
  * @param {boolean} [props.isBusy]
  * @param {boolean} [props.confirmDisabled]
@@ -29,6 +31,7 @@ export function ConfirmDialog({
   title,
   confirmLabel,
   cancelLabel = 'Cancel',
+  cancelVariant = 'ghost',
   tone = 'danger',
   isBusy = false,
   confirmDisabled = false,
@@ -43,7 +46,7 @@ export function ConfirmDialog({
       title={title}
       footer={
         <>
-          <Button variant="ghost" onClick={onCancel} disabled={isBusy} data-autofocus>
+          <Button variant={cancelVariant} onClick={onCancel} disabled={isBusy} data-autofocus>
             {cancelLabel}
           </Button>
           <Button variant={tone} isLoading={isBusy} disabled={confirmDisabled} onClick={onConfirm}>

@@ -373,8 +373,9 @@ export function ReportForm({ reportType, report, guidance }) {
         isOpen={isAskingAboutPhoto}
         title="Continue without a photo?"
         confirmLabel="Continue without photo"
-        cancelLabel="Go back and add a photo"
-        tone="primary"
+        cancelLabel="Add a photo"
+        cancelVariant="primary"
+        tone="secondary"
         onCancel={() => setIsAskingAboutPhoto(false)}
         onConfirm={continueWithoutPhoto}
       >
@@ -513,8 +514,8 @@ function SubmissionSuccess({ report, photoWarning }) {
 
         <p className="max-w-prose text-sm text-fg-muted">
           {isLost
-            ? 'Your lost pet report is now public and searchable. If a found report matches its details, you will be notified about the possible match.'
-            : 'Thank you for reporting this pet. The report is now public, and if a lost report matches its details, both sides will be told about the possible match.'}
+            ? 'Your lost pet report is now public and searchable. If a found report matches its details, the possible match will appear in Possible Matches.'
+            : 'Thank you for reporting this pet. The report is now public, and if a lost report matches its details, the possible match will appear in Possible Matches for both of you.'}
         </p>
 
         <div className="mt-2 flex flex-wrap justify-center gap-2">

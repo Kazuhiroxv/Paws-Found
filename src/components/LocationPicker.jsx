@@ -34,16 +34,17 @@ export function LocationPicker({ reportType, lat, lng, onChange }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium text-fg">Pin the area on a map</p>
         {/* Removing the pin throws away where the pet was, so it looks like the
-            destructive action it is: the outlined danger style admin Suspend
-            uses, not a grey ghost that read as a label. The two danger
-            classes are marked important (!): cn() only joins classes, and the
-            button's own text-fg and hover colour otherwise won. */}
+            destructive action it is: a pale red fill, red text and a red border,
+            stronger on hover. Clearly not harmless, and clearly milder than the
+            solid red of Suspend or "Not the same pet". The classes are marked
+            important (!) because cn() only joins classes and the button's own
+            colours otherwise won. */}
         {hasPin && (
           <Button
             variant="secondary"
             size="sm"
             onClick={() => onChange(null, null)}
-            className="border-danger/45 text-danger-hover! hover:bg-danger-soft!"
+            className="border-danger/50 bg-danger-soft! text-danger-hover! hover:border-danger! hover:bg-danger/15!"
           >
             <X size={14} aria-hidden="true" />
             Remove pin

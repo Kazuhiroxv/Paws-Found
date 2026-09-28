@@ -15,7 +15,8 @@ export function ReviewStep({ values, onEditStep }) {
   const petRows = [
     !isFound && ['Name', values.petName],
     ['Species', speciesLabel(values.species)],
-    ['Breed', values.breed],
+    // For "Other" the same field names the animal, so it is labelled as one.
+    [values.species === 'other' ? 'Animal' : 'Breed', values.breed],
     ['Size', PET_SIZE_LABELS[values.size]],
     ['Sex', PET_SEX_LABELS[values.sex]],
     ['Main colour', values.primaryColor],
@@ -35,7 +36,7 @@ export function ReviewStep({ values, onEditStep }) {
   ]
 
   const contactRows = [
-    ['Contact through Paws&Found', yesNo(values.allowPlatformContact)],
+    ['Reach me through a Pet Coordinator', yesNo(values.allowPlatformContact)],
     ['Show phone number', yesNo(values.showPhone)],
     ['Show email address', yesNo(values.showEmail)],
   ]

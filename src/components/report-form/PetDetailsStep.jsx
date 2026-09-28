@@ -32,6 +32,16 @@ export function PetDetailsStep({ values, errors, onChange, speciesOptions = [] }
         title="What kind of animal"
         hint="Species and size are the first things the system compares, so get these right even if you have to guess the breed."
       >
+      {/* The one rule that spans two fields, said before it can fail: an
+          asterisk on either would be untrue, since either one satisfies it.
+          Not shown for "Other", where naming the animal already does. */}
+      {values.species !== OTHER_SPECIES && (
+        <p className="text-sm text-fg">
+          Give a breed, or at least one distinctive feature further down. Colour alone is
+          rarely enough to identify a pet.
+        </p>
+      )}
+
       <div className="grid gap-5 sm:grid-cols-2">
         <Select
           label="Species"

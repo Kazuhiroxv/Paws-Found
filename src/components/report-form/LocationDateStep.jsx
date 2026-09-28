@@ -109,12 +109,12 @@ export function LocationDateStep({ values, errors, onChange, hasPhone = true }) 
         </legend>
 
         <p className="text-sm text-fg-muted">
-          Nothing here is shown publicly unless you tick it. Messages through the platform
-          keep your details hidden.
+          Your phone number and email are shown on the report only if you tick them. A Pet
+          Coordinator can always see how to reach you when checking a possible match.
         </p>
 
         <Checkbox
-          label="Let people contact me through Paws&Found"
+          label="Let people reach me through a Pet Coordinator"
           checked={values.allowPlatformContact}
           onChange={(event) => onChange('allowPlatformContact', event.target.checked)}
         />
