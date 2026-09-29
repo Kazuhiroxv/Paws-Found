@@ -1,0 +1,665 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1587 1123" width="420mm" height="297mm">
+<rect width="1587" height="1123" fill="#FFFFFF"/>
+<text x="28.0" y="52.0" font-size="28" font-weight="700" fill="#1B1F1F" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">Paws&amp;Found</text>
+<text x="28.0" y="77.0" font-size="17" font-weight="600" fill="#5C6664" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">Entity Relationship Diagram</text>
+<text x="1559.0" y="48.0" font-size="15" font-weight="700" fill="#1B1F1F" text-anchor="end" font-family="'Segoe UI', Arial, Helvetica, sans-serif">Production MySQL Schema</text>
+<text x="1559.0" y="68.0" font-size="13" font-weight="400" fill="#1B1F1F" text-anchor="end" font-family="'Segoe UI', Arial, Helvetica, sans-serif">15 Domain Tables · 24 Foreign Keys</text>
+<text x="1559.0" y="87.0" font-size="10.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="'Segoe UI', Arial, Helvetica, sans-serif">Operational tables omitted from conceptual ERD: schema_migrations, auth_rate_limits</text>
+<rect x="28.0" y="712.0" width="886.0" height="330.0" rx="6" fill="#FBF6EE" stroke="#7A4B0C" stroke-opacity="0.35" stroke-width="1"/>
+<text x="38.0" y="727.0" font-size="10" font-weight="700" fill="#7A4B0C" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif" letter-spacing="0.6">1 · ACCOUNTS &amp; SECURITY</text>
+<rect x="28.0" y="122.0" width="260.0" height="261.0" rx="6" fill="#F5F3FA" stroke="#4B3F7A" stroke-opacity="0.35" stroke-width="1"/>
+<text x="38.0" y="137.0" font-size="10" font-weight="700" fill="#4B3F7A" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif" letter-spacing="0.6">2 · PET TAXONOMY</text>
+<rect x="967.0" y="122.0" width="260.0" height="431.0" rx="6" fill="#F1F5FA" stroke="#1D4F86" stroke-opacity="0.35" stroke-width="1"/>
+<text x="977.0" y="137.0" font-size="10" font-weight="700" fill="#1D4F86" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif" letter-spacing="0.6">4 · MATCHING</text>
+<rect x="1280.0" y="122.0" width="260.0" height="671.0" rx="6" fill="#FAF3F4" stroke="#6A2F3B" stroke-opacity="0.35" stroke-width="1"/>
+<text x="1290.0" y="137.0" font-size="10" font-weight="700" fill="#6A2F3B" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif" letter-spacing="0.6">5 · WORKFLOW &amp; AUDIT</text>
+<polygon points="341.0,122.0 914.0,122.0 914.0,604.0 28.0,604.0 28.0,400.0 341.0,400.0" fill="#F1F7F6" stroke="#0E5D5B" stroke-opacity="0.35" stroke-width="1"/>
+<text x="351.0" y="137.0" font-size="10" font-weight="700" fill="#0E5D5B" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif" letter-spacing="0.6">3 · REPORTING</text>
+<path d="M 158.0 292.0 L 158.0 252.0" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_breeds_category</title></path>
+<line x1="158.0" y1="281.0" x2="152.0" y2="292.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="158.0" y1="281.0" x2="158.0" y2="292.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="158.0" y1="281.0" x2="164.0" y2="292.0" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="158.0" cy="276.0" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="163.5" y1="258.0" x2="152.5" y2="258.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="163.5" y1="262.0" x2="152.5" y2="262.0" stroke="#3A4240" stroke-width="1" fill="none"/>
+<text x="166.0" y="275.5" font-size="9" font-weight="400" fill="#5C6664" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">category_id</text>
+<path d="M 353.0 226.5 L 296.0 226.5 L 296.0 192.5 L 276.0 192.5" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_reports_category</title></path>
+<line x1="342.0" y1="226.5" x2="353.0" y2="232.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="342.0" y1="226.5" x2="353.0" y2="226.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="342.0" y1="226.5" x2="353.0" y2="220.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="337.0" cy="226.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="282.0" y1="187.0" x2="282.0" y2="198.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="286.0" y1="187.0" x2="286.0" y2="198.0" stroke="#3A4240" stroke-width="1" fill="none"/>
+<path d="M 353.0 243.5 L 311.0 243.5 L 311.0 328.5 L 276.0 328.5" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_reports_breed</title></path>
+<line x1="342.0" y1="243.5" x2="353.0" y2="249.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="342.0" y1="243.5" x2="353.0" y2="243.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="342.0" y1="243.5" x2="353.0" y2="237.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="337.0" cy="243.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="282.0" y1="323.0" x2="282.0" y2="334.0" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="290.0" cy="328.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<path d="M 353.0 260.5 L 326.0 260.5 L 326.0 470.5 L 276.0 470.5" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_reports_location</title></path>
+<line x1="342.0" y1="260.5" x2="353.0" y2="266.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="342.0" y1="260.5" x2="353.0" y2="260.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="342.0" y1="260.5" x2="353.0" y2="254.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="337.0" cy="260.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="282.0" y1="465.0" x2="282.0" y2="476.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="286.0" y1="465.0" x2="286.0" y2="476.0" stroke="#3A4240" stroke-width="1" fill="none"/>
+<path d="M 379.0 592.0 L 379.0 746.0" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_reports_user</title></path>
+<line x1="379.0" y1="603.0" x2="385.0" y2="592.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="379.0" y1="603.0" x2="379.0" y2="592.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="379.0" y1="603.0" x2="373.0" y2="592.0" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="379.0" cy="608.0" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="373.5" y1="740.0" x2="384.5" y2="740.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="373.5" y1="736.0" x2="384.5" y2="736.0" stroke="#3A4240" stroke-width="1" fill="none"/>
+<text x="375.0" y="669.0" font-size="9" font-weight="400" fill="#5C6664" text-anchor="middle" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic" transform="rotate(-90 375.0 669.0)">user_id</text>
+<path d="M 405.0 592.0 L 405.0 746.0" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_reports_staff</title></path>
+<line x1="405.0" y1="603.0" x2="411.0" y2="592.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="405.0" y1="603.0" x2="405.0" y2="592.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="405.0" y1="603.0" x2="399.0" y2="592.0" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="405.0" cy="608.0" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="399.5" y1="740.0" x2="410.5" y2="740.0" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="405.0" cy="732.0" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<text x="401.0" y="669.0" font-size="9" font-weight="400" fill="#5C6664" text-anchor="middle" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic" transform="rotate(-90 401.0 669.0)">assigned_staff_id</text>
+<path d="M 666.0 209.5 L 647.0 209.5 L 647.0 226.5 L 589.0 226.5" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_images_report</title></path>
+<line x1="655.0" y1="209.5" x2="666.0" y2="215.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="655.0" y1="209.5" x2="666.0" y2="209.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="655.0" y1="209.5" x2="666.0" y2="203.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="650.0" cy="209.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="595.0" y1="221.0" x2="595.0" y2="232.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="599.0" y1="221.0" x2="599.0" y2="232.0" stroke="#3A4240" stroke-width="1" fill="none"/>
+<path d="M 666.0 375.5 L 589.0 375.5" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_logs_report</title></path>
+<line x1="655.0" y1="375.5" x2="666.0" y2="381.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="655.0" y1="375.5" x2="666.0" y2="375.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="655.0" y1="375.5" x2="666.0" y2="369.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="650.0" cy="375.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="595.0" y1="370.0" x2="595.0" y2="381.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="599.0" y1="370.0" x2="599.0" y2="381.0" stroke="#3A4240" stroke-width="1" fill="none"/>
+<path d="M 666.0 392.5 L 633.0 392.5 L 633.0 618.0 L 433.0 618.0 L 433.0 746.0" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_logs_user</title></path>
+<line x1="655.0" y1="392.5" x2="666.0" y2="398.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="655.0" y1="392.5" x2="666.0" y2="392.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="655.0" y1="392.5" x2="666.0" y2="386.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="650.0" cy="392.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="427.5" y1="740.0" x2="438.5" y2="740.0" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="433.0" cy="732.0" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<path d="M 979.0 209.5 L 924.0 209.5 L 924.0 298.0 L 589.0 298.0" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_match_lost</title></path>
+<line x1="968.0" y1="209.5" x2="979.0" y2="215.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="968.0" y1="209.5" x2="979.0" y2="209.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="968.0" y1="209.5" x2="979.0" y2="203.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="963.0" cy="209.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="595.0" y1="292.5" x2="595.0" y2="303.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="599.0" y1="292.5" x2="599.0" y2="303.5" stroke="#3A4240" stroke-width="1" fill="none"/>
+<path d="M 979.0 226.5 L 936.0 226.5 L 936.0 310.0 L 589.0 310.0" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_match_found</title></path>
+<line x1="968.0" y1="226.5" x2="979.0" y2="232.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="968.0" y1="226.5" x2="979.0" y2="226.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="968.0" y1="226.5" x2="979.0" y2="220.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="963.0" cy="226.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="595.0" y1="304.5" x2="595.0" y2="315.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="599.0" y1="304.5" x2="599.0" y2="315.5" stroke="#3A4240" stroke-width="1" fill="none"/>
+<path d="M 979.0 243.5 L 948.0 243.5 L 948.0 632.0 L 457.0 632.0 L 457.0 746.0" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_match_submitted_by</title></path>
+<line x1="968.0" y1="243.5" x2="979.0" y2="249.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="968.0" y1="243.5" x2="979.0" y2="243.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="968.0" y1="243.5" x2="979.0" y2="237.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="963.0" cy="243.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="451.5" y1="740.0" x2="462.5" y2="740.0" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="457.0" cy="732.0" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<path d="M 979.0 260.5 L 960.0 260.5 L 960.0 646.0 L 481.0 646.0 L 481.0 746.0" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_match_reviewed_by</title></path>
+<line x1="968.0" y1="260.5" x2="979.0" y2="266.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="968.0" y1="260.5" x2="979.0" y2="260.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="968.0" y1="260.5" x2="979.0" y2="254.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="963.0" cy="260.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="475.5" y1="740.0" x2="486.5" y2="740.0" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="481.0" cy="732.0" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<path d="M 1097.0 411.0 L 1097.0 371.0" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_signals_match</title></path>
+<line x1="1097.0" y1="400.0" x2="1091.0" y2="411.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1097.0" y1="400.0" x2="1097.0" y2="411.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1097.0" y1="400.0" x2="1103.0" y2="411.0" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="1097.0" cy="395.0" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="1102.5" y1="377.0" x2="1091.5" y2="377.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1102.5" y1="381.0" x2="1091.5" y2="381.0" stroke="#3A4240" stroke-width="1" fill="none"/>
+<text x="1105.0" y="394.5" font-size="9" font-weight="400" fill="#5C6664" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">match_id</text>
+<path d="M 1292.0 209.5 L 1237.0 209.5 L 1237.0 660.0 L 505.0 660.0 L 505.0 746.0" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_notifications_user</title></path>
+<line x1="1281.0" y1="209.5" x2="1292.0" y2="215.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1281.0" y1="209.5" x2="1292.0" y2="209.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1281.0" y1="209.5" x2="1292.0" y2="203.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="1276.0" cy="209.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="499.5" y1="740.0" x2="510.5" y2="740.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="499.5" y1="736.0" x2="510.5" y2="736.0" stroke="#3A4240" stroke-width="1" fill="none"/>
+<path d="M 1292.0 294.5 L 1215.0 294.5" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_notifications_match</title></path>
+<line x1="1281.0" y1="294.5" x2="1292.0" y2="300.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1281.0" y1="294.5" x2="1292.0" y2="294.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1281.0" y1="294.5" x2="1292.0" y2="288.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="1276.0" cy="294.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="1221.0" y1="289.0" x2="1221.0" y2="300.0" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="1229.0" cy="294.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<path d="M 1528.0 277.5 L 1550.0 277.5 L 1550.0 112.0 L 619.0 112.0 L 619.0 209.5 L 589.0 209.5" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_notifications_report</title></path>
+<line x1="1539.0" y1="277.5" x2="1528.0" y2="271.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1539.0" y1="277.5" x2="1528.0" y2="277.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1539.0" y1="277.5" x2="1528.0" y2="283.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="1544.0" cy="277.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="595.0" y1="204.0" x2="595.0" y2="215.0" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="603.0" cy="209.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<path d="M 1528.0 414.5 L 1560.0 414.5 L 1560.0 104.0 L 607.0 104.0 L 607.0 192.5 L 589.0 192.5" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_moderation_report</title></path>
+<line x1="1539.0" y1="414.5" x2="1528.0" y2="408.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1539.0" y1="414.5" x2="1528.0" y2="414.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1539.0" y1="414.5" x2="1528.0" y2="420.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="1544.0" cy="414.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="595.0" y1="187.0" x2="595.0" y2="198.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="599.0" y1="187.0" x2="599.0" y2="198.0" stroke="#3A4240" stroke-width="1" fill="none"/>
+<path d="M 1292.0 431.5 L 1249.0 431.5 L 1249.0 674.0 L 529.0 674.0 L 529.0 746.0" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_moderation_reporter</title></path>
+<line x1="1281.0" y1="431.5" x2="1292.0" y2="437.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1281.0" y1="431.5" x2="1292.0" y2="431.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1281.0" y1="431.5" x2="1292.0" y2="425.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="1276.0" cy="431.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="523.5" y1="740.0" x2="534.5" y2="740.0" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="529.0" cy="732.0" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<path d="M 1292.0 499.5 L 1261.0 499.5 L 1261.0 688.0 L 553.0 688.0 L 553.0 746.0" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_moderation_admin</title></path>
+<line x1="1281.0" y1="499.5" x2="1292.0" y2="505.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1281.0" y1="499.5" x2="1292.0" y2="499.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1281.0" y1="499.5" x2="1292.0" y2="493.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="1276.0" cy="499.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="547.5" y1="740.0" x2="558.5" y2="740.0" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="553.0" cy="732.0" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<path d="M 1292.0 636.5 L 1273.0 636.5 L 1273.0 702.0 L 577.0 702.0 L 577.0 746.0" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_audit_actor</title></path>
+<line x1="1281.0" y1="636.5" x2="1292.0" y2="642.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1281.0" y1="636.5" x2="1292.0" y2="636.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1281.0" y1="636.5" x2="1292.0" y2="630.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="1276.0" cy="636.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="571.5" y1="740.0" x2="582.5" y2="740.0" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="577.0" cy="732.0" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<path d="M 276.0 816.5 L 353.0 816.5" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_attempts_user</title></path>
+<line x1="287.0" y1="816.5" x2="276.0" y2="810.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="287.0" y1="816.5" x2="276.0" y2="816.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="287.0" y1="816.5" x2="276.0" y2="822.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="292.0" cy="816.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="347.0" y1="822.0" x2="347.0" y2="811.0" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="339.0" cy="816.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<path d="M 276.0 970.5 L 353.0 970.5" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_consent_user</title></path>
+<line x1="287.0" y1="970.5" x2="276.0" y2="964.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="287.0" y1="970.5" x2="276.0" y2="970.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="287.0" y1="970.5" x2="276.0" y2="976.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="292.0" cy="970.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="347.0" y1="976.0" x2="347.0" y2="965.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="343.0" y1="976.0" x2="343.0" y2="965.0" stroke="#3A4240" stroke-width="1" fill="none"/>
+<path d="M 666.0 799.5 L 589.0 799.5" fill="none" stroke="#3A4240" stroke-width="1" stroke-linejoin="round"><title>fk_auth_tokens_user</title></path>
+<line x1="655.0" y1="799.5" x2="666.0" y2="805.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="655.0" y1="799.5" x2="666.0" y2="799.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="655.0" y1="799.5" x2="666.0" y2="793.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="650.0" cy="799.5" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<line x1="595.0" y1="794.0" x2="595.0" y2="805.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="599.0" y1="794.0" x2="599.0" y2="805.0" stroke="#3A4240" stroke-width="1" fill="none"/>
+<g><rect x="1292" y="583" width="236" height="198" rx="4" fill="#FFFFFF" stroke="#6A2F3B" stroke-width="1.2"/>
+<path d="M 1292 611 V 587 Q 1292 583 1296 583 H 1524 Q 1528 583 1528 587 V 611 Z" fill="#6A2F3B"/>
+<text x="1302.0" y="602.0" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">audit_logs</text>
+<rect x="1293" y="611" width="234" height="17" fill="#FAF3F4"/>
+<rect x="1298" y="614" width="17" height="11" rx="2" fill="#6A2F3B" stroke="#6A2F3B" stroke-width="0.8"/>
+<text x="1306.5" y="622.6" font-size="7.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">PK</text>
+<text x="1320.0" y="623.4" font-size="10" font-weight="700" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">audit_id</text>
+<text x="1521.0" y="623.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="1293" y1="628" x2="1527" y2="628" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="1298" y="631" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#6A2F3B" stroke-width="0.8"/>
+<text x="1306.5" y="639.6" font-size="7.5" font-weight="700" fill="#6A2F3B" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="1320.0" y="640.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">actor_user_id</text>
+<text x="1521.0" y="640.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned null</text>
+<line x1="1293" y1="645" x2="1527" y2="645" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1320.0" y="657.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">actor_email</text>
+<text x="1521.0" y="657.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(190) null</text>
+<line x1="1293" y1="662" x2="1527" y2="662" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1320.0" y="674.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">action</text>
+<text x="1521.0" y="674.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">enum</text>
+<line x1="1293" y1="679" x2="1527" y2="679" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1320.0" y="691.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">target_type</text>
+<text x="1521.0" y="691.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">enum null</text>
+<line x1="1293" y1="696" x2="1527" y2="696" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1320.0" y="708.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">target_id</text>
+<text x="1521.0" y="708.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned null</text>
+<line x1="1293" y1="713" x2="1527" y2="713" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1320.0" y="725.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">outcome</text>
+<text x="1521.0" y="725.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">enum</text>
+<line x1="1293" y1="730" x2="1527" y2="730" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1320.0" y="742.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">detail</text>
+<text x="1521.0" y="742.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(255) null</text>
+<line x1="1293" y1="747" x2="1527" y2="747" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1320.0" y="759.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">ip_address</text>
+<text x="1521.0" y="759.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(45) null</text>
+<line x1="1293" y1="764" x2="1527" y2="764" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1320.0" y="776.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">created_at</text>
+<text x="1521.0" y="776.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">timestamp</text>
+</g>
+<g><rect x="666" y="746" width="236" height="164" rx="4" fill="#FFFFFF" stroke="#7A4B0C" stroke-width="1.2"/>
+<path d="M 666 774 V 750 Q 666 746 670 746 H 898 Q 902 746 902 750 V 774 Z" fill="#7A4B0C"/>
+<text x="676.0" y="765.0" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">auth_tokens</text>
+<rect x="667" y="774" width="234" height="17" fill="#FBF6EE"/>
+<rect x="672" y="777" width="17" height="11" rx="2" fill="#7A4B0C" stroke="#7A4B0C" stroke-width="0.8"/>
+<text x="680.5" y="785.6" font-size="7.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">PK</text>
+<text x="694.0" y="786.4" font-size="10" font-weight="700" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">token_id</text>
+<text x="895.0" y="786.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="667" y1="791" x2="901" y2="791" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="672" y="794" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#7A4B0C" stroke-width="0.8"/>
+<text x="680.5" y="802.6" font-size="7.5" font-weight="700" fill="#7A4B0C" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="694.0" y="803.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">user_id</text>
+<text x="895.0" y="803.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="667" y1="808" x2="901" y2="808" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="694.0" y="820.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">purpose</text>
+<text x="895.0" y="820.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">enum</text>
+<line x1="667" y1="825" x2="901" y2="825" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="672" y="828" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#5C6664" stroke-width="0.8"/>
+<text x="680.5" y="836.6" font-size="7.5" font-weight="700" fill="#5C6664" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">UQ</text>
+<text x="694.0" y="837.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">token_hash</text>
+<text x="895.0" y="837.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">char(64)</text>
+<line x1="667" y1="842" x2="901" y2="842" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="694.0" y="854.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">target_email</text>
+<text x="895.0" y="854.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(190) null</text>
+<line x1="667" y1="859" x2="901" y2="859" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="694.0" y="871.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">expires_at</text>
+<text x="895.0" y="871.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">timestamp</text>
+<line x1="667" y1="876" x2="901" y2="876" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="694.0" y="888.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">used_at</text>
+<text x="895.0" y="888.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">timestamp null</text>
+<line x1="667" y1="893" x2="901" y2="893" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="694.0" y="905.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">created_at</text>
+<text x="895.0" y="905.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">timestamp</text>
+</g>
+<g><rect x="40" y="434" width="236" height="147" rx="4" fill="#FFFFFF" stroke="#0E5D5B" stroke-width="1.2"/>
+<path d="M 40 462 V 438 Q 40 434 44 434 H 272 Q 276 434 276 438 V 462 Z" fill="#0E5D5B"/>
+<text x="50.0" y="453.0" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">locations</text>
+<rect x="41" y="462" width="234" height="17" fill="#F1F7F6"/>
+<rect x="46" y="465" width="17" height="11" rx="2" fill="#0E5D5B" stroke="#0E5D5B" stroke-width="0.8"/>
+<text x="54.5" y="473.6" font-size="7.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">PK</text>
+<text x="68.0" y="474.4" font-size="10" font-weight="700" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">location_id</text>
+<text x="269.0" y="474.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="41" y1="479" x2="275" y2="479" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="68.0" y="491.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">label</text>
+<text x="269.0" y="491.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(160) null</text>
+<line x1="41" y1="496" x2="275" y2="496" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="68.0" y="508.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">city</text>
+<text x="269.0" y="508.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(80)</text>
+<line x1="41" y1="513" x2="275" y2="513" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="68.0" y="525.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">province</text>
+<text x="269.0" y="525.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(80)</text>
+<line x1="41" y1="530" x2="275" y2="530" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="68.0" y="542.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">latitude</text>
+<text x="269.0" y="542.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">decimal(9,6) null</text>
+<line x1="41" y1="547" x2="275" y2="547" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="68.0" y="559.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">longitude</text>
+<text x="269.0" y="559.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">decimal(9,6) null</text>
+<line x1="41" y1="564" x2="275" y2="564" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="68.0" y="576.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">precision</text>
+<text x="269.0" y="576.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">enum</text>
+</g>
+<g><rect x="40" y="746" width="236" height="147" rx="4" fill="#FFFFFF" stroke="#7A4B0C" stroke-width="1.2"/>
+<path d="M 40 774 V 750 Q 40 746 44 746 H 272 Q 276 746 276 750 V 774 Z" fill="#7A4B0C"/>
+<text x="50.0" y="765.0" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">login_attempts</text>
+<rect x="41" y="774" width="234" height="17" fill="#FBF6EE"/>
+<rect x="46" y="777" width="17" height="11" rx="2" fill="#7A4B0C" stroke="#7A4B0C" stroke-width="0.8"/>
+<text x="54.5" y="785.6" font-size="7.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">PK</text>
+<text x="68.0" y="786.4" font-size="10" font-weight="700" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">attempt_id</text>
+<text x="269.0" y="786.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="41" y1="791" x2="275" y2="791" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="46" y="794" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#5C6664" stroke-width="0.8"/>
+<text x="54.5" y="802.6" font-size="7.5" font-weight="700" fill="#5C6664" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">UQ</text>
+<text x="68.0" y="803.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">email</text>
+<text x="269.0" y="803.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(190)</text>
+<line x1="41" y1="808" x2="275" y2="808" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="46" y="811" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#7A4B0C" stroke-width="0.8"/>
+<text x="54.5" y="819.6" font-size="7.5" font-weight="700" fill="#7A4B0C" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="68.0" y="820.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">user_id</text>
+<text x="269.0" y="820.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned null</text>
+<line x1="41" y1="825" x2="275" y2="825" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="68.0" y="837.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">failed_count</text>
+<text x="269.0" y="837.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">tinyint unsigned</text>
+<line x1="41" y1="842" x2="275" y2="842" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="68.0" y="854.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">first_failed_at</text>
+<text x="269.0" y="854.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">timestamp null</text>
+<line x1="41" y1="859" x2="275" y2="859" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="68.0" y="871.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">last_failed_at</text>
+<text x="269.0" y="871.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">timestamp null</text>
+<line x1="41" y1="876" x2="275" y2="876" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="68.0" y="888.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">locked_at</text>
+<text x="269.0" y="888.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">timestamp null</text>
+</g>
+<g><rect x="979" y="156" width="236" height="215" rx="4" fill="#FFFFFF" stroke="#1D4F86" stroke-width="1.2"/>
+<path d="M 979 184 V 160 Q 979 156 983 156 H 1211 Q 1215 156 1215 160 V 184 Z" fill="#1D4F86"/>
+<text x="989.0" y="175.0" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">match_claims</text>
+<rect x="980" y="184" width="234" height="17" fill="#F1F5FA"/>
+<rect x="985" y="187" width="17" height="11" rx="2" fill="#1D4F86" stroke="#1D4F86" stroke-width="0.8"/>
+<text x="993.5" y="195.6" font-size="7.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">PK</text>
+<text x="1007.0" y="196.4" font-size="10" font-weight="700" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">match_id</text>
+<text x="1208.0" y="196.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="980" y1="201" x2="1214" y2="201" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="985" y="204" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#1D4F86" stroke-width="0.8"/>
+<text x="993.5" y="212.6" font-size="7.5" font-weight="700" fill="#1D4F86" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="1007.0" y="213.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">lost_report_id</text>
+<text x="1208.0" y="213.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="980" y1="218" x2="1214" y2="218" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="985" y="221" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#1D4F86" stroke-width="0.8"/>
+<text x="993.5" y="229.6" font-size="7.5" font-weight="700" fill="#1D4F86" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="1007.0" y="230.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">found_report_id</text>
+<text x="1208.0" y="230.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="980" y1="235" x2="1214" y2="235" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="985" y="238" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#1D4F86" stroke-width="0.8"/>
+<text x="993.5" y="246.6" font-size="7.5" font-weight="700" fill="#1D4F86" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="1007.0" y="247.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">submitted_by_user_id</text>
+<text x="1208.0" y="247.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned null</text>
+<line x1="980" y1="252" x2="1214" y2="252" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="985" y="255" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#1D4F86" stroke-width="0.8"/>
+<text x="993.5" y="263.6" font-size="7.5" font-weight="700" fill="#1D4F86" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="1007.0" y="264.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">reviewed_by_user_id</text>
+<text x="1208.0" y="264.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned null</text>
+<line x1="980" y1="269" x2="1214" y2="269" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1007.0" y="281.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">match_score</text>
+<text x="1208.0" y="281.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">tinyint unsigned</text>
+<line x1="980" y1="286" x2="1214" y2="286" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1007.0" y="298.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">match_status</text>
+<text x="1208.0" y="298.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">enum</text>
+<line x1="980" y1="303" x2="1214" y2="303" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1007.0" y="315.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">proof_notes</text>
+<text x="1208.0" y="315.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">text null</text>
+<line x1="980" y1="320" x2="1214" y2="320" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1007.0" y="332.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">staff_notes</text>
+<text x="1208.0" y="332.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">text null</text>
+<line x1="980" y1="337" x2="1214" y2="337" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1007.0" y="349.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">created_at</text>
+<text x="1208.0" y="349.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">timestamp</text>
+<line x1="980" y1="354" x2="1214" y2="354" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1007.0" y="366.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">updated_at</text>
+<text x="1208.0" y="366.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">timestamp</text>
+</g>
+<g><rect x="979" y="411" width="236" height="130" rx="4" fill="#FFFFFF" stroke="#1D4F86" stroke-width="1.2"/>
+<path d="M 979 439 V 415 Q 979 411 983 411 H 1211 Q 1215 411 1215 415 V 439 Z" fill="#1D4F86"/>
+<text x="989.0" y="430.0" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">match_signals</text>
+<rect x="980" y="439" width="234" height="17" fill="#F1F5FA"/>
+<rect x="985" y="442" width="17" height="11" rx="2" fill="#1D4F86" stroke="#1D4F86" stroke-width="0.8"/>
+<text x="993.5" y="450.6" font-size="7.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">PK</text>
+<text x="1007.0" y="451.4" font-size="10" font-weight="700" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">signal_id</text>
+<text x="1208.0" y="451.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="980" y1="456" x2="1214" y2="456" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="985" y="459" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#1D4F86" stroke-width="0.8"/>
+<text x="993.5" y="467.6" font-size="7.5" font-weight="700" fill="#1D4F86" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="1007.0" y="468.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">match_id</text>
+<text x="1208.0" y="468.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="980" y1="473" x2="1214" y2="473" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1007.0" y="485.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">signal_key</text>
+<text x="1208.0" y="485.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">enum</text>
+<line x1="980" y1="490" x2="1214" y2="490" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1007.0" y="502.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">is_matched</text>
+<text x="1208.0" y="502.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">tinyint(1)</text>
+<line x1="980" y1="507" x2="1214" y2="507" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1007.0" y="519.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">weight</text>
+<text x="1208.0" y="519.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">tinyint unsigned</text>
+<line x1="980" y1="524" x2="1214" y2="524" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1007.0" y="536.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">detail</text>
+<text x="1208.0" y="536.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(255) null</text>
+</g>
+<g><rect x="1292" y="361" width="236" height="198" rx="4" fill="#FFFFFF" stroke="#6A2F3B" stroke-width="1.2"/>
+<path d="M 1292 389 V 365 Q 1292 361 1296 361 H 1524 Q 1528 361 1528 365 V 389 Z" fill="#6A2F3B"/>
+<text x="1302.0" y="380.0" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">moderation_cases</text>
+<rect x="1293" y="389" width="234" height="17" fill="#FAF3F4"/>
+<rect x="1298" y="392" width="17" height="11" rx="2" fill="#6A2F3B" stroke="#6A2F3B" stroke-width="0.8"/>
+<text x="1306.5" y="400.6" font-size="7.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">PK</text>
+<text x="1320.0" y="401.4" font-size="10" font-weight="700" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">case_id</text>
+<text x="1521.0" y="401.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="1293" y1="406" x2="1527" y2="406" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="1298" y="409" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#6A2F3B" stroke-width="0.8"/>
+<text x="1306.5" y="417.6" font-size="7.5" font-weight="700" fill="#6A2F3B" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="1320.0" y="418.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">report_id</text>
+<text x="1521.0" y="418.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="1293" y1="423" x2="1527" y2="423" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="1298" y="426" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#6A2F3B" stroke-width="0.8"/>
+<text x="1306.5" y="434.6" font-size="7.5" font-weight="700" fill="#6A2F3B" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="1320.0" y="435.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">reported_by_user_id</text>
+<text x="1521.0" y="435.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned null</text>
+<line x1="1293" y1="440" x2="1527" y2="440" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1320.0" y="452.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">reason</text>
+<text x="1521.0" y="452.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">enum</text>
+<line x1="1293" y1="457" x2="1527" y2="457" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1320.0" y="469.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">details</text>
+<text x="1521.0" y="469.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">text null</text>
+<line x1="1293" y1="474" x2="1527" y2="474" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1320.0" y="486.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">case_status</text>
+<text x="1521.0" y="486.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">enum</text>
+<line x1="1293" y1="491" x2="1527" y2="491" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="1298" y="494" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#6A2F3B" stroke-width="0.8"/>
+<text x="1306.5" y="502.6" font-size="7.5" font-weight="700" fill="#6A2F3B" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="1320.0" y="503.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">resolved_by_admin_id</text>
+<text x="1521.0" y="503.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned null</text>
+<line x1="1293" y1="508" x2="1527" y2="508" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1320.0" y="520.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">resolution_note</text>
+<text x="1521.0" y="520.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(255) null</text>
+<line x1="1293" y1="525" x2="1527" y2="525" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1320.0" y="537.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">created_at</text>
+<text x="1521.0" y="537.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">timestamp</text>
+<line x1="1293" y1="542" x2="1527" y2="542" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1320.0" y="554.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">resolved_at</text>
+<text x="1521.0" y="554.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">timestamp null</text>
+</g>
+<g><rect x="1292" y="156" width="236" height="181" rx="4" fill="#FFFFFF" stroke="#6A2F3B" stroke-width="1.2"/>
+<path d="M 1292 184 V 160 Q 1292 156 1296 156 H 1524 Q 1528 156 1528 160 V 184 Z" fill="#6A2F3B"/>
+<text x="1302.0" y="175.0" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">notifications</text>
+<rect x="1293" y="184" width="234" height="17" fill="#FAF3F4"/>
+<rect x="1298" y="187" width="17" height="11" rx="2" fill="#6A2F3B" stroke="#6A2F3B" stroke-width="0.8"/>
+<text x="1306.5" y="195.6" font-size="7.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">PK</text>
+<text x="1320.0" y="196.4" font-size="10" font-weight="700" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">notification_id</text>
+<text x="1521.0" y="196.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="1293" y1="201" x2="1527" y2="201" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="1298" y="204" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#6A2F3B" stroke-width="0.8"/>
+<text x="1306.5" y="212.6" font-size="7.5" font-weight="700" fill="#6A2F3B" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="1320.0" y="213.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">user_id</text>
+<text x="1521.0" y="213.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="1293" y1="218" x2="1527" y2="218" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1320.0" y="230.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">notification_type</text>
+<text x="1521.0" y="230.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">enum</text>
+<line x1="1293" y1="235" x2="1527" y2="235" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1320.0" y="247.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">title</text>
+<text x="1521.0" y="247.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(160)</text>
+<line x1="1293" y1="252" x2="1527" y2="252" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1320.0" y="264.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">body</text>
+<text x="1521.0" y="264.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(255) null</text>
+<line x1="1293" y1="269" x2="1527" y2="269" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="1298" y="272" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#6A2F3B" stroke-width="0.8"/>
+<text x="1306.5" y="280.6" font-size="7.5" font-weight="700" fill="#6A2F3B" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="1320.0" y="281.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">report_id</text>
+<text x="1521.0" y="281.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned null</text>
+<line x1="1293" y1="286" x2="1527" y2="286" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="1298" y="289" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#6A2F3B" stroke-width="0.8"/>
+<text x="1306.5" y="297.6" font-size="7.5" font-weight="700" fill="#6A2F3B" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="1320.0" y="298.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">match_id</text>
+<text x="1521.0" y="298.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned null</text>
+<line x1="1293" y1="303" x2="1527" y2="303" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1320.0" y="315.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">is_read</text>
+<text x="1521.0" y="315.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">tinyint(1)</text>
+<line x1="1293" y1="320" x2="1527" y2="320" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="1320.0" y="332.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">created_at</text>
+<text x="1521.0" y="332.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">timestamp</text>
+</g>
+<g><rect x="40" y="292" width="236" height="79" rx="4" fill="#FFFFFF" stroke="#4B3F7A" stroke-width="1.2"/>
+<path d="M 40 320 V 296 Q 40 292 44 292 H 272 Q 276 292 276 296 V 320 Z" fill="#4B3F7A"/>
+<text x="50.0" y="311.0" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">pet_breeds</text>
+<rect x="41" y="320" width="234" height="17" fill="#F5F3FA"/>
+<rect x="46" y="323" width="17" height="11" rx="2" fill="#4B3F7A" stroke="#4B3F7A" stroke-width="0.8"/>
+<text x="54.5" y="331.6" font-size="7.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">PK</text>
+<text x="68.0" y="332.4" font-size="10" font-weight="700" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">breed_id</text>
+<text x="269.0" y="332.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="41" y1="337" x2="275" y2="337" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="46" y="340" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#4B3F7A" stroke-width="0.8"/>
+<text x="54.5" y="348.6" font-size="7.5" font-weight="700" fill="#4B3F7A" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="68.0" y="349.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">category_id</text>
+<text x="269.0" y="349.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="41" y1="354" x2="275" y2="354" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="68.0" y="366.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">breed_name</text>
+<text x="269.0" y="366.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(80)</text>
+</g>
+<g><rect x="40" y="156" width="236" height="96" rx="4" fill="#FFFFFF" stroke="#4B3F7A" stroke-width="1.2"/>
+<path d="M 40 184 V 160 Q 40 156 44 156 H 272 Q 276 156 276 160 V 184 Z" fill="#4B3F7A"/>
+<text x="50.0" y="175.0" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">pet_categories</text>
+<rect x="41" y="184" width="234" height="17" fill="#F5F3FA"/>
+<rect x="46" y="187" width="17" height="11" rx="2" fill="#4B3F7A" stroke="#4B3F7A" stroke-width="0.8"/>
+<text x="54.5" y="195.6" font-size="7.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">PK</text>
+<text x="68.0" y="196.4" font-size="10" font-weight="700" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">category_id</text>
+<text x="269.0" y="196.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="41" y1="201" x2="275" y2="201" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="46" y="204" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#5C6664" stroke-width="0.8"/>
+<text x="54.5" y="212.6" font-size="7.5" font-weight="700" fill="#5C6664" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">UQ</text>
+<text x="68.0" y="213.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">category_code</text>
+<text x="269.0" y="213.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(30)</text>
+<line x1="41" y1="218" x2="275" y2="218" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="68.0" y="230.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">category_name</text>
+<text x="269.0" y="230.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(60)</text>
+<line x1="41" y1="235" x2="275" y2="235" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="68.0" y="247.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">is_active</text>
+<text x="269.0" y="247.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">tinyint(1)</text>
+</g>
+<g><rect x="353" y="156" width="236" height="436" rx="4" fill="#FFFFFF" stroke="#0E5D5B" stroke-width="1.2"/>
+<path d="M 353 184 V 160 Q 353 156 357 156 H 585 Q 589 156 589 160 V 184 Z" fill="#0E5D5B"/>
+<text x="363.0" y="175.0" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">pet_reports</text>
+<rect x="354" y="184" width="234" height="17" fill="#F1F7F6"/>
+<rect x="359" y="187" width="17" height="11" rx="2" fill="#0E5D5B" stroke="#0E5D5B" stroke-width="0.8"/>
+<text x="367.5" y="195.6" font-size="7.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">PK</text>
+<text x="381.0" y="196.4" font-size="10" font-weight="700" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">report_id</text>
+<text x="582.0" y="196.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="354" y1="201" x2="588" y2="201" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="359" y="204" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#0E5D5B" stroke-width="0.8"/>
+<text x="367.5" y="212.6" font-size="7.5" font-weight="700" fill="#0E5D5B" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="381.0" y="213.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">user_id</text>
+<text x="582.0" y="213.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="354" y1="218" x2="588" y2="218" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="359" y="221" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#0E5D5B" stroke-width="0.8"/>
+<text x="367.5" y="229.6" font-size="7.5" font-weight="700" fill="#0E5D5B" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="381.0" y="230.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">category_id</text>
+<text x="582.0" y="230.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="354" y1="235" x2="588" y2="235" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="359" y="238" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#0E5D5B" stroke-width="0.8"/>
+<text x="367.5" y="246.6" font-size="7.5" font-weight="700" fill="#0E5D5B" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="381.0" y="247.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">breed_id</text>
+<text x="582.0" y="247.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned null</text>
+<line x1="354" y1="252" x2="588" y2="252" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="359" y="255" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#0E5D5B" stroke-width="0.8"/>
+<text x="367.5" y="263.6" font-size="7.5" font-weight="700" fill="#0E5D5B" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="381.0" y="264.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">location_id</text>
+<text x="582.0" y="264.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="354" y1="269" x2="588" y2="269" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="359" y="272" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#0E5D5B" stroke-width="0.8"/>
+<text x="367.5" y="280.6" font-size="7.5" font-weight="700" fill="#0E5D5B" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="381.0" y="281.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">assigned_staff_id</text>
+<text x="582.0" y="281.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned null</text>
+<line x1="354" y1="286" x2="588" y2="286" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="298.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">report_type</text>
+<text x="582.0" y="298.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">enum</text>
+<line x1="354" y1="303" x2="588" y2="303" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="315.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">status</text>
+<text x="582.0" y="315.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">enum</text>
+<line x1="354" y1="320" x2="588" y2="320" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="332.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">pet_name</text>
+<text x="582.0" y="332.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(80) null</text>
+<line x1="354" y1="337" x2="588" y2="337" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="349.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">pet_size</text>
+<text x="582.0" y="349.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">enum null</text>
+<line x1="354" y1="354" x2="588" y2="354" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="366.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">pet_sex</text>
+<text x="582.0" y="366.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">enum</text>
+<line x1="354" y1="371" x2="588" y2="371" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="383.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">primary_color</text>
+<text x="582.0" y="383.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(40) null</text>
+<line x1="354" y1="388" x2="588" y2="388" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="400.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">secondary_color</text>
+<text x="582.0" y="400.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(40) null</text>
+<line x1="354" y1="405" x2="588" y2="405" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="417.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">distinct_features</text>
+<text x="582.0" y="417.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">text null</text>
+<line x1="354" y1="422" x2="588" y2="422" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="434.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">description</text>
+<text x="582.0" y="434.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">text null</text>
+<line x1="354" y1="439" x2="588" y2="439" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="451.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">has_collar</text>
+<text x="582.0" y="451.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">enum</text>
+<line x1="354" y1="456" x2="588" y2="456" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="468.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">pet_condition</text>
+<text x="582.0" y="468.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(160) null</text>
+<line x1="354" y1="473" x2="588" y2="473" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="485.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">incident_date</text>
+<text x="582.0" y="485.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">date</text>
+<line x1="354" y1="490" x2="588" y2="490" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="502.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">incident_time</text>
+<text x="582.0" y="502.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">time null</text>
+<line x1="354" y1="507" x2="588" y2="507" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="519.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">allow_platform_contact</text>
+<text x="582.0" y="519.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">tinyint(1)</text>
+<line x1="354" y1="524" x2="588" y2="524" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="536.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">show_phone</text>
+<text x="582.0" y="536.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">tinyint(1)</text>
+<line x1="354" y1="541" x2="588" y2="541" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="553.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">show_email</text>
+<text x="582.0" y="553.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">tinyint(1)</text>
+<line x1="354" y1="558" x2="588" y2="558" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="570.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">created_at</text>
+<text x="582.0" y="570.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">timestamp</text>
+<line x1="354" y1="575" x2="588" y2="575" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="587.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">updated_at</text>
+<text x="582.0" y="587.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">timestamp</text>
+</g>
+<g><rect x="40" y="917" width="236" height="113" rx="4" fill="#FFFFFF" stroke="#7A4B0C" stroke-width="1.2"/>
+<path d="M 40 945 V 921 Q 40 917 44 917 H 272 Q 276 917 276 921 V 945 Z" fill="#7A4B0C"/>
+<text x="50.0" y="936.0" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">privacy_consents</text>
+<rect x="41" y="945" width="234" height="17" fill="#FBF6EE"/>
+<rect x="46" y="948" width="17" height="11" rx="2" fill="#7A4B0C" stroke="#7A4B0C" stroke-width="0.8"/>
+<text x="54.5" y="956.6" font-size="7.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">PK</text>
+<text x="68.0" y="957.4" font-size="10" font-weight="700" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">consent_id</text>
+<text x="269.0" y="957.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="41" y1="962" x2="275" y2="962" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="46" y="965" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#7A4B0C" stroke-width="0.8"/>
+<text x="54.5" y="973.6" font-size="7.5" font-weight="700" fill="#7A4B0C" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="68.0" y="974.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">user_id</text>
+<text x="269.0" y="974.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="41" y1="979" x2="275" y2="979" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="68.0" y="991.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">notice_version</text>
+<text x="269.0" y="991.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(20)</text>
+<line x1="41" y1="996" x2="275" y2="996" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="68.0" y="1008.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">consented_at</text>
+<text x="269.0" y="1008.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">timestamp</text>
+<line x1="41" y1="1013" x2="275" y2="1013" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="68.0" y="1025.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">ip_address</text>
+<text x="269.0" y="1025.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(45) null</text>
+</g>
+<g><rect x="666" y="156" width="236" height="130" rx="4" fill="#FFFFFF" stroke="#0E5D5B" stroke-width="1.2"/>
+<path d="M 666 184 V 160 Q 666 156 670 156 H 898 Q 902 156 902 160 V 184 Z" fill="#0E5D5B"/>
+<text x="676.0" y="175.0" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">report_images</text>
+<rect x="667" y="184" width="234" height="17" fill="#F1F7F6"/>
+<rect x="672" y="187" width="17" height="11" rx="2" fill="#0E5D5B" stroke="#0E5D5B" stroke-width="0.8"/>
+<text x="680.5" y="195.6" font-size="7.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">PK</text>
+<text x="694.0" y="196.4" font-size="10" font-weight="700" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">image_id</text>
+<text x="895.0" y="196.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="667" y1="201" x2="901" y2="201" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="672" y="204" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#0E5D5B" stroke-width="0.8"/>
+<text x="680.5" y="212.6" font-size="7.5" font-weight="700" fill="#0E5D5B" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="694.0" y="213.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">report_id</text>
+<text x="895.0" y="213.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="667" y1="218" x2="901" y2="218" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="694.0" y="230.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">image_path</text>
+<text x="895.0" y="230.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(255)</text>
+<line x1="667" y1="235" x2="901" y2="235" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="694.0" y="247.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">alt_text</text>
+<text x="895.0" y="247.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(180) null</text>
+<line x1="667" y1="252" x2="901" y2="252" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="694.0" y="264.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">is_primary_photo</text>
+<text x="895.0" y="264.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">tinyint(1)</text>
+<line x1="667" y1="269" x2="901" y2="269" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="694.0" y="281.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">uploaded_at</text>
+<text x="895.0" y="281.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">timestamp</text>
+</g>
+<g><rect x="666" y="322" width="236" height="147" rx="4" fill="#FFFFFF" stroke="#0E5D5B" stroke-width="1.2"/>
+<path d="M 666 350 V 326 Q 666 322 670 322 H 898 Q 902 322 902 326 V 350 Z" fill="#0E5D5B"/>
+<text x="676.0" y="341.0" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">status_logs</text>
+<rect x="667" y="350" width="234" height="17" fill="#F1F7F6"/>
+<rect x="672" y="353" width="17" height="11" rx="2" fill="#0E5D5B" stroke="#0E5D5B" stroke-width="0.8"/>
+<text x="680.5" y="361.6" font-size="7.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">PK</text>
+<text x="694.0" y="362.4" font-size="10" font-weight="700" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">log_id</text>
+<text x="895.0" y="362.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="667" y1="367" x2="901" y2="367" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="672" y="370" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#0E5D5B" stroke-width="0.8"/>
+<text x="680.5" y="378.6" font-size="7.5" font-weight="700" fill="#0E5D5B" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="694.0" y="379.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">report_id</text>
+<text x="895.0" y="379.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="667" y1="384" x2="901" y2="384" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="672" y="387" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#0E5D5B" stroke-width="0.8"/>
+<text x="680.5" y="395.6" font-size="7.5" font-weight="700" fill="#0E5D5B" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="694.0" y="396.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace" font-style="italic">updated_by_user_id</text>
+<text x="895.0" y="396.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned null</text>
+<line x1="667" y1="401" x2="901" y2="401" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="694.0" y="413.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">previous_status</text>
+<text x="895.0" y="413.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">enum null</text>
+<line x1="667" y1="418" x2="901" y2="418" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="694.0" y="430.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">new_status</text>
+<text x="895.0" y="430.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">enum</text>
+<line x1="667" y1="435" x2="901" y2="435" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="694.0" y="447.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">note</text>
+<text x="895.0" y="447.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(255) null</text>
+<line x1="667" y1="452" x2="901" y2="452" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="694.0" y="464.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">created_at</text>
+<text x="895.0" y="464.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">timestamp</text>
+</g>
+<g><rect x="353" y="746" width="236" height="283" rx="4" fill="#FFFFFF" stroke="#7A4B0C" stroke-width="1.2"/>
+<path d="M 353 774 V 750 Q 353 746 357 746 H 585 Q 589 746 589 750 V 774 Z" fill="#7A4B0C"/>
+<text x="363.0" y="765.0" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">users</text>
+<rect x="354" y="774" width="234" height="17" fill="#FBF6EE"/>
+<rect x="359" y="777" width="17" height="11" rx="2" fill="#7A4B0C" stroke="#7A4B0C" stroke-width="0.8"/>
+<text x="367.5" y="785.6" font-size="7.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">PK</text>
+<text x="381.0" y="786.4" font-size="10" font-weight="700" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">user_id</text>
+<text x="582.0" y="786.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="354" y1="791" x2="588" y2="791" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="803.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">full_name</text>
+<text x="582.0" y="803.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(120)</text>
+<line x1="354" y1="808" x2="588" y2="808" stroke="#E4E8E7" stroke-width="0.6"/>
+<rect x="359" y="811" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#5C6664" stroke-width="0.8"/>
+<text x="367.5" y="819.6" font-size="7.5" font-weight="700" fill="#5C6664" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">UQ</text>
+<text x="381.0" y="820.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">email</text>
+<text x="582.0" y="820.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(190)</text>
+<line x1="354" y1="825" x2="588" y2="825" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="837.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">email_verified_at</text>
+<text x="582.0" y="837.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">timestamp null</text>
+<line x1="354" y1="842" x2="588" y2="842" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="854.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">pending_email</text>
+<text x="582.0" y="854.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(190) null</text>
+<line x1="354" y1="859" x2="588" y2="859" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="871.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">password_hash</text>
+<text x="582.0" y="871.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(255)</text>
+<line x1="354" y1="876" x2="588" y2="876" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="888.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">contact_number</text>
+<text x="582.0" y="888.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(30) null</text>
+<line x1="354" y1="893" x2="588" y2="893" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="905.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">role</text>
+<text x="582.0" y="905.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">enum</text>
+<line x1="354" y1="910" x2="588" y2="910" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="922.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">account_status</text>
+<text x="582.0" y="922.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">enum</text>
+<line x1="354" y1="927" x2="588" y2="927" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="939.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">session_version</text>
+<text x="582.0" y="939.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">int unsigned</text>
+<line x1="354" y1="944" x2="588" y2="944" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="956.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">preferred_location</text>
+<text x="582.0" y="956.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">varchar(120) null</text>
+<line x1="354" y1="961" x2="588" y2="961" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="973.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">notify_matches</text>
+<text x="582.0" y="973.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">tinyint(1)</text>
+<line x1="354" y1="978" x2="588" y2="978" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="990.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">notify_status</text>
+<text x="582.0" y="990.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">tinyint(1)</text>
+<line x1="354" y1="995" x2="588" y2="995" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="1007.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">notify_staff</text>
+<text x="582.0" y="1007.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">tinyint(1)</text>
+<line x1="354" y1="1012" x2="588" y2="1012" stroke="#E4E8E7" stroke-width="0.6"/>
+<text x="381.0" y="1024.4" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">created_at</text>
+<text x="582.0" y="1024.2" font-size="8.5" font-weight="400" fill="#5C6664" text-anchor="end" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">timestamp</text>
+</g>
+<rect x="967" y="805" width="573" height="237" rx="6" fill="#FFFFFF" stroke="#B9C2C0" stroke-width="1"/>
+<text x="981.0" y="827.0" font-size="10" font-weight="700" fill="#1B1F1F" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif" letter-spacing="0.6">HOW TO READ IT</text>
+<line x1="985" y1="849" x2="1037" y2="849" stroke="#3A4240" stroke-width="1"/>
+<line x1="1031.0" y1="854.5" x2="1031.0" y2="843.5" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1027.0" y1="854.5" x2="1027.0" y2="843.5" stroke="#3A4240" stroke-width="1" fill="none"/>
+<text x="1051.0" y="852.5" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">exactly one: the foreign key is NOT NULL</text>
+<line x1="985" y1="869" x2="1037" y2="869" stroke="#3A4240" stroke-width="1"/>
+<line x1="1031.0" y1="874.5" x2="1031.0" y2="863.5" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="1023.0" cy="869.0" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<text x="1051.0" y="872.5" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">zero or one: the foreign key may be NULL</text>
+<line x1="985" y1="889" x2="1037" y2="889" stroke="#3A4240" stroke-width="1"/>
+<line x1="1026.0" y1="889.0" x2="1037.0" y2="895.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1026.0" y1="889.0" x2="1037.0" y2="889.0" stroke="#3A4240" stroke-width="1" fill="none"/><line x1="1026.0" y1="889.0" x2="1037.0" y2="883.0" stroke="#3A4240" stroke-width="1" fill="none"/><circle cx="1021.0" cy="889.0" r="3.2" fill="#fff" stroke="#3A4240" stroke-width="1"/>
+<text x="1051.0" y="892.5" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">zero or many: the table holding the foreign key</text>
+<rect x="1267" y="843" width="17" height="11" rx="2" fill="#0E5D5B" stroke="#0E5D5B" stroke-width="0.8"/>
+<text x="1275.5" y="851.6" font-size="7.5" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">PK</text>
+<text x="1291.0" y="852.0" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">primary key</text>
+<rect x="1267" y="863" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#0E5D5B" stroke-width="0.8"/>
+<text x="1275.5" y="871.6" font-size="7.5" font-weight="700" fill="#0E5D5B" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">FK</text>
+<text x="1291.0" y="872.0" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">foreign key (name in italics)</text>
+<rect x="1267" y="883" width="17" height="11" rx="2" fill="#FFFFFF" stroke="#5C6664" stroke-width="0.8"/>
+<text x="1275.5" y="891.6" font-size="7.5" font-weight="700" fill="#5C6664" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif">UQ</text>
+<text x="1291.0" y="892.0" font-size="10" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">unique on its own</text>
+<text x="1267.0" y="912.0" font-size="10" font-weight="400" fill="#5C6664" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">grey = column type; &quot;null&quot; = the column allows NULL</text>
+<text x="985.0" y="912.0" font-size="10" font-weight="400" fill="#5C6664" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">The crow&#x27;s foot sits on the foreign-key row.</text>
+<text x="981.0" y="937.0" font-size="10" font-weight="700" fill="#1B1F1F" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif" letter-spacing="0.6">UNIQUE ACROSS TWO COLUMNS</text>
+<text x="981.0" y="954.0" font-size="9.5" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">match_claims (lost_report_id, found_report_id)</text>
+<text x="981.0" y="969.0" font-size="9.5" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">match_signals (match_id, signal_key)</text>
+<text x="981.0" y="984.0" font-size="9.5" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">pet_breeds (category_id, breed_name)</text>
+<text x="981.0" y="999.0" font-size="9.5" font-weight="400" fill="#1B1F1F" text-anchor="start" font-family="Consolas, 'Cascadia Mono', 'Courier New', monospace">privacy_consents (user_id, notice_version)</text>
+<text x="981.0" y="1018.0" font-size="9.5" font-weight="400" fill="#5C6664" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">match_claims pairs one lost report with one found report; each pair is stored once.</text>
+<text x="28.0" y="1093.0" font-size="9" font-weight="400" fill="#5C6664" text-anchor="start" font-family="'Segoe UI', Arial, Helvetica, sans-serif">Generated by scripts/erd.py from information_schema, cross-checked column by column against database/schema.sql (the file the production database was imported from) · 2026-09-30 · 15 tables · 24 foreign keys drawn</text>
+</svg>
