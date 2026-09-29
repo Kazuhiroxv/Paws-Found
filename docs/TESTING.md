@@ -272,7 +272,7 @@ stage and exception, and still reaches the caller. No line carries
 coordinates, addresses, passwords or tokens. Needs `php` on PATH and the local
 database; **changes no data** (it asks about a report that is already finished).
 
-### `npm run test:ui` — 20 checks
+### `npm run test:ui` — 29 checks
 
 Two interface regressions from final manual testing, in a real Chrome.
 `MOD-LINK-1`–`4`: on Administrator > Moderation, "Open the full report" is a
@@ -293,6 +293,12 @@ that is not JSON. `MOD-WORDING` and `MOD-DECIDE-2`: the button says "Warn report
 author", because the person who flagged a listing also "reported" it, and the
 decision reaches the person who filed the pet report and not the person who
 flagged it (unchanged behaviour, now said on the page).
+`NAV-MOBILE-1`–`5`, `K`, `T`: on a phone or tablet, the workspace menu
+(Administration, Pet Coordinator) opens directly under its button however far
+down a long list it is tapped, without moving the page; choosing a section goes
+there and closes it; Enter opens it and Tab moves into it; the desktop rail is
+unchanged. The menu used to open at the top of the page, 1,200 to 3,000px out of
+sight.
 
 **Mutates local data**: the MOD-FLAG checks raise one flag and dismiss it, so
 they run only against localhost and are skipped anywhere else. The one
@@ -415,7 +421,7 @@ audit                                   339/339
 auth_lifecycle                           53/53
 multi-device                             55/55   (53/53 + 2 skipped vs a remote)
 test:signout                             24/24
-test:ui                                  20/20
+test:ui                                  29/29
 test:city                                11/11
 test:matching-log                         6/6
 a11y                                     31 pages, 0 violations

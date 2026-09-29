@@ -10,6 +10,10 @@
 // declared, so the API refused both as invalid JSON; these go through the real
 // dialogs and buttons.
 //
+// NAV-MOBILE: on a phone, the workspace menu (Administration, Pet Coordinator)
+// opened at the top of the page even when its sticky button was tapped far
+// down a long list, so it could not be seen without scrolling back up.
+//
 // The MOD-FLAG checks raise one flag and dismiss it, so they run only against
 // localhost and are skipped anywhere else. Nothing else changes data: the one
 // registration request is refused by the API on purpose.
@@ -313,6 +317,107 @@ if (!/^(localhost|127\.0\.0\.1)$/.test(new URL(BASE).hostname)) {
   }, API)
   check('MOD-JSON', 'A body that is not JSON is still refused by the API',
     refused.status === 400 && /not valid JSON/i.test(refused.error ?? ''), `HTTP ${refused.status}`)
+}
+
+// ---- NAV-MOBILE: the workspace menu opens where its button is, at any depth
+{
+  const signedInAt = async (email, viewport) => {
+    const page = await (await browser.createBrowserContext()).newPage()
+    await page.setViewport(viewport)
+    await page.goto(BASE + '/', { waitUntil: 'networkidle2' })
+    await page.evaluate(async (api, e, pw) => {
+      const me = await (await fetch(api + '/auth/me', { credentials: 'include' })).json()
+      await fetch(api + '/auth/login', { method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': me.csrf_token ?? '' },
+        body: JSON.stringify({ email: e, password: pw }) })
+    }, API, email, PASSWORD)
+    return page
+  }
+  const phone = { width: 390, height: 844, isMobile: true, hasTouch: true }
+  const toggle = '[aria-controls][aria-expanded]'
+
+  /** Scroll deep, open the menu, and say where it landed in the viewport. */
+  const openDeep = async (page, route) => {
+    await page.goto(BASE + route, { waitUntil: 'networkidle2' })
+    await pause(1200)
+    const scrolled = await page.evaluate(() => {
+      window.scrollTo(0, Math.max(0, document.documentElement.scrollHeight - window.innerHeight * 1.5))
+      return window.scrollY
+    })
+    await pause(800)
+    const before = await page.evaluate(() => window.scrollY)
+    await page.click(toggle)
+    await pause(500)
+    return page.evaluate((scrolledTo, beforeTap) => {
+      const button = document.querySelector('[aria-controls][aria-expanded]')
+      const menu = document.getElementById(button.getAttribute('aria-controls'))
+      const box = menu?.getBoundingClientRect()
+      return { scrolledTo, expanded: button.getAttribute('aria-expanded'), top: Math.round(box?.top ?? -1),
+        visible: Boolean(box) && box.top >= 0 && box.top < 150 && box.bottom <= window.innerHeight + 1,
+        beforeTap, scrollY: window.scrollY, links: menu ? [...menu.querySelectorAll('a')].map((a) => a.getAttribute('href')) : [] }
+    }, scrolled, before)
+  }
+
+  const admin = await signedInAt('grace.bautista@example.com', phone)
+  const a = await openDeep(admin, '/admin/users')
+  check('NAV-MOBILE-1', 'Admin at 390px, scrolled down Users: the menu opens in view under its button',
+    a.scrolledTo > 200 && a.expanded === 'true' && a.visible && a.scrollY === a.beforeTap,
+    `scrolled to ${a.beforeTap}px, menu top ${a.top}px, page still at ${a.scrollY}px after the tap`)
+
+  const target = a.links.find((href) => href !== '/admin/users' && href?.startsWith('/admin/'))
+  await admin.evaluate((href) => [...document.querySelectorAll(`a[href="${href}"]`)].find((l) => l.offsetParent)?.click(), target)
+  await pause(1200)
+  const after = await admin.evaluate(() => ({ path: window.location.pathname,
+    expanded: document.querySelector('[aria-controls][aria-expanded]')?.getAttribute('aria-expanded') }))
+  check('NAV-MOBILE-2', 'Choosing another section goes there and closes the menu',
+    after.path === target && after.expanded === 'false', `${after.path}, expanded=${after.expanded}`)
+
+  const again = await openDeep(admin, '/admin/users')
+  await admin.click(toggle)
+  await pause(300)
+  await admin.click(toggle)
+  await pause(400)
+  const reopened = await admin.evaluate(() => {
+    const button = document.querySelector('[aria-controls][aria-expanded]')
+    const box = document.getElementById(button.getAttribute('aria-controls'))?.getBoundingClientRect()
+    return { top: Math.round(box?.top ?? -1), visible: Boolean(box) && box.top >= 0 && box.top < 150 }
+  })
+  check('NAV-MOBILE-4', 'Closed and reopened while still scrolled: still in view', again.visible && reopened.visible,
+    `menu top ${reopened.top}px`)
+
+  // Keyboard: the button takes Enter, and the first link in the menu is reachable with Tab.
+  await admin.click(toggle)
+  await pause(300)
+  await admin.focus(toggle)
+  await admin.keyboard.press('Enter')
+  await pause(300)
+  await admin.keyboard.press('Tab')
+  const focusInMenu = await admin.evaluate(() => {
+    const button = document.querySelector('[aria-controls][aria-expanded]')
+    return button.getAttribute('aria-expanded') === 'true'
+      && Boolean(document.getElementById(button.getAttribute('aria-controls'))?.contains(document.activeElement))
+  })
+  check('NAV-MOBILE-K', 'Keyboard: Enter opens it and Tab moves into the menu', focusInMenu)
+
+  const staff = await signedInAt('patricia.lim@example.com', phone)
+  const st = await openDeep(staff, '/staff/reports')
+  check('NAV-MOBILE-3', 'Staff at 390px, scrolled down the report queue: the menu opens in view',
+    st.scrolledTo > 200 && st.visible, `scrolled ${st.scrolledTo}px, menu top ${st.top}px`)
+
+  const tablet = await signedInAt('grace.bautista@example.com', { width: 768, height: 1024 })
+  const tb = await openDeep(tablet, '/admin/users')
+  check('NAV-MOBILE-T', 'Admin at 768px: the same', tb.visible, `menu top ${tb.top}px`)
+
+  const desktop = await signedInAt('grace.bautista@example.com', { width: 1366, height: 900 })
+  await desktop.goto(BASE + '/admin/users', { waitUntil: 'networkidle2' })
+  await pause(1000)
+  const rail = await desktop.evaluate(() => {
+    const button = document.querySelector('[aria-controls][aria-expanded]')
+    const sidebar = [...document.querySelectorAll('nav')].find((n) => n.offsetParent && n.querySelector('a[href="/admin/users"]'))
+    return { buttonShown: Boolean(button?.offsetParent), sidebar: Boolean(sidebar) }
+  })
+  check('NAV-MOBILE-5', 'Desktop: no menu button, the sidebar is there as before', !rail.buttonShown && rail.sidebar,
+    `button shown=${rail.buttonShown}, sidebar=${rail.sidebar}`)
 }
 
 await browser.close()

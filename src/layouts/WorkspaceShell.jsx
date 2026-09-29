@@ -111,8 +111,14 @@ export function WorkspaceShell({ label, items, counts, user, onSignOut, children
   return (
     <div className="flex min-h-dvh flex-col lg:flex-row">
       {/* Phones and tablets: a bar with the brand and one button. The rail
-          below it would otherwise push the actual work off the first screen. */}
-      <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border bg-panel px-4 py-2.5 lg:hidden">
+          below it would otherwise push the actual work off the first screen.
+
+          The bar and its menu stick together, and the menu lies over the page
+          rather than pushing it down. It used to sit after the sticky bar in
+          the page itself, so tapping the button far down a long list opened it
+          at the top of the page, out of sight. */}
+      <div className="sticky top-0 z-30 lg:hidden">
+      <header className="flex items-center justify-between gap-3 border-b border-border bg-panel px-4 py-2.5">
         <Link to="/" className="flex items-center">
           <img src={logoLockup} alt="Paws&Found" className="h-8 w-auto" />
         </Link>
@@ -129,14 +135,20 @@ export function WorkspaceShell({ label, items, counts, user, onSignOut, children
         </button>
       </header>
 
+      {/* On a short phone the menu scrolls within itself rather than running
+          past the bottom of the screen (the bar above it is about 3.5rem). */}
       {isMenuOpen && (
-        <div id={menuId} className="border-b border-border bg-panel px-4 py-3 lg:hidden">
+        <div
+          id={menuId}
+          className="absolute inset-x-0 top-full max-h-[calc(100dvh-3.5rem)] overflow-y-auto border-b border-border bg-panel px-4 py-3 shadow-raised"
+        >
           <nav aria-label={label} className="flex flex-col gap-3">
             {nav(() => setIsMenuOpen(false))}
             {account(() => setIsMenuOpen(false))}
           </nav>
         </div>
       )}
+      </div>
 
       {/* Desktop: a fixed rail. `sticky` with its own scroll, so a long queue
           scrolls under navigation that stays put. */}
