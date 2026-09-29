@@ -94,6 +94,14 @@ export default function App() {
 
   const role = user?.role ?? null
 
+  // Who the pages are rendering for. Keyed on this, every page starts again
+  // when it changes — sign-out, sign-in, a suspension noticed by the re-check,
+  // a role change — so nothing fetched for the last person stays on screen
+  // for the next. Without it a report opened while signed in, which is a
+  // public route with no guard to bounce it, kept its description, markings
+  // and case history after Sign out until the page was reloaded.
+  const sessionKey = user ? `${user.id}:${user.role}` : 'guest'
+
   // Until the session check finishes, a guarded route must not decide that
   // nobody is signed in — that would bounce a signed-in user to /login on
   // every refresh.
@@ -117,7 +125,7 @@ export default function App() {
     // Served from a sub-folder in production, so the router is told where it
     // starts; without this every route would be matched against the wrong path.
     <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <Routes>
+      <Routes key={sessionKey}>
         <Route
           element={
             <RootLayout

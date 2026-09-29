@@ -15,7 +15,7 @@ Run the rest before any push. Run `verify:deploy` after any deploy.
 | `lint`, `build`, `test:contract` | Node 20+. Nothing running. |
 | `test:mail` | **`php` on PATH.** XAMPP installs PHP but does not add it — add `C:\xampp\php` and open a new terminal. Symptom otherwise: `'php' is not recognized`, which says nothing about mail. One check reaches `api.brevo.com` over 443. |
 | `audit`, `multi-device`, `auth_lifecycle` | Python 3, Apache running, MySQL running. **XAMPP here runs MySQL on port 3307**, not 3306. |
-| `a11y` | The dev build; Chrome. |
+| `a11y`, `test:signout` | The dev build; Chrome. |
 | `verify:deploy` | Python 3 and a reachable deployment. |
 | Docker build | Docker Desktop running. |
 
@@ -194,6 +194,32 @@ locally.
 
 **Mutates data.** Restores at the end.
 
+### `npm run test:signout` — 15 checks
+
+A real Chrome and the real Sign out button. The API has always refused a guest
+the full report; this is about the browser. A report opened while signed in
+must leave the screen when the session does — as its owner, another member, a
+coordinator and an administrator — and must not come back through Back, a
+refresh or the same address. On Back it must not even flash up: a DOM observer
+records whether the private text is ever painted before the gate. With the report open in one tab and Sign out
+pressed in another, the first tab shows the gate as soon as it regains focus,
+or at the next ten-second re-check if it is left alone. Not real time.
+
+Home and Explore stay public, but a signed-in member is sent more of each row
+(description, markings, condition, time, place name). After Sign out the lists
+must be fetched again as the guest summary; the check reads the responses
+themselves, so a row that is merely not displayed still fails.
+
+It also signs in through the form: a guest bounced from a customer page is
+returned to it, and a customer signing in after staff signed out inside a
+workspace lands on their own dashboard.
+
+Run against the code before the fix, 6 of the first 11 fail.
+
+**Mutates nothing.** Point it at the dev build, and give it the seeded password
+from the environment so it is neither in the script nor in its output:
+`PAWS_BASE=http://localhost:5173 PAWS_PW=<password> npm run test:signout`.
+
 ### `npm run a11y` — 31 pages
 
 axe-core over every page in every role. Zero violations is the standard, not
@@ -266,6 +292,7 @@ test:mail                                15/15
 audit                                   299/299
 auth_lifecycle                           53/53
 multi-device                             55/55   (53/53 + 2 skipped vs a remote)
+test:signout                             15/15
 a11y                                     31 pages, 0 violations
 docker build --pull --no-cache           clean, curl present, one MPM, Syntax OK
 verify:deploy vs production              25/25 + 3 skipped (read-only default)
