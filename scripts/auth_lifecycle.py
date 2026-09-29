@@ -24,6 +24,7 @@ import json
 import os
 import shutil
 import sys
+import hashlib
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -192,9 +193,38 @@ try:
     check('E5', 'A short password is refused', 422,
           session().call('POST', '/auth/reset-password',
                          {'token': reset_token, 'password': 'short'})[0])
-    check('E6', 'The reset succeeds', 200,
+
+    # RESET-SAME: the password the account already has is not a new one. It
+    # used to be accepted, sign every other session out and say "Password
+    # changed". Refused now, and before the link is spent.
+    reset_hash = hashlib.sha256(reset_token.encode()).hexdigest()
+    uid = sql(f"SELECT user_id FROM users WHERE email='{NEW_EMAIL}'")
+    version_before = sql(f"SELECT session_version FROM users WHERE user_id={uid}")
+    audits_before = sql(f"SELECT COUNT(*) FROM audit_logs WHERE action='password_reset' AND target_id={uid}")
+    code, payload = session().call('POST', '/auth/reset-password', {'token': reset_token, 'password': PW})
+    check('RS-1a', 'Resetting to the current password is refused', 422, code)
+    check('RS-1b', '...on the password field, saying why',
+          'Choose a new password that is different from your current password.',
+          (payload.get('fields') or {}).get('password'))
+    check('RS-1c', '...the link is not spent', 'NULL',
+          sql(f"SELECT IFNULL(used_at, 'NULL') FROM auth_tokens WHERE token_hash='{reset_hash}'"))
+    check('RS-1d', '...no session is revoked (session_version unchanged)', version_before,
+          sql(f"SELECT session_version FROM users WHERE user_id={uid}"))
+    check('RS-1e', '...the session open elsewhere still works', 200, signed_in.call('GET', '/notifications')[0])
+    check('RS-1f', '...the password still works', 200,
+          session().call('POST', '/auth/login', {'email': NEW_EMAIL, 'password': PW})[0])
+    check('RS-1g', '...and no reset is recorded', audits_before,
+          sql(f"SELECT COUNT(*) FROM audit_logs WHERE action='password_reset' AND target_id={uid}"))
+
+    check('E6', 'The same link then resets to a genuinely new password', 200,
           session().call('POST', '/auth/reset-password',
                          {'token': reset_token, 'password': 'a-brand-new-password'})[0])
+    check('RS-2a', '...which spends the link', 'spent',
+          'spent' if sql(f"SELECT used_at IS NOT NULL FROM auth_tokens WHERE token_hash='{reset_hash}'") == '1' else 'unspent')
+    check('RS-2b', '...raises session_version exactly once', str(int(version_before) + 1),
+          sql(f"SELECT session_version FROM users WHERE user_id={uid}"))
+    check('RS-2c', '...and records one reset', str(int(audits_before) + 1),
+          sql(f"SELECT COUNT(*) FROM audit_logs WHERE action='password_reset' AND target_id={uid}"))
     check('E7', 'The old password no longer works', 401,
           session().call('POST', '/auth/login', {'email': NEW_EMAIL, 'password': PW})[0])
     check('E8', 'The new one does', 200,
@@ -216,6 +246,11 @@ try:
     started = time.time()
     session().call('POST', '/auth/forgot-password', {'email': NEW_EMAIL})
     locked_token = token_from(newest_mail(started))
+    code, _ = session().call('POST', '/auth/reset-password',
+                             {'token': locked_token, 'password': 'a-brand-new-password'})
+    check('RS-4a', 'Locked: the current password is refused as a reset too', 422, code)
+    check('RS-4b', '...and that refusal unlocks nothing', 'locked',
+          sql(f"SELECT account_status FROM users WHERE user_id={uid}"))
     check('F1', 'A locked account can still reset its password', 200,
           session().call('POST', '/auth/reset-password',
                          {'token': locked_token, 'password': 'password-after-lock'})[0])
@@ -224,6 +259,26 @@ try:
     check('F3', 'And still cannot sign in', 403,
           session().call('POST', '/auth/login',
                          {'email': NEW_EMAIL, 'password': 'password-after-lock'})[0])
+
+    # RESET-SAME-5: the link is still spent once. Two resets with the same link
+    # and different new passwords, sent together: one succeeds, one is refused.
+    # The earlier sections used this hour's forgot-password allowance (3 per
+    # address and per IP); clear it here, locally, so a fresh link is sent.
+    sql("DELETE FROM auth_rate_limits WHERE action = 'forgot_password'")
+    started = time.time()
+    session().call('POST', '/auth/forgot-password', {'email': NEW_EMAIL})
+    race_token = token_from(newest_mail(started))
+    from concurrent.futures import ThreadPoolExecutor
+    def attempt(password):
+        return session().call('POST', '/auth/reset-password', {'token': race_token, 'password': password})[0]
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        codes = sorted(pool.map(attempt, ['race-password-one', 'race-password-two']))
+    check('RS-5', 'Two resets with one link at the same moment: one succeeds', [200, 400], codes)
+    # The password is whichever won; put the account back to the one the rest expects.
+    started = time.time()
+    session().call('POST', '/auth/forgot-password', {'email': NEW_EMAIL})
+    back = token_from(newest_mail(started))
+    session().call('POST', '/auth/reset-password', {'token': back, 'password': 'password-after-lock'})
     sql(f"UPDATE users SET account_status='active' WHERE user_id={uid}")
 
     # =================================================== G. changing an address

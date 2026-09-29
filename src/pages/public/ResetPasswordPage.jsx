@@ -25,6 +25,9 @@ export function ResetPasswordPage() {
   const [confirmation, setConfirmation] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  // A refusal about the password itself, shown on the field. The one the
+  // server alone can know: the new password is the one the account has.
+  const [passwordError, setPasswordError] = useState(null)
   const [done, setDone] = useState(false)
 
   const ready = passwordChecks(password, confirmation).every((check) => check.met)
@@ -33,12 +36,15 @@ export function ResetPasswordPage() {
     event.preventDefault()
     setIsSubmitting(true)
     setError(null)
+    setPasswordError(null)
 
     try {
       await userService.resetPassword(token, password)
       setDone(true)
     } catch (caught) {
-      setError(caught instanceof Error ? caught : new Error(String(caught)))
+      const failure = caught instanceof Error ? caught : new Error(String(caught))
+      if (failure.fields?.password) setPasswordError(failure.fields.password)
+      else setError(failure)
       setIsSubmitting(false)
     }
   }
@@ -99,7 +105,11 @@ export function ResetPasswordPage() {
             <PasswordField
               label="New password"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => {
+                setPassword(event.target.value)
+                setPasswordError(null)
+              }}
+              error={passwordError}
               autoComplete="new-password"
               required
             />

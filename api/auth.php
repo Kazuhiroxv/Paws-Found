@@ -638,18 +638,44 @@ function auth_reset_password(): never
         ]);
     }
 
-    $token = token_consume($raw, 'password_reset');
+    // Look first, spend later. A reset to the password the account already has
+    // used to be accepted: a fresh hash of the same secret, every other
+    // session signed out, and "Password changed" for a password that had not.
+    // It is refused before the link is spent, so the same link still works
+    // for a password that is actually new.
+    $pending = token_peek($raw, 'password_reset');
 
-    if ($token === null) {
+    if ($pending === null) {
         json_error('That link is no longer valid. Ask for a new one.', 400, [
             'code' => 'token_invalid',
         ]);
+    }
+
+    $current = db()->prepare('SELECT password_hash FROM users WHERE user_id = :id');
+    $current->execute([':id' => $pending['user_id']]);
+
+    if (password_verify($password, (string) $current->fetchColumn())) {
+        $message = 'Choose a new password that is different from your current password.';
+        json_error($message, 422, ['fields' => ['password' => $message]]);
     }
 
     $pdo = db();
     $pdo->beginTransaction();
 
     try {
+        // Spent inside the transaction that changes the password. Its UPDATE
+        // claims the row, so a second request arriving together waits, then
+        // finds the link used and is refused; and if the password could not
+        // be saved, the rollback leaves the link unspent.
+        $token = token_consume($raw, 'password_reset');
+
+        if ($token === null) {
+            $pdo->rollBack();
+            json_error('That link is no longer valid. Ask for a new one.', 400, [
+                'code' => 'token_invalid',
+            ]);
+        }
+
         // Both in one statement: the new password, and the generation bump that
         // makes every session signed in under the old one stop working.
         $update = $pdo->prepare(

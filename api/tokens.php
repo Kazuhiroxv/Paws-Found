@@ -113,6 +113,33 @@ function token_consume(string $raw, string $purpose): ?array
     return $row->fetch() ?: null;
 }
 
+/**
+ * Look at a token without spending it.
+ *
+ * The same conditions as token_consume() and the same silence about why a
+ * token fails, but nothing changes. For a caller that must refuse a request on
+ * other grounds first (a reset to the password the account already has)
+ * without burning the one-time link. The spending still happens in
+ * token_consume(), which is what keeps two requests from both succeeding.
+ */
+function token_peek(string $raw, string $purpose): ?array
+{
+    if ($raw === '' || !ctype_xdigit($raw) || strlen($raw) !== 64) {
+        return null;
+    }
+
+    $row = db()->prepare(
+        'SELECT token_id, user_id, purpose, target_email FROM auth_tokens
+          WHERE token_hash = :hash
+            AND purpose = :purpose
+            AND used_at IS NULL
+            AND expires_at > NOW()'
+    );
+    $row->execute([':hash' => hash('sha256', $raw), ':purpose' => $purpose]);
+
+    return $row->fetch() ?: null;
+}
+
 // -----------------------------------------------------------------------------
 // Rate limiting
 // -----------------------------------------------------------------------------
