@@ -470,7 +470,7 @@ with open(os.path.join(OUT, 'erd.mmd'), 'w', encoding='utf-8', newline='\n') as 
 
 # --- 7. PDF and PNG -----------------------------------------------------------
 
-subprocess.run(['node', os.path.join(PROJECT, 'scripts', 'erd-render.mjs'), svg_path], check=True)
+subprocess.run(['node', os.path.join(PROJECT, 'scripts', 'print-render.mjs'), svg_path, '420', '297'], check=True)
 try:
     from PIL import Image
     png = os.path.join(OUT, 'erd-a3.png')

@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Paws&amp;Found · Current System Architecture</title>
+<style>
+@page { size: 297mm 210mm; margin: 0 }
+:root {
+  --ink: #1B1F1F; --muted: #56605E; --line: #C9D1CF;
+  --teal: #0E5D5B; --teal-tint: #EEF6F5; --amber: #8A5A12; --amber-tint: #FBF5EA;
+  --slate: #2F3A4A; --slate-tint: #F2F4F7;
+}
+* { box-sizing: border-box; margin: 0; padding: 0 }
+html, body { width: 297mm; height: 210mm; background: #fff; color: var(--ink);
+  font-family: 'Segoe UI', Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+.page { width: 297mm; height: 210mm; padding: 8mm 9mm 7mm; display: flex; flex-direction: column; overflow: hidden }
+header { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 7px;
+  border-bottom: 2px solid var(--teal); margin-bottom: 10px }
+header h1 { font-size: 23px; font-weight: 700; line-height: 1 }
+header h2 { font-size: 15px; font-weight: 600; color: var(--muted); margin-top: 4px }
+header .meta { text-align: right; font-size: 11px; color: var(--muted); line-height: 1.45 }
+header .meta b { color: var(--ink); font-size: 12.5px }
+.label { font-size: 9.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase }
+code, .mono { font-family: Consolas, 'Cascadia Mono', 'Courier New', monospace }
+.foot { font-size: 8.5px; color: var(--muted); margin-top: auto; padding-top: 5px }
+
+main { display: grid; grid-template-columns: 1fr 76mm; gap: 11px; flex: 1; min-height: 0 }
+.stack { display: flex; flex-direction: column; justify-content: space-between }
+.roles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px }
+.role { border: 1.3px solid var(--slate); border-radius: 6px; padding: 5px 8px; background: var(--slate-tint) }
+.role b { font-size: 12px; display: block }
+.role span { font-size: 9.8px; color: var(--muted); line-height: 1.3; display: block; margin-top: 2px }
+.conn { display: flex; align-items: center; gap: 10px; min-height: 30px; padding-left: 50% }
+.conn svg { margin-left: -6px; flex: none }
+.conn p { font-size: 10px; color: var(--muted); line-height: 1.25 }
+.conn p b { color: var(--ink); font-weight: 600 }
+.layer { border: 1.6px solid; border-radius: 7px; display: grid; grid-template-columns: 30mm 1fr; overflow: hidden }
+.layer > .side { color: #fff; padding: 8px 9px; display: flex; flex-direction: column; justify-content: space-between }
+.layer > .side .label { color: #fff; font-size: 10px }
+.layer > .side .where { font-size: 10px; opacity: .92 }
+.layer > .side .motto { font-size: 11.5px; font-weight: 700; line-height: 1.2 }
+.layer > .body { padding: 8px 10px }
+.pres { border-color: var(--teal) } .pres > .side { background: var(--teal) } .pres > .body { background: var(--teal-tint) }
+.app { border-color: var(--amber) } .app > .side { background: var(--amber) } .app > .body { background: var(--amber-tint) }
+.data { border-color: var(--slate) } .data > .side { background: var(--slate) } .data > .body { background: var(--slate-tint) }
+.chips { display: flex; flex-wrap: wrap; gap: 6px }
+.chip { border: 1px solid var(--line); background: #fff; border-radius: 5px; padding: 4px 8px; font-size: 11.5px; font-weight: 600 }
+.chip small { font-weight: 400; color: var(--muted); font-size: 10px; margin-left: 3px }
+.modules { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px }
+.module { background: #fff; border: 1px solid #E3D3B6; border-radius: 5px; padding: 5px 7px }
+.module b { font-size: 11px; display: block; margin-bottom: 1px }
+.module span { font-size: 9.3px; color: var(--muted); line-height: 1.3; display: block }
+.apphead { font-size: 12px; font-weight: 700; margin-bottom: 6px }
+.apphead span { font-weight: 400; color: var(--muted); font-size: 10.5px }
+.stats { display: flex; gap: 8px; align-items: stretch }
+.stat { background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 4px 10px; text-align: center; min-width: 25mm }
+.stat b { font-size: 21px; display: block; line-height: 1.1 }
+.stat span { font-size: 9.5px; color: var(--muted) }
+.dbnote { font-size: 10px; color: var(--muted); line-height: 1.35; align-self: center; margin-left: 4px }
+aside { display: flex; flex-direction: column; gap: 8px; min-height: 0 }
+.panel { border: 1.4px solid var(--teal); border-radius: 7px; padding: 8px 10px }
+.panel .label { color: var(--teal); margin-bottom: 5px }
+.svc { padding: 5px 0; border-top: 1px solid #E1E7E6 }
+.svc:first-of-type { border-top: 0; padding-top: 1px }
+.svc b { font-size: 11.5px; display: block }
+.svc span { font-size: 9.6px; color: var(--muted); line-height: 1.32; display: block }
+.path { font-size: 9.6px; color: var(--muted); line-height: 1.33; padding-left: 15px }
+.path li { margin: 2px 0 } .path b { color: var(--ink) }
+.local { border: 1.3px dashed #9AA3A1; border-radius: 7px; padding: 7px 10px; background: #FAFAFA }
+.local .label { color: var(--muted) }
+.local p { font-size: 9.6px; color: var(--muted); line-height: 1.35; margin-top: 3px }
+.thesis { margin-top: 9px; background: var(--teal); color: #fff; border-radius: 7px; padding: 8px 14px;
+  display: flex; justify-content: center; gap: 22px; font-size: 15.5px; font-weight: 700 }
+.thesis span:nth-child(2) { color: #FFE1A6 }
+</style></head>
+<body><div class="page">
+<header><div><h1>Paws&amp;Found</h1><h2>Current System Architecture</h2></div><div class="meta"><b>ITS122P – AM5 · Group 3</b><br>Production: Railway</div></header>
+
+<main>
+<section class="stack">
+  <div class="roles">
+    <div class="role"><b>Guest</b><span>Browses and searches public reports and the map</span></div>
+    <div class="role"><b>Customer / User</b><span>Files lost and found reports, reviews possible matches</span></div>
+    <div class="role"><b>Staff / Pet Coordinator</b><span>Verifies pairings, coordinates the handover</span></div>
+    <div class="role"><b>Administrator</b><span>Accounts, roles, categories, moderation</span></div>
+  </div>
+  <div class="conn"><svg width="12" height="24" viewBox="0 0 12 24"><path d="M6 0 V18" stroke="#56605E" stroke-width="1.4"/><path d="M1.5 15 L6 22 L10.5 15" fill="none" stroke="#56605E" stroke-width="1.4"/></svg><p><b>HTTPS</b> · one origin: the site and the API are served together</p></div>
+  <div class="layer pres">
+    <div class="side"><div><div class="label">Presentation</div><div class="where">in the browser</div></div>
+      <div class="motto">Displays state</div></div>
+    <div class="body">
+      <div class="chips">
+        <span class="chip">React 19.2</span>
+        <span class="chip">Vite 8.2</span>
+        <span class="chip">Tailwind CSS 4.3</span>
+        <span class="chip">React Router 7.18</span>
+        <span class="chip">Leaflet 1.9<small>+ OpenStreetMap</small></span>
+      </div>
+      <p style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.35">
+        Pages ask the API for everything through one service layer. Hiding a button is never the
+        security: every action the page offers is checked again by the server.</p>
+    </div>
+  </div>
+  <div class="conn"><svg width="12" height="24" viewBox="0 0 12 24"><path d="M6 0 V18" stroke="#56605E" stroke-width="1.4"/><path d="M1.5 15 L6 22 L10.5 15" fill="none" stroke="#56605E" stroke-width="1.4"/></svg><p><b>Fetch / AJAX · JSON</b> · PHP session cookie (HttpOnly, SameSite=Lax, Secure) · CSRF token header on every change</p></div>
+  <div class="layer app">
+    <div class="side"><div><div class="label">Application</div><div class="where">on the server</div></div>
+      <div class="motto">Enforces rules</div></div>
+    <div class="body">
+      <div class="apphead">PHP 8.3 REST API <span>· Apache · JSON in, JSON out · our own endpoints</span></div>
+      <div class="modules">
+        <div class="module"><b>Authentication</b><span>bcrypt hashes, sessions, lock after 3 failed sign-ins, email verification</span></div>
+        <div class="module"><b>Authorization</b><span>role re-read from the database on every request; 401 / 403</span></div>
+        <div class="module"><b>Validation</b><span>every field checked on the server; 422 names the field</span></div>
+        <div class="module"><b>Privacy filtering</b><span>unpublished contact never leaves the server; guests get a summary</span></div>
+        <div class="module"><b>Rule-based matching</b><span>7 weighted signals, suggestion at 65+ of 100; no AI</span></div>
+        <div class="module"><b>Notifications</b><span>in-app, stored per user; email only for account links</span></div>
+        <div class="module"><b>Moderation</b><span>anyone signed in flags; an administrator decides</span></div>
+        <div class="module"><b>Audit log</b><span>sign-ins, role changes, decisions: who, what, when</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="conn"><svg width="12" height="24" viewBox="0 0 12 24"><path d="M6 0 V18" stroke="#56605E" stroke-width="1.4"/><path d="M1.5 15 L6 22 L10.5 15" fill="none" stroke="#56605E" stroke-width="1.4"/></svg><p><b>PDO · native prepared statements</b> (emulation off) · transactions for multi-step changes</p></div>
+  <div class="layer data">
+    <div class="side"><div><div class="label">Data</div><div class="where">Railway MySQL service</div></div>
+      <div class="motto">Owns persistent state</div></div>
+    <div class="body" style="display:flex;align-items:center;gap:10px">
+      <div style="font-size:13px;font-weight:700;min-width:23mm">MySQL 9.4<br><span style="font-size:10px;font-weight:400;color:var(--muted)">InnoDB · utf8mb4</span></div>
+      <div class="stats">
+        <div class="stat"><b>17</b><span>physical tables</span></div>
+        <div class="stat"><b>15</b><span>domain tables</span></div>
+        <div class="stat"><b>24</b><span>foreign keys</span></div>
+      </div>
+      <div class="dbnote">15 on the ERD. The other two, <code>schema_migrations</code> and <code>auth_rate_limits</code>, are operational.</div>
+    </div>
+  </div>
+</section>
+<aside>
+  <div class="panel">
+    <div class="label">Production · Railway</div>
+    <div class="svc"><b>Application service</b><span>One Docker container: Apache + PHP 8.3 serving the built React site and <code>/api</code> from one origin. Health check <code>/api/health</code>.</span></div>
+    <div class="svc"><b>MySQL 9.4 service</b><span>Separate service; the app reads its address and credentials from environment variables.</span></div>
+    <div class="svc"><b>Persistent volume</b><span><code>/var/lib/pawsandfound</code>: uploaded photos and PHP sessions, kept across redeploys.</span></div>
+  </div>
+  <div class="panel">
+    <div class="label">External services</div>
+    <div class="svc"><b>Brevo HTTPS Mail API</b><span>Email verification, password reset and email-change links.</span></div>
+    <div class="svc"><b>Cloudflare Turnstile</b><span>Bot check on registration.</span></div>
+    <div class="svc"><b>OpenStreetMap tiles</b><span>Map imagery, loaded by the browser through Leaflet.</span></div>
+  </div>
+  <div class="panel">
+    <div class="label">One request, end to end: filing a report</div>
+    <ol class="path">
+      <li>React form → <code>POST /api/reports</code>, JSON, with the session cookie and CSRF token</li>
+      <li>PHP checks the CSRF token, then that someone is signed in and active</li>
+      <li>Every field validated again; a bad one is a 422 naming it</li>
+      <li>Location, report and first history line saved in <b>one transaction</b></li>
+      <li>After the commit, matching compares it with open reports and notifies both reporters</li>
+    </ol>
+  </div>
+  <div class="local">
+    <div class="label">Local development only, not production</div>
+    <p>XAMPP (Apache + PHP, MariaDB 10.4 on port 3307) and the Vite dev server. Same code, same
+      <code>database/schema.sql</code>.</p>
+  </div>
+</aside>
+</main>
+<div class="thesis"><span>React displays state.</span><span>PHP enforces rules.</span><span>MySQL owns persistent state.</span></div>
+
+</div></body></html>

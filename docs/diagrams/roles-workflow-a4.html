@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Paws&amp;Found · Roles, Access &amp; Matching Workflow</title>
+<style>
+@page { size: 297mm 210mm; margin: 0 }
+:root {
+  --ink: #1B1F1F; --muted: #56605E; --line: #C9D1CF;
+  --teal: #0E5D5B; --teal-tint: #EEF6F5; --amber: #8A5A12; --amber-tint: #FBF5EA;
+  --slate: #2F3A4A; --slate-tint: #F2F4F7;
+}
+* { box-sizing: border-box; margin: 0; padding: 0 }
+html, body { width: 297mm; height: 210mm; background: #fff; color: var(--ink);
+  font-family: 'Segoe UI', Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+.page { width: 297mm; height: 210mm; padding: 8mm 9mm 7mm; display: flex; flex-direction: column; overflow: hidden }
+header { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 7px;
+  border-bottom: 2px solid var(--teal); margin-bottom: 10px }
+header h1 { font-size: 23px; font-weight: 700; line-height: 1 }
+header h2 { font-size: 15px; font-weight: 600; color: var(--muted); margin-top: 4px }
+header .meta { text-align: right; font-size: 11px; color: var(--muted); line-height: 1.45 }
+header .meta b { color: var(--ink); font-size: 12.5px }
+.label { font-size: 9.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase }
+code, .mono { font-family: Consolas, 'Cascadia Mono', 'Courier New', monospace }
+.foot { font-size: 8.5px; color: var(--muted); margin-top: auto; padding-top: 5px }
+
+main { display: grid; grid-template-columns: 1fr 112mm; gap: 12px; flex: 1; min-height: 0 }
+.label.t { color: var(--teal); margin-bottom: 5px }
+table.m { width: 100%; border-collapse: collapse; font-size: 11px }
+table.m th { font-size: 10px; text-align: center; padding: 5px 3px; color: #fff; background: var(--teal); line-height: 1.15 }
+table.m th:first-child { text-align: left; padding-left: 8px; background: var(--slate) }
+table.m td { border-bottom: 1px solid #E1E7E6; padding: 4.2px 3px; text-align: center; font-size: 12px }
+table.m td:first-child { text-align: left; padding-left: 8px; font-size: 11px }
+table.m tr:nth-child(even) td { background: #F7FAF9 }
+.y { color: var(--teal); font-weight: 700 }
+.n { color: #A7B0AE }
+.o { color: var(--teal); font-weight: 600; font-size: 10.5px }
+.a { color: var(--amber); font-weight: 600; font-size: 10.5px }
+.notes { font-size: 9.4px; color: var(--muted); line-height: 1.4; margin-top: 7px }
+.notes b { color: var(--ink) }
+.rule { margin-top: 7px; border-left: 3px solid var(--teal); background: var(--teal-tint); padding: 5px 9px;
+  font-size: 10.3px; line-height: 1.35 }
+.flow { display: flex; flex-direction: column; align-items: stretch }
+.step { border: 1.4px solid var(--teal); border-radius: 6px; padding: 4px 9px; background: #fff }
+.step b { font-size: 11.5px } .step span { font-size: 9.6px; color: var(--muted); display: block; line-height: 1.3 }
+.step.key { background: var(--teal); color: #fff; border-color: var(--teal) } .step.key span { color: #DDEEEC }
+.down { height: 14px; display: flex; justify-content: center }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
+.step.no { border-color: #9A3B3B } .step.no b { color: #8B2F2F }
+.step.yes { border-color: var(--teal); background: var(--teal-tint) }
+.side-by { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 9px }
+.box { border: 1.3px solid var(--line); border-radius: 6px; padding: 6px 9px }
+table.w { width: 100%; border-collapse: collapse; font-size: 10.5px }
+table.w td { padding: 1.6px 0 }
+table.w td:last-child { text-align: right; font-weight: 700; width: 9mm }
+table.w td.bar { width: 14mm; padding-left: 6px } .bar i { display: block; height: 6px; background: var(--teal); border-radius: 2px }
+table.w tr.total td { border-top: 1px solid var(--ink); font-weight: 700; padding-top: 3px }
+.box p { font-size: 9.7px; line-height: 1.38; color: var(--muted) }
+.box p b { color: var(--ink) }
+.warn { border-color: var(--amber); background: var(--amber-tint) }
+.warn .label { color: var(--amber) }
+.noai { margin-top: 8px; text-align: center; font-size: 12.5px; font-weight: 700; color: var(--teal);
+  border: 1.6px solid var(--teal); border-radius: 6px; padding: 5px }
+</style></head>
+<body><div class="page">
+<header><div><h1>Paws&amp;Found</h1><h2>Roles, Access &amp; Matching Workflow</h2></div><div class="meta"><b>ITS122P – AM5 · Group 3</b><br>Production: Railway</div></header>
+
+<main>
+<section>
+  <div class="label t">Who may do what: enforced by the PHP API on every request</div>
+  <table class="m">
+    <thead><tr><th style="width:44%">Action</th><th>Guest</th><th>Customer /<br>User</th><th>Staff / Pet<br>Coordinator</th><th>Admin</th></tr></thead>
+    <tbody><tr><td>Browse public reports, search, map</td><td><span class="y">✓</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td></tr>
+<tr><td>Open full report details</td><td><span class="n">—</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td></tr>
+<tr><td>File a lost or found report</td><td><span class="n">—</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td></tr>
+<tr><td>Edit own report (Active only)</td><td><span class="n">—</span></td><td><span class="o">own</span></td><td><span class="a">own†</span></td><td><span class="a">own†</span></td></tr>
+<tr><td>Mark report Returned / Closed</td><td><span class="n">—</span></td><td><span class="o">own</span></td><td><span class="a">any†</span></td><td><span class="a">any†</span></td></tr>
+<tr><td>See possible matches</td><td><span class="n">—</span></td><td><span class="o">own</span></td><td><span class="y">✓</span></td><td><span class="a">all†</span></td></tr>
+<tr><td>Request verification / &quot;Not my pet&quot;</td><td><span class="n">—</span></td><td><span class="o">own</span></td><td><span class="a">any†</span></td><td><span class="a">any†</span></td></tr>
+<tr><td>Answer a coordinator&#x27;s question</td><td><span class="n">—</span></td><td><span class="o">own</span></td><td><span class="n">—</span></td><td><span class="n">—</span></td></tr>
+<tr><td>Confirm / reject a match, ask a question</td><td><span class="n">—</span></td><td><span class="n">—</span></td><td><span class="y">✓</span></td><td><span class="a">yes†</span></td></tr>
+<tr><td>See unpublished reporter contact</td><td><span class="n">—</span></td><td><span class="n">—</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td></tr>
+<tr><td>Flag a listing</td><td><span class="n">—</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td></tr>
+<tr><td>Resolve flags: dismiss, warn, remove, suspend</td><td><span class="n">—</span></td><td><span class="n">—</span></td><td><span class="n">—</span></td><td><span class="y">✓</span></td></tr>
+<tr><td>Manage users and roles</td><td><span class="n">—</span></td><td><span class="n">—</span></td><td><span class="n">—</span></td><td><span class="y">✓</span></td></tr>
+<tr><td>Suspend / reinstate / unlock accounts</td><td><span class="n">—</span></td><td><span class="n">—</span></td><td><span class="n">—</span></td><td><span class="y">✓</span></td></tr>
+<tr><td>Manage pet categories</td><td><span class="n">—</span></td><td><span class="n">—</span></td><td><span class="n">—</span></td><td><span class="y">✓</span></td></tr></tbody>
+  </table>
+  <p class="notes"><span class="y">✓</span> allowed &nbsp; <span class="o">own</span> only on their own reports or pairings &nbsp;
+    <span class="n">—</span> refused (401 not signed in / 403 wrong role)<br>
+    <span class="a">†</span> <b>The API accepts it from this role, but the interface gives that role no screen for it.</b>
+    Staff work in the Staff workspace and administrators in Administration; only Pet Coordinators verify pairings in the interface.</p>
+  <div class="rule">The role is re-read from the database on every request, so a role change or suspension takes effect at once.
+    Nobody edits another person's report: the server lets staff change a report's <i>status</i>, never its details,
+    and a Pet Coordinator's confirmation is what marks both reports Returned.</div>
+</section>
+<section>
+  <div class="label t">Matching and verification</div>
+  <div class="flow">
+    <div class="step"><b>Lost report + Found report</b><span>when one is filed, or edited while Active</span></div>
+    <div class="down"><svg width="12" height="14" viewBox="0 0 12 14"><path d="M6 0 V10" stroke="#56605E" stroke-width="1.4"/><path d="M2 7.5 L6 13 L10 7.5" fill="none" stroke="#56605E" stroke-width="1.4"/></svg></div>
+    <div class="step"><b>Rule-based comparison</b><span>against every open report of the other type · must be the same species and
+      within 15 km (same city when a report has no map point)</span></div>
+    <div class="down"><svg width="12" height="14" viewBox="0 0 12 14"><path d="M6 0 V10" stroke="#56605E" stroke-width="1.4"/><path d="M2 7.5 L6 13 L10 7.5" fill="none" stroke="#56605E" stroke-width="1.4"/></svg></div>
+    <div class="step key"><b>Score ≥ 65 of 100 → Possible Match</b><span>both reports marked Possible Match; both reporters notified</span></div>
+    <div class="down"><svg width="12" height="14" viewBox="0 0 12 14"><path d="M6 0 V10" stroke="#56605E" stroke-width="1.4"/><path d="M2 7.5 L6 13 L10 7.5" fill="none" stroke="#56605E" stroke-width="1.4"/></svg></div>
+    <div class="step"><b>Reporter review</b><span>"This could be mine" → verification requested &nbsp;·&nbsp; "Not my pet" → dismissed, report back to Active</span></div>
+    <div class="down"><svg width="12" height="14" viewBox="0 0 12 14"><path d="M6 0 V10" stroke="#56605E" stroke-width="1.4"/><path d="M2 7.5 L6 13 L10 7.5" fill="none" stroke="#56605E" stroke-width="1.4"/></svg></div>
+    <div class="step"><b>Pet Coordinator verification</b><span>compares both reports and the proof; may ask a question, which the reporter answers</span></div>
+    <div class="down"><svg width="12" height="14" viewBox="0 0 12 14"><path d="M6 0 V10" stroke="#56605E" stroke-width="1.4"/><path d="M2 7.5 L6 13 L10 7.5" fill="none" stroke="#56605E" stroke-width="1.4"/></svg></div>
+    <div class="split">
+      <div class="step no"><b>Reject</b><span>pairing rejected; both reports back to Active</span></div>
+      <div class="step yes"><b>Confirm</b><span>both reports Returned; their other open pairings withdrawn; coordinator arranges a safe handover</span></div>
+    </div>
+  </div>
+  <div class="side-by">
+    <div class="box">
+      <div class="label t">Weights (points)</div>
+      <table class="w"><tr><td>Species</td><td class="bar"><i style="width:100%"></i></td><td>25</td></tr>
+<tr><td>Location</td><td class="bar"><i style="width:80%"></i></td><td>20</td></tr>
+<tr><td>Breed</td><td class="bar"><i style="width:60%"></i></td><td>15</td></tr>
+<tr><td>Colour</td><td class="bar"><i style="width:60%"></i></td><td>15</td></tr>
+<tr><td>Size</td><td class="bar"><i style="width:40%"></i></td><td>10</td></tr>
+<tr><td>Date</td><td class="bar"><i style="width:40%"></i></td><td>10</td></tr>
+<tr><td>Other characteristics</td><td class="bar"><i style="width:20%"></i></td><td>5</td></tr>
+        <tr class="total"><td>Total</td><td></td><td>100</td></tr></table>
+    </div>
+    <div class="box warn">
+      <div class="label">Finished while a pairing is open</div>
+      <p>If a reporter marks their report <b>Returned</b> or <b>Closed</b> while a pairing is still open, the pairing is
+        <b>withdrawn</b> (stored as dismissed). It is <b>never</b> confirmed automatically: only a Pet Coordinator confirms.
+        The other report goes back to Active and its reporter is told.</p>
+    </div>
+  </div>
+  <div class="noai">Rule-based matching: no AI, no image recognition.</div>
+</section>
+</main>
+
+</div></body></html>
