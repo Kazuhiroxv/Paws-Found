@@ -1253,6 +1253,171 @@ def final_integrity():
     check(C, 'FI-38', '...and the case is still open', 'open', still, still == 'open')
 
 
+def match_rejection():
+    """A coordinator's "Not the same pet" decides the pairing, not the reports.
+
+    It says this lost report and this found report are different animals.
+    Each report stays open to be matched again, and its reporter may still
+    finish it on their own later: that is the report's lifecycle, not the
+    pairing's, and it must never turn the rejected pairing into a confirmed
+    one. Each scenario uses its own city, because a pairing needs the location
+    to agree and these reports carry no map pin.
+    """
+    C = 'O. Match rejection'
+    common = dict(species='cat', breed='Puspin (Philippine Domestic Shorthair)', size='small',
+                  primary_color='Orange', incident_date='2026-09-05', province='Iloilo')
+
+    def lost_in(city):
+        report, _ = file_report('customer', pet_name='Audit Kiko',
+                                distinct_features='White bib, crooked whisker pad', city=city, **common)
+        return report
+
+    def found_in(city):
+        report, _ = file_report('finder', report_type='found', pet_name=None,
+                                distinct_features='White bib under the chin, crooked whisker pad',
+                                city=city, **common)
+        return report
+
+    def pairing(lost, found):
+        return sql(f'SELECT match_id FROM match_claims WHERE lost_report_id = {lost} AND found_report_id = {found};')
+
+    def report_status(report):
+        return sql(f'SELECT status FROM pet_reports WHERE report_id = {report};')
+
+    def pairing_status(match):
+        return sql(f'SELECT match_status FROM match_claims WHERE match_id = {match};')
+
+    reject = {'action': 'reject', 'note': 'Different markings under the chin.'}
+
+    # ---- MR-1: the only open pairing is ruled out
+    lost, found = lost_in('Audit Reject City'), found_in('Audit Reject City')
+    m = pairing(lost, found)
+    check(C, 'MR-01', '(one pairing raised; both reports Possible Match)', 'possible_match x2',
+          f'{report_status(lost)},{report_status(found)}',
+          bool(m) and report_status(lost) == report_status(found) == 'possible_match')
+    status(C, 'MR-02', 'Coordinator: Not the same pet', 'staff', 'PATCH', f'/matches/{m}', reject, 200)
+    check(C, 'MR-03', '...that pairing is rejected', 'rejected', pairing_status(m), pairing_status(m) == 'rejected')
+    both = f'{report_status(lost)},{report_status(found)}'
+    check(C, 'MR-04', '...both reports go back to Active', 'active,active', both, both == 'active,active')
+    moved = sql(f"SELECT COUNT(*) FROM status_logs WHERE report_id IN ({lost},{found}) "
+                f"AND previous_status = 'possible_match' AND new_status = 'active';")
+    check(C, 'MR-05', '...each report\'s history records it', '2', moved, moved == '2')
+    told = sql(f"SELECT COUNT(*) FROM notifications WHERE match_id = {m} AND notification_type = 'match_rejected';")
+    check(C, 'MR-06', '...and both reporters are told', '2', told, told == '2')
+
+    # ---- MR-5: a decided pairing takes no second decision, however it is asked
+    status(C, 'MR-07', 'Confirming the rejected pairing', 'staff', 'PATCH', f'/matches/{m}',
+           {'action': 'confirm'}, 409)
+    status(C, 'MR-08', 'Rejecting it a second time', 'staff', 'PATCH', f'/matches/{m}', reject, 409)
+    status(C, 'MR-09', 'A reporter asking for verification on it', 'finder', 'PATCH', f'/matches/{m}',
+           {'action': 'request_verification'}, 409)
+    check(C, 'MR-10', '...and it is still rejected', 'rejected', pairing_status(m), pairing_status(m) == 'rejected')
+
+    # ---- MR-6: nothing offers it as work any more
+    queued = []
+    for waiting in ('verification_requested', 'under_review', 'suggested'):
+        _, body = session('staff').call('GET', f'/matches?status={waiting}')
+        queued += [x['match_id'] for x in (body.get('data') or [])]
+    check(C, 'MR-11', 'Not in any open staff queue', 'absent', 'present' if int(m) in queued else 'absent',
+          int(m) not in queued)
+    _, body = session('customer').call('GET', '/matches?user_id=1')
+    mine = {x['match_id']: x.get('match_status') or x.get('status') for x in (body.get('data') or [])}
+    check(C, 'MR-12', 'The reporter sees it as rejected (settled), not open', 'rejected',
+          str(mine.get(int(m))), mine.get(int(m)) == 'rejected')
+
+    # ---- MR-3: the finder later finishes their own report independently
+    status(C, 'MR-13', 'The finder marks the found report returned', 'finder', 'PATCH', f'/reports/{found}',
+           {'status': 'returned', 'note': 'The owner turned up through a neighbour.'}, 200)
+    check(C, 'MR-14', '...the found report is Returned', 'returned', report_status(found),
+          report_status(found) == 'returned')
+    check(C, 'MR-15', '...the rejected pairing stays rejected, not confirmed', 'rejected', pairing_status(m),
+          pairing_status(m) == 'rejected')
+    check(C, 'MR-16', '...and the lost report is untouched', 'active', report_status(lost),
+          report_status(lost) == 'active')
+
+    # ---- MR-2: two open pairings on one report, one ruled out
+    lost2 = lost_in('Audit Two Pairings City')
+    first, second = found_in('Audit Two Pairings City'), found_in('Audit Two Pairings City')
+    m1, m2 = pairing(lost2, first), pairing(lost2, second)
+    check(C, 'MR-17', '(the lost report has two open pairings)', 'two', f'{m1},{m2}', bool(m1) and bool(m2))
+    status(C, 'MR-18', 'Coordinator rules the first one out', 'staff', 'PATCH', f'/matches/{m1}', reject, 200)
+    check(C, 'MR-19', '...the lost report stays Possible Match', 'possible_match', report_status(lost2),
+          report_status(lost2) == 'possible_match')
+    check(C, 'MR-20', '...the other pairing is still open', 'suggested', pairing_status(m2),
+          pairing_status(m2) == 'suggested')
+    check(C, 'MR-21', '...the ruled-out found report goes back to Active', 'active', report_status(first),
+          report_status(first) == 'active')
+
+    # ---- MR-4: finishing the report ends only what is still open
+    status(C, 'MR-22', 'The owner then marks the lost pet returned', 'customer', 'PATCH', f'/reports/{lost2}',
+           {'status': 'returned', 'note': 'Came home on its own.'}, 200)
+    after = f'{pairing_status(m1)},{pairing_status(m2)}'
+    check(C, 'MR-23', '...the open pairing is dismissed, the rejected one kept', 'rejected,dismissed', after,
+          after == 'rejected,dismissed')
+    check(C, 'MR-24', '...and neither became confirmed', '0',
+          sql(f"SELECT COUNT(*) FROM match_claims WHERE match_id IN ({m1},{m2}) AND match_status = 'confirmed';"),
+          sql(f"SELECT COUNT(*) FROM match_claims WHERE match_id IN ({m1},{m2}) AND match_status = 'confirmed';") == '0')
+
+
+def repeat_matching():
+    """MG-REPEAT: the production sequence behind the missing #18/#36 pairing.
+
+    A lost report pairs with found report A at 95; that pairing is settled and A
+    closed; the same reporter files found report B with A's exact details. B
+    must pair with the lost report again, as a fresh suggestion, and the old
+    decision must stay as it was. Mirrors #18 (pinned) with #35 and #36 (no
+    pin, no distinctive features, so location falls back to the city).
+    """
+    C = 'P. Repeat matching'
+    city = 'Audit Repeat City'
+    golden = dict(species='dog', breed='Golden Retriever', size='large', sex='male',
+                  primary_color='Golden', province='Metro Manila', city=city)
+
+    lost, _ = file_report('customer', pet_name='Audit Simba', incident_date='2026-07-11',
+                          distinct_features='Thick golden coat, greying muzzle, walks with a slight limp.',
+                          lat=14.5486, lng=121.0509, **golden)
+
+    def found_like_35():
+        report, _ = file_report('finder', report_type='found', pet_name=None, incident_date='2026-07-22',
+                                distinct_features='', **golden)
+        return report
+
+    def pairing(found):
+        return sql(f'SELECT match_id FROM match_claims WHERE lost_report_id = {lost} AND found_report_id = {found};')
+
+    def status_of(report):
+        return sql(f'SELECT status FROM pet_reports WHERE report_id = {report};')
+
+    first = found_like_35()
+    m1 = pairing(first)
+    score1 = sql(f'SELECT match_score FROM match_claims WHERE match_id = {m1};') if m1 else ''
+    check(C, 'MG-01', 'Found A pairs with the lost report at 95', '95', score1 or 'none', score1 == '95')
+
+    status(C, 'MG-02', 'The finder says A is not their match', 'finder', 'PATCH', f'/matches/{m1}',
+           {'action': 'dismiss'}, 200)
+    status(C, 'MG-03', '...and closes report A', 'finder', 'PATCH', f'/reports/{first}',
+           {'status': 'closed', 'note': 'Filed twice by mistake.'}, 200)
+    check(C, 'MG-04', 'The lost report is Active again', 'active', status_of(lost), status_of(lost) == 'active')
+
+    second = found_like_35()
+    m2 = pairing(second)
+    check(C, 'MG-05', 'Found B, identical to A, pairs again (MG-REPEAT)', 'a new pairing', m2 or 'NONE', bool(m2))
+    score2 = sql(f'SELECT match_score FROM match_claims WHERE match_id = {m2};') if m2 else ''
+    check(C, 'MG-06', '...at 95', '95', score2 or 'none', score2 == '95')
+    signals = sql(f'SELECT COUNT(*) FROM match_signals WHERE match_id = {m2};') if m2 else '0'
+    check(C, 'MG-07', '...with seven signals', '7', signals, signals == '7')
+    summed = sql(f'SELECT SUM(CASE WHEN is_matched THEN weight ELSE 0 END) FROM match_signals WHERE match_id = {m2};') if m2 else ''
+    check(C, 'MG-08', '...whose matched weights add up to the score', score2 or 'none', summed or 'none',
+          bool(summed) and summed == score2)
+    both = f'{status_of(lost)},{status_of(second)}'
+    check(C, 'MG-09', '...and both reports are Possible Match', 'possible_match x2', both,
+          both == 'possible_match,possible_match')
+    told = sql(f"SELECT COUNT(*) FROM notifications WHERE match_id = {m2} AND notification_type = 'match_suggested';") if m2 else '0'
+    check(C, 'MG-10', '...both reporters told', '2', told, told == '2')
+    old = sql(f'SELECT match_status FROM match_claims WHERE match_id = {m1};')
+    check(C, 'MG-11', 'The earlier pairing with A stays dismissed', 'dismissed', old, old == 'dismissed')
+
+
 def error_handling():
     C = 'H. Error handling'
     status(C, 'EH-01', 'A report that does not exist', 'guest', 'GET', '/reports/99999', None, 404)
@@ -1359,6 +1524,8 @@ if __name__ == '__main__':
     report_editing()
     qa_rules()
     final_integrity()
+    match_rejection()
+    repeat_matching()
     total, passed = report()
 
     reseed()

@@ -75,7 +75,7 @@ skips that one check when there is no network.
 
 **Mutates nothing.** Sends no real email.
 
-### `npm run audit` — 299 checks
+### `npm run audit` — 334 checks
 
 The security and functional suite, against the running API and database.
 
@@ -95,6 +95,8 @@ The security and functional suite, against the running API and database.
 | L. Report editing | 31 |
 | M. Report QA rules | 8 |
 | N. Final integrity | 38 |
+| O. Match rejection | 24 |
+| P. Repeat matching | 11 |
 
 `RA-01`–`RA-27` pin down who receives what. A guest's list row is exactly the
 public summary, a guest opening a report gets `401 auth_required` (a missing
@@ -140,6 +142,28 @@ a note, and notes over 255 characters are refused. When a report is marked
 returned or closed, its open pairings are dismissed, the other report goes back
 to Active, and its reporter is told; unrelated and already-decided pairings are
 untouched. Moderation removal needs a reason.
+
+`MR-01`–`MR-24` separate a pairing's decision from a report's lifecycle. A
+coordinator's "Not the same pet" rejects that pairing only: with no other open
+pairing both reports go back to Active, with a history line each and both
+reporters told; with another pairing still open the report stays Possible
+Match. A rejected pairing takes no second decision (confirm, reject again or a
+verification request are all 409) and sits in no open queue. A reporter may
+still finish their own report later: it becomes Returned, the rejected pairing
+stays rejected and never turns confirmed, and only pairings still open are
+dismissed.
+
+`MG-01`–`MG-11` (MG-REPEAT) replay the production sequence behind a pairing
+that failed to appear: a lost report pairs with found report A at 95, that
+pairing is dismissed and A closed, and the same reporter files found report B
+with A's exact details and no map pin. B must pair again, at 95, with seven
+signals that add up to the score, both reports Possible Match and both
+reporters told, while the old pairing stays dismissed. It passes; the
+production miss was not reproduced, and no deterministic cause has been found.
+A matching failure is always written to the server log as one
+`[pawsandfound][matching] ... FAILED at <stage>` line. With `MATCH_DEBUG=true`
+(off by default) every filing also writes its trace: the candidates, each
+score and gate, and what was stored, for a controlled reproduction.
 
 `LP-01`–`LP-08` pin down the location promise. The database keeps the pin as
 dropped. Anybody who is not the reporter or staff (a guest or another signed-in
@@ -193,6 +217,16 @@ skipped rather than reporting a failure it did not observe. Both run for real
 locally.
 
 **Mutates data.** Restores at the end.
+
+### `npm run test:matching-log` — 6 checks
+
+What matching writes to the server log. With `MATCH_DEBUG` off, the normal
+setting, a routine run writes nothing; on, it writes its one trace line. A
+failure (the database made unreachable) is written either way, once, with the
+stage and exception, and still reaches the caller. No line carries
+coordinates, addresses, passwords or tokens. Needs `php` on PATH and the local
+database; **changes no data** (it asks about a report that is already finished).
+
 ### `npm run test:ui` — 14 checks
 
 Two interface regressions from final manual testing, in a real Chrome.
@@ -317,11 +351,12 @@ lint                                     clean
 build                                    green
 test:contract                            15/15
 test:mail                                15/15
-audit                                   299/299
+audit                                   334/334
 auth_lifecycle                           53/53
 multi-device                             55/55   (53/53 + 2 skipped vs a remote)
 test:signout                             23/23
 test:ui                                  14/14
+test:matching-log                         6/6
 a11y                                     31 pages, 0 violations
 docker build --pull --no-cache           clean, curl present, one MPM, Syntax OK
 verify:deploy vs production              25/25 + 3 skipped (read-only default)

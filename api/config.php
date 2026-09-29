@@ -227,6 +227,18 @@ defined('SESSION_ABSOLUTE_TIMEOUT') || define('SESSION_ABSOLUTE_TIMEOUT', 28800)
 defined('PRIVACY_NOTICE_VERSION') || define('PRIVACY_NOTICE_VERSION', '2026-09-25');
 
 /**
+ * The matching trace: one server-log line per filing with the candidates, their
+ * scores and gates, and what was stored. Off in normal running, so the log is
+ * not filled with routine successes; switched on (MATCH_DEBUG=true) only to
+ * diagnose a pairing that should have appeared. A matching FAILURE is logged
+ * whatever this says (api/matching.php).
+ */
+defined('MATCH_DEBUG') || define(
+    'MATCH_DEBUG',
+    filter_var(env_setting('MATCH_DEBUG', 'MATCH_DEBUG', 'false'), FILTER_VALIDATE_BOOLEAN)
+);
+
+/**
  * In production, PHP must never print anything.
  *
  * A warning or a notice printed into a JSON response does two bad things at

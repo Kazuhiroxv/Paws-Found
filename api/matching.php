@@ -78,11 +78,35 @@ const MATCH_STOP_WORDS = [
  */
 function generate_matches_for_report(int $reportId): array
 {
+    // A pairing that should have appeared and did not can be traced: with
+    // MATCH_DEBUG on, one line per filing says which candidates the query
+    // returned, how each scored and what was stored. A failure is always
+    // logged, with the stage it stopped at. Report ids, scores and yes/no
+    // only; nothing about the people or where they are.
+    $trace = ['report=' . $reportId];
+    $stage = 'load';
+
+    try {
+        return matching_generate($reportId, $trace, $stage);
+    } catch (Throwable $exception) {
+        $sqlState = $exception instanceof PDOException ? ($exception->errorInfo[0] ?? $exception->getCode()) : '-';
+        matching_log($trace, "FAILED at {$stage}: " . get_class($exception) . " sqlstate={$sqlState} " . $exception->getMessage(), true);
+        throw $exception;
+    }
+}
+
+/** The work itself; `$trace` and `$stage` are filled in as it goes, for the log. */
+function matching_generate(int $reportId, array &$trace, string &$stage): array
+{
     $report = matching_load_report($reportId);
 
     if ($report === null || !in_array($report['status'], MATCH_OPEN_STATUSES, true)) {
+        matching_log($trace, $report === null ? 'report not found' : "not open ({$report['status']})");
         return [];
     }
+
+    $trace[] = "{$report['report_type']}/{$report['status']}/{$report['species']}";
+    $stage = 'candidates';
 
     $isLost = $report['report_type'] === 'lost';
     $opposite = $isLost ? 'found' : 'lost';
@@ -120,15 +144,29 @@ function generate_matches_for_report(int $reportId): array
         ':c' => $reportId,
     ]);
 
+    $candidates = $statement->fetchAll();
+    $trace[] = 'candidates=[' . implode(',', array_column($candidates, 'report_id')) . ']';
+    $stage = 'compare';
+
     $suggestions = [];
 
-    foreach ($statement->fetchAll() as $candidate) {
+    foreach ($candidates as $candidate) {
         $lost = $isLost ? $report : $candidate;
         $found = $isLost ? $candidate : $report;
 
         $comparison = compare_reports($lost, $found);
+        $worth = matching_is_worth_suggesting($comparison);
+        $gate = array_column($comparison['signals'], 'matched', 'key');
+        $trace[] = sprintf(
+            '%d:score=%d,species=%s,location=%s,suggest=%s',
+            $candidate['report_id'],
+            $comparison['score'],
+            $gate['species'] ? 'y' : 'n',
+            $gate['location'] ? 'y' : 'n',
+            $worth ? 'y' : 'n'
+        );
 
-        if (!matching_is_worth_suggesting($comparison)) {
+        if (!$worth) {
             continue;
         }
 
@@ -143,7 +181,25 @@ function generate_matches_for_report(int $reportId): array
     // Strongest first, so the coordinator's queue leads with the best lead.
     usort($suggestions, fn ($a, $b) => $b['score'] <=> $a['score']);
 
-    return matching_store($suggestions);
+    $stage = 'store (' . count($suggestions) . ')';
+    $created = matching_store($suggestions);
+    $trace[] = 'stored=[' . implode(',', array_column($created, 'match_id')) . ']';
+    matching_log($trace, 'ok');
+
+    return $created;
+}
+
+/**
+ * Write the trace as one line, prefixed so it can be found among the rest.
+ * Routine outcomes only with MATCH_DEBUG on; a failure always.
+ */
+function matching_log(array $trace, string $outcome, bool $isFailure = false): void
+{
+    if (!$isFailure && !MATCH_DEBUG) {
+        return;
+    }
+
+    error_log('[pawsandfound][matching] ' . implode(' ', $trace) . ' -> ' . $outcome);
 }
 
 /**

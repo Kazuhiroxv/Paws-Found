@@ -384,6 +384,11 @@ TURNSTILE_ENABLED TURNSTILE_SITE_KEY TURNSTILE_SECRET_KEY
 `PORT` is injected by Railway. `PERSIST_ROOT` and `SESSION_SAVE_PATH` default
 to the volume path and need setting only if the mount path changes.
 
+`MATCH_DEBUG` is unset (false) in normal running. Set it to `true` only to
+diagnose a pairing that should have appeared: each filing then writes one
+`[pawsandfound][matching]` trace line to the Railway log. Remove it afterwards.
+A matching failure is logged either way.
+
 `api/config.php` reads `DB_*` first and falls back to Railway's own `MYSQL*`
 spellings, so either naming works.
 
@@ -448,9 +453,10 @@ All run on 27 September 2026 unless noted. Commands and prerequisites:
 | `npm run build` | green | — |
 | `npm run test:contract` | **15/15** | nothing running |
 | `npm run test:mail` | **15/15** | `php` on PATH; one check calls Brevo |
-| `npm run audit` | **299/299** | API + database |
+| `npm run audit` | **334/334** | API + database |
 | `python scripts/auth_lifecycle.py` | **53/53** | API + database, local only |
 | `npm run multi-device` | **55/55** local | API + database |
+| `npm run test:matching-log` | **6/6** | `php` on PATH, local database |
 | `npm run test:ui` | **14/14** | the dev build (`PAWS_BASE=http://localhost:5173`), `PAWS_PW`, Chrome |
 | `npm run test:signout` | **23/23** | the dev build (`PAWS_BASE=http://localhost:5173`), `PAWS_PW`, Chrome |
 | `npm run a11y` | 31 pages, **zero violations** | the dev build (`PAWS_BASE=http://localhost:5173`) |
