@@ -374,14 +374,14 @@ export function ReportForm({ reportType, report, guidance }) {
       <ConfirmDialog
         isOpen={isAskingAboutPhoto}
         title="Continue without a photo?"
-        confirmLabel="Continue without photo"
+        confirmLabel="Skip for now"
         cancelLabel="Add a photo"
         cancelVariant="primary"
         tone="secondary"
         onCancel={() => setIsAskingAboutPhoto(false)}
         onConfirm={continueWithoutPhoto}
       >
-        You can add one later. A clear photo makes it much easier for people and Pet
+        You can add one later. A clear photo makes it easier for people and Pet
         Coordinators to recognise and verify your pet.
       </ConfirmDialog>
     </div>
