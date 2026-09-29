@@ -459,7 +459,7 @@ All run on 27 September 2026 unless noted. Commands and prerequisites:
 | `npm run test:city` | **11/11** | `php` on PATH |
 | `npm run test:calendar` | **8/8** | `php` on PATH, local database |
 | `npm run test:matching-log` | **6/6** | `php` on PATH, local database |
-| `npm run test:ui` | **29/29** | the dev build (`PAWS_BASE=http://localhost:5173`), `PAWS_PW`, Chrome |
+| `npm run test:ui` | **34/34** | the dev build (`PAWS_BASE=http://localhost:5173`), `PAWS_PW`, Chrome |
 | `npm run test:signout` | **24/24** | the dev build (`PAWS_BASE=http://localhost:5173`), `PAWS_PW`, Chrome |
 | `npm run a11y` | 31 pages, **zero violations** | the dev build (`PAWS_BASE=http://localhost:5173`) |
 | `docker build --pull --no-cache` | clean, one MPM, `Syntax OK` | Docker |

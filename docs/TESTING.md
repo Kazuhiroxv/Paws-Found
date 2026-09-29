@@ -272,7 +272,7 @@ stage and exception, and still reaches the caller. No line carries
 coordinates, addresses, passwords or tokens. Needs `php` on PATH and the local
 database; **changes no data** (it asks about a report that is already finished).
 
-### `npm run test:ui` — 29 checks
+### `npm run test:ui` — 34 checks
 
 Two interface regressions from final manual testing, in a real Chrome.
 `MOD-LINK-1`–`4`: on Administrator > Moderation, "Open the full report" is a
@@ -299,9 +299,14 @@ down a long list it is tapped, without moving the page; choosing a section goes
 there and closes it; Enter opens it and Tab moves into it; the desktop rail is
 unchanged. The menu used to open at the top of the page, 1,200 to 3,000px out of
 sight.
+`REPORT-ACTIONS-1`–`5`: on My Reports, a returned report shows Close report as a
+button inside its own card at 360, 390, 768 and 1366px, instead of a More menu
+holding only that item whose panel hung over the next card; an open report
+keeps its More menu with Edit and Close; closing still asks first, Keep it open
+keeps it, and a confirmed close moves the card to Closed, which offers nothing.
 
-**Mutates local data**: the MOD-FLAG checks raise one flag and dismiss it, so
-they run only against localhost and are skipped anywhere else. The one
+**Mutates local data**: the MOD-FLAG checks raise one flag and dismiss it, and
+REPORT-ACTIONS closes one returned report, so they run only against localhost and are skipped anywhere else. The one
 hand-built registration is refused.
 `PAWS_BASE=http://localhost:5173 PAWS_PW=<password> npm run test:ui`.
 
@@ -421,7 +426,7 @@ audit                                   339/339
 auth_lifecycle                           53/53
 multi-device                             55/55   (53/53 + 2 skipped vs a remote)
 test:signout                             24/24
-test:ui                                  29/29
+test:ui                                  34/34
 test:city                                11/11
 test:matching-log                         6/6
 a11y                                     31 pages, 0 violations

@@ -314,7 +314,7 @@ function ReportCaseCard({ report, openMatches, onClose }) {
         {/* Actions. `relative` lifts them above the stretched link, without a
             z-index — a z-index would make each card its own stacking context
             and trap the More menu underneath the next card. */}
-        <div className="relative flex items-center gap-2 sm:shrink-0 sm:self-center">
+        <div className="relative flex flex-wrap items-center gap-2 sm:shrink-0 sm:self-center">
           {primary}
 
           {/* Edit sits beside the main action from `sm` up; on a phone it
@@ -335,9 +335,21 @@ function ReportCaseCard({ report, openMatches, onClose }) {
             </span>
           )}
 
+          {/* A returned report has one thing left to do, Close, so it is a
+              button of its own. Behind a More menu it was a single item in a
+              panel that, on a phone, hung over the next card. The quiet
+              secondary look, not the page's main action. */}
+          {canClose && !canEdit && (
+            <Button variant="secondary" size="sm" onClick={onClose}>
+              <XCircle size={14} className="text-danger" aria-hidden="true" />
+              Close report
+            </Button>
+          )}
+
           {/* The menu holds the phone-only Edit and, when it applies, Close. A
-              closed report has neither, so the menu goes with them. */}
-          <div className={cn(!canClose && 'hidden')}>
+              closed report has neither, and a returned one has only Close
+              (above), so the menu goes with them. */}
+          <div className={cn(!(canClose && canEdit) && 'hidden')}>
             <NavDropdown
               align="right"
               showChevron={false}

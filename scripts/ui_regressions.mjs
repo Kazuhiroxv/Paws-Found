@@ -14,6 +14,9 @@
 // opened at the top of the page even when its sticky button was tapped far
 // down a long list, so it could not be seen without scrolling back up.
 //
+// REPORT-ACTIONS: a returned report's only remaining action, Close, sat alone
+// in a More menu whose panel hung over the next card on a phone.
+//
 // The MOD-FLAG checks raise one flag and dismiss it, so they run only against
 // localhost and are skipped anywhere else. Nothing else changes data: the one
 // registration request is refused by the API on purpose.
@@ -418,6 +421,98 @@ if (!/^(localhost|127\.0\.0\.1)$/.test(new URL(BASE).hostname)) {
   })
   check('NAV-MOBILE-5', 'Desktop: no menu button, the sidebar is there as before', !rail.buttonShown && rail.sidebar,
     `button shown=${rail.buttonShown}, sidebar=${rail.sidebar}`)
+}
+
+// ---- REPORT-ACTIONS: My Reports card actions by state (local only: closes a report)
+if (!/^(localhost|127\.0\.0\.1)$/.test(new URL(BASE).hostname)) {
+  console.log('SKIP  REPORT-ACTIONS closes a report, so it runs against localhost only')
+} else {
+  const page = await (await browser.createBrowserContext()).newPage()
+  await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true })
+  await page.goto(BASE + '/', { waitUntil: 'networkidle2' })
+  await page.evaluate(async (api, pw) => {
+    const me = await (await fetch(api + '/auth/me', { credentials: 'include' })).json()
+    await fetch(api + '/auth/login', { method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': me.csrf_token ?? '' },
+      body: JSON.stringify({ email: 'maria.santos@example.com', password: pw }) })
+  }, API, PASSWORD)
+
+  const openTab = async (label) => {
+    await page.goto(BASE + '/dashboard/reports', { waitUntil: 'networkidle2' })
+    await pause(900)
+    await page.evaluate((l) => [...document.querySelectorAll('[role=tab]')]
+      .find((t) => t.textContent.trim().startsWith(l))?.click(), label)
+    await pause(500)
+  }
+  /** Each card in the open panel: its buttons, whether it has a More menu, and whether Close stays inside it. */
+  const cards = () => page.evaluate(() => [...document.querySelectorAll('#reports-panel article')].map((card) => {
+    const box = card.getBoundingClientRect()
+    const buttons = [...card.querySelectorAll('a, button')].filter((b) => b.offsetParent).map((b) => b.textContent.trim())
+    const close = [...card.querySelectorAll('button')].find((b) => b.offsetParent && b.textContent.trim() === 'Close report')
+    const cb = close?.getBoundingClientRect()
+    return { buttons, more: Boolean([...card.querySelectorAll('[aria-haspopup]')].find((m) => m.offsetParent)),
+      closeInside: Boolean(cb) && cb.top >= box.top && cb.bottom <= box.bottom && cb.left >= box.left && cb.right <= box.right,
+      overflow: document.documentElement.scrollWidth - window.innerWidth }
+  }))
+
+  // 1 and 5: a returned report shows Close as a button inside its own card, at every width.
+  const widths = []
+  for (const viewport of [{ width: 360, height: 740, isMobile: true, hasTouch: true },
+    { width: 390, height: 844, isMobile: true, hasTouch: true }, { width: 768, height: 1024 }, { width: 1366, height: 900 }]) {
+    await page.setViewport(viewport)
+    await openTab('Returned')
+    const returned = await cards()
+    const ok = returned.length > 0 && returned.every((c) => c.buttons.some((b) => b.startsWith('View report'))
+      && c.buttons.includes('Close report') && !c.more && c.closeInside && c.overflow === 0)
+    widths.push(`${viewport.width}:${ok ? 'ok' : JSON.stringify(returned)}`)
+  }
+  const w390 = widths[1]
+  check('REPORT-ACTIONS-1', 'Returned at 390px: View report and a direct Close report, no single-item More menu',
+    w390.endsWith(':ok'), w390)
+  check('REPORT-ACTIONS-5', 'Returned at 360, 390, 768 and 1366px: Close stays inside its own card, nothing overflows',
+    widths.every((w) => w.endsWith(':ok')), widths.join(' '))
+
+  // 2: an open report keeps its More menu, with Edit and Close, on a phone.
+  await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true })
+  await openTab('Open')
+  const menuItems = await page.evaluate(async () => {
+    const trigger = document.querySelector('#reports-panel article [aria-haspopup]')
+    trigger?.click()
+    await new Promise((r) => setTimeout(r, 400))
+    const items = [...trigger.closest('article').querySelectorAll('a, button')]
+      .filter((b) => b.offsetParent).map((b) => b.textContent.trim())
+    trigger?.click()
+    return items
+  })
+  check('REPORT-ACTIONS-2', 'Open at 390px: the More menu still holds Edit report and Close report',
+    menuItems.includes('Edit report') && menuItems.includes('Close report'), menuItems.join(', '))
+
+  // 4: closing through the new button still asks first, and Keep it open keeps it.
+  await openTab('Returned')
+  const returnedName = await page.evaluate(() => document.querySelector('#reports-panel article h3, #reports-panel article h2')?.textContent.trim())
+  const clickClose = () => page.evaluate(() => [...document.querySelectorAll('#reports-panel article button')]
+    .find((b) => b.offsetParent && b.textContent.trim() === 'Close report')?.click())
+  await clickClose()
+  await pause(500)
+  const asked = await page.evaluate(() => Boolean(document.querySelector('dialog[open]')))
+  await page.evaluate(() => [...document.querySelectorAll('dialog[open] button')].find((b) => b.textContent.trim() === 'Keep it open')?.click())
+  await pause(500)
+  const kept = await page.evaluate(() => !document.querySelector('dialog[open]')
+    && [...document.querySelectorAll('#reports-panel article button')].some((b) => b.textContent.trim() === 'Close report'))
+  await clickClose()
+  await pause(500)
+  await page.evaluate(() => [...document.querySelectorAll('dialog[open] button')].find((b) => b.textContent.trim() === 'Close report')?.click())
+  await pause(1500)
+  await openTab('Closed')
+  const closedCards = await cards()
+  const inClosed = await page.evaluate((n) => [...document.querySelectorAll('#reports-panel article')].some((c) => c.innerText.includes(n)), returnedName)
+  check('REPORT-ACTIONS-4', 'Close report asks first; Keep it open keeps it; confirming moves it to Closed',
+    asked && kept && inClosed, `asked=${asked} kept=${kept} in Closed=${inClosed} (${returnedName})`)
+
+  // 3: a closed report offers neither Edit nor Close, and no menu.
+  check('REPORT-ACTIONS-3', 'Closed at 390px: no Edit, no Close, no More menu',
+    closedCards.length > 0 && closedCards.every((c) => !c.more && !c.buttons.includes('Close report') && !c.buttons.some((b) => b.startsWith('Edit'))),
+    JSON.stringify(closedCards.map((c) => c.buttons)))
 }
 
 await browser.close()
