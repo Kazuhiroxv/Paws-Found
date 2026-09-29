@@ -36,7 +36,9 @@ const TABS = [
  */
 const DECISIONS = {
   dismiss: { label: 'Dismiss flag', variant: 'secondary' },
-  warn: { label: 'Warn the reporter', variant: 'secondary' },
+  // "Report author", not "reporter": the person who flagged the listing
+  // reported it too, and the warning goes to the other one.
+  warn: { label: 'Warn report author', variant: 'secondary' },
   remove: {
     label: 'Remove the report',
     variant: 'danger',
@@ -295,7 +297,7 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
               rows={2}
               maxLength={255}
               placeholder="Explain what you decided and why."
-              hint="Sent to the person who filed the report, whichever decision you make. Required to remove the report."
+              hint="The decision is sent to the person who filed the pet report; the person who flagged it is not notified. Required to remove the report."
             />
 
             {actionError && (

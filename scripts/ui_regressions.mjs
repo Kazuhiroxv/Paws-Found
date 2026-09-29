@@ -258,6 +258,9 @@ if (!/^(localhost|127\.0\.0\.1)$/.test(new URL(BASE).hostname)) {
   await pause(1200)
   const queued = await admin.evaluate((d) => document.body.innerText.includes(d), DETAILS)
   check('MOD-FLAG-2', 'It appears in the administrator\'s queue', queued)
+  const labels = await admin.evaluate(() => [...document.querySelectorAll('button')].map((b) => b.textContent.trim()))
+  check('MOD-WORDING', 'The warning is labelled for the report author, not "the reporter"',
+    labels.includes('Warn report author') && !labels.includes('Warn the reporter'))
 
   const statusAfter = (await api(member, '/reports/1')).data?.status
   check('MOD-FLAG-3', 'Flagging changes nothing about the report itself', statusAfter === statusBefore,
@@ -273,6 +276,10 @@ if (!/^(localhost|127\.0\.0\.1)$/.test(new URL(BASE).hostname)) {
     !ownerSees.name && !ownerSees.details && !ownerApi.includes(DETAILS) && !ownerApi.includes('flagged_by'))
 
   // The administrator decides it from the queue, with a note.
+  const noteCount = async (page) => ((await api(page, '/notifications')).data ?? [])
+    .filter((n) => (n.body ?? '').includes('Checked: not a duplicate.')).length
+  const authorBefore = await noteCount(owner)
+  const flaggerBefore = await noteCount(member)
   const decided = admin.waitForResponse((r) => /\/api\/moderation\/\d+$/.test(r.url()) && r.request().method() === 'PATCH')
   await admin.evaluate((d) => {
     const card = [...document.querySelectorAll('article, li, section')].reverse()
@@ -287,6 +294,13 @@ if (!/^(localhost|127\.0\.0\.1)$/.test(new URL(BASE).hostname)) {
   const after = ((await api(admin, '/moderation')).data ?? []).find((c) => c.case_id === raised?.case_id)
   check('MOD-DECIDE-1', 'The administrator dismisses it from the queue: 200 and recorded',
     decision.status() === 200 && after?.case_status === 'dismissed', `HTTP ${decision.status()}, ${after?.case_status}`)
+
+  // The decision goes to the person who filed the pet report; the person who
+  // flagged it is not told. Unchanged behaviour, now said on the page.
+  const toAuthor = (await noteCount(owner)) - authorBefore
+  const toFlagger = (await noteCount(member)) - flaggerBefore
+  check('MOD-DECIDE-2', 'The decision reaches the report author and not the person who flagged it',
+    toAuthor === 1 && toFlagger === 0, `author ${toAuthor}, flagger ${toFlagger}`)
 
   const refused = await member.evaluate(async (a) => {
     const me = await (await fetch(a + '/auth/me', { credentials: 'include' })).json()

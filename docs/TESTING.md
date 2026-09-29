@@ -289,7 +289,10 @@ administrator's queue, the report itself is untouched, and its owner is not
 shown who flagged it; the administrator then dismisses it from the queue with a
 note (200). Both used to send a plain object where JSON was declared and got
 "The request body was not valid JSON". `MOD-JSON`: the API still refuses a body
-that is not JSON.
+that is not JSON. `MOD-WORDING` and `MOD-DECIDE-2`: the button says "Warn report
+author", because the person who flagged a listing also "reported" it, and the
+decision reaches the person who filed the pet report and not the person who
+flagged it (unchanged behaviour, now said on the page).
 
 **Mutates local data**: the MOD-FLAG checks raise one flag and dismiss it, so
 they run only against localhost and are skipped anywhere else. The one
