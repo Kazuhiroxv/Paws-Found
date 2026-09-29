@@ -4,13 +4,7 @@ import { Check, Maximize2, X } from 'lucide-react'
 import photoPlaceholder from '@/assets/pet-photo-placeholder.png'
 import { PhotoLightbox } from '@/components/PhotoLightbox'
 import { ReportTypeBadge } from '@/components/ReportTypeBadge'
-import {
-  MATCH_STATUSES,
-  MATCH_STATUS_LABELS,
-  PET_SIZE_LABELS,
-  REPORT_TYPES,
-  speciesLabel,
-} from '@/constants'
+import { MATCH_STATUSES, MATCH_STATUS_LABELS, PET_SIZE_LABELS, REPORT_TYPES, speciesLabel } from '@/constants'
 import { cn } from '@/utils/cn'
 import { formatDate, formatShortDate } from '@/utils/date'
 
@@ -99,8 +93,10 @@ const STAFF_STAGES = {
   [MATCH_STATUSES.DISMISSED]: ['bg-status-closed-soft text-fg', 'Ruled out · by the reporter'],
 }
 
-export function MatchStatusBadge({ status, className }) {
-  const [style, label] = STAFF_STAGES[status] ?? ['bg-surface-muted text-fg-muted', status]
+export function MatchStatusBadge({ status, withdrawn = false, className }) {
+  const [style, label] = withdrawn
+    ? ['bg-status-closed-soft text-fg', 'Withdrawn · a report was finished']
+    : (STAFF_STAGES[status] ?? ['bg-surface-muted text-fg-muted', status])
   return (
     <span className={cn('rounded-pill px-3 py-1 text-sm font-medium', style, className)}>{label}</span>
   )

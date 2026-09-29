@@ -4,7 +4,7 @@ import { ArrowRight, CircleX, Heart, HeartHandshake, Hourglass } from 'lucide-re
 import { Button, EmptyState, LoadingSkeleton } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { MatchPairCard, MatchStatusBadge, StatusStrip } from '@/components/MatchComparison'
-import { MATCH_STATUSES } from '@/constants'
+import { MATCH_STATUSES, wasWithdrawn } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
 import { matchService } from '@/services'
 import { cn } from '@/utils/cn'
@@ -115,7 +115,7 @@ export function StaffMatchesPage() {
                   match={match}
                   lost={lostReport}
                   found={foundReport}
-                  badge={<MatchStatusBadge status={match.status} />}
+                  badge={<MatchStatusBadge status={match.status} withdrawn={wasWithdrawn(match.status, lostReport, foundReport)} />}
                 >
                   <QueueOutcome match={match} lost={lostReport} found={foundReport} />
                 </MatchPairCard>
@@ -171,12 +171,15 @@ function QueueOutcome({ match, lost, found }) {
         <div className="flex items-start gap-3 rounded-card border border-border bg-surface px-4 py-3">
           <CircleX size={20} className="mt-0.5 shrink-0 text-fg-muted" aria-hidden="true" />
           <div className="flex flex-col gap-0.5">
-            <p className="font-semibold text-fg">Ruled out</p>
+            <p className="font-semibold text-fg">
+              {wasWithdrawn(match.status, lost, found) ? 'Withdrawn' : 'Ruled out'}
+            </p>
             <p className="text-sm text-fg">
               {match.status === MATCH_STATUSES.REJECTED
-                ? 'A coordinator decided these are not the same pet.'
-                : 'One of the reporters said this is not their pet.'}{' '}
-              Both reports carry on being searched and matched.
+                ? 'A coordinator decided these are not the same pet. Both reports carry on being searched and matched.'
+                : wasWithdrawn(match.status, lost, found)
+                  ? 'One of the reports was marked returned or closed, so this pairing is no longer open. Nobody ruled it out.'
+                  : 'One of the reporters said this is not their pet. Both reports carry on being searched and matched.'}
             </p>
           </div>
         </div>

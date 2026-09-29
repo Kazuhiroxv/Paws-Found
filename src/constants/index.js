@@ -207,3 +207,17 @@ export const PROJECT_CONTACT_EMAIL = 'pawsandfound.ph@gmail.com'
  * reaches nobody, so the name is shown with PROJECT_CONTACT_EMAIL instead.
  */
 export const PROJECT_ADMINISTRATOR_NAME = 'Grace Bautista'
+
+/**
+ * Whether a dismissed pairing was withdrawn rather than turned down.
+ *
+ * Finishing a report (Returned or Closed) withdraws its open pairings, and the
+ * database stores those as dismissed, the same as a reporter's "Not my pet".
+ * A finished report on either side tells them apart: a reporter's dismissal
+ * leaves both reports open. (If a reporter dismissed it and then finished the
+ * report too, "withdrawn" is still true of it.)
+ */
+export function wasWithdrawn(status, lost, found) {
+  const finished = [REPORT_STATUSES.RETURNED, REPORT_STATUSES.CLOSED]
+  return status === MATCH_STATUSES.DISMISSED && [lost, found].some((report) => finished.includes(report?.status))
+}

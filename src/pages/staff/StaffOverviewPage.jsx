@@ -8,15 +8,7 @@ import { MatchStatusBadge, PairingName } from '@/components/MatchComparison'
 import { StatusBadge } from '@/components/StatusBadge'
 import { BreakdownBars } from '@/components/BreakdownBars'
 import { ReportTypeBadge } from '@/components/ReportTypeBadge'
-import {
-  MATCH_STATUSES,
-  MATCH_STATUSES_AWAITING_STAFF,
-  REPORT_STATUSES,
-  REPORT_STATUS_BARS,
-  REPORT_STATUS_LABELS,
-  REPORT_STATUS_ORDER,
-  speciesLabel,
-} from '@/constants'
+import { MATCH_STATUSES, MATCH_STATUSES_AWAITING_STAFF, REPORT_STATUS_BARS, REPORT_STATUS_LABELS, REPORT_STATUS_ORDER, REPORT_STATUSES, speciesLabel, wasWithdrawn } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
 import { matchService, petService } from '@/services'
 import { formatRelativeTime } from '@/utils/date'
@@ -200,7 +192,11 @@ function AttentionRow({ match, lostReport, foundReport, to, actionLabel, primary
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
-          <MatchStatusBadge status={match.status} className="px-2.5 py-0.5 text-xs" />
+          <MatchStatusBadge
+            status={match.status}
+            withdrawn={wasWithdrawn(match.status, lostReport, foundReport)}
+            className="px-2.5 py-0.5 text-xs"
+          />
           <span className="text-sm text-fg-muted">
             <span className="font-semibold text-fg tabular-nums">{match.score}%</span> compatibility
           </span>

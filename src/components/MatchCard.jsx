@@ -3,7 +3,7 @@ import { Check, X } from 'lucide-react'
 import photoPlaceholder from '@/assets/pet-photo-placeholder.png'
 import { Card, CardBody, CardFooter, CardHeader } from '@/components/ui'
 import { ReportTypeBadge } from './ReportTypeBadge'
-import { MATCH_STATUSES, MATCH_STATUS_LABELS, speciesLabel } from '@/constants'
+import { MATCH_STATUS_LABELS, MATCH_STATUSES, speciesLabel, wasWithdrawn } from '@/constants'
 import { formatDate } from '@/utils/date'
 import { cn } from '@/utils/cn'
 
@@ -48,7 +48,11 @@ export function MatchCard({ match, lostReport, foundReport, actions, headingAs =
         title="Possible match"
         action={
           !match.isSuggestion && (
-            <span className="text-sm text-fg-muted">{MATCH_STATUS_LABELS[match.status]}</span>
+            <span className="text-sm text-fg-muted">
+              {wasWithdrawn(match.status, lostReport, foundReport)
+                ? 'Withdrawn · a report was finished'
+                : MATCH_STATUS_LABELS[match.status]}
+            </span>
           )
         }
       />
