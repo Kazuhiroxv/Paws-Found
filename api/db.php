@@ -70,6 +70,13 @@ function db(): PDO
         PDO::ATTR_EMULATE_PREPARES => false,
     ]);
 
+    // Timestamps in UTC on every connection. The columns are TIMESTAMP, which
+    // MySQL hands back in the connection's time zone with no marker: Railway's
+    // was UTC and XAMPP's the computer's (+08:00), so the same instant came
+    // back as two different strings. The frontend reads these as UTC
+    // (src/utils/date.js). A no-op where the server is already UTC.
+    $pdo->exec("SET time_zone = '+00:00'");
+
     db_connected(true);
 
     return $pdo;

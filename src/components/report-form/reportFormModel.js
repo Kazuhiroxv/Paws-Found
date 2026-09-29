@@ -1,4 +1,5 @@
 import { PET_SEXES, REPORT_TYPES } from '@/constants'
+import { parseDateTime, todayAsInputValue } from '@/utils/date'
 
 /**
  * The shape, limits and rules of a lost/found report form.
@@ -163,10 +164,13 @@ export function validateStep(stepId, values) {
     if (required(values.incidentDate)) {
       errors.incidentDate = isFound ? 'Enter the date you found the pet.' : 'Enter the date your pet went missing.'
     } else {
-      const date = new Date(values.incidentDate)
+      const date = parseDateTime(values.incidentDate)
       if (Number.isNaN(date.getTime())) {
         errors.incidentDate = 'Enter a valid date.'
-      } else if (date > new Date()) {
+      } else if (values.incidentDate > todayAsInputValue()) {
+        // Calendar day against calendar day, the same "today" as the date
+        // input's own max. Read as a moment it was UTC midnight, 8 AM in the
+        // Philippines, so a report dated today was refused every morning.
         errors.incidentDate = 'The date cannot be in the future.'
       }
     }

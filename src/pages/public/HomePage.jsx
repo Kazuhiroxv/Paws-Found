@@ -34,7 +34,7 @@ import { REPORT_STATUSES, REPORT_TYPE_LABELS, speciesLabel } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
 import { categoryService, petService } from '@/services'
 import { optionsFromLabels } from '@/utils/options'
-import { formatDate } from '@/utils/date'
+import { formatDate, parseDateTime } from '@/utils/date'
 import { cn } from '@/utils/cn'
 
 /**
@@ -847,7 +847,7 @@ function daysToReunion(report) {
   )
   if (!returned) return null
 
-  const ms = new Date(returned.createdAt) - new Date(report.incidentDate)
+  const ms = parseDateTime(returned.createdAt) - parseDateTime(report.incidentDate)
   if (Number.isNaN(ms) || ms < 0) return null
   return Math.max(1, Math.round(ms / 86400000))
 }

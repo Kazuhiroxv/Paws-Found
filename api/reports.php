@@ -1094,7 +1094,7 @@ function report_validated(array $v, string $type, ?string $phone, bool $phoneAsk
     $date = $text('incident_date');
     if (!is_valid_date($date)) {
         $errors['incident_date'] = 'Enter a valid date.';
-    } elseif ($date > date('Y-m-d')) {
+    } elseif ($date > app_today()) {
         $errors['incident_date'] = 'The date cannot be in the future.';
     }
 

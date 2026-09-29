@@ -1418,6 +1418,27 @@ def repeat_matching():
     check(C, 'MG-11', 'The earlier pairing with A stays dismissed', 'dismissed', old, old == 'dismissed')
 
 
+def calendar_dates():
+    """An incident date is a Philippine calendar day, whatever zone the server is in.
+
+    The API compared with the server's own date, and the server runs in UTC,
+    which is behind Manila until 8 AM: a report dated today was refused as
+    future every morning. The exact boundary is tested with an injected clock
+    in `npm run test:calendar`; these check the live API on the real clock.
+    """
+    import datetime as dt
+    C = 'Q. Calendar dates'
+    manila = dt.datetime.now(dt.timezone(dt.timedelta(hours=8))).date()
+    for tid, days, expected, label in [
+        ('CD-01', 0, 200, "today's date in Manila is accepted"),
+        ('CD-02', -1, 200, "yesterday's date is accepted"),
+        ('CD-03', 1, 422, "tomorrow's date is refused as future"),
+    ]:
+        day = (manila + dt.timedelta(days=days)).isoformat()
+        _, code = file_report('customer', incident_date=day, city='Audit Calendar City')
+        check(C, tid, f'A report dated {label}', str(expected), str(code), code == expected)
+
+
 def error_handling():
     C = 'H. Error handling'
     status(C, 'EH-01', 'A report that does not exist', 'guest', 'GET', '/reports/99999', None, 404)
@@ -1526,6 +1547,7 @@ if __name__ == '__main__':
     final_integrity()
     match_rejection()
     repeat_matching()
+    calendar_dates()
     total, passed = report()
 
     reseed()

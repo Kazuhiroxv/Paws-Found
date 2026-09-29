@@ -35,7 +35,7 @@ from Docker when pointing at Railway.
 
 ESLint over everything; Vite production build. Touch nothing, need nothing.
 
-### `npm run test:contract` — 15 checks
+### `npm run test:contract` — 21 checks
 
 Node's built-in test runner. **No server, no database.** These exist because
 two real defects got through every other suite by being *agreements between two
@@ -48,6 +48,19 @@ returns.
 back to the page they were headed for only when their role can open it. Signing
 out inside a workspace leaves that workspace as the way back, and the next
 person on the same browser may hold a different role.
+
+`dates.test.mjs` adds six, with the zone pinned to Asia/Manila. The API sends
+a recorded moment (`created_at` and the like) as `2026-09-29 12:38:00` in UTC
+with no zone on it, and every connection now uses UTC (`api/db.php`), so
+local and production send the same thing. Read as local time it was eight
+hours out: a notification five minutes old said "8 hours ago" and a reply at
+8:38 PM said 12:38 PM. They check it reads as 8:38 PM and "5 minutes ago";
+that an ISO value carrying its zone is read as it says; and that an incident
+date such as `2026-09-24` stays on the 24th, also in a zone behind UTC, where
+it used to show the 23rd. And with the clock pinned at 06:00 in Manila (22:00
+UTC the day before), the report form accepts a report dated today and refuses
+tomorrow; it used to read today as UTC midnight, 8 AM in Manila, and refuse it
+every morning. Against the previous code, five of the six fail.
 
 **Mutates nothing.**
 
@@ -97,6 +110,7 @@ The security and functional suite, against the running API and database.
 | N. Final integrity | 38 |
 | O. Match rejection | 24 |
 | P. Repeat matching | 11 |
+| Q. Calendar dates | 3 |
 
 `RA-01`–`RA-27` pin down who receives what. A guest's list row is exactly the
 public summary, a guest opening a report gets `401 auth_required` (a missing
@@ -217,6 +231,18 @@ skipped rather than reporting a failure it did not observe. Both run for real
 locally.
 
 **Mutates data.** Restores at the end.
+
+### `npm run test:calendar` — 8 checks
+
+Which day "today" is, and which zone the database speaks. An incident date is
+a Philippine calendar day but the server runs in UTC, which is still on
+yesterday until 8 AM in Manila, so the API refused a report dated today every
+morning. `app_today()` (api/helpers.php) answers on the Manila calendar with
+an injectable clock: at 22:00 UTC on the 29th it is the 30th, a report dated
+the 30th is accepted and the 1st is refused, and PHP's own time zone is left
+alone. The last check asks the database: every connection is `+00:00` and
+`NOW()` equals UTC. Audit section `Q` checks the same on the live API with the
+real clock. Needs `php` on PATH and the local database; **changes no data**.
 
 ### `npm run test:matching-log` — 6 checks
 
@@ -360,7 +386,8 @@ everything passes.
 ```
 lint                                     clean
 build                                    green
-test:contract                            15/15
+test:contract                            21/21
+test:calendar                             8/8
 test:mail                                15/15
 audit                                   334/334
 auth_lifecycle                           53/53

@@ -3,13 +3,43 @@
  * value stays locale-independent.
  */
 
+const SERVER_TIMESTAMP = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/
+const CALENDAR_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * Turn whatever the API or a form hands over into a Date, by what it means.
+ *
+ *   "2026-09-29 12:38:00"  a moment the server recorded (created_at and the
+ *                          like). The API sends these in UTC without saying
+ *                          so; read as local time they were eight hours out
+ *                          in the Philippines ("8 hours ago" for something
+ *                          five minutes old).
+ *   "2026-09-24"           a calendar day (an incident date): that day at
+ *                          local midnight, so it never shifts to another day.
+ *   anything else          as the browser reads it (ISO strings with Z, Dates).
+ *
+ * @param {string|Date|null|undefined} value
+ * @returns {Date}  Invalid Date when the value cannot be read.
+ */
+export function parseDateTime(value) {
+  if (value instanceof Date) return value
+  if (typeof value === 'string' && SERVER_TIMESTAMP.test(value)) {
+    return new Date(`${value.replace(' ', 'T')}Z`)
+  }
+  if (typeof value === 'string' && CALENDAR_DATE.test(value)) {
+    const [year, month, day] = value.split('-').map(Number)
+    return new Date(year, month - 1, day)
+  }
+  return new Date(value)
+}
+
 /**
  * @param {string|Date|null|undefined} value
  * @returns {string} e.g. "August 12, 2026", or "" when there is no value.
  */
 export function formatDate(value) {
   if (!value) return ''
-  const date = new Date(value)
+  const date = parseDateTime(value)
   if (Number.isNaN(date.getTime())) return ''
   return date.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
 }
@@ -20,7 +50,7 @@ export function formatDate(value) {
  */
 export function formatDateTime(value) {
   if (!value) return ''
-  const date = new Date(value)
+  const date = parseDateTime(value)
   if (Number.isNaN(date.getTime())) return ''
   return date.toLocaleString('en-PH', {
     year: 'numeric',
@@ -40,7 +70,7 @@ export function formatDateTime(value) {
  * @param {Date} [now]  Injectable, so the output is predictable in a test.
  */
 export function formatRelativeTime(value, now = new Date()) {
-  const date = new Date(value)
+  const date = parseDateTime(value)
   if (Number.isNaN(date.getTime())) return ''
 
   const seconds = Math.round((now.getTime() - date.getTime()) / 1000)
@@ -68,7 +98,7 @@ export function formatRelativeTime(value, now = new Date()) {
  */
 export function formatShortDate(value, now = new Date()) {
   if (!value) return ''
-  const date = new Date(value)
+  const date = parseDateTime(value)
   if (Number.isNaN(date.getTime())) return ''
   const sameYear = date.getFullYear() === now.getFullYear()
   return date.toLocaleDateString('en-PH', {
@@ -88,7 +118,7 @@ export function formatShortDate(value, now = new Date()) {
  * @param {Date} [now]
  */
 export function formatCardDate(value, now = new Date()) {
-  const date = new Date(value)
+  const date = parseDateTime(value)
   if (Number.isNaN(date.getTime())) return ''
   const days = (now.getTime() - date.getTime()) / 86400000
   return days < 30 ? formatRelativeTime(date, now) : formatShortDate(date, now)

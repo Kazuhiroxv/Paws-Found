@@ -11,6 +11,7 @@ import { useAsync } from '@/hooks/useAsync'
 import { userService } from '@/services'
 import { optionsFromLabels } from '@/utils/options'
 import { AccountStatusBadge } from './AdminBadges'
+import { parseDateTime } from '@/utils/date'
 
 /**
  * When an account was created, always with the year: accounts span years, and
@@ -18,7 +19,7 @@ import { AccountStatusBadge } from './AdminBadges'
  */
 const joinedOn = (value) =>
   value
-    ? new Date(value).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+    ? parseDateTime(value).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
     : ''
 
 async function loadUsers() {

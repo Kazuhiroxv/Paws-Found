@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { NOTIFICATION_TYPES } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
 import { notificationService, userService } from '@/services'
-import { formatRelativeTime } from '@/utils/date'
+import { formatRelativeTime, parseDateTime } from '@/utils/date'
 import { cn } from '@/utils/cn'
 import emptyNoNotifications from '@/assets/empty-no-notifications.webp'
 
@@ -287,7 +287,7 @@ function groupByAge(notifications, now = new Date()) {
   ]
 
   for (const notification of notifications) {
-    const age = now.getTime() - new Date(notification.createdAt).getTime()
+    const age = now.getTime() - parseDateTime(notification.createdAt).getTime()
     const index = age < dayInMs ? 0 : age < 7 * dayInMs ? 1 : 2
     groups[index].items.push(notification)
   }

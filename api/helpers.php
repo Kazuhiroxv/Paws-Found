@@ -117,6 +117,24 @@ function require_one_of(?string $value, array $allowed, string $field): ?string
  * This is what makes a required note of spaces fail validation rather than be
  * stored as '   '.
  */
+/**
+ * Today on the calendar the reporters use.
+ *
+ * An incident date is a Philippine calendar day. The server runs in UTC, which
+ * is still on yesterday until 8 AM in Manila, so comparing with date('Y-m-d')
+ * refused a report dated today every morning as "in the future". Timestamps
+ * stay UTC (api/db.php); only this calendar question is asked in Manila. PHP
+ * carries its own zone data, so nothing on the host is needed for it.
+ *
+ * @param DateTimeImmutable|null $now  Injectable, so the boundary can be tested.
+ */
+function app_today(?DateTimeImmutable $now = null): string
+{
+    return ($now ?? new DateTimeImmutable('now'))
+        ->setTimezone(new DateTimeZone('Asia/Manila'))
+        ->format('Y-m-d');
+}
+
 function blank_to_null(mixed $value): ?string
 {
     if ($value === null) {
