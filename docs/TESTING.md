@@ -15,7 +15,7 @@ Run the rest before any push. Run `verify:deploy` after any deploy.
 | `lint`, `build`, `test:contract` | Node 20+. Nothing running. |
 | `test:mail` | **`php` on PATH.** XAMPP installs PHP but does not add it — add `C:\xampp\php` and open a new terminal. Symptom otherwise: `'php' is not recognized`, which says nothing about mail. One check reaches `api.brevo.com` over 443. |
 | `audit`, `multi-device`, `auth_lifecycle` | Python 3, Apache running, MySQL running. **XAMPP here runs MySQL on port 3307**, not 3306. |
-| `a11y`, `test:signout` | The dev build; Chrome. |
+| `a11y`, `test:signout`, `test:ui` | The dev build; Chrome. |
 | `verify:deploy` | Python 3 and a reachable deployment. |
 | Docker build | Docker Desktop running. |
 
@@ -193,6 +193,20 @@ skipped rather than reporting a failure it did not observe. Both run for real
 locally.
 
 **Mutates data.** Restores at the end.
+### `npm run test:ui` — 14 checks
+
+Two interface regressions from final manual testing, in a real Chrome.
+`MOD-LINK-1`–`4`: on Administrator > Moderation, "Open the full report" is a
+real link (it used to be a span sitting over the title's stretched link and
+swallowing the click), reachable with Tab and opened with Enter; the title
+opens the same report; the decision note and the tabs do not navigate.
+`REG-1`–`10`: registration marks nothing on a fresh form or while a field is
+being typed, says what is wrong once a field is left, clears it as soon as
+it is fixed, blocks a submit with a bad email without sending it, and the API
+still refuses that email when it is sent by hand.
+
+**Mutates nothing** (the one hand-built registration is refused).
+`PAWS_BASE=http://localhost:5173 PAWS_PW=<password> npm run test:ui`.
 
 ### `npm run test:signout` — 23 checks
 
@@ -307,6 +321,7 @@ audit                                   299/299
 auth_lifecycle                           53/53
 multi-device                             55/55   (53/53 + 2 skipped vs a remote)
 test:signout                             23/23
+test:ui                                  14/14
 a11y                                     31 pages, 0 violations
 docker build --pull --no-cache           clean, curl present, one MPM, Syntax OK
 verify:deploy vs production              25/25 + 3 skipped (read-only default)

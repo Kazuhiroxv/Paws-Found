@@ -172,6 +172,7 @@ with the password itself. On a built site everyone signs in through the form.
 | `npm run test:contract` | 15 checks of the form/API contract and the sign-in destination — needs nothing running |
 | `npm run test:mail` | 15 checks of the mail transports (needs `php` on PATH) |
 | `npm run multi-device` | 55 checks across three independent sessions |
+| `npm run test:ui` | 14 browser checks: the moderation report link and registration's field feedback (same `PAWS_BASE`, `PAWS_PW`) |
 | `npm run test:signout` | 23 browser privacy checks: signing out, switching accounts, the guest map, in a real Chrome (`PAWS_BASE=http://localhost:5173`, `PAWS_PW` set to the password above) |
 | `npm run a11y` | axe-core over all 31 pages in every role (`PAWS_BASE=http://localhost:5173` for the dev build) |
 | `npm run verify:deploy <url>` | 28 checks that only fail on a real host |

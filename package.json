@@ -15,6 +15,7 @@
     "test:mail": "php scripts/mail_transport.php",
     "multi-device": "python scripts/multi_device.py",
     "test:signout": "node scripts/signout_privacy.mjs",
+    "test:ui": "node scripts/ui_regressions.mjs",
     "verify:deploy": "python scripts/verify_deployment.py",
     "test:contract": "node --import ./scripts/alias-hook.mjs --test scripts/*.test.mjs"
   },

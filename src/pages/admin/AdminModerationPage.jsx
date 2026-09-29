@@ -271,10 +271,17 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
                 )}
               </p>
               <p className="line-clamp-2 text-sm text-fg-muted">{report.description}</p>
-              <span className="relative text-sm font-medium text-brand">
+              {/* A link of its own. As a positioned span it sat above the
+                  title's stretched overlay and swallowed the click while doing
+                  nothing itself. `relative` keeps it above the overlay; it is a
+                  sibling of the title link, never inside it. */}
+              <Link
+                to={`/pet/${report.id}`}
+                className="relative self-start text-sm font-medium text-brand hover:underline"
+              >
                 Open the full report
                 <ArrowRight size={14} className="ml-1 inline" aria-hidden="true" />
-              </span>
+              </Link>
             </div>
           </div>
         </div>

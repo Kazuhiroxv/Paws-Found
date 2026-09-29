@@ -25,6 +25,13 @@ import { cn } from '@/utils/cn'
  * The API validates every field regardless of what this form checks; the checks
  * here exist to answer faster, not to be the ones that count.
  */
+/**
+ * Something@something.something, with no spaces. Deliberately loose: it catches
+ * a missing @ or domain as the person types, and the API's stricter check
+ * (FILTER_VALIDATE_EMAIL) still decides.
+ */
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 export function RegisterPage() {
   const [form, setForm] = useState({
     fullName: '',
@@ -46,6 +53,24 @@ export function RegisterPage() {
   const [error, setError] = useState(null)
   // Keyed by the API's field names, so a 422 marks the right inputs.
   const [fieldErrors, setFieldErrors] = useState({})
+  // Fields the person has left at least once. Nothing is marked wrong on a
+  // fresh form or while the first attempt is still being typed; after a field
+  // has been left, it is re-checked as it changes, so a fix clears at once.
+  const [touched, setTouched] = useState({})
+  const leave = (field) => setTouched((current) => ({ ...current, [field]: true }))
+
+  // The same rules as the API (api/auth.php), said sooner. The API still
+  // checks everything, and its answer wins when it arrives.
+  const problems = {
+    full_name: form.fullName.trim() === '' ? 'Enter your name.' : null,
+    email:
+      form.email.trim() === ''
+        ? 'Enter your email address.'
+        : !EMAIL_SHAPE.test(form.email.trim())
+          ? 'Enter a valid email address, such as name@example.com.'
+          : null,
+  }
+  const shown = (apiField, field) => fieldErrors[apiField] ?? (touched[field] ? problems[apiField] : null)
 
   const change = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }))
@@ -55,6 +80,14 @@ export function RegisterPage() {
 
   const submit = async (event) => {
     event.preventDefault()
+
+    // Submitting counts as leaving every field: anything still wrong is shown,
+    // and nothing is sent.
+    if (problems.full_name || problems.email) {
+      setTouched({ fullName: true, email: true })
+      return
+    }
+
     setIsSubmitting(true)
     setError(null)
     setFieldErrors({})
@@ -128,7 +161,7 @@ export function RegisterPage() {
 
       <Card>
         <CardBody>
-          <form onSubmit={submit} className="flex flex-col gap-4">
+          <form onSubmit={submit} noValidate className="flex flex-col gap-4">
             <RequiredNote className="text-sm text-fg-muted" />
 
             <Input
@@ -137,7 +170,8 @@ export function RegisterPage() {
               placeholder="e.g. Maria Santos"
               value={form.fullName}
               onChange={(event) => change('fullName', event.target.value)}
-              error={fieldErrors.full_name}
+              onBlur={() => leave('fullName')}
+              error={shown('full_name', 'fullName')}
               maxLength={120}
               required
               hint="Shown on the reports you file."
@@ -149,7 +183,8 @@ export function RegisterPage() {
               placeholder="you@example.com"
               value={form.email}
               onChange={(event) => change('email', event.target.value)}
-              error={fieldErrors.email}
+              onBlur={() => leave('email')}
+              error={shown('email', 'email')}
               maxLength={190}
               required
             />
