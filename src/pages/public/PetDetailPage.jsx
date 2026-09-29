@@ -652,7 +652,10 @@ export function PetDetailPage({ role }) {
                 </Button>
                 <p className="text-sm text-fg-muted">
                   Closing stops it being compared against new reports. It stays visible
-                  with a Closed status. To change the details, use Edit on My Reports.
+                  with a Closed status.{' '}
+                  {report.status === REPORT_STATUSES.POSSIBLE_MATCH
+                    ? 'Its details cannot be changed while a possible match is open.'
+                    : 'To change the details, use Edit on My Reports.'}
                 </p>
               </CardBody>
             </Card>

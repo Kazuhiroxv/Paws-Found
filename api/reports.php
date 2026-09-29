@@ -363,6 +363,18 @@ function report_update(int $id): never
         throw $exception;
     }
 
+    // Compare the report again, as it now reads. Only an Active report reaches
+    // here (report_open_for_owner), so there is no open pairing to go stale.
+    // Pairings already decided are left as they were: a pair is never
+    // suggested twice. After the commit and in its own try, as on filing: the
+    // edit is saved whatever the comparison does.
+    try {
+        require_once __DIR__ . '/matching.php';
+        generate_matches_for_report($id);
+    } catch (Throwable $exception) {
+        error_log('[pawsandfound] matching failed for report ' . $id . ' after an edit: ' . $exception->getMessage());
+    }
+
     report_detail($id);
 }
 
@@ -989,6 +1001,20 @@ function report_open_for_owner(int $id, array $user, string $notOwner): array
             . '”, and a finished report can no longer be edited.',
             409,
             ['status' => $report['status']]
+        );
+    }
+
+    // Frozen, photographs included, while a possible match is open. A pairing's
+    // score and its seven signals describe the report as it was compared; an
+    // edit underneath them left a coordinator reading "Both reports describe a
+    // dog" beside a report that now said turtle. Once every open pairing is
+    // settled the report is Active again, editable, and compared afresh.
+    if ($report['status'] === 'possible_match') {
+        json_error(
+            'This report has an open possible match. Review or resolve the match before '
+            . 'editing the report details.',
+            409,
+            ['status' => $report['status'], 'code' => 'match_open']
         );
     }
 

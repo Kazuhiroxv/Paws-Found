@@ -80,6 +80,32 @@ export function EditReportPage() {
     )
   }
 
+  // Paused, not finished: while a possible match is open the report is frozen,
+  // so the pairing's score and reasons keep describing what is being verified.
+  // The API answers 409 as well; this says why and where to go instead.
+  if (report.status === REPORT_STATUSES.POSSIBLE_MATCH) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title="Editing is paused" />
+        <EmptyState
+          icon={Lock}
+          title="This report has an open possible match"
+          description="Review or resolve the match before editing the report details. Its score and reasons describe the report as it is now, and changing the details underneath a pairing being checked would make them wrong. Once no match is open, the report is Active again and can be edited."
+          action={
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Button as={Link} to="/dashboard/matches">
+                Review the match
+              </Button>
+              <Button as={Link} to={`/pet/${report.id}`} variant="secondary">
+                View the report
+              </Button>
+            </div>
+          }
+        />
+      </div>
+    )
+  }
+
   // A returned or closed case no longer accepts edits, and the API answers 409
   // if one is attempted. Reaching this page by typing the address is the only
   // way to get here now, so it explains rather than simply failing on save.

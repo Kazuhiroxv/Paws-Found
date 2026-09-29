@@ -1009,10 +1009,12 @@ def information_reply():
 def report_editing():
     """If the edit form lets the owner change a field, the change must persist."""
     C = 'L. Report editing'
+    # Filed where no seeded report is near, so it stays Active: a report with
+    # an open possible match is frozen, and this section edits it freely.
     rid, _ = file_report('customer', pet_name='Audit Edit', species='dog', breed='Beagle',
                          sex='male', has_collar='no', incident_date='2026-09-01', incident_time='08:00',
-                         location_label='Near the old chapel', city='Pasig City', province='Metro Manila',
-                         lat=14.5601, lng=121.0801, allow_platform_contact=True)
+                         location_label='Near the old chapel', city='Tuguegarao City', province='Cagayan',
+                         lat=17.6132, lng=121.7270, allow_platform_contact=True)
     path = f'/reports/{rid}'
     loc_before = sql(f'SELECT location_id FROM pet_reports WHERE report_id = {rid};')
     locations_before = sql('SELECT COUNT(*) FROM locations;')
@@ -1020,8 +1022,11 @@ def report_editing():
     code, _ = session('customer').call('PUT', path, {
         'species': 'cat', 'breed': 'Persian', 'sex': 'female', 'has_collar': 'yes',
         'incident_date': '2026-09-03', 'incident_time': '19:45',
-        'location_label': 'Behind the public market', 'city': 'Marikina City', 'province': 'Metro Manila',
-        'lat': 14.6507, 'lng': 121.1029,
+        # Somewhere no seeded report is near: an Active report is compared
+        # again after an edit, and a pairing would freeze it for the photo
+        # checks below. This section is about edits persisting, not matching.
+        'location_label': 'Behind the public market', 'city': 'Basco', 'province': 'Batanes',
+        'lat': 20.4487, 'lng': 121.9702,
         'allow_platform_contact': False, 'show_phone': True, 'show_email': True,
     })
     check(C, 'ED-01', 'The owner saves an edit to every field group', 200, code, code == 200)
@@ -1036,8 +1041,8 @@ def report_editing():
         ('ED-04', 'Collar answer persists', 'r.has_collar', 'yes'),
         ('ED-05', 'Date and time persist', 'CONCAT(r.incident_date, " ", r.incident_time)', '2026-09-03 19:45:00'),
         ('ED-06', 'Label, city and province persist',
-         'CONCAT_WS("|", l.label, l.city, l.province)', 'Behind the public market|Marikina City|Metro Manila'),
-        ('ED-07', 'The map pin persists exactly', 'CONCAT(l.latitude, ",", l.longitude)', '14.650700,121.102900'),
+         'CONCAT_WS("|", l.label, l.city, l.province)', 'Behind the public market|Basco|Batanes'),
+        ('ED-07', 'The map pin persists exactly', 'CONCAT(l.latitude, ",", l.longitude)', '20.448700,121.970200'),
         ('ED-08', 'Contact choices persist', 'CONCAT(r.allow_platform_contact, r.show_phone, r.show_email)', '011'),
     ]:
         got = col(expr)
@@ -1118,7 +1123,10 @@ def qa_rules():
     C = 'M. Report QA rules'
     _, code = file_report('finder', report_type='found', pet_name=None, has_collar=None)
     check(C, 'QA-01', 'A found report must answer the collar question', 422, code, code == 422)
-    rid, code = file_report('finder', report_type='found', pet_name=None, has_collar='unknown')
+    # A city of its own, so the report stays Active and can be edited: one with
+    # an open possible match is frozen, which is tested separately (EM-).
+    rid, code = file_report('finder', report_type='found', pet_name=None, has_collar='unknown',
+                            city='Audit QA City')
     check(C, 'QA-02', '"Not sure" is a valid, deliberate answer', 200, code, code == 200)
     status(C, 'QA-03', "A found report's collar answer cannot be blanked on edit", 'finder', 'PUT',
            f'/reports/{rid}', {'has_collar': ''}, 422)
@@ -1127,7 +1135,7 @@ def qa_rules():
     check(C, 'QA-04', 'A report nobody can reach is refused', 422, code, code == 422)
     _, code = file_report('customer', allow_platform_contact=False, show_email=True)
     check(C, 'QA-05', 'Any one way is enough (email only)', 200, code, code == 200)
-    mine, _ = file_report('customer')
+    mine, _ = file_report('customer', city='Audit QA Contact City')
     status(C, 'QA-06', 'An edit cannot switch off every way', 'customer', 'PUT', f'/reports/{mine}',
            {'allow_platform_contact': False, 'show_phone': False, 'show_email': False}, 422)
     kept = sql(f'SELECT CONCAT(allow_platform_contact, show_phone, show_email) FROM pet_reports WHERE report_id = {mine};')
@@ -1174,7 +1182,7 @@ def final_integrity():
     _, code = file_report('customer', lat=123.4, lng=121.0)
     check(C, 'FI-16', 'An impossible map pin is refused', 422, code, code == 422)
 
-    rid, _ = file_report('customer')
+    rid, _ = file_report('customer', city='Audit Edit Rules City')   # stays Active, so editable
     path = f'/reports/{rid}'
     status(C, 'FI-17', 'An edit cannot blank a required field', 'customer', 'PUT', path, {'description': '  '}, 422)
     status(C, 'FI-18', 'An edit cannot leave neither breed nor feature', 'customer', 'PUT', path,
@@ -1464,6 +1472,110 @@ def city_names():
     check(C, 'RC-02', 'The same names in different provinces: not paired', 'none', other or 'none', not other)
 
 
+def edit_while_matched():
+    """A report is frozen while a possible match is open, and compared again after an edit.
+
+    A pairing's score and seven signals describe the reports as they were
+    compared. Editing a report underneath an open pairing left a coordinator
+    reading "Both reports describe a dog" beside a report that now said turtle.
+    Now a report with an open possible match refuses edits and photo changes
+    (409); once every open pairing is settled it is Active again, and an edit
+    runs the comparison afresh on the new details. Decided pairings are never
+    rewritten or resurrected.
+    """
+    C = 'S. Editing and matching'
+    dog = dict(species='dog', breed='Shih Tzu', size='small', sex='male', primary_color='Brown',
+               distinct_features='White chest patch, one floppy ear')
+
+    def status_of(report):
+        return sql(f'SELECT status FROM pet_reports WHERE report_id = {report};')
+
+    def pairing(lost, found):
+        return sql(f'SELECT match_id FROM match_claims WHERE lost_report_id = {lost} AND found_report_id = {found};')
+
+    # EM-01: an Active report with no open match can be edited.
+    alone, _ = file_report('customer', city='Audit Alone City', **dog)
+    status(C, 'EM-01', 'An Active report with no open match can be edited', 'customer', 'PUT',
+           f'/reports/{alone}', {'description': 'Edited while nothing is open.'}, 200)
+
+    # The reported bug: a dog/Shih Tzu pair, then the found report edited into a turtle.
+    city = 'Audit Freeze City'
+    lost, _ = file_report('customer', incident_date='2026-09-10', city=city, **dog)
+    found, _ = file_report('finder', report_type='found', pet_name=None, incident_date='2026-09-11', city=city, **dog)
+    m = pairing(lost, found)
+    before = sql(f"SELECT CONCAT(r.status,'/',c.category_code,'/',b.breed_name) FROM pet_reports r "
+                 f"JOIN pet_categories c ON c.category_id=r.category_id LEFT JOIN pet_breeds b ON b.breed_id=r.breed_id "
+                 f"WHERE r.report_id={found};")
+    check(C, 'EM-02', '(a dog/Shih Tzu pair is suggested; the found report is Possible Match)', 'possible_match/dog/Shih Tzu',
+          before, bool(m) and before == 'possible_match/dog/Shih Tzu')
+
+    code, body = session('finder').call('PUT', f'/reports/{found}', {'species': 'other', 'breed': 'turtle'})
+    check(C, 'EM-03', 'Editing it while the match is open is refused (409)', 409, code, code == 409)
+    after = sql(f"SELECT CONCAT(c.category_code,'/',b.breed_name) FROM pet_reports r "
+                f"JOIN pet_categories c ON c.category_id=r.category_id LEFT JOIN pet_breeds b ON b.breed_id=r.breed_id "
+                f"WHERE r.report_id={found};")
+    check(C, 'EM-04', '...and the report still reads dog/Shih Tzu, as its pairing says', 'dog/Shih Tzu', after,
+          after == 'dog/Shih Tzu')
+
+    body_, ctype = multipart([('alt[]', 'A photo')], [('photos[]', 'p.png', png(40, 30))])
+    code, _ = session('finder').call('POST', f'/reports/{found}/photos', raw=body_, content_type=ctype)
+    check(C, 'EM-05', 'Adding a photograph while the match is open is refused too', 409, code, code == 409)
+    photo = sql(f'SELECT image_id FROM report_images WHERE report_id = {found} LIMIT 1;')
+    if photo:
+        status(C, 'EM-05b', '...and so is changing one', 'finder', 'PATCH', f'/reports/{found}/photos',
+               {'primary': int(photo)}, 409)
+
+    signals = sql(f"SELECT detail FROM match_signals WHERE match_id = {m} AND signal_key = 'species';")
+    check(C, 'EM-06', "The pairing's reasons are untouched", 'Both reports describe a dog.', signals,
+          signals == 'Both reports describe a dog.')
+
+    # Settle the pairing: the report is Active again, and editable.
+    status(C, 'EM-07', 'The finder says it is not their match', 'finder', 'PATCH', f'/matches/{m}', {'action': 'dismiss'}, 200)
+    check(C, 'EM-08', '...both reports are Active again', 'active,active', f'{status_of(lost)},{status_of(found)}',
+          status_of(lost) == 'active' and status_of(found) == 'active')
+    status(C, 'EM-09', 'Now the found report can be edited into a turtle', 'finder', 'PUT', f'/reports/{found}',
+           {'species': 'other', 'breed': 'turtle'}, 200)
+    pairs = sql(f'SELECT COUNT(*) FROM match_claims WHERE lost_report_id = {lost} AND found_report_id = {found};')
+    check(C, 'EM-10', '...which is compared again and pairs with no dog; the old pairing stays dismissed',
+          '1 pairing, dismissed', f'{pairs} pairing, {sql(f"SELECT match_status FROM match_claims WHERE match_id = {m};")}',
+          pairs == '1' and sql(f'SELECT match_status FROM match_claims WHERE match_id = {m};') == 'dismissed')
+
+    # An Active report edited so that it now qualifies is paired on its new details.
+    city2 = 'Audit Rematch City'
+    target, _ = file_report('customer', incident_date='2026-09-10', city=city2, **dog)
+    stray, _ = file_report('finder', report_type='found', pet_name=None, incident_date='2026-09-11', city=city2,
+                           species='cat', breed='Persian', size='medium', sex='female', primary_color='White',
+                           distinct_features='Blue eyes')
+    check(C, 'EM-11', '(a found cat beside a lost dog: no pairing, both Active)', 'none',
+          pairing(target, stray) or 'none', not pairing(target, stray) and status_of(stray) == 'active')
+    status(C, 'EM-12', 'The finder corrects it: it was a small brown Shih Tzu', 'finder', 'PUT', f'/reports/{stray}',
+           {'species': 'dog', 'breed': 'Shih Tzu', 'size': 'small', 'sex': 'male', 'primary_color': 'Brown',
+            'distinct_features': 'White chest patch, one floppy ear'}, 200)
+    fresh = pairing(target, stray)
+    check(C, 'EM-13', '...and the edit is compared at once: a pairing appears', 'a pairing', fresh or 'NONE', bool(fresh))
+    if fresh:
+        n = sql(f'SELECT COUNT(*) FROM match_signals WHERE match_id = {fresh};')
+        species = sql(f"SELECT detail FROM match_signals WHERE match_id = {fresh} AND signal_key = 'species';")
+        summed = sql(f'SELECT SUM(CASE WHEN is_matched THEN weight ELSE 0 END) FROM match_signals WHERE match_id = {fresh};')
+        score = sql(f'SELECT match_score FROM match_claims WHERE match_id = {fresh};')
+        check(C, 'EM-14', '...with seven reasons that describe the edited report', '7, a dog',
+              f'{n}, {species}', n == '7' and species == 'Both reports describe a dog.')
+        check(C, 'EM-15', '...a score equal to its matched weights', score, summed, summed == score)
+        check(C, 'EM-16', '...and both reports are Possible Match', 'possible_match,possible_match',
+              f'{status_of(target)},{status_of(stray)}',
+              status_of(target) == 'possible_match' and status_of(stray) == 'possible_match')
+
+    # Decided pairings are history: an edit rewrites none of them.
+    decided = sql("SELECT GROUP_CONCAT(CONCAT(match_id,':',match_status,':',match_score) ORDER BY match_id) FROM match_claims "
+                  "WHERE match_status IN ('confirmed','rejected');")
+    status(C, 'EM-17', 'An unrelated Active report is edited', 'customer', 'PUT', f'/reports/{alone}',
+           {'description': 'Edited again.'}, 200)
+    after_decided = sql("SELECT GROUP_CONCAT(CONCAT(match_id,':',match_status,':',match_score) ORDER BY match_id) FROM match_claims "
+                        "WHERE match_status IN ('confirmed','rejected');")
+    check(C, 'EM-18', '...and no confirmed or rejected pairing changes', 'unchanged',
+          'unchanged' if after_decided == decided else 'CHANGED', after_decided == decided)
+
+
 def error_handling():
     C = 'H. Error handling'
     status(C, 'EH-01', 'A report that does not exist', 'guest', 'GET', '/reports/99999', None, 404)
@@ -1574,6 +1686,7 @@ if __name__ == '__main__':
     repeat_matching()
     calendar_dates()
     city_names()
+    edit_while_matched()
     total, passed = report()
 
     reseed()

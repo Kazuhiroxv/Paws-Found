@@ -234,9 +234,12 @@ function ReportCaseCard({ report, openMatches, onClose }) {
   const photo = report.photos.find((item) => item.isPrimary) ?? report.photos[0]
   const firstMatch = openMatches[0]
   const canClose = report.status !== REPORT_STATUSES.CLOSED
-  // A finished case stops accepting edits, and the API refuses them with a 409.
-  // Offering a button that can only fail is worse than not offering it.
-  const canEdit = OPEN_STATUSES.includes(report.status)
+  // Only an Active report is editable. A finished case keeps its details, and
+  // one with an open possible match is frozen so the pairing's score and
+  // signals keep describing the report being verified. The API refuses both
+  // with a 409; offering a button that can only fail is worse than not
+  // offering it. Close stays available either way.
+  const canEdit = report.status === REPORT_STATUSES.ACTIVE
   const kind = [speciesLabel(report.species), report.breed].filter(Boolean).join(' · ')
 
   const primary = firstMatch ? (
