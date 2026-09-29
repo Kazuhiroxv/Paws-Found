@@ -215,7 +215,9 @@ export function AdminCategoriesPage() {
 
           <div className="hidden rounded-card border border-border bg-panel sm:block">
             <table className="w-full text-left text-sm">
-              <thead className="sticky top-[4.5rem] z-10 border-b border-border bg-surface-muted text-fg shadow-[0_1px_0_var(--color-border)] [&>tr>th:first-child]:rounded-tl-card [&>tr>th:last-child]:rounded-tr-card">
+              {/* Shown from 640px, where the workspace bar (55px, sticky) is
+                  above it until the desktop rail replaces the bar. */}
+              <thead className="sticky top-[55px] z-10 lg:top-0 border-b border-border bg-surface-muted text-fg shadow-[0_1px_0_var(--color-border)] [&>tr>th:first-child]:rounded-tl-card [&>tr>th:last-child]:rounded-tr-card">
                 <tr>
                   <th scope="col" className="px-4 py-2.5 font-medium">
                     Category
