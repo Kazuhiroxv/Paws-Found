@@ -251,7 +251,7 @@ they run only against localhost and are skipped anywhere else. The one
 hand-built registration is refused.
 `PAWS_BASE=http://localhost:5173 PAWS_PW=<password> npm run test:ui`.
 
-### `npm run test:signout` — 23 checks
+### `npm run test:signout` — 24 checks
 
 A real Chrome and the real Sign out button. The API has always refused a guest
 the full report; this is about the browser. A report opened while signed in
@@ -280,7 +280,9 @@ empty.
 
 The map (`SO-R`-`SO-V`): every pin a guest is sent sits on the 0.004° public
 grid; a guest's Explore map stops at zoom 15, at desktop and at 390 px; a
-signed-in member's still zooms to 18; the owner still receives the stored pin.
+signed-in member's still zooms to 18; the owner still receives the stored pin;
+and a map first drawn signed in stops at 15 once the person has signed out and
+come back to Explore without a reload (`SO-W`).
 The server's snapping is the protection, and the audit's `LP` cases pin it
 down. The zoom limit only stops the map implying more precision than that.
 
@@ -363,7 +365,7 @@ test:mail                                15/15
 audit                                   334/334
 auth_lifecycle                           53/53
 multi-device                             55/55   (53/53 + 2 skipped vs a remote)
-test:signout                             23/23
+test:signout                             24/24
 test:ui                                  20/20
 test:matching-log                         6/6
 a11y                                     31 pages, 0 violations

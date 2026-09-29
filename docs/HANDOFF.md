@@ -458,7 +458,7 @@ All run on 27 September 2026 unless noted. Commands and prerequisites:
 | `npm run multi-device` | **55/55** local | API + database |
 | `npm run test:matching-log` | **6/6** | `php` on PATH, local database |
 | `npm run test:ui` | **20/20** | the dev build (`PAWS_BASE=http://localhost:5173`), `PAWS_PW`, Chrome |
-| `npm run test:signout` | **23/23** | the dev build (`PAWS_BASE=http://localhost:5173`), `PAWS_PW`, Chrome |
+| `npm run test:signout` | **24/24** | the dev build (`PAWS_BASE=http://localhost:5173`), `PAWS_PW`, Chrome |
 | `npm run a11y` | 31 pages, **zero violations** | the dev build (`PAWS_BASE=http://localhost:5173`) |
 | `docker build --pull --no-cache` | clean, one MPM, `Syntax OK` | Docker |
 | `npm run verify:deploy` against production | **25/25 + 3 skipped** (read-only default; `--upload` for 28) | the live URL |

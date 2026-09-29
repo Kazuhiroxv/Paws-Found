@@ -149,9 +149,14 @@ for (const [id, label, email] of [
   await signIn(page, email)
   const words = await privateWords(page)
   await page.goto(BASE + REPORT, { waitUntil: 'networkidle2' })
-  await pause(800)
-  const before = await text(page)
-  const shownBefore = words.length > 0 && words.every((word) => before.includes(word))
+  // Wait for the report to be on screen rather than for a fixed time: a slow
+  // first paint once made this fail with nothing yet to take away.
+  let shownBefore = false
+  for (let waited = 0; waited < 5000 && !shownBefore; waited += 200) {
+    const before = await text(page)
+    shownBefore = words.length > 0 && words.every((word) => before.includes(word))
+    if (!shownBefore) await pause(200)
+  }
 
   await signOutThroughTheUi(page)
   const tookMs = await waitForSignedOutView(page, words, 3000)
@@ -352,8 +357,12 @@ const onGrid = (value) => value == null || Math.abs(Math.round(value / 0.004) * 
 
 /** Open Explore's map and press zoom-in until Leaflet refuses. */
 async function zoomAsFarAsAllowed(target, route) {
-  await target.goto(BASE + route, { waitUntil: 'networkidle2' })
-  await pause(1500)
+  // A route is loaded fresh; without one, the page the app is already on is
+  // used as it stands, so a session change inside the app can be tested.
+  if (route) {
+    await target.goto(BASE + route, { waitUntil: 'networkidle2' })
+    await pause(1500)
+  }
   return target.evaluate(async () => {
     [...document.querySelectorAll('button, [role=tab]')].find((b) => b.textContent.trim() === 'Map')?.click()
     await new Promise((resolve) => setTimeout(resolve, 2500))
@@ -399,6 +408,16 @@ async function zoomAsFarAsAllowed(target, route) {
     (await (await fetch(api + '/reports/1', { credentials: 'include' })).json()).data ?? {}, API)
   check('SO-V', 'The owner still receives the stored pin, not the public one',
     detail.location?.lat != null && !onGrid(detail.location.lat), `lat ${detail.location?.lat}`)
+
+  // The same browser, the same app, no reload: a map first drawn for a signed-in
+  // member must not carry its zoom range over once they have signed out.
+  const before = await zoomAsFarAsAllowed(page, '/explore?q=milo')
+  await signOutThroughTheUi(page)
+  await pause(1500)
+  await goInApp(page, '/explore?q=milo')
+  const afterSignOut = await zoomAsFarAsAllowed(page, null)
+  check('SO-W', 'Signed in the map reaches 18; signed out, back on Explore without a reload: 15',
+    before.end === 18 && afterSignOut.end === 15, `signed in ${before.end}, signed out ${afterSignOut.end}`)
 }
 
 await browser.close()
