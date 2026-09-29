@@ -31,6 +31,15 @@ export const FALLBACK_ZOOM = 5
  */
 export const APPROXIMATE_RADIUS_M = 400
 
+/**
+ * The closest a guest's map may zoom. The server already sends a guest only
+ * pins snapped to a 0.004° grid (api/reports.php, public_coordinate), so this
+ * is not what protects a location. It stops the map implying a precision the
+ * pin does not have: 15 is the level a report is already framed at, streets
+ * and neighbourhoods, and one step short of individual buildings.
+ */
+export const GUEST_MAX_ZOOM = 15
+
 function pinHtml(colorToken, symbol) {
   // Rotated square with three rounded corners = a teardrop pin. The glyph is
   // counter-rotated so it sits upright inside it.

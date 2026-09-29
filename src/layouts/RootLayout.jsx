@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { Outlet, useLocation, useNavigationType } from 'react-router-dom'
+import { useCallback, useEffect } from 'react'
+import { Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import { Navbar } from '@/components/Navbar'
 import { Footer } from '@/components/Footer'
 import { SessionNotice } from '@/components/SessionNotice'
@@ -46,6 +46,17 @@ export function RootLayout({
 }) {
   const { pathname, hash } = useLocation()
   const navigationType = useNavigationType()
+  const navigate = useNavigate()
+
+  // Signing out ends where this person was: home first, then the session goes.
+  // Leaving from a signed-in page used to let that page's route guard record
+  // it as the way back, and whoever signed in next on this browser was sent
+  // there. A guest bounced to sign-in from a page they asked for still gets
+  // that page back; that path is set by the guard, not here.
+  const signOutToHome = useCallback(async () => {
+    navigate('/', { replace: true })
+    await onSignOut()
+  }, [navigate, onSignOut])
 
   // Opening a page asks the server who this is, so arriving somewhere is itself
   // a check. Without it, a device left on one page could show a workspace the
@@ -82,7 +93,7 @@ export function RootLayout({
       </a>
 
       {!isWorkspace && (
-        <Navbar role={role} onRoleChange={onRoleChange} onSignOut={onSignOut} user={user} />
+        <Navbar role={role} onRoleChange={onRoleChange} onSignOut={signOutToHome} user={user} />
       )}
 
       {/* Directly under the navigation, above everything else: a change made to

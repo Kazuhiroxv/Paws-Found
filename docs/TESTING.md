@@ -194,7 +194,7 @@ locally.
 
 **Mutates data.** Restores at the end.
 
-### `npm run test:signout` — 15 checks
+### `npm run test:signout` — 23 checks
 
 A real Chrome and the real Sign out button. The API has always refused a guest
 the full report; this is about the browser. A report opened while signed in
@@ -214,7 +214,21 @@ It also signs in through the form: a guest bounced from a customer page is
 returned to it, and a customer signing in after staff signed out inside a
 workspace lands on their own dashboard.
 
-Run against the code before the fix, 6 of the first 11 fail.
+Switching accounts on one browser (`SO-L`, `SO-O`, `SO-P`): Sign out goes home
+first, so whoever signs in next starts at their own workspace rather than the
+page the last person was on; a guest bounced from a page they asked for is
+still returned to it (`SO-K`). `SO-Q` fills a Report Found form, signs out,
+signs in as somebody else and opens the form again in the same page: it is
+empty.
+
+The map (`SO-R`-`SO-V`): every pin a guest is sent sits on the 0.004° public
+grid; a guest's Explore map stops at zoom 15, at desktop and at 390 px; a
+signed-in member's still zooms to 18; the owner still receives the stored pin.
+The server's snapping is the protection, and the audit's `LP` cases pin it
+down. The zoom limit only stops the map implying more precision than that.
+
+Run against the code before each fix: 6 of the first 11 fail for the stale
+report; `SO-P`, `SO-S` and `SO-T` fail for the account switch and the zoom.
 
 **Mutates nothing.** Point it at the dev build, and give it the seeded password
 from the environment so it is neither in the script nor in its output:
@@ -292,7 +306,7 @@ test:mail                                15/15
 audit                                   299/299
 auth_lifecycle                           53/53
 multi-device                             55/55   (53/53 + 2 skipped vs a remote)
-test:signout                             15/15
+test:signout                             23/23
 a11y                                     31 pages, 0 violations
 docker build --pull --no-cache           clean, curl present, one MPM, Syntax OK
 verify:deploy vs production              25/25 + 3 skipped (read-only default)

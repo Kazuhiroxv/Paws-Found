@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Sidebar } from '@/components/Sidebar'
 import { Container } from '@/components/ui'
 import { useAsync } from '@/hooks/useAsync'
@@ -37,6 +37,14 @@ import { WorkspaceShell } from './WorkspaceShell'
  */
 export function WorkspaceLayout({ label, items, loadCounts, standalone = false, user, onSignOut }) {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
+
+  // As in RootLayout: home first, then the session, so the workspace is not
+  // remembered as the way back for whoever signs in next.
+  const signOutToHome = useCallback(async () => {
+    navigate('/', { replace: true })
+    await onSignOut?.()
+  }, [navigate, onSignOut])
 
   const readCounts = useCallback(
     () => (loadCounts ? loadCounts(pathname) : Promise.resolve(null)),
@@ -51,7 +59,7 @@ export function WorkspaceLayout({ label, items, loadCounts, standalone = false, 
         items={items}
         counts={counts}
         user={user}
-        onSignOut={onSignOut}
+        onSignOut={signOutToHome}
       >
         <Container className="py-8">
           <Outlet />

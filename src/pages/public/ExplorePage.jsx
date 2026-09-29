@@ -74,7 +74,7 @@ function useSearchPlaceholder() {
   return placeholder
 }
 
-export function ExplorePage() {
+export function ExplorePage({ role }) {
   // The homepage search band hands off through the URL, so a search can also be
   // shared or bookmarked. Read once on mount: after that the page owns its own
   // filter state and does not fight the address bar.
@@ -434,6 +434,7 @@ export function ExplorePage() {
               <div className="relative isolate">
                 <ReportMap
                   reports={reports}
+                  guest={!role}
                   height="h-[22rem] lg:h-[26rem]"
                   className="shadow-raised"
                 />

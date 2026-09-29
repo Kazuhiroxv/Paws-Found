@@ -144,7 +144,7 @@ export default function App() {
         >
           {/* Public */}
           <Route path="/" element={<HomePage />} />
-          <Route path="/explore" element={<ExplorePage />} />
+          <Route path="/explore" element={<ExplorePage role={role} />} />
           <Route path="/pet/:id" element={<PetDetailPage role={role} />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/help" element={<HelpPage />} />

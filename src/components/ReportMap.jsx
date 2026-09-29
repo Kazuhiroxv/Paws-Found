@@ -13,6 +13,7 @@ import {
   APPROXIMATE_RADIUS_M,
   FALLBACK_CENTER,
   FALLBACK_ZOOM,
+  GUEST_MAX_ZOOM,
   TILE_LAYER,
   iconForReport,
 } from './mapSetup'
@@ -28,8 +29,13 @@ import {
  * @param {Object[]} props.reports
  * @param {boolean} [props.showApproximateArea]  Draw the radius circle.
  * @param {string} [props.height]  Tailwind height classes.
+ * @param {boolean} [props.guest]  Viewed by somebody signed out: zoom stops at
+ *   GUEST_MAX_ZOOM. A flag rather than a number, so pages need not import this
+ *   file's Leaflet setup just to pass a constant.
  */
-export function ReportMap({ reports, showApproximateArea = false, height = 'h-96', className }) {
+export function ReportMap({ reports, showApproximateArea = false, height = 'h-96', className, guest = false }) {
+  const maxZoom = guest ? GUEST_MAX_ZOOM : TILE_LAYER.maxZoom
+
   // Both derived in one memo so `positions` keeps a stable identity — otherwise
   // the fit-bounds effect re-runs and re-centres the map on every render.
   const { mappable, positions } = useMemo(() => {
@@ -66,13 +72,14 @@ export function ReportMap({ reports, showApproximateArea = false, height = 'h-96
       <MapContainer
         center={FALLBACK_CENTER}
         zoom={FALLBACK_ZOOM}
+        maxZoom={maxZoom}
         scrollWheelZoom={false}
         className="size-full"
       >
         <TileLayer
           url={TILE_LAYER.url}
           attribution={TILE_LAYER.attribution}
-          maxZoom={TILE_LAYER.maxZoom}
+          maxZoom={maxZoom}
         />
 
         <KeepMapSized />
