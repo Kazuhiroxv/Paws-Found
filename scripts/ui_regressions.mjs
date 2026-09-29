@@ -14,6 +14,14 @@
 // opened at the top of the page even when its sticky button was tapped far
 // down a long list, so it could not be seen without scrolling back up.
 //
+// WITHDRAWN: a pairing withdrawn because a report was finished used to read
+// "Ruled out · by the reporter" and "Dismissed by User". TABLE-HEAD: the
+// sticky header of the admin and staff tables stuck 72px down on desktop,
+// where no bar is above it, and rows showed through the gap.
+//
+// EDIT-MATCH-2: a report with an open possible match offers no Edit, because
+// the API refuses to change a report underneath its pairing.
+//
 // REPORT-ACTIONS: a returned report's only remaining action, Close, sat alone
 // in a More menu whose panel hung over the next card on a phone.
 //
@@ -472,11 +480,12 @@ if (!/^(localhost|127\.0\.0\.1)$/.test(new URL(BASE).hostname)) {
   check('REPORT-ACTIONS-5', 'Returned at 360, 390, 768 and 1366px: Close stays inside its own card, nothing overflows',
     widths.every((w) => w.endsWith(':ok')), widths.join(' '))
 
-  // 2: an open report keeps its More menu, with Edit and Close, on a phone.
+  // 2: an Active report keeps its More menu, with Edit and Close, on a phone.
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true })
   await openTab('Open')
   const menuItems = await page.evaluate(async () => {
-    const trigger = document.querySelector('#reports-panel article [aria-haspopup]')
+    const card = [...document.querySelectorAll('#reports-panel article')].find((c) => c.innerText.includes('Tuna'))
+    const trigger = card?.querySelector('[aria-haspopup]')
     trigger?.click()
     await new Promise((r) => setTimeout(r, 400))
     const items = [...trigger.closest('article').querySelectorAll('a, button')]
@@ -484,8 +493,24 @@ if (!/^(localhost|127\.0\.0\.1)$/.test(new URL(BASE).hostname)) {
     trigger?.click()
     return items
   })
-  check('REPORT-ACTIONS-2', 'Open at 390px: the More menu still holds Edit report and Close report',
+  check('REPORT-ACTIONS-2', 'An Active report at 390px: the More menu still holds Edit report and Close report',
     menuItems.includes('Edit report') && menuItems.includes('Close report'), menuItems.join(', '))
+
+  // EDIT-MATCH-2: a report with an open possible match is frozen. Milo is one
+  // in the seed: no Edit anywhere on its card, and its edit address explains.
+  const milo = await page.evaluate(() => {
+    const card = [...document.querySelectorAll('#reports-panel article')].find((c) => c.innerText.includes('Milo'))
+    const actions = card ? [...card.querySelectorAll('a, button')].filter((b) => b.offsetParent).map((b) => b.textContent.trim()) : []
+    return { actions, editLink: Boolean(card?.querySelector('a[href$="/edit"]')), menu: Boolean([...(card?.querySelectorAll('[aria-haspopup]') ?? [])].find((m) => m.offsetParent)) }
+  })
+  await page.goto(BASE + '/dashboard/reports/1/edit', { waitUntil: 'networkidle2' })
+  await pause(1000)
+  const paused = await page.evaluate(() => ({ title: document.querySelector('main h1')?.textContent.trim(),
+    form: Boolean(document.querySelector('main form, main [role=tablist] ~ * input')) }))
+  check('EDIT-MATCH-2', 'Possible Match (Milo): no Edit on its card; its edit address says editing is paused',
+    !milo.editLink && !milo.menu && !milo.actions.some((a) => /^Edit/.test(a)) && milo.actions.includes('Close report')
+      && paused.title === 'Editing is paused',
+    `card: ${milo.actions.join(', ')}; edit page: ${paused.title}`)
 
   // 4: closing through the new button still asks first, and Keep it open keeps it.
   await openTab('Returned')
@@ -513,6 +538,85 @@ if (!/^(localhost|127\.0\.0\.1)$/.test(new URL(BASE).hostname)) {
   check('REPORT-ACTIONS-3', 'Closed at 390px: no Edit, no Close, no More menu',
     closedCards.length > 0 && closedCards.every((c) => !c.more && !c.buttons.includes('Close report') && !c.buttons.some((b) => b.startsWith('Edit'))),
     JSON.stringify(closedCards.map((c) => c.buttons)))
+}
+
+// ---- TABLE-HEAD: a sticky table header sits right under whatever is above it
+{
+  const at = async (viewport, route) => {
+    const page = await (await browser.createBrowserContext()).newPage()
+    await page.setViewport(viewport)
+    await page.goto(BASE + '/', { waitUntil: 'networkidle2' })
+    await page.evaluate(async (api, pw) => {
+      const me = await (await fetch(api + '/auth/me', { credentials: 'include' })).json()
+      await fetch(api + '/auth/login', { method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': me.csrf_token ?? '' },
+        body: JSON.stringify({ email: 'grace.bautista@example.com', password: pw }) })
+    }, API, PASSWORD)
+    await page.goto(BASE + route, { waitUntil: 'networkidle2' })
+    await pause(1000)
+    return page.evaluate(async () => {
+      window.scrollTo(0, document.documentElement.scrollHeight)
+      await new Promise((r) => setTimeout(r, 500))
+      const head = document.querySelector('thead')?.getBoundingClientRect()
+      const bar = [...document.querySelectorAll('header')].find((h) => h.offsetParent && h.getBoundingClientRect().top === 0)
+      const barBottom = bar ? Math.round(bar.getBoundingClientRect().bottom) : 0
+      const through = [...document.querySelectorAll('tbody tr')].filter((tr) => {
+        // Visible in the gap between the bar and the header, not merely behind the header.
+        const r = tr.getBoundingClientRect()
+        return Math.min(r.bottom, head.top) - Math.max(r.top, barBottom) > 1
+      }).length
+      return { headTop: Math.round(head?.top ?? -1), barBottom, rowsShowingThrough: through }
+    })
+  }
+  const users = await at({ width: 1366, height: 460 }, '/admin/users')
+  check('TABLE-HEAD-1', 'Desktop Users, scrolled: the header sticks at the top, no rows above it',
+    users.headTop === 0 && users.rowsShowingThrough === 0, JSON.stringify(users))
+  const categories = await at({ width: 768, height: 420 }, '/admin/categories')
+  check('TABLE-HEAD-2', 'Tablet Categories, scrolled: the header sticks just under the workspace bar',
+    Math.abs(categories.headTop - categories.barBottom) <= 1 && categories.rowsShowingThrough === 0, JSON.stringify(categories))
+}
+
+// ---- WITHDRAWN: a pairing withdrawn by a finished report says so (local only: finishes a report)
+if (/^(localhost|127\.0\.0\.1)$/.test(new URL(BASE).hostname)) {
+  const as = async (email) => {
+    const page = await (await browser.createBrowserContext()).newPage()
+    await page.setViewport({ width: 1366, height: 900 })
+    await page.goto(BASE + '/', { waitUntil: 'networkidle2' })
+    await page.evaluate(async (api, e, pw) => {
+      const me = await (await fetch(api + '/auth/me', { credentials: 'include' })).json()
+      await fetch(api + '/auth/login', { method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': me.csrf_token ?? '' },
+        body: JSON.stringify({ email: e, password: pw }) })
+    }, API, email, PASSWORD)
+    return page
+  }
+  // Milo's pairing is being verified in the seed; his owner marks him returned.
+  const owner = await as('maria.santos@example.com')
+  const finished = await owner.evaluate(async (api) => {
+    const me = await (await fetch(api + '/auth/me', { credentials: 'include' })).json()
+    return (await fetch(api + '/reports/1', { method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': me.csrf_token ?? '' },
+      body: JSON.stringify({ status: 'returned', note: 'Came home on his own.' }) })).status
+  }, API)
+  const staff = await as('patricia.lim@example.com')
+  await staff.goto(BASE + '/staff/matches', { waitUntil: 'networkidle2' })
+  await pause(1000)
+  await staff.evaluate(() => [...document.querySelectorAll('[role=tab], button')].find((t) => t.textContent.trim().startsWith('Ruled out'))?.click())
+  await pause(800)
+  const queue = await staff.evaluate(() => {
+    const card = [...document.querySelectorAll('li')].find((li) => li.innerText.includes('Milo'))
+    return card ? card.innerText : ''
+  })
+  check('WITHDRAWN-1', 'Staff Match Queue: the pairing reads Withdrawn, not ruled out by the reporter',
+    finished === 200 && queue.includes('Withdrawn · a report was finished') && queue.includes('Nobody ruled it out')
+      && !queue.includes('said this is not their pet'),
+    `PATCH ${finished}`)
+  const finder = await as('liza.ocampo@example.com')
+  await finder.goto(BASE + '/pet/2', { waitUntil: 'networkidle2' })
+  await pause(1200)
+  const label = await finder.evaluate(() => document.body.innerText.includes('Withdrawn · a report was finished')
+    && !document.body.innerText.includes('Dismissed by User'))
+  check('WITHDRAWN-2', "The other reporter's report page says Withdrawn, not Dismissed by User", label)
 }
 
 await browser.close()
