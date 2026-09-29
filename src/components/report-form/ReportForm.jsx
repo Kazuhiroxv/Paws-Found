@@ -258,7 +258,9 @@ export function ReportForm({ reportType, report, guidance }) {
           task, not to the column the fields happen to be in. */}
       <Stepper steps={STEPS} currentIndex={stepIndex} />
 
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">
+      {/* The second column only when there is guidance to put in it: the edit
+          page has none, and an empty 20rem column squeezed its form. */}
+      <div className={cn('grid items-start gap-8 lg:gap-10', guidance && 'lg:grid-cols-[minmax(0,1fr)_20rem]')}>
       <Card>
         <div className="border-b border-border px-6 py-5">
           <p className="text-xs font-medium tracking-wide text-fg-muted uppercase">

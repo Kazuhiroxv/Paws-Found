@@ -111,7 +111,9 @@ export function EditReportPage() {
   const heading = report.petName ?? 'Found pet report'
 
   return (
-    <Container width="form" className="flex flex-col gap-6 px-0 sm:px-0 lg:px-0">
+    // The same width as the report pages, because it is the same wizard; the
+    // narrow form width left its fields about 300px wide.
+    <Container width="page" className="flex flex-col gap-6 px-0 sm:px-0 lg:px-0">
       <PageHeader
         title={`Edit ${heading}`}
         description="Changes appear on the public report straight away."
