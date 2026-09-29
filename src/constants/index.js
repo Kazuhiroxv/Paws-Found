@@ -191,3 +191,19 @@ export const LOCATION_PRECISION = {
   APPROXIMATE: 'approximate',
   EXACT: 'exact',
 }
+
+/**
+ * The one published way to reach the people running Paws&Found: the Project
+ * Team's institutional address, first published as the Privacy Notice
+ * contact. Used wherever a person is told to contact the team — a suspended
+ * or locked account included — so there is exactly one address to change.
+ * Never a seeded demo account: those are fictional.
+ */
+export const PROJECT_CONTACT_EMAIL = 'kmvaustria@mymail.mapua.edu.ph'
+
+/**
+ * The Administrator a suspended or locked person is told about. The seeded
+ * Administrator account's own sign-in address is demo data (example.com) and
+ * reaches nobody, so the name is shown with PROJECT_CONTACT_EMAIL instead.
+ */
+export const PROJECT_ADMINISTRATOR_NAME = 'Grace Bautista'

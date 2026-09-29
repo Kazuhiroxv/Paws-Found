@@ -5,7 +5,7 @@ import { Button, Card, CardBody, Input, RequiredNote } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { AuthShell } from '@/components/AuthShell'
 import { ResendVerification } from '@/pages/public/RegisterPage'
-import { ROLES, ROLE_LABELS } from '@/constants'
+import { PROJECT_ADMINISTRATOR_NAME, PROJECT_CONTACT_EMAIL, ROLES, ROLE_LABELS } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
 import { userService } from '@/services'
 import { destinationAfterSignIn } from '@/constants/navigation'
@@ -213,6 +213,8 @@ export function LoginPage({ onSignedIn, onDemoSignIn }) {
  *     drawn as pips, because a number in a sentence is easy to skim past;
  *   * the account now locked — a different shape entirely, with what to do
  *     next, because retyping the password will not help;
+ *   * the account suspended — not the same thing as locked: an administrator
+ *     decided it, so the way back is to ask them, not to wait for an unlock;
  *   * anything else, such as the server being unreachable.
  *
  * The pips are never the only signal: the sentence above them says the same
@@ -222,7 +224,27 @@ function SignInProblem({ error }) {
   if (!error) return null
 
   const locked = Boolean(error.payload?.locked)
+  const suspended = error.payload?.code === 'account_suspended'
   const remaining = error.payload?.attempts_remaining
+
+  if (suspended) {
+    return (
+      <div
+        role="alert"
+        className="flex items-start gap-3 rounded-control border border-danger/40 bg-danger-soft p-3"
+      >
+        <ShieldAlert size={18} className="mt-0.5 shrink-0 text-danger-hover" aria-hidden="true" />
+        <div className="flex flex-col gap-1 text-sm">
+          <p className="font-medium text-danger-hover">Your account has been suspended.</p>
+          <p className="text-fg">
+            If you believe this was a mistake or need help restoring access, contact the
+            Paws&amp;Found Administrator.
+          </p>
+          <AdministratorContact subject="Suspended Paws&Found account" />
+        </div>
+      </div>
+    )
+  }
 
   if (locked) {
     return (
@@ -232,12 +254,13 @@ function SignInProblem({ error }) {
       >
         <Lock size={18} className="mt-0.5 shrink-0 text-danger-hover" aria-hidden="true" />
         <div className="flex flex-col gap-1 text-sm">
-          <p className="font-medium text-danger-hover">This account is locked</p>
-          <p className="text-fg">{error.message}</p>
-          <p className="text-fg-muted">
-            An administrator unlocks it from the Users page. Nothing you type here will open it
-            until they do.
+          <p className="font-medium text-danger-hover">Your account is locked.</p>
+          <p className="text-fg">
+            It was locked after {MAX_ATTEMPTS} failed sign-in attempts in a row. An administrator
+            must unlock it before you can sign in again; resetting the password does not unlock
+            it.
           </p>
+          <AdministratorContact subject="Locked Paws&Found account" />
         </div>
       </div>
     )
@@ -281,5 +304,38 @@ function SignInProblem({ error }) {
     <p role="alert" className="text-sm text-danger">
       {error.message}
     </p>
+  )
+}
+
+/**
+ * Who can restore the account, and a way to reach them that works: the
+ * Administrator's name with the Project Team's published address, because the
+ * seeded Administrator's own sign-in address is demo data that reaches nobody.
+ * And a way out, so a locked-out person is not left facing the form.
+ */
+function AdministratorContact({ subject }) {
+  const mailto = `mailto:${PROJECT_CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}`
+
+  return (
+    <div className="mt-1 flex flex-col gap-3">
+      <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-0.5">
+        <dt className="text-fg-muted">Administrator</dt>
+        <dd className="font-medium text-fg">{PROJECT_ADMINISTRATOR_NAME}</dd>
+        <dt className="text-fg-muted">Contact</dt>
+        <dd>
+          <a href={mailto} className="font-medium break-all text-brand hover:underline">
+            {PROJECT_CONTACT_EMAIL}
+          </a>
+        </dd>
+      </dl>
+      <div className="flex flex-wrap gap-2">
+        <Button as="a" href={mailto} size="sm">
+          Contact administrator
+        </Button>
+        <Button as={Link} to="/explore" variant="secondary" size="sm">
+          Continue browsing
+        </Button>
+      </div>
+    </div>
   )
 }

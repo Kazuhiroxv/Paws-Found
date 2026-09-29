@@ -22,7 +22,7 @@ export function SessionNotice({ notice, onDismiss }) {
     notice.kind === 'signed-out'
       ? [
           'You have been signed out',
-          'This account is no longer active on this device. It may have been suspended, or locked after failed sign-in attempts. Sign in again, or ask an administrator.',
+          'This account is no longer active on this device. It may have been suspended, or locked after failed sign-in attempts. Signing in again will say which, and how to contact the Paws&Found Administrator.',
         ]
       : [
           'Your access level changed',

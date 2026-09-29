@@ -18,6 +18,7 @@ import { Container } from '@/components/ui'
 import { PatternVeil } from '@/components/PatternVeil'
 import { PageHeader } from '@/components/PageHeader'
 import { SectionHeading } from '@/components/SectionHeading'
+import { PROJECT_ADMINISTRATOR_NAME, PROJECT_CONTACT_EMAIL } from '@/constants'
 
 /**
  * Every help topic, with its questions.
@@ -143,6 +144,10 @@ const TOPICS = [
       {
         q: 'What happens to a flag?',
         a: 'It goes to an administrator for review. They can dismiss it, remove the content, warn the user, or suspend the account.',
+      },
+      {
+        q: 'My account is locked or suspended. What now?',
+        a: `Locked means three wrong passwords in a row; suspended means an administrator stopped the account. Either way only the Paws&Found Administrator, ${PROJECT_ADMINISTRATOR_NAME}, can restore it, and a password reset does not. Contact them at ${PROJECT_CONTACT_EMAIL} from the address you sign in with. You can still browse reports without signing in.`,
       },
     ],
   },

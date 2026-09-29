@@ -2,6 +2,7 @@ import { Eye, EyeOff, Lock, MapPin } from 'lucide-react'
 import { Container } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { SectionHeading } from '@/components/SectionHeading'
+import { PROJECT_CONTACT_EMAIL } from '@/constants'
 
 /**
  * The date this notice last changed in a way that alters what somebody is
@@ -243,10 +244,10 @@ export function PrivacyPage() {
             <dt className="text-fg-muted sm:w-28">Email</dt>
             <dd>
               <a
-                href="mailto:kmvaustria@mymail.mapua.edu.ph"
+                href={`mailto:${PROJECT_CONTACT_EMAIL}`}
                 className="font-medium break-all text-brand hover:underline"
               >
-                kmvaustria@mymail.mapua.edu.ph
+                {PROJECT_CONTACT_EMAIL}
               </a>
             </dd>
           </div>

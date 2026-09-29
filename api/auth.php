@@ -108,7 +108,7 @@ function auth_login(): never
         audit_log('login_failed', null, $email, 'user', (int) $user['user_id'],
             'failure', 'account suspended');
 
-        json_error('This account has been suspended. Contact an administrator.', 403);
+        json_error('This account has been suspended by an administrator.', 403, ['code' => 'account_suspended']);
     }
 
     // Belt and braces: the counter above is the usual way in here, but if a
