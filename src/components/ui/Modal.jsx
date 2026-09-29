@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef } from 'react'
+import { Children, useEffect, useId, useLayoutEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { Button } from './Button'
@@ -128,7 +128,10 @@ function OpenModal({
         </Button>
       </div>
 
-      <div className="px-4 py-4">{children}</div>
+      {/* Only when there is something to put in it. A dialog made of a title,
+          a description and buttons (the coordinator's Confirm match) otherwise
+          carried an empty padded strip between them. */}
+      {Children.toArray(children).length > 0 && <div className="px-4 py-4">{children}</div>}
 
       {footer && (
         <div className="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
