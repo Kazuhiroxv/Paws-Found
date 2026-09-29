@@ -18,6 +18,7 @@
     "test:ui": "node scripts/ui_regressions.mjs",
     "test:matching-log": "php scripts/matching_log.php",
     "test:calendar": "php scripts/calendar_today.php",
+    "test:city": "php scripts/city_fallback.php",
     "verify:deploy": "python scripts/verify_deployment.py",
     "test:contract": "node --import ./scripts/alias-hook.mjs --test scripts/*.test.mjs"
   },

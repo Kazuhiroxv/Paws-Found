@@ -168,10 +168,11 @@ with the password itself. On a built site everyone signs in through the form.
 | `npm run build` | Production build to `dist/` |
 | `npm run preview` | Serve the production build locally |
 | `npm run lint` | ESLint over the project |
-| `npm run audit` | 334 security, functional, privacy, access, editing, integrity and matching-lifecycle cases against the live API and database (**reseeds it**) |
+| `npm run audit` | 339 security, functional, privacy, access, editing, integrity and matching-lifecycle cases against the live API and database (**reseeds it**) |
 | `npm run test:contract` | 21 checks of the form/API contract, the sign-in destination and date handling — needs nothing running |
 | `npm run test:mail` | 15 checks of the mail transports (needs `php` on PATH) |
 | `npm run multi-device` | 55 checks across three independent sessions |
+| `npm run test:city` | 11 checks of how places compare without a map pin (needs `php` on PATH) |
 | `npm run test:calendar` | 8 checks that "today" is the Philippine date and the database speaks UTC (needs `php` on PATH) |
 | `npm run test:matching-log` | 6 checks of what matching logs, with `MATCH_DEBUG` off and on (needs `php` on PATH) |
 | `npm run test:ui` | 20 browser checks: moderation (the report link, raising and deciding a flag) and registration's field feedback (same `PAWS_BASE`, `PAWS_PW`) |

@@ -1439,6 +1439,31 @@ def calendar_dates():
         check(C, tid, f'A report dated {label}', str(expected), str(code), code == expected)
 
 
+def city_names():
+    """Without a map pin, "Pasig City" and "Pasig" are one place if the province agrees.
+
+    Location is a gate, so a city written two ways used to stop a pairing from
+    being suggested at all. The rule itself is tested case by case in
+    `npm run test:city`; these file real reports through the API.
+    """
+    C = 'R. City names'
+    pet = dict(species='cat', breed='Puspin (Philippine Domestic Shorthair)', size='small',
+               primary_color='Orange', incident_date='2026-09-05',
+               distinct_features='White bib, crooked whisker pad')
+
+    def pairing(lost_place, found_place):
+        lost, _ = file_report('customer', pet_name='Audit Mingming', **pet, **lost_place)
+        found, _ = file_report('finder', report_type='found', pet_name=None, **pet, **found_place)
+        return sql(f'SELECT match_id FROM match_claims WHERE lost_report_id = {lost} AND found_report_id = {found};')
+
+    same = pairing(dict(city='Auditville City', province='Audit Province'),
+                   dict(city='auditville', province='Audit Province'))
+    check(C, 'RC-01', '"Auditville City" and "auditville", same province: paired', 'a pairing', same or 'NONE', bool(same))
+    other = pairing(dict(city='Auditburg City', province='Audit Province'),
+                    dict(city='Auditburg', province='Other Province'))
+    check(C, 'RC-02', 'The same names in different provinces: not paired', 'none', other or 'none', not other)
+
+
 def error_handling():
     C = 'H. Error handling'
     status(C, 'EH-01', 'A report that does not exist', 'guest', 'GET', '/reports/99999', None, 404)
@@ -1548,6 +1573,7 @@ if __name__ == '__main__':
     match_rejection()
     repeat_matching()
     calendar_dates()
+    city_names()
     total, passed = report()
 
     reseed()

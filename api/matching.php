@@ -119,7 +119,7 @@ function matching_generate(int $reportId, array &$trace, string &$stage): array
                 b.breed_name AS breed,
                 r.pet_size AS size, r.primary_color, r.secondary_color,
                 r.distinct_features, r.incident_date,
-                l.city, l.latitude, l.longitude
+                l.city, l.province, l.latitude, l.longitude
            FROM pet_reports r
            JOIN pet_categories c ON c.category_id = r.category_id
       LEFT JOIN pet_breeds b     ON b.breed_id = r.breed_id
@@ -314,7 +314,7 @@ function matching_load_report(int $reportId): ?array
                 b.breed_name AS breed,
                 r.pet_size AS size, r.primary_color, r.secondary_color,
                 r.distinct_features, r.incident_date,
-                l.city, l.latitude, l.longitude
+                l.city, l.province, l.latitude, l.longitude
            FROM pet_reports r
            JOIN pet_categories c ON c.category_id = r.category_id
       LEFT JOIN pet_breeds b     ON b.breed_id = r.breed_id
@@ -425,7 +425,7 @@ function matching_location_signal(array $lost, array $found): array
     }
 
     // No coordinates on one side — fall back to the city.
-    $matched = matching_normalise($lost['city']) === matching_normalise($found['city']);
+    $matched = matching_same_city($lost, $found);
 
     return [
         'key' => 'location',
@@ -435,6 +435,40 @@ function matching_location_signal(array $lost, array $found): array
             ? 'Both reports are in ' . $found['city'] . '.'
             : $lost['city'] . ' and ' . $found['city'] . ' are different areas.',
     ];
+}
+
+/**
+ * Whether two reports name the same city, for when there is no map pin.
+ *
+ * Case and spacing never matter. "Pasig City" and "Pasig" are the same place,
+ * but only when both reports give the same province: "Quezon City" (Metro
+ * Manila) and "Quezon" (the province) are not, and neither are a city and a
+ * town of the same name elsewhere. Nothing looser than that: no guessing at
+ * spelling, which would pair reports from different places.
+ */
+function matching_same_city(array $lost, array $found): bool
+{
+    $lostCity = matching_place($lost['city']);
+    $foundCity = matching_place($found['city']);
+
+    if ($lostCity === $foundCity) {
+        return true;
+    }
+
+    $lostProvince = matching_place($lost['province'] ?? '');
+    if ($lostProvince === '' || $lostProvince !== matching_place($found['province'] ?? '')) {
+        return false;
+    }
+
+    $withoutCity = fn (string $name): string => preg_replace('/ city$/', '', $name) ?? $name;
+
+    return $withoutCity($lostCity) !== '' && $withoutCity($lostCity) === $withoutCity($foundCity);
+}
+
+/** A place name for comparing: lower case, trimmed, single spaces. */
+function matching_place(mixed $value): string
+{
+    return preg_replace('/\s+/', ' ', matching_normalise($value)) ?? '';
 }
 
 function matching_breed_signal(array $lost, array $found): array

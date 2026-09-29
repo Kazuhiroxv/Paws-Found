@@ -88,7 +88,7 @@ skips that one check when there is no network.
 
 **Mutates nothing.** Sends no real email.
 
-### `npm run audit` — 334 checks
+### `npm run audit` — 339 checks
 
 The security and functional suite, against the running API and database.
 
@@ -111,6 +111,7 @@ The security and functional suite, against the running API and database.
 | O. Match rejection | 24 |
 | P. Repeat matching | 11 |
 | Q. Calendar dates | 3 |
+| R. City names | 2 |
 
 `RA-01`–`RA-27` pin down who receives what. A guest's list row is exactly the
 public summary, a guest opening a report gets `401 auth_required` (a missing
@@ -231,6 +232,24 @@ skipped rather than reporting a failure it did not observe. Both run for real
 locally.
 
 **Mutates data.** Restores at the end.
+
+### `npm run test:city` — 11 checks
+
+How places compare when a report has no map pin. Location is a gate: when it
+fails, no pairing is suggested at all. Without a pin the city name decides,
+and it had to be character for character the same, so "Pasig City" and
+"Pasig" never met. Now case and repeated spaces never matter, and a trailing
+"City" is optional only when both reports give the same province: "Quezon
+City", Metro Manila and "Quezon", Quezon province stay apart. With pins on
+both reports, distance decides as before. Against the previous matcher the
+four cases that should now match fail and the rest pass. Audit section `R`
+files real reports through the API. Needs `php` on PATH; no database.
+
+Still compared as written, on purpose: colour and breed spellings ("Grey" and
+"Gray", "Tricolour" and "Tricolor", "Gold" and "Golden", "Shih Tzu" and
+"Shih-Tzu") and province spellings ("Metro Manila" and "NCR"). A different
+colour or breed costs that signal's points but is not a gate; it is a known
+limitation of rule-based matching, left alone rather than guessed at.
 
 ### `npm run test:calendar` — 8 checks
 
@@ -389,11 +408,12 @@ build                                    green
 test:contract                            21/21
 test:calendar                             8/8
 test:mail                                15/15
-audit                                   334/334
+audit                                   339/339
 auth_lifecycle                           53/53
 multi-device                             55/55   (53/53 + 2 skipped vs a remote)
 test:signout                             24/24
 test:ui                                  20/20
+test:city                                11/11
 test:matching-log                         6/6
 a11y                                     31 pages, 0 violations
 docker build --pull --no-cache           clean, curl present, one MPM, Syntax OK
