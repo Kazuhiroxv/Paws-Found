@@ -227,8 +227,16 @@ export function PetDetailPage({ role }) {
     <Container className="relative isolate flex flex-col gap-8">
       <ConfirmDialog
         isOpen={Boolean(finishing)}
-        title={finishing === 'returned' ? `Mark ${heading} as returned?` : `Close ${heading}?`}
-        confirmLabel={finishing === 'returned' ? 'Mark as returned' : 'Close report'}
+        title={
+          finishing === 'returned'
+            ? isFound
+              ? 'Mark this pet as returned to its owner?'
+              : `Mark ${heading} as returned?`
+            : `Close ${heading}?`
+        }
+        confirmLabel={
+          finishing === 'returned' ? (isFound ? 'Mark as returned to owner' : 'Mark as returned') : 'Close report'
+        }
         cancelLabel="Go back"
         tone={finishing === 'returned' ? 'primary' : 'danger'}
         isBusy={isFinishing}
@@ -237,11 +245,23 @@ export function PetDetailPage({ role }) {
         onConfirm={finish}
       >
         {finishing === 'returned' ? (
-          <p>
-            The report will show Returned. That is a finished state: it can no longer be edited
-            or reopened, it stops being compared with new reports, and any possible match still
-            open on it is withdrawn.
-          </p>
+          <>
+            {/* A finder marks their own report finished, perhaps because the
+                owner turned up some other way. It is the report's lifecycle,
+                not a pairing's: nothing here says which owner, and a pairing a
+                coordinator ruled out stays ruled out. */}
+            {isFound && (
+              <p>
+                Use this once the pet is back with its owner, through Paws&amp;Found or any other
+                way. It does not confirm any possible match.
+              </p>
+            )}
+            <p>
+              The report will show Returned. That is a finished state: it can no longer be edited
+              or reopened, it stops being compared with new reports, and any possible match still
+              open on it is withdrawn.
+            </p>
+          </>
         ) : (
           <>
             <p>
@@ -624,7 +644,7 @@ export function PetDetailPage({ role }) {
                 {report.status !== REPORT_STATUSES.RETURNED && (
                   <Button onClick={() => openFinish('returned')} fullWidth>
                     <Check size={16} aria-hidden="true" />
-                    Mark as returned
+                    {isFound ? 'Mark as returned to owner' : 'Mark as returned'}
                   </Button>
                 )}
                 <Button variant="secondary" fullWidth onClick={() => openFinish('closed')}>
