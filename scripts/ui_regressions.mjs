@@ -5,8 +5,14 @@
 // MOD-LINK: on Administrator > Moderation, "Open the full report" looked like
 // a link and did nothing; it sat above the title's stretched overlay as a
 // plain span. REG: registration said nothing about an obviously bad email
-// until Create account was pressed. Changes no data: the one registration
-// request it sends is refused by the API on purpose.
+// until Create account was pressed. MOD-FLAG / MOD-DECIDE: "Report this
+// listing" and the administrator's decisions sent a plain object where JSON was
+// declared, so the API refused both as invalid JSON; these go through the real
+// dialogs and buttons.
+//
+// The MOD-FLAG checks raise one flag and dismiss it, so they run only against
+// localhost and are skipped anywhere else. Nothing else changes data: the one
+// registration request is refused by the API on purpose.
 //
 // The page.evaluate() callbacks run inside the page, where these exist.
 /* global document, window */
@@ -195,6 +201,104 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new'
   await pause(500)
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
   check('REG-10', 'At 390 px, with errors showing, nothing overflows', overflow === 0, `${overflow}px`)
+}
+
+// ---- MOD-FLAG / MOD-DECIDE: raising a flag and deciding it, through the interface
+if (!/^(localhost|127\.0\.0\.1)$/.test(new URL(BASE).hostname)) {
+  console.log('SKIP  MOD-FLAG    raises and dismisses a flag, so it runs against localhost only')
+} else {
+  const signedIn = async (email) => {
+    const page = await (await browser.createBrowserContext()).newPage()
+    await page.goto(BASE + '/', { waitUntil: 'networkidle2' })
+    await page.evaluate(async (api, e, pw) => {
+      const me = await (await fetch(api + '/auth/me', { credentials: 'include' })).json()
+      await fetch(api + '/auth/login', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': me.csrf_token ?? '' },
+        body: JSON.stringify({ email: e, password: pw }),
+      })
+    }, API, email, PASSWORD)
+    return page
+  }
+  const api = (page, path) => page.evaluate(async (a, p) =>
+    (await (await fetch(a + p, { credentials: 'include' })).json()), API, path)
+  const DETAILS = `Same dog as another listing (ui-regression ${Date.now()})`
+
+  // A member flags somebody else's report (Milo, Maria's).
+  const member = await signedIn('noel.aguilar@example.com')
+  const memberId = (await api(member, '/auth/me')).user?.user_id
+  const statusBefore = (await api(member, '/reports/1')).data?.status
+  await member.goto(BASE + '/pet/1', { waitUntil: 'networkidle2' })
+  await pause(1000)
+  await member.evaluate(() => [...document.querySelectorAll('button')]
+    .find((b) => b.textContent.trim() === 'Report this listing')?.click())
+  await pause(600)
+  const reasonId = await member.evaluate(() => [...document.querySelectorAll('label')]
+    .find((l) => l.textContent.trim().startsWith('What is the problem?'))?.htmlFor)
+  const detailsId = await member.evaluate(() => [...document.querySelectorAll('label')]
+    .find((l) => l.textContent.trim().startsWith('Anything else we should know?'))?.htmlFor)
+  await member.select(`#${reasonId}`, 'duplicate')
+  await member.type(`#${detailsId}`, DETAILS)
+  const sent = member.waitForResponse((r) => r.url().endsWith('/api/moderation') && r.request().method() === 'POST')
+  await member.evaluate(() => [...document.querySelectorAll('button')]
+    .find((b) => b.textContent.trim() === 'Send report')?.click())
+  const response = await sent
+  await pause(800)
+  const thanked = await member.evaluate(() => document.body.innerText.includes('Thank you'))
+
+  const admin = await signedIn('grace.bautista@example.com')
+  const cases = (await api(admin, '/moderation?status=open')).data ?? []
+  const raised = cases.find((c) => c.details === DETAILS)
+  check('MOD-FLAG-1', 'A member flags a report from its page: 201, thanked, recorded as theirs',
+    response.status() === 201 && thanked && raised?.report_id === 1 && raised?.reason === 'duplicate'
+      && raised?.flagged_by?.user_id === memberId,
+    `HTTP ${response.status()}, case ${raised?.case_id ?? 'not found'}`)
+
+  await admin.goto(BASE + '/admin/moderation', { waitUntil: 'networkidle2' })
+  await pause(1200)
+  const queued = await admin.evaluate((d) => document.body.innerText.includes(d), DETAILS)
+  check('MOD-FLAG-2', 'It appears in the administrator\'s queue', queued)
+
+  const statusAfter = (await api(member, '/reports/1')).data?.status
+  check('MOD-FLAG-3', 'Flagging changes nothing about the report itself', statusAfter === statusBefore,
+    `${statusBefore} -> ${statusAfter}`)
+
+  const owner = await signedIn('maria.santos@example.com')
+  await owner.goto(BASE + '/pet/1', { waitUntil: 'networkidle2' })
+  await pause(1000)
+  const ownerSees = await owner.evaluate((d) => ({ name: document.body.innerText.includes('Noel Aguilar'),
+    details: document.body.innerText.includes(d) }), DETAILS)
+  const ownerApi = JSON.stringify(await api(owner, '/reports/1'))
+  check('MOD-FLAG-4', 'The report\'s owner is not shown who flagged it, or what they wrote',
+    !ownerSees.name && !ownerSees.details && !ownerApi.includes(DETAILS) && !ownerApi.includes('flagged_by'))
+
+  // The administrator decides it from the queue, with a note.
+  const decided = admin.waitForResponse((r) => /\/api\/moderation\/\d+$/.test(r.url()) && r.request().method() === 'PATCH')
+  await admin.evaluate((d) => {
+    const card = [...document.querySelectorAll('article, li, section')].reverse()
+      .find((el) => el.innerText.includes(d) && el.querySelector('textarea'))
+    const note = card.querySelector('textarea')
+    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set.call(note, 'Checked: not a duplicate.')
+    note.dispatchEvent(new Event('input', { bubbles: true }))
+    ;[...card.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Dismiss flag').click()
+  }, DETAILS)
+  const decision = await decided
+  await pause(800)
+  const after = ((await api(admin, '/moderation')).data ?? []).find((c) => c.case_id === raised?.case_id)
+  check('MOD-DECIDE-1', 'The administrator dismisses it from the queue: 200 and recorded',
+    decision.status() === 200 && after?.case_status === 'dismissed', `HTTP ${decision.status()}, ${after?.case_status}`)
+
+  const refused = await member.evaluate(async (a) => {
+    const me = await (await fetch(a + '/auth/me', { credentials: 'include' })).json()
+    const r = await fetch(a + '/moderation', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': me.csrf_token ?? '' },
+      body: '[object Object]',
+    })
+    return { status: r.status, error: (await r.json()).error }
+  }, API)
+  check('MOD-JSON', 'A body that is not JSON is still refused by the API',
+    refused.status === 400 && /not valid JSON/i.test(refused.error ?? ''), `HTTP ${refused.status}`)
 }
 
 await browser.close()

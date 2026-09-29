@@ -227,7 +227,7 @@ stage and exception, and still reaches the caller. No line carries
 coordinates, addresses, passwords or tokens. Needs `php` on PATH and the local
 database; **changes no data** (it asks about a report that is already finished).
 
-### `npm run test:ui` — 14 checks
+### `npm run test:ui` — 20 checks
 
 Two interface regressions from final manual testing, in a real Chrome.
 `MOD-LINK-1`–`4`: on Administrator > Moderation, "Open the full report" is a
@@ -238,8 +238,17 @@ opens the same report; the decision note and the tabs do not navigate.
 being typed, says what is wrong once a field is left, clears it as soon as
 it is fixed, blocks a submit with a bad email without sending it, and the API
 still refuses that email when it is sent by hand.
+`MOD-FLAG-1`–`4` and `MOD-DECIDE-1`: a member raises a flag from a report's own
+"Report this listing" dialog (201, thanked, recorded as theirs), it reaches the
+administrator's queue, the report itself is untouched, and its owner is not
+shown who flagged it; the administrator then dismisses it from the queue with a
+note (200). Both used to send a plain object where JSON was declared and got
+"The request body was not valid JSON". `MOD-JSON`: the API still refuses a body
+that is not JSON.
 
-**Mutates nothing** (the one hand-built registration is refused).
+**Mutates local data**: the MOD-FLAG checks raise one flag and dismiss it, so
+they run only against localhost and are skipped anywhere else. The one
+hand-built registration is refused.
 `PAWS_BASE=http://localhost:5173 PAWS_PW=<password> npm run test:ui`.
 
 ### `npm run test:signout` — 23 checks
@@ -355,7 +364,7 @@ audit                                   334/334
 auth_lifecycle                           53/53
 multi-device                             55/55   (53/53 + 2 skipped vs a remote)
 test:signout                             23/23
-test:ui                                  14/14
+test:ui                                  20/20
 test:matching-log                         6/6
 a11y                                     31 pages, 0 violations
 docker build --pull --no-cache           clean, curl present, one MPM, Syntax OK

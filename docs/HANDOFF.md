@@ -457,7 +457,7 @@ All run on 27 September 2026 unless noted. Commands and prerequisites:
 | `python scripts/auth_lifecycle.py` | **53/53** | API + database, local only |
 | `npm run multi-device` | **55/55** local | API + database |
 | `npm run test:matching-log` | **6/6** | `php` on PATH, local database |
-| `npm run test:ui` | **14/14** | the dev build (`PAWS_BASE=http://localhost:5173`), `PAWS_PW`, Chrome |
+| `npm run test:ui` | **20/20** | the dev build (`PAWS_BASE=http://localhost:5173`), `PAWS_PW`, Chrome |
 | `npm run test:signout` | **23/23** | the dev build (`PAWS_BASE=http://localhost:5173`), `PAWS_PW`, Chrome |
 | `npm run a11y` | 31 pages, **zero violations** | the dev build (`PAWS_BASE=http://localhost:5173`) |
 | `docker build --pull --no-cache` | clean, one MPM, `Syntax OK` | Docker |

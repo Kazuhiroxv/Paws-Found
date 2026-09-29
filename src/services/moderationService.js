@@ -70,11 +70,14 @@ export async function getCasesWithContext(query = {}) {
 export async function createCase(input) {
   const payload = await apiFetch('/moderation', {
     method: 'POST',
-    body: {
+    // Stringified here, like every other JSON write: apiFetch labels the body
+    // application/json but sends it as given, and a plain object goes out as
+    // "[object Object]", which the API rightly refuses as invalid JSON.
+    body: JSON.stringify({
       report_id: input.reportId,
       reason: input.reason,
       details: input.details,
-    },
+    }),
   })
 
   return payload.data
@@ -96,7 +99,7 @@ export async function createCase(input) {
 export async function applyDecision(caseId, decision) {
   const payload = await apiFetch(`/moderation/${caseId}`, {
     method: 'PATCH',
-    body: { action: decision.action, note: decision.note ?? '' },
+    body: JSON.stringify({ action: decision.action, note: decision.note ?? '' }),
   })
 
   return payload.data
