@@ -228,7 +228,7 @@ export function PrivacyPage() {
             and nobody has designated one here. Claiming the title would be the
             one false statement on a page about honesty.
 
-            An institutional address and no personal mobile number. The Act asks
+            The project's own inbox and no personal mobile number. The Act asks
             for contact details that reach the people responsible, not for a
             private phone number published where anything can crawl it. */}
         <dl className="flex flex-col gap-2 rounded-card border border-border bg-layer p-4 text-sm not-italic">

@@ -193,13 +193,13 @@ export const LOCATION_PRECISION = {
 }
 
 /**
- * The one published way to reach the people running Paws&Found: the Project
- * Team's institutional address, first published as the Privacy Notice
- * contact. Used wherever a person is told to contact the team — a suspended
- * or locked account included — so there is exactly one address to change.
- * Never a seeded demo account: those are fictional.
+ * The one published way to reach the people running Paws&Found: the project's
+ * own inbox. Used wherever a person is told to contact the team — the Privacy
+ * Notice, and a suspended or locked account — so there is exactly one address
+ * to change. Never a seeded demo account: those are fictional. Not the address
+ * mail is sent from either; that is MAIL_FROM_ADDRESS on the server.
  */
-export const PROJECT_CONTACT_EMAIL = 'kmvaustria@mymail.mapua.edu.ph'
+export const PROJECT_CONTACT_EMAIL = 'pawsandfound.ph@gmail.com'
 
 /**
  * The Administrator a suspended or locked person is told about. The seeded
