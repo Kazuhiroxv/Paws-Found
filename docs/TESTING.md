@@ -35,7 +35,7 @@ from Docker when pointing at Railway.
 
 ESLint over everything; Vite production build. Touch nothing, need nothing.
 
-### `npm run test:contract` — 21 checks
+### `npm run test:contract` — 24 checks
 
 Node's built-in test runner. **No server, no database.** These exist because
 two real defects got through every other suite by being *agreements between two
@@ -61,6 +61,12 @@ it used to show the 23rd. And with the clock pinned at 06:00 in Manila (22:00
 UTC the day before), the report form accepts a report dated today and refuses
 tomorrow; it used to read today as UTC midnight, 8 AM in Manila, and refuse it
 every morning. Against the previous code, five of the six fail.
+
+`match-wording.test.mjs` adds three. A pairing is stored as dismissed both
+when a reporter says "Not my pet" and when it is withdrawn because one of its
+reports was marked Returned or Closed; `wasWithdrawn()` tells the two apart by
+the reports, so the second reads "Withdrawn · a report was finished" instead
+of "Ruled out · by the reporter".
 
 **Mutates nothing.**
 
@@ -88,7 +94,7 @@ skips that one check when there is no network.
 
 **Mutates nothing.** Sends no real email.
 
-### `npm run audit` — 339 checks
+### `npm run audit` — 357 checks
 
 The security and functional suite, against the running API and database.
 
@@ -112,6 +118,7 @@ The security and functional suite, against the running API and database.
 | P. Repeat matching | 11 |
 | Q. Calendar dates | 3 |
 | R. City names | 2 |
+| S. Editing and matching | 18 |
 
 `RA-01`–`RA-27` pin down who receives what. A guest's list row is exactly the
 public summary, a guest opening a report gets `401 auth_required` (a missing
@@ -187,6 +194,16 @@ the map draws. The reporter and coordinators still get the stored pin. `LP-08`
 files a pair 14.93 km apart that the grid would put 15.14 km apart, either side
 of matching's 15 km cut-off, to prove the matcher measures from the stored pin.
 
+`EM-01`–`EM-18` hold the rule that a report under an open pairing cannot
+change underneath the coordinator verifying it. While a report is Possible
+Match, editing its details, adding a photo or changing a photo are all refused
+with `409 match_open`, and nothing in the database moves; the pairing, its
+score and both reports are exactly as they were. Once the pairing is settled
+and the report is Active again, the same edits succeed. An edit to an Active
+report re-runs matching, so a corrected species or place can surface a new
+pairing, and a decided pairing is never rewritten. Against the previous API,
+EM-03, EM-04, EM-05, EM-05b and EM-13 fail.
+
 `SQL-12` and `SQL-14` assert the table and foreign-key counts, so the ERD
 cannot be wrong quietly. `AU-36`–`AU-38` assert that `GET /api/config` offers
 the Turnstile flag and site key and **nothing else** — it is the only
@@ -199,11 +216,20 @@ end**, so it is safe to run repeatedly on a development database — and it will
 **wipe** whatever is in the database it is pointed at. Never point it at
 production without understanding that.
 
-### `python scripts/auth_lifecycle.py` — 53 checks
+### `python scripts/auth_lifecycle.py` — 66 checks
 
 Registration, verification, sign-in refusal, the password reset, the session
 revocation that comes with it, a reset *not* unlocking a locked account, the
 safe email change, and rate limiting.
+
+`RS-1`–`RS-5` cover a reset to the password the account already has. It used
+to be accepted, sign every other session out and say "Password changed". It is
+now a 422 on the password field, and the link is **not** spent, no session is
+revoked and no reset is recorded, so the same link then works for a password
+that is actually new (which spends it, raises `session_version` once and
+records one reset). A locked account is refused the same way and stays locked.
+`RS-5` sends two resets with one link at the same moment: exactly one
+succeeds. Against the previous API, RS-1a–g and RS-4a fail.
 
 It reads every link out of **captured mail**, exactly as a person reads one out
 of an inbox, because there is no endpoint that hands out a token and there is
@@ -272,7 +298,7 @@ stage and exception, and still reaches the caller. No line carries
 coordinates, addresses, passwords or tokens. Needs `php` on PATH and the local
 database; **changes no data** (it asks about a report that is already finished).
 
-### `npm run test:ui` — 34 checks
+### `npm run test:ui` — 39 checks
 
 Two interface regressions from final manual testing, in a real Chrome.
 `MOD-LINK-1`–`4`: on Administrator > Moderation, "Open the full report" is a
@@ -304,6 +330,15 @@ button inside its own card at 360, 390, 768 and 1366px, instead of a More menu
 holding only that item whose panel hung over the next card; an open report
 keeps its More menu with Edit and Close; closing still asks first, Keep it open
 keeps it, and a confirmed close moves the card to Closed, which offers nothing.
+`EDIT-MATCH-2`: a report with an open possible match shows no Edit on My
+Reports, and its edit address says editing is paused.
+`TABLE-HEAD-1`–`2`: scrolled, a table's sticky header sits at the top of the
+page on desktop Users and exactly under the workspace bar on tablet Categories,
+with no rows showing through a gap; it used to stick 72px down.
+`WITHDRAWN-1`–`2` (local only: they finish a report): a pairing withdrawn
+because a report was marked Returned reads "Withdrawn · a report was finished"
+in the coordinator's queue and on the other reporter's report page, not
+"Ruled out · by the reporter" or "Dismissed by User".
 
 **Mutates local data**: the MOD-FLAG checks raise one flag and dismiss it, and
 REPORT-ACTIONS closes one returned report, so they run only against localhost and are skipped anywhere else. The one
@@ -414,19 +449,20 @@ everything passes.
 
 ## 3. Last verified results
 
-27 September 2026, on the development laptop unless stated.
+30 September 2026, on the development laptop unless stated; `test:mail` and
+the Docker lines are from 27 September (nothing they cover has changed).
 
 ```
 lint                                     clean
 build                                    green
-test:contract                            21/21
+test:contract                            24/24
 test:calendar                             8/8
 test:mail                                15/15
-audit                                   339/339
-auth_lifecycle                           53/53
+audit                                   357/357
+auth_lifecycle                           66/66
 multi-device                             55/55   (53/53 + 2 skipped vs a remote)
 test:signout                             24/24
-test:ui                                  34/34
+test:ui                                  39/39
 test:city                                11/11
 test:matching-log                         6/6
 a11y                                     31 pages, 0 violations

@@ -22,7 +22,20 @@ elsewhere. Rerun the script after any schema change; do not edit its outputs.
 summarises some columns (for example `latitude / longitude`), so use the A3
 ERD when comparing against the database.
 
+## A4 defense sheets
+
+`architecture-a4.pdf` (current production architecture) and
+`roles-workflow-a4.pdf` (access matrix, matching and verification) are built
+by `python scripts/print_sheets.py`, which reads versions, weights and counts
+from the project and refuses to build if any of the code lines behind the
+sheets' claims has changed. Print on A4 landscape at 100%.
+
 ## Submission figures
+
+**`fig1-architecture` is superseded — do not print it for the defense.** It
+shows the Phase 1/2 local setup (XAMPP, 11 tables). The current architecture
+is `architecture-a4.pdf`.
+
 
 The SVGs are the source; edit those, not the PNGs. To regenerate a PNG after
 editing:

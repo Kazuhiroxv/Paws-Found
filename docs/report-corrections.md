@@ -112,8 +112,11 @@ The sentence to use, because the two numbers need explaining together:
 > asked for something — neither holds domain data and neither has a foreign
 > key, so neither is drawn on a diagram of the domain.
 
-Also: 15 primary keys, 7 unique constraints over 11 columns, 2 CHECK
-constraints, InnoDB throughout. All counted from `information_schema` on the
+Also: 17 primary keys (one per table), 9 unique constraints over 14 columns,
+2 CHECK constraints, InnoDB throughout. (On the 15 ERD tables alone: 15
+primary keys, 8 unique constraints over 12 columns.) Recounted 30 September;
+an earlier version of this line said 15 and 7, counted before migrations 005
+and 006. All counted from `information_schema` on the
 running database, not read off `schema.sql`.
 
 ---

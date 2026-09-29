@@ -168,14 +168,14 @@ with the password itself. On a built site everyone signs in through the form.
 | `npm run build` | Production build to `dist/` |
 | `npm run preview` | Serve the production build locally |
 | `npm run lint` | ESLint over the project |
-| `npm run audit` | 339 security, functional, privacy, access, editing, integrity and matching-lifecycle cases against the live API and database (**reseeds it**) |
-| `npm run test:contract` | 21 checks of the form/API contract, the sign-in destination and date handling — needs nothing running |
+| `npm run audit` | 357 security, functional, privacy, access, editing, integrity and matching-lifecycle cases against the live API and database (**reseeds it**) |
+| `npm run test:contract` | 24 checks of the form/API contract, the sign-in destination, date handling and how a settled pairing is described — needs nothing running |
 | `npm run test:mail` | 15 checks of the mail transports (needs `php` on PATH) |
 | `npm run multi-device` | 55 checks across three independent sessions |
 | `npm run test:city` | 11 checks of how places compare without a map pin (needs `php` on PATH) |
 | `npm run test:calendar` | 8 checks that "today" is the Philippine date and the database speaks UTC (needs `php` on PATH) |
 | `npm run test:matching-log` | 6 checks of what matching logs, with `MATCH_DEBUG` off and on (needs `php` on PATH) |
-| `npm run test:ui` | 34 browser checks: moderation (the report link, raising and deciding a flag, who is told), registration's field feedback, the phone workspace menu and My Reports card actions (same `PAWS_BASE`, `PAWS_PW`) |
+| `npm run test:ui` | 39 browser checks: moderation (the report link, raising and deciding a flag, who is told), registration's field feedback, the phone workspace menu, My Reports card actions, no Edit while a match is open, withdrawn wording and sticky table headers (same `PAWS_BASE`, `PAWS_PW`) |
 | `npm run test:signout` | 24 browser privacy checks: signing out, switching accounts, the guest map, in a real Chrome (`PAWS_BASE=http://localhost:5173`, `PAWS_PW` set to the password above) |
 | `npm run a11y` | axe-core over all 31 pages in every role (`PAWS_BASE=http://localhost:5173` for the dev build) |
 | `npm run verify:deploy <url>` | 28 checks that only fail on a real host |

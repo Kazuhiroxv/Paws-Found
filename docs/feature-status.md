@@ -131,7 +131,7 @@ either one: the collar answer and the contact preferences.
 
     npm run a11y
 
-axe-core over all 29 pages in every role: zero violations.
+axe-core over all 31 pages in every role: zero violations.
 
     npm run verify:deploy https://<domain>
 
@@ -144,9 +144,11 @@ is readable over the web, and whether any demo password reached the bundle.
 27/28 against the local deployment — the one failure is HTTPS, correctly,
 because localhost is plain HTTP.
 
-Last run in full on 27 September 2026 on the development laptop: 170/170,
-53/53, 55/55, 15/15, 13/13, axe clean, lint clean, build green, 27/28
-preflight.
+Last run in full on 30 September 2026 on the development laptop: audit
+357/357, auth lifecycle 66/66, multi-device 55/55, sign-out 24/24, UI 39/39,
+contract 24/24, calendar 8/8, city 11/11, matching log 6/6, axe clean on 31
+pages, lint clean, build green; and against production, `verify:deploy` 25/25
+with 3 skipped (read-only). Details in `docs/TESTING.md` §3.
 
 ## Cross-cutting
 

@@ -8,9 +8,12 @@
 --   17 tables      the 15 on the ERD, plus schema_migrations and
 --                  auth_rate_limits, which are operational
 --   24 foreign keys    all 24 on the 15; neither infrastructure table has one
---   15 primary keys    one per table
---    7 unique constraints
+--   17 primary keys    one per table
+--    9 unique constraints  over 14 columns (8 over 12 on the 15 ERD tables)
 --    2 CHECK constraints
+--
+-- Recounted 30 September 2026; the 25 September figures for primary and
+-- unique keys were taken before migrations 005 and 006.
 --
 -- First imported on MariaDB 10.4.32 (XAMPP) on 2026-08-19 at 11 tables and 20
 -- foreign keys; the lockout, audit and consent tables arrived with the

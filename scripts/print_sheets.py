@@ -1,5 +1,6 @@
 """
-The two A4 defence sheets: current architecture, and roles + matching workflow.
+The three A4 defence sheets: current architecture, roles + matching workflow,
+and the testing and verification summary.
 
     python scripts/print_sheets.py
 
@@ -7,6 +8,7 @@ writes, into docs/diagrams/:
 
     architecture-a4.html / .pdf / .png
     roles-workflow-a4.html / .pdf / .png
+    testing-a4.html / .pdf / .png         (results read from docs/TESTING.md §3)
 
 The HTML is the editable source; the PDF (A4 landscape, vector) is what gets
 printed. Every number on the sheets is read from the project at run time:
@@ -443,12 +445,141 @@ roles_body = f"""
 </main>
 """
 
+# --- Sheet 3: testing and verification ----------------------------------------
+# The results are read out of docs/TESTING.md §3, so this page and the
+# repository cannot disagree.
+
+testing = read('docs/TESTING.md')
+block = re.search(r'## 3\. Last verified results\s*\n\s*\n(.*?)\n\s*\n```\n(.*?)```', testing, re.S)
+VERIFIED_ON = block.group(1).split(',')[0].strip()
+RESULTS = {}
+for line in block.group(2).splitlines():
+    name, result = re.split(r'\s{2,}', line.strip(), maxsplit=1)
+    RESULTS[name] = result
+
+
+def score(name):
+    """The 'n/n' at the start of a result, as (passed, total)."""
+    passed, total = re.match(r'(\d+)/(\d+)', RESULTS[name]).groups()
+    return int(passed), int(total)
+
+
+SUITES = [
+    ('audit', 'Security and functional audit', 'npm run audit',
+     'input validation, SQL injection, authentication, authorization, XSS, uploads, location privacy, '
+     'report access and editing, matching lifecycle, the table and key counts'),
+    ('auth_lifecycle', 'Account lifecycle', 'scripts/auth_lifecycle.py',
+     'registration, email verification, password reset and the sessions it ends, email change, rate limits'),
+    ('multi-device', 'Multi-device sessions', 'npm run multi-device',
+     'three independent sessions: a role change, suspension, lock and unlock take effect everywhere at once'),
+    ('test:signout', 'Sign-out privacy', 'npm run test:signout',
+     'in a real Chrome: signing out and switching accounts leaves nothing of the last person on screen'),
+    ('test:ui', 'Interface regressions', 'npm run test:ui',
+     'in a real Chrome: moderation, registration feedback, phone menus, report actions, the edit freeze'),
+    ('test:contract', 'Contract tests', 'npm run test:contract',
+     'what the form sends, what the API returns and what MySQL stores agree; dates in Philippine time'),
+    ('test:city', 'Place comparison', 'npm run test:city', 'how two places compare when a report has no map pin'),
+    ('test:calendar', 'Calendar', 'npm run test:calendar', '"today" is the Philippine date; the database speaks UTC'),
+    ('test:matching-log', 'Matching log', 'npm run test:matching-log', 'what matching writes to the log, with debugging off and on'),
+]
+missing_results = [key for key, *_ in SUITES if key not in RESULTS]
+if missing_results:
+    sys.exit(f'docs/TESTING.md §3 has no result for: {missing_results}')
+if any(score(key)[0] != score(key)[1] for key, *_ in SUITES):
+    sys.exit('A suite in docs/TESTING.md §3 is not passing; the summary sheet would say otherwise.')
+TOTAL = sum(score(key)[1] for key, *_ in SUITES)
+A11Y = re.match(r'(\d+) pages, 0 violations', RESULTS['a11y']).group(1)
+DEPLOY = RESULTS['verify:deploy vs production'].split('(')[0].strip()
+
+suite_rows = '\n'.join(
+    f'<tr><td><b>{escape(title)}</b><code>{escape(cmd)}</code></td><td>{escape(what)}</td>'
+    f'<td class="r">{score(key)[0]}/{score(key)[1]}</td></tr>'
+    for key, title, cmd, what in SUITES)
+
+TEST_STYLE = """
+main { display: grid; grid-template-columns: 1fr 98mm; gap: 12px; flex: 1; min-height: 0 }
+.label.t { color: var(--teal); margin-bottom: 5px }
+.strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 9px }
+.big { border: 1.4px solid var(--teal); border-radius: 6px; padding: 5px 9px; background: var(--teal-tint) }
+.big b { font-size: 21px; display: block; line-height: 1.1; color: var(--teal) }
+.big span { font-size: 9.6px; color: var(--muted); line-height: 1.25; display: block }
+table.s { width: 100%; border-collapse: collapse }
+table.s th { font-size: 9.5px; text-align: left; padding: 4px 6px; color: #fff; background: var(--slate) }
+table.s th.r, table.s td.r { text-align: right }
+table.s td { border-bottom: 1px solid #E1E7E6; padding: 7px 7px; vertical-align: top; font-size: 10.4px; color: var(--muted); line-height: 1.3 }
+table.s td:first-child { width: 34%; color: var(--ink) }
+table.s td:first-child b { font-size: 12px; display: block }
+table.s td:first-child code { font-size: 9.4px; color: var(--muted) }
+table.s td.r { font-size: 14.5px; font-weight: 700; color: var(--teal); white-space: nowrap; vertical-align: middle }
+table.s tr:nth-child(even) td { background: #F7FAF9 }
+.also { font-size: 10.4px; color: var(--muted); line-height: 1.4; margin-top: 7px }
+.also b { color: var(--ink) }
+.finding { border: 1.4px solid var(--amber); background: var(--amber-tint); border-radius: 7px; padding: 7px 10px; margin-bottom: 8px }
+.finding .label { color: var(--amber); margin-bottom: 3px }
+.finding h3 { font-size: 12px; margin-bottom: 3px }
+.finding p { font-size: 9.8px; line-height: 1.38; color: #3B4240 }
+.plain { border: 1.3px solid var(--line); border-radius: 7px; padding: 7px 10px; margin-bottom: 8px }
+.plain .label { color: var(--teal); margin-bottom: 3px }
+.plain p { font-size: 9.8px; line-height: 1.38; color: #3B4240 }
+"""
+
+test_body = f"""
+<main>
+<section>
+  <div class="strip">
+    <div class="big"><b>{TOTAL}</b><span>automated checks, all passing, in the {len(SUITES)} suites below</span></div>
+    <div class="big"><b>{A11Y}</b><span>pages checked by axe-core in every role: 0 violations</span></div>
+    <div class="big"><b>{DEPLOY.split(' ')[0]}</b><span>deployment checks against production (read-only; 3 upload checks skipped)</span></div>
+    <div class="big"><b>{TABLES} / {FKS}</b><span>tables / foreign keys, asserted by the audit so the ERD cannot drift</span></div>
+  </div>
+  <table class="s">
+    <thead><tr><th>Suite</th><th>What it proves</th><th class="r">Result</th></tr></thead>
+    <tbody>{suite_rows}</tbody>
+  </table>
+  <p class="also"><b>Also:</b> lint clean · production build green · Docker image builds clean ·
+    <code>schema.sql</code> imports clean on MySQL 8.0 and 9.4 and matches the migrated database table for table.
+    The suites run against the development copy: the audit and account tests reseed and change data, so production
+    is checked read-only by the deployment verifier and by a manual walk-through.</p>
+</section>
+<aside>
+  <div class="label t">Why more than one kind of test</div>
+  <div class="finding">
+    <div class="label">Finding 1 · endpoint testing</div>
+    <h3>A router fault no unit could show</h3>
+    <p>Every handler in <code>api/</code> was correct on its own, but <code>api/index.php</code> passed only the first two
+      path segments to most of them, so a third was silently dropped: <code>GET /api/matches/1/claims</code> answered with
+      the match. Only asking the running API for endpoints it does not have could find it. Fixed; audit cases EH-07 to EH-10.</p>
+  </div>
+  <div class="finding">
+    <div class="label">Finding 2 · measuring, not only scanning</div>
+    <h3>Contrast that axe-core could not see</h3>
+    <p>axe reported zero violations, but it cannot judge text over a photograph. Measuring the rendered pixels behind each
+      line of text, at four screen widths, found three paragraphs under WCAG AA, the worst at 1.17:1, on pages axe had
+      called clean. Fixed, then re-measured: every line now passes at every width.</p>
+  </div>
+  <div class="plain">
+    <div class="label">Every fix is proven red first</div>
+    <p>A regression test is run against the old code before the fix, and must fail there. Examples from the final fixes: the edit
+      freeze (EM-03, 04, 05, 05b, 13 failed before), and refusing a reset to the current password (RS-1a–g, RS-4a).</p>
+  </div>
+  <div class="plain">
+    <div class="label">Where to find it</div>
+    <p><code>docs/TESTING.md</code> lists every suite, what it needs and what it changes. The numbers on this page are
+      read from its section 3, verified {escape(VERIFIED_ON)}.</p>
+  </div>
+</aside>
+</main>
+"""
+
+
 # --- Write and render ---------------------------------------------------------
 
 os.makedirs(OUT, exist_ok=True)
 sheets = {
     'architecture-a4.html': page('Paws&Found', 'Current System Architecture', META, arch_body, ARCH_STYLE),
     'roles-workflow-a4.html': page('Paws&Found', 'Roles, Access & Matching Workflow', META, roles_body, ROLES_STYLE),
+    'testing-a4.html': page('Paws&Found', 'Testing & Verification Summary',
+                            f'<b>ITS122P – AM5 · Group 3</b><br>Verified {escape(VERIFIED_ON)}', test_body, TEST_STYLE),
 }
 for name, html in sheets.items():
     path = os.path.join(OUT, name)

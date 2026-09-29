@@ -17,7 +17,7 @@ your head walking in.
 | Unique constraints | 9, over 14 columns |
 | CHECK constraints | 2 |
 | Engine | InnoDB throughout |
-| Server | MariaDB 10.4.32 via XAMPP — **port 3307** on the development laptop |
+| Server | **Production: MySQL 9.4 on Railway** (what DBeaver connects to at the defense). Development: MariaDB 10.4.32 via XAMPP, port 3307. Same `schema.sql`, same counts on both |
 
 **Say both table numbers.** `SHOW TABLES` gives 17; the ERD draws 15. The two
 that are missing are `schema_migrations`, which records which files in

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Paws&amp;Found · Testing &amp; Verification Summary</title>
+<style>
+@page { size: 297mm 210mm; margin: 0 }
+:root {
+  --ink: #1B1F1F; --muted: #56605E; --line: #C9D1CF;
+  --teal: #0E5D5B; --teal-tint: #EEF6F5; --amber: #8A5A12; --amber-tint: #FBF5EA;
+  --slate: #2F3A4A; --slate-tint: #F2F4F7;
+}
+* { box-sizing: border-box; margin: 0; padding: 0 }
+html, body { width: 297mm; height: 210mm; background: #fff; color: var(--ink);
+  font-family: 'Segoe UI', Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+.page { width: 297mm; height: 210mm; padding: 8mm 9mm 7mm; display: flex; flex-direction: column; overflow: hidden }
+header { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 7px;
+  border-bottom: 2px solid var(--teal); margin-bottom: 10px }
+header h1 { font-size: 23px; font-weight: 700; line-height: 1 }
+header h2 { font-size: 15px; font-weight: 600; color: var(--muted); margin-top: 4px }
+header .meta { text-align: right; font-size: 11px; color: var(--muted); line-height: 1.45 }
+header .meta b { color: var(--ink); font-size: 12.5px }
+.label { font-size: 9.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase }
+code, .mono { font-family: Consolas, 'Cascadia Mono', 'Courier New', monospace }
+.foot { font-size: 8.5px; color: var(--muted); margin-top: auto; padding-top: 5px }
+
+main { display: grid; grid-template-columns: 1fr 98mm; gap: 12px; flex: 1; min-height: 0 }
+.label.t { color: var(--teal); margin-bottom: 5px }
+.strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 9px }
+.big { border: 1.4px solid var(--teal); border-radius: 6px; padding: 5px 9px; background: var(--teal-tint) }
+.big b { font-size: 21px; display: block; line-height: 1.1; color: var(--teal) }
+.big span { font-size: 9.6px; color: var(--muted); line-height: 1.25; display: block }
+table.s { width: 100%; border-collapse: collapse }
+table.s th { font-size: 9.5px; text-align: left; padding: 4px 6px; color: #fff; background: var(--slate) }
+table.s th.r, table.s td.r { text-align: right }
+table.s td { border-bottom: 1px solid #E1E7E6; padding: 7px 7px; vertical-align: top; font-size: 10.4px; color: var(--muted); line-height: 1.3 }
+table.s td:first-child { width: 34%; color: var(--ink) }
+table.s td:first-child b { font-size: 12px; display: block }
+table.s td:first-child code { font-size: 9.4px; color: var(--muted) }
+table.s td.r { font-size: 14.5px; font-weight: 700; color: var(--teal); white-space: nowrap; vertical-align: middle }
+table.s tr:nth-child(even) td { background: #F7FAF9 }
+.also { font-size: 10.4px; color: var(--muted); line-height: 1.4; margin-top: 7px }
+.also b { color: var(--ink) }
+.finding { border: 1.4px solid var(--amber); background: var(--amber-tint); border-radius: 7px; padding: 7px 10px; margin-bottom: 8px }
+.finding .label { color: var(--amber); margin-bottom: 3px }
+.finding h3 { font-size: 12px; margin-bottom: 3px }
+.finding p { font-size: 9.8px; line-height: 1.38; color: #3B4240 }
+.plain { border: 1.3px solid var(--line); border-radius: 7px; padding: 7px 10px; margin-bottom: 8px }
+.plain .label { color: var(--teal); margin-bottom: 3px }
+.plain p { font-size: 9.8px; line-height: 1.38; color: #3B4240 }
+</style></head>
+<body><div class="page">
+<header><div><h1>Paws&amp;Found</h1><h2>Testing &amp; Verification Summary</h2></div><div class="meta"><b>ITS122P – AM5 · Group 3</b><br>Verified 30 September 2026</div></header>
+
+<main>
+<section>
+  <div class="strip">
+    <div class="big"><b>590</b><span>automated checks, all passing, in the 9 suites below</span></div>
+    <div class="big"><b>31</b><span>pages checked by axe-core in every role: 0 violations</span></div>
+    <div class="big"><b>25/25</b><span>deployment checks against production (read-only; 3 upload checks skipped)</span></div>
+    <div class="big"><b>17 / 24</b><span>tables / foreign keys, asserted by the audit so the ERD cannot drift</span></div>
+  </div>
+  <table class="s">
+    <thead><tr><th>Suite</th><th>What it proves</th><th class="r">Result</th></tr></thead>
+    <tbody><tr><td><b>Security and functional audit</b><code>npm run audit</code></td><td>input validation, SQL injection, authentication, authorization, XSS, uploads, location privacy, report access and editing, matching lifecycle, the table and key counts</td><td class="r">357/357</td></tr>
+<tr><td><b>Account lifecycle</b><code>scripts/auth_lifecycle.py</code></td><td>registration, email verification, password reset and the sessions it ends, email change, rate limits</td><td class="r">66/66</td></tr>
+<tr><td><b>Multi-device sessions</b><code>npm run multi-device</code></td><td>three independent sessions: a role change, suspension, lock and unlock take effect everywhere at once</td><td class="r">55/55</td></tr>
+<tr><td><b>Sign-out privacy</b><code>npm run test:signout</code></td><td>in a real Chrome: signing out and switching accounts leaves nothing of the last person on screen</td><td class="r">24/24</td></tr>
+<tr><td><b>Interface regressions</b><code>npm run test:ui</code></td><td>in a real Chrome: moderation, registration feedback, phone menus, report actions, the edit freeze</td><td class="r">39/39</td></tr>
+<tr><td><b>Contract tests</b><code>npm run test:contract</code></td><td>what the form sends, what the API returns and what MySQL stores agree; dates in Philippine time</td><td class="r">24/24</td></tr>
+<tr><td><b>Place comparison</b><code>npm run test:city</code></td><td>how two places compare when a report has no map pin</td><td class="r">11/11</td></tr>
+<tr><td><b>Calendar</b><code>npm run test:calendar</code></td><td>&quot;today&quot; is the Philippine date; the database speaks UTC</td><td class="r">8/8</td></tr>
+<tr><td><b>Matching log</b><code>npm run test:matching-log</code></td><td>what matching writes to the log, with debugging off and on</td><td class="r">6/6</td></tr></tbody>
+  </table>
+  <p class="also"><b>Also:</b> lint clean · production build green · Docker image builds clean ·
+    <code>schema.sql</code> imports clean on MySQL 8.0 and 9.4 and matches the migrated database table for table.
+    The suites run against the development copy: the audit and account tests reseed and change data, so production
+    is checked read-only by the deployment verifier and by a manual walk-through.</p>
+</section>
+<aside>
+  <div class="label t">Why more than one kind of test</div>
+  <div class="finding">
+    <div class="label">Finding 1 · endpoint testing</div>
+    <h3>A router fault no unit could show</h3>
+    <p>Every handler in <code>api/</code> was correct on its own, but <code>api/index.php</code> passed only the first two
+      path segments to most of them, so a third was silently dropped: <code>GET /api/matches/1/claims</code> answered with
+      the match. Only asking the running API for endpoints it does not have could find it. Fixed; audit cases EH-07 to EH-10.</p>
+  </div>
+  <div class="finding">
+    <div class="label">Finding 2 · measuring, not only scanning</div>
+    <h3>Contrast that axe-core could not see</h3>
+    <p>axe reported zero violations, but it cannot judge text over a photograph. Measuring the rendered pixels behind each
+      line of text, at four screen widths, found three paragraphs under WCAG AA, the worst at 1.17:1, on pages axe had
+      called clean. Fixed, then re-measured: every line now passes at every width.</p>
+  </div>
+  <div class="plain">
+    <div class="label">Every fix is proven red first</div>
+    <p>A regression test is run against the old code before the fix, and must fail there. Examples from the final fixes: the edit
+      freeze (EM-03, 04, 05, 05b, 13 failed before), and refusing a reset to the current password (RS-1a–g, RS-4a).</p>
+  </div>
+  <div class="plain">
+    <div class="label">Where to find it</div>
+    <p><code>docs/TESTING.md</code> lists every suite, what it needs and what it changes. The numbers on this page are
+      read from its section 3, verified 30 September 2026.</p>
+  </div>
+</aside>
+</main>
+
+</div></body></html>
