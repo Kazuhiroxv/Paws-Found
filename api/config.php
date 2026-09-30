@@ -100,6 +100,12 @@ defined('MAX_PAGE_SIZE') || define('MAX_PAGE_SIZE', 50);
 defined('MAX_LOGIN_ATTEMPTS') || define('MAX_LOGIN_ATTEMPTS', 3);
 
 /**
+ * Roles limited to one signed-in session at a time: signing in again ends the
+ * previous one. Customers are not limited (api/auth.php, auth_login()).
+ */
+const PRIVILEGED_ROLES = ['staff', 'admin'];
+
+/**
  * The date the privacy notice last changed.
  *
  * Stored against each agreement in `privacy_consents`, so a change to the

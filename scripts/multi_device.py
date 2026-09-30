@@ -88,16 +88,19 @@ def banner(title):
 
 
 # ======================================================= A — one account, three devices
-banner('A. The same account signed in on three devices')
+# A customer may be signed in on any number of devices. A coordinator or an
+# administrator keeps one session at a time; that is section L.
+banner('A. The same customer account signed in on three devices')
 STAFF = audit.ACCOUNTS['staff']
-a, code_a, _ = device(STAFF)
-b, code_b, _ = device(STAFF)
-c, code_c, _ = device(STAFF)
+CUSTOMER = audit.ACCOUNTS['customer']
+a, code_a, _ = device(CUSTOMER)
+b, code_b, _ = device(CUSTOMER)
+c, code_c, _ = device(CUSTOMER)
 check('A1', 'Device A signs in', 200, code_a)
 check('A2', 'Device B signs in, A is not logged out', 200, code_b)
 check('A3', 'Device C signs in, A and B are not logged out', 200, code_c)
 check('A4', 'All three are the same person on the server',
-      'staff/staff/staff', '/'.join(role_of(d) for d in (a, b, c)))
+      'user/user/user', '/'.join(role_of(d) for d in (a, b, c)))
 
 # ======================================================= B — a change on one device
 banner('B. A report is filed and changed on one device')
@@ -128,23 +131,36 @@ check('C4', "Device 2's own request agrees", 0,
           if not n.get('is_read', n.get('read', False))))
 
 # ======================================================= D — role change mid-session
-banner('D. An administrator changes the role while all three are signed in')
+banner('D. An administrator changes the role while the account is signed in')
 admin, _, _ = device(audit.ACCOUNTS['admin'])
 staff_id = int(sql(f"SELECT user_id FROM users WHERE email = '{STAFF}'"))
+coordinator, _, _ = device(STAFF)
 check('D1', 'Administrator downgrades staff to user', 200,
       admin.call('PATCH', f'/users/{staff_id}', {'role': 'user'})[0])
-check('D2', 'Device A is a customer on its very next request', 'user', role_of(a))
-check('D3', 'Device B, which never refreshed, is too', 'user', role_of(b))
-check('D4', 'Device C calling a coordinator endpoint is refused', 403,
-      c.call('GET', '/users')[0])
-check('D5', 'The audit log says who did it', 'role_changed',
+check('D2', "The coordinator's device is a customer on its very next request", 'user', role_of(coordinator))
+check('D3', 'Calling a coordinator endpoint from it is refused', 403,
+      coordinator.call('GET', '/reports/stats')[0])
+check('D4', 'The audit log says who did it', 'role_changed',
       sql(f"SELECT action FROM audit_logs WHERE target_id = {staff_id} "
           "AND action = 'role_changed' ORDER BY audit_id DESC LIMIT 1") or '(none)')
+# Now a customer, the account may sign in on a second device as well.
+second_device, code, _ = device(STAFF)
+check('D5', 'As a customer it signs in on a second device too', 'user/user',
+      f'{role_of(coordinator)}/{role_of(second_device)}')
+# Promoted back: sessions that were open as a customer's would all become a
+# coordinator's at once, so every one of them ends instead.
+check('D6', 'Administrator promotes it back to staff', 200,
+      admin.call('PATCH', f'/users/{staff_id}', {'role': 'staff'})[0])
+check('D7', 'Both earlier sessions end with the promotion', 'signed out/signed out',
+      f'{role_of(coordinator)}/{role_of(second_device)}')
+promoted, code, _ = device(STAFF)
+check('D8', 'Signing in again gives one coordinator session', 'staff', role_of(promoted))
 
 # ======================================================= E — suspension mid-session
 banner('E. The account is suspended while all three are signed in')
+customer_id = int(sql(f"SELECT user_id FROM users WHERE email = '{CUSTOMER}'"))
 check('E1', 'Administrator suspends the account', 200,
-      admin.call('PATCH', f'/users/{staff_id}',
+      admin.call('PATCH', f'/users/{customer_id}',
                  {'account_status': 'suspended',
                   'reason': 'Suspended by the multi-device rehearsal.'})[0])
 # `/auth/me` answers 200 with `user: null` rather than 401 — it is the "who am
@@ -156,8 +172,7 @@ for label, dev in (('A', a), ('B', b), ('C', c)):
           'signed out', role_of(dev))
     check(f'E{ord(label) - 63}b', f'Device {label}: a protected call is refused',
           401, dev.call('GET', '/notifications')[0])
-admin.call('PATCH', f'/users/{staff_id}', {'role': 'staff'})
-admin.call('PATCH', f'/users/{staff_id}', {'account_status': 'active'})
+admin.call('PATCH', f'/users/{customer_id}', {'account_status': 'active'})
 
 # ======================================================= F — the lock is in the database
 banner('F. Three wrong passwords on one device lock the account everywhere')
@@ -283,6 +298,51 @@ finally:
 fresh_again, code, _ = device(audit.ACCOUNTS['customer'])
 check('K5', 'With the normal policy restored, signing in works', 200, code)
 check('K6', 'And the session holds', 'user', role_of(fresh_again))
+
+# ============================== L — one session for a privileged account
+banner('L. A coordinator or an administrator keeps one session at a time')
+
+
+def version_of(email):
+    return int(sql(f"SELECT session_version FROM users WHERE email = '{email}'"))
+
+
+for role, label, first_step in (('staff', 'coordinator', 1), ('admin', 'administrator', 6)):
+    email = audit.ACCOUNTS[role]
+    one, _, _ = device(email)
+    step = lambda n: f'L{first_step + n}'
+    check(step(0), f'The {label} signs in on device one', role, role_of(one))
+    before = version_of(email)
+    two, code, payload = device(email)
+    check(step(1), '...then on device two, which is told earlier sessions ended', (200, True),
+          (code, payload.get('previous_sessions_ended')))
+    check(step(2), 'Device two works', role, role_of(two))
+    check(step(3), 'Device one is signed out on its next request', ('signed out', 401),
+          (role_of(one), one.call('GET', '/notifications')[0]))
+    check(step(4), 'The account moved on exactly one generation', before + 1, version_of(email))
+
+# A wrong password is no sign-in: it must not end the session that is open.
+ADMIN = audit.ACCOUNTS['admin']
+kept, _, _ = device(ADMIN)
+before = version_of(ADMIN)
+stranger = audit.Session()
+stranger.prime_csrf()
+check('L11', 'A wrong password for the administrator from elsewhere', 401,
+      stranger.call('POST', '/auth/login', {'email': ADMIN, 'password': 'not-the-password'})[0])
+check('L12', '...leaves the open administrator session working', ('admin', before),
+      (role_of(kept), version_of(ADMIN)))
+sql(f"DELETE FROM login_attempts WHERE email = '{ADMIN}'")
+
+# A customer is not limited, and signing out ends only the device it is on.
+phone, _, first = device(CUSTOMER)
+laptop, _, second = device(CUSTOMER)
+check('L13', 'A customer on two devices: both work, nothing ended', ('user/user', False, False),
+      (f'{role_of(phone)}/{role_of(laptop)}', first.get('previous_sessions_ended'),
+       second.get('previous_sessions_ended')))
+before = version_of(CUSTOMER)
+check('L14', 'Signing out on the phone', 200, phone.call('POST', '/auth/logout')[0])
+check('L15', '...signs out the phone only; the laptop stays signed in', ('signed out', 'user', before),
+      (role_of(phone), role_of(laptop), version_of(CUSTOMER)))
 
 # ======================================================= summary
 passed = sum(1 for row in results if row[4])

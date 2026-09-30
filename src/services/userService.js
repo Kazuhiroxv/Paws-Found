@@ -95,12 +95,15 @@ export async function getCurrentUser() {
  * for the interface.
  */
 export async function signIn(email, password) {
-  await apiFetch('/auth/login', {
+  const payload = await apiFetch('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   })
 
-  return getCurrentUser()
+  // A coordinator or an administrator keeps one session: signing in here ends
+  // any earlier one, and the workspace says so once.
+  const user = await getCurrentUser()
+  return user && { ...user, previousSessionsEnded: payload.previous_sessions_ended === true }
 }
 
 /** End the session. Returns null so callers can assign the result directly. */

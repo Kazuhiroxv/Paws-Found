@@ -140,6 +140,25 @@ function auth_login(): never
     // apart from an administrator unlocking the account.
     clear_login_attempts($email);
 
+    // One session at a time for a privileged account. A coordinator or an
+    // administrator signing in starts a new generation, so a session left open
+    // on another machine stops working on its next request (current_user()
+    // compares the numbers). A customer keeps every device: a phone and a
+    // laptop at once is ordinary, and nothing they can reach needs the limit.
+    //
+    // Only here, after every refusal above, so a wrong password, a locked or
+    // suspended account or an unverified address never ends anybody's session.
+    // LAST_INSERT_ID(expr) hands this connection the value it wrote, so two
+    // sign-ins at the same moment cannot both keep the winning number.
+    $sessionVersion = (int) $user['session_version'];
+    $privileged = in_array($user['role'], PRIVILEGED_ROLES, true);
+
+    if ($privileged) {
+        db()->prepare('UPDATE users SET session_version = LAST_INSERT_ID(session_version + 1) WHERE user_id = :id')
+            ->execute([':id' => $user['user_id']]);
+        $sessionVersion = (int) db()->lastInsertId();
+    }
+
     start_session();
 
     // A new session id on sign-in, so a session cookie captured beforehand
@@ -150,9 +169,10 @@ function auth_login(): never
     // The generation this session belongs to. A password reset bumps the
     // column and every session carrying an older number stops working, without
     // anybody having to find and delete session files on disk.
-    $_SESSION['session_version'] = (int) $user['session_version'];
+    $_SESSION['session_version'] = $sessionVersion;
 
-    audit_log('login', (int) $user['user_id'], $user['email'], 'user', (int) $user['user_id']);
+    audit_log('login', (int) $user['user_id'], $user['email'], 'user', (int) $user['user_id'], 'success',
+        $privileged ? 'earlier sessions for this account ended' : null);
 
     json_response([
         // The session id just changed, so the token paired with it changes too.
@@ -165,6 +185,10 @@ function auth_login(): never
             'email' => $user['email'],
             'role' => $user['role'],
         ],
+        // Whether any earlier session for this account stopped working. True
+        // for every privileged sign-in, because the server cannot tell whether
+        // another session was open; the wording on the page says "any".
+        'previous_sessions_ended' => $privileged,
     ]);
 }
 

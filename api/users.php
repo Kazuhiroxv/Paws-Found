@@ -323,6 +323,16 @@ function user_update(int $id): never
         $statement = $pdo->prepare('UPDATE users SET ' . implode(', ', $sets) . ' WHERE user_id = :id');
         $statement->execute($params);
 
+        // Promoted into a privileged role: every session the account has open
+        // ends, because a privileged account keeps one session at a time
+        // (auth_login()) and the ones already open would otherwise all become
+        // privileged together. A step down is left alone: those sessions carry
+        // on as a customer's, which may be on any number of devices.
+        if ($newRole !== null && $newRole !== $before['role'] && in_array($newRole, PRIVILEGED_ROLES, true)) {
+            $pdo->prepare('UPDATE users SET session_version = session_version + 1 WHERE user_id = :id')
+                ->execute([':id' => $id]);
+        }
+
         // Reactivating a locked account is the unlock, so the counter that
         // locked it has to go with it. Leaving the row behind would lock the
         // account again on the very next failed attempt, which is not what

@@ -36,7 +36,7 @@ import { WorkspaceShell } from './WorkspaceShell'
  * @param {() => void} [props.onSignOut]   Required when `standalone`.
  */
 export function WorkspaceLayout({ label, items, loadCounts, standalone = false, user, onSignOut }) {
-  const { pathname } = useLocation()
+  const { pathname, state } = useLocation()
   const navigate = useNavigate()
 
   // As in RootLayout: home first, then the session, so the workspace is not
@@ -62,6 +62,15 @@ export function WorkspaceLayout({ label, items, loadCounts, standalone = false, 
         onSignOut={signOutToHome}
       >
         <Container className="py-8">
+          {/* Once, on arrival from the sign-in page: a privileged account keeps
+              one session, so signing in here ended any other. "Any" because
+              the server cannot tell whether another one was open. */}
+          {state?.sessionNotice && (
+            <p role="status" className="mb-6 rounded-control border border-brand/20 bg-brand-soft px-4 py-3 text-sm text-fg">
+              Signed in on this device. For security, any previous session for this account is no
+              longer valid.
+            </p>
+          )}
           <Outlet />
         </Container>
       </WorkspaceShell>

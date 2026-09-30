@@ -66,7 +66,10 @@ export function LoginPage({ onSignedIn, onDemoSignIn }) {
   /** Send whoever just signed in to where they were going, if their role may go there. */
   const goToWorkspace = (user) => {
     onSignedIn(user)
-    navigate(destinationAfterSignIn(user.role, returnTo), { replace: true })
+    navigate(destinationAfterSignIn(user.role, returnTo), {
+      replace: true,
+      state: user.previousSessionsEnded ? { sessionNotice: true } : undefined,
+    })
   }
 
   const submit = async (event) => {
