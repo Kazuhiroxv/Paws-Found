@@ -103,11 +103,11 @@ be one.
 
     npm run multi-device
 
-**55 checks across three independent sessions** — three cookie jars, three
+**73 checks across independent sessions** — separate cookie jars and
 CSRF tokens, as three browsers on three machines have. It proves the shared
 database is the authority for a report change, a read-state change, a role
 downgrade, a suspension, a three-attempt lock, an administrator unlock, a
-server-side session expiry, and five forbidden addresses. It takes `PAWS_API`
+server-side session expiry, and five forbidden addresses; and that a coordinator or an administrator keeps one session at a time (signing in again ends the last one), while a customer may be signed in on several devices. It takes `PAWS_API`
 so it can be pointed at the LAN address or at the hosted site.
 
     npm run test:mail
@@ -145,7 +145,7 @@ is readable over the web, and whether any demo password reached the bundle.
 because localhost is plain HTTP.
 
 Last run in full on 30 September 2026 on the development laptop: audit
-357/357, auth lifecycle 66/66, multi-device 55/55, sign-out 24/24, UI 39/39,
+357/357, auth lifecycle 66/66, multi-device 73/73, sign-out 24/24, UI 44/44,
 contract 24/24, calendar 8/8, city 11/11, matching log 6/6, axe clean on 31
 pages, lint clean, build green; and against production, `verify:deploy` 25/25
 with 3 skipped (read-only). Details in `docs/TESTING.md` §3.

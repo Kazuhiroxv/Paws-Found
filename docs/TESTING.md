@@ -241,7 +241,7 @@ restores whatever was there before.
 
 **Mutates data.** Restores the demonstration data at the end.
 
-### `npm run multi-device` — 55 checks
+### `npm run multi-device` — 73 checks
 
 Three sessions with three cookie jars and three CSRF tokens, as three browsers
 on three machines would have. It proves the **database** is the authority
@@ -250,8 +250,18 @@ read-state change, a role downgrade, a suspension, a three-attempt lock, an
 administrator unlock, a server-side session expiry, and two people moving the
 same report at the same moment.
 
+Section L holds the one-session rule. A coordinator or an administrator keeps
+one session at a time: signing in on a second device ends the first on its next
+request (401), the account moves on exactly one `session_version`, and the new
+device is told any earlier session ended. A wrong password from elsewhere ends
+nothing. A customer keeps every device, and signing out ends only the device it
+is on. Section D: a demotion keeps the session (it carries on as a customer's);
+a promotion into staff ends every session the account had open. The
+three-devices-at-once checks (A, E) use a customer, because that is the case
+the rule still allows.
+
 **Expected skips against a remote.** Pointed at a container or a host it
-reports **53/53 with 2 skipped**, not 55/55. Checks `K3` and `K4` turn the
+reports **71/71 with 2 skipped**, not 73/73. Checks `K3` and `K4` turn the
 session timeout down by writing `api/config.local.php` on the machine running
 the suite, and a server elsewhere never reads it. The suite names them as
 skipped rather than reporting a failure it did not observe. Both run for real
@@ -298,7 +308,7 @@ stage and exception, and still reaches the caller. No line carries
 coordinates, addresses, passwords or tokens. Needs `php` on PATH and the local
 database; **changes no data** (it asks about a report that is already finished).
 
-### `npm run test:ui` — 39 checks
+### `npm run test:ui` — 44 checks
 
 Two interface regressions from final manual testing, in a real Chrome.
 `MOD-LINK-1`–`4`: on Administrator > Moderation, "Open the full report" is a
@@ -325,6 +335,11 @@ down a long list it is tapped, without moving the page; choosing a section goes
 there and closes it; Enter opens it and Tab moves into it; the desktop rail is
 unchanged. The menu used to open at the top of the page, 1,200 to 3,000px out of
 sight.
+`HISTORY-1`–`5` (local only): a ruled-out pairing whose report was edited
+afterwards reads "Historical comparison" in the Match Queue and on the report
+page, with its stored reasons in the past tense beside today's report; an open
+pairing carries no label; the customer's Possible Matches still leaves ruled-out
+pairings out; and the stored score still equals its seven signals.
 `REPORT-ACTIONS-1`–`5`: on My Reports, a returned report shows Close report as a
 button inside its own card at 360, 390, 768 and 1366px, instead of a More menu
 holding only that item whose panel hung over the next card; an open report
@@ -460,9 +475,9 @@ test:calendar                             8/8
 test:mail                                15/15
 audit                                   357/357
 auth_lifecycle                           66/66
-multi-device                             55/55   (53/53 + 2 skipped vs a remote)
+multi-device                             73/73   (71/71 + 2 skipped vs a remote)
 test:signout                             24/24
-test:ui                                  39/39
+test:ui                                  44/44
 test:city                                11/11
 test:matching-log                         6/6
 a11y                                     31 pages, 0 violations

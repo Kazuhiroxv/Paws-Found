@@ -80,6 +80,8 @@ if (TABLES, FKS) != (17, 24):
 # means the code changed and the sheet may now be wrong.
 CHECKS = [
     ('api/db.php', r'PDO::ATTR_EMULATE_PREPARES => false', 'native prepared statements'),
+    ('api/config.php', r"const PRIVILEGED_ROLES = \['staff', 'admin'\];", 'one session for staff and admin'),
+    ('api/auth.php', r'session_version = LAST_INSERT_ID\(session_version \+ 1\)', 'privileged sign-in ends older sessions'),
     ('api/helpers.php', r"'httponly' => true", 'HttpOnly session cookie'),
     ('api/helpers.php', r"'samesite' => 'Lax'", 'SameSite=Lax'),
     ('api/helpers.php', r"'secure' => request_is_https\(\)", 'Secure cookie over HTTPS'),
@@ -245,7 +247,7 @@ arch_body = f"""
     <div class="body">
       <div class="apphead">PHP {PHP} REST API <span>· Apache · JSON in, JSON out · our own endpoints</span></div>
       <div class="modules">
-        <div class="module"><b>Authentication</b><span>bcrypt hashes, sessions, lock after 3 failed sign-ins, email verification</span></div>
+        <div class="module"><b>Authentication</b><span>bcrypt hashes, sessions, lock after 3 failed sign-ins, email verification; one session for staff and admin</span></div>
         <div class="module"><b>Authorization</b><span>role re-read from the database on every request; 401 / 403</span></div>
         <div class="module"><b>Validation</b><span>every field checked on the server; 422 names the field</span></div>
         <div class="module"><b>Privacy filtering</b><span>unpublished contact never leaves the server; guests get a summary</span></div>
@@ -323,6 +325,7 @@ def api(text):
 # (action, guest, customer, staff, admin). Each rule is one of the CHECKS above.
 MATRIX = [
     ('Browse public reports, search, map', Y, Y, Y, Y),
+    ('Stay signed in on several devices at once', N, Y, own('one session'), own('one session')),
     ('Open full report details', N, Y, Y, Y),
     ('File a lost or found report', N, Y, Y, Y),
     ('Edit own report (Active only)', N, own(), api('own'), api('own')),
@@ -471,11 +474,13 @@ SUITES = [
     ('auth_lifecycle', 'Account lifecycle', 'scripts/auth_lifecycle.py',
      'registration, email verification, password reset and the sessions it ends, email change, rate limits'),
     ('multi-device', 'Multi-device sessions', 'npm run multi-device',
-     'three independent sessions: a role change, suspension, lock and unlock take effect everywhere at once'),
+     'independent sessions: suspension, lock and unlock take effect everywhere at once; a coordinator or '
+     'administrator keeps one session at a time'),
     ('test:signout', 'Sign-out privacy', 'npm run test:signout',
      'in a real Chrome: signing out and switching accounts leaves nothing of the last person on screen'),
     ('test:ui', 'Interface regressions', 'npm run test:ui',
-     'in a real Chrome: moderation, registration feedback, phone menus, report actions, the edit freeze'),
+     'in a real Chrome: moderation, registration feedback, phone menus, report actions, the edit freeze, '
+     'historical labels on ruled-out pairings'),
     ('test:contract', 'Contract tests', 'npm run test:contract',
      'what the form sends, what the API returns and what MySQL stores agree; dates in Philippine time'),
     ('test:city', 'Place comparison', 'npm run test:city', 'how two places compare when a report has no map pin'),

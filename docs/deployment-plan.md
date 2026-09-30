@@ -437,13 +437,13 @@ PAWS_API=https://<domain>/api python scripts/multi_device.py
 `caching_sha2_password` — the same constraint as the import, and the same
 reason XAMPP's client will not do.
 
-Against a host, `multi_device.py` reports **53/53 with 2 skipped**, not 55/55.
+Against a host, `multi_device.py` reports **71/71 with 2 skipped**, not 73/73.
 That is correct and not a regression. Checks K3 and K4 prove the session
 timeout is enforced by the server, and they do it by turning the timeout down
 to one second in `api/config.local.php` on the machine running the suite — a
 server somewhere else never reads that file. The suite says so by name rather
 than reporting a failure. The same two checks run for real against the local
-build, which is where 55/55 comes from.
+build, which is where 73/73 comes from.
 
 12. Register one throwaway account by hand and read the inbox. That is the only
     way to prove `MAIL_*` is right: the account-lifecycle suite reads captured
@@ -795,7 +795,7 @@ database is final.
 PAWS_API=https://<domain>/api python scripts/multi_device.py
 ```
 
-55 checks, three independent sessions. This one needs only the API.
+73 checks, independent sessions. This one needs only the API.
 
 **16. The physical three-device test.** See `docs/lan-testing.md` §5.2 for what
 only hardware can show: the ten-second refetch changing a screen nobody is

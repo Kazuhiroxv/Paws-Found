@@ -102,10 +102,11 @@ and editing under an open pairing.
 
 There is also a second suite the report does not mention yet:
 
-> `npm run multi-device` — 55 checks across three independent sessions, proving
+> `npm run multi-device` — 73 checks across independent sessions, proving
 > that a report change, a read-state change, a role downgrade, a suspension, a
 > three-attempt lock, an administrator unlock and a server-side session expiry
-> are all decided by the shared database rather than by any one device.
+> are all decided by the shared database rather than by any one device, and
+> that a coordinator or administrator keeps one session at a time.
 
 > `python scripts/auth_lifecycle.py` — 66 checks over registration,
 > verification, the password reset, session revocation, the safe email change

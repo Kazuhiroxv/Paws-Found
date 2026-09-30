@@ -38,13 +38,24 @@ status.
 Every request that needs to know who you are re-reads that row. Three
 consequences, and all three are worth stating out loud:
 
-1. **A role change propagates instantly**, to every device, without a sign-out.
-   Nothing has to be invalidated because nothing was cached.
+1. **A step down propagates instantly**, to every device, without a sign-out:
+   the session carries on as a customer's. Nothing has to be invalidated
+   because nothing was cached. A **promotion** into staff or admin ends every
+   session the account had open, because of the next rule.
 2. **A suspension propagates instantly**, for the same reason.
 3. **The status check is `!== 'active'`, not `=== 'suspended'`**
    (`api/helpers.php`). If someone adds a fourth value to the ENUM later —
    `pending`, say — it is refused by default rather than admitted by accident.
    A deny-list has to be updated to stay correct; an allow-list does not.
+
+**One session at a time for a privileged account.** A coordinator or an
+administrator signing in bumps the account's `session_version`, so a session
+left open on another machine stops working on its next request. A customer may
+be signed in on any number of devices. Only a successful sign-in does this: a
+wrong password, or a locked, suspended or unverified account, ends nothing.
+Signing out ends only the browser it is done in; a password reset ends every
+session for every role (`api/auth.php`, `auth_login()`; `PRIVILEGED_ROLES` in
+`api/config.php`).
 
 The two guards everything else is built from:
 
@@ -182,13 +193,16 @@ signed in is not enough; you have to be *in the case*.
 Each one is a request made by the wrong person to a real endpoint, with the
 expected status code asserted.
 
-`npm run multi-device` — **55 checks** across three independent sessions. The
+`npm run multi-device` — **73 checks** across independent sessions. The
 ones that matter here:
 
-* an administrator downgrades a role while three devices are signed in; all
-  three are customers **on their very next request**, without refreshing;
-* suspension drops all three to signed-out and a protected call from each
-  returns 401;
+* an administrator downgrades a coordinator; the coordinator's device is a
+  customer **on its very next request**, without refreshing, and a promotion
+  back ends every session the account had open;
+* a coordinator or an administrator signing in on a second device ends the
+  first; a customer keeps both;
+* suspension drops all three of a customer's devices to signed-out and a
+  protected call from each returns 401;
 * a customer asking for `/users`, `/moderation`, `/categories` and somebody
   else's report gets 403 four times, and nothing is created.
 

@@ -230,9 +230,12 @@ paragraphs under AA, the worst at **1.17:1**, on pages axe had already called
 clean. The readings are in `docs/design-system.md`.
 
 **3. Multi-device testing proved the database is the authority.**
-`npm run multi-device` — 55 checks across three independent sessions. A role
-change on one device takes effect on the other two on their very next request.
-Three wrong passwords on one device refuse the correct password on another.
+`npm run multi-device` — 73 checks across independent sessions. A suspension
+on one device takes effect on the other two on their very next request. Three
+wrong passwords on one device refuse the correct password on another. And a
+Pet Coordinator or an administrator keeps one session at a time: signing in on
+a second machine ends the first, while a customer may use a phone and a laptop
+together.
 
 The sentence to say: *"Automated tools tell you about the things they can see.
 Both of the real faults we found were in the gap between what a tool checks and

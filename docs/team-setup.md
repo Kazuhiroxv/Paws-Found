@@ -224,7 +224,7 @@ part of the system.
 ```bash
 npm run audit          # 170 cases against the running API and database
 npm run test:mail      # 15 checks over the mail transports (needs php on PATH)
-npm run multi-device   # 55 checks across three independent sessions
+npm run multi-device   # 73 checks across independent sessions
 npm run a11y           # axe-core over 31 pages in every role
 npm run lint
 npm run build
