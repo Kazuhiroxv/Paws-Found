@@ -167,16 +167,26 @@ function AccountSecurity({ email }) {
   )
 }
 
-function ProfileForm({ user, onSaved }) {
-  const [form, setForm] = useState(() => ({
+/** The form's fields, as the account currently has them on the server. */
+function formFrom(user) {
+  return {
     fullName: user.fullName,
     email: user.email,
     phone: user.phone,
     preferredLocation: user.preferredLocation,
     ...user.notificationPreferences,
-  }))
+  }
+}
+
+/** How the API compares addresses (normalise_email in api/auth.php). */
+const sameEmail = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase()
+
+function ProfileForm({ user, onSaved }) {
+  const [form, setForm] = useState(() => formFrom(user))
   const [isSaving, setIsSaving] = useState(false)
-  const [isSaved, setIsSaved] = useState(false)
+  // What the last save did: null, { emailTo: null } for an ordinary save, or
+  // { emailTo, emailSent } when it asked for a new address.
+  const [saved, setSaved] = useState(null)
   const [saveError, setSaveError] = useState(null)
   // Reading is the default state. The form used to be permanently open, so a
   // stray keystroke on a real account field was a real change waiting for a
@@ -185,15 +195,9 @@ function ProfileForm({ user, onSaved }) {
 
   /** Throw away anything typed and go back to reading. */
   const cancel = () => {
-    setForm({
-      fullName: user.fullName,
-      email: user.email,
-      phone: user.phone,
-      preferredLocation: user.preferredLocation,
-      ...user.notificationPreferences,
-    })
+    setForm(formFrom(user))
     setSaveError(null)
-    setIsSaved(false)
+    setSaved(null)
     setIsEditing(false)
   }
 
@@ -204,7 +208,7 @@ function ProfileForm({ user, onSaved }) {
 
   const change = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }))
-    setIsSaved(false)
+    setSaved(null)
   }
 
   const save = async (event) => {
@@ -212,10 +216,13 @@ function ProfileForm({ user, onSaved }) {
     setIsSaving(true)
     setSaveError(null)
 
+    const email = form.email.trim()
+    const emailChanged = !sameEmail(email, user.email)
+
     try {
-      await userService.updateUser(user.id, {
+      const updated = await userService.updateUser(user.id, {
         fullName: form.fullName.trim(),
-        email: form.email.trim(),
+        email,
         phone: form.phone.trim(),
         preferredLocation: form.preferredLocation.trim(),
         notificationPreferences: {
@@ -224,7 +231,12 @@ function ProfileForm({ user, onSaved }) {
           staffMessages: form.staffMessages,
         },
       })
-      setIsSaved(true)
+      // Back to what the server now holds. A new address is only pending, so
+      // the field shows the verified one again; it used to keep the typed
+      // address, which read as though the change had already happened, and a
+      // later save of anything else sent the verification link again.
+      setForm(formFrom(updated))
+      setSaved(emailChanged ? { emailTo: email, emailSent: updated.emailChangeSent !== false } : { emailTo: null })
       setIsEditing(false)
       onSaved()
     } catch (caught) {
@@ -298,20 +310,9 @@ function ProfileForm({ user, onSaved }) {
                 value={form.email}
                 onChange={(event) => change('email', event.target.value)}
                 required
+                hint={user.pendingEmail ? 'Your current, verified sign-in email.' : undefined}
                 error={fieldErrors.email}
               />
-              {/* A change that has been asked for and not yet proved. The account
-                  keeps its old address until somebody follows the link sent to the
-                  new one, so saying "saved" here would be wrong. */}
-              {user.pendingEmail && (
-                <p className="-mt-3 flex items-start gap-2 rounded-control border border-border bg-sunken/70 p-3 text-sm text-fg-muted">
-                  <MailWarning size={16} className="mt-0.5 shrink-0 text-lost" aria-hidden="true" />
-                  <span>
-                    Waiting for <strong className="font-medium text-fg">{user.pendingEmail}</strong> to be
-                    confirmed. Until then this account still uses the address above.
-                  </span>
-                </p>
-              )}
               <Input
                 label="Phone number"
                 type="tel"
@@ -320,6 +321,11 @@ function ProfileForm({ user, onSaved }) {
                 error={fieldErrors.phone}
               />
             </div>
+
+            {/* A change that has been asked for and not yet proved. The account
+                keeps its verified address, for signing in and for password
+                resets, until somebody follows the link sent to the new one. */}
+            {user.pendingEmail && <PendingEmail current={user.email} pending={user.pendingEmail} />}
 
             {/* fg, not fg-muted: on brand-soft the muted ink is 4.14:1. */}
             <p className="flex items-start gap-2 rounded-control border border-brand/20 bg-brand-soft px-3 py-2.5 text-sm text-fg">
@@ -376,12 +382,17 @@ function ProfileForm({ user, onSaved }) {
           </Button>
         )}
 
-        {isSaved && (
+        {saved && (saved.emailTo && !saved.emailSent ? (
+          <p role="alert" className="text-sm text-danger">
+            Profile saved, but the verification email to <strong className="font-medium">{saved.emailTo}</strong> could
+            not be sent. Enter the new address again and save to retry.
+          </p>
+        ) : (
           <p role="status" className="flex items-center gap-1 text-sm text-success-ink">
             <Check size={16} aria-hidden="true" />
-            Profile saved
+            {saved.emailTo ? 'Profile saved. Your new email is awaiting verification.' : 'Profile saved'}
           </p>
-        )}
+        ))}
         {saveError && (
           <p role="alert" className="text-sm text-danger">
             {saveError.fields
@@ -391,6 +402,38 @@ function ProfileForm({ user, onSaved }) {
         )}
       </div>
     </form>
+  )
+}
+
+/**
+ * A new address that has not been confirmed yet, shown beside the verified one
+ * so it cannot be mistaken for the address the account now uses. The account
+ * itself is not unverified: only the new address is waiting.
+ */
+function PendingEmail({ current, pending }) {
+  return (
+    <div className="rounded-control border border-lost/30 bg-lost-soft p-4 text-sm text-fg">
+      <p className="flex items-center gap-2 font-semibold">
+        <MailWarning size={16} className="shrink-0 text-lost" aria-hidden="true" />
+        Email change pending verification
+      </p>
+      <p className="mt-2">
+        We sent a verification link to <strong className="font-medium break-all">{pending}</strong>.
+      </p>
+      <p className="mt-1">
+        Your current email <strong className="font-medium break-all">{current}</strong> will remain your
+        sign-in email until the new address is verified. Please check the new email address and
+        confirm the change.
+      </p>
+      <dl className="mt-3 grid gap-x-4 gap-y-1.5 sm:grid-cols-[auto_1fr]">
+        <dt className="text-fg-muted">Current verified email</dt>
+        <dd className="font-medium break-all">{current}</dd>
+        <dt className="text-fg-muted">New email awaiting verification</dt>
+        <dd className="font-medium break-all">{pending}</dd>
+        <dt className="text-fg-muted">Status</dt>
+        <dd className="font-medium">Pending verification</dd>
+      </dl>
+    </div>
   )
 }
 

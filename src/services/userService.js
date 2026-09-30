@@ -76,6 +76,9 @@ export async function getCurrentUser() {
     role: payload.user.role,
     accountStatus: 'active',
     preferredLocation: payload.user.preferred_location ?? '',
+    // A new address asked for and not yet confirmed. /auth/me has always sent
+    // it; without this line the Profile page could never say so.
+    pendingEmail: payload.user.pending_email ?? null,
     notificationPreferences: {
       possibleMatches: payload.user.notify_matches ?? true,
       statusUpdates: payload.user.notify_status ?? true,
@@ -263,7 +266,10 @@ export async function updateUser(id, changes) {
     }),
   })
 
-  return userFromApi(payload.data)
+  // A new address is not applied: it waits in pendingEmail until the link
+  // sent to it is followed. The page needs to know whether that link went out
+  // (null when no change of address was asked for).
+  return { ...userFromApi(payload.data), emailChangeSent: payload.email_change_sent ?? null }
 }
 
 /**
