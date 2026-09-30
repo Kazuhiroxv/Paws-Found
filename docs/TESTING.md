@@ -35,7 +35,7 @@ from Docker when pointing at Railway.
 
 ESLint over everything; Vite production build. Touch nothing, need nothing.
 
-### `npm run test:contract` — 24 checks
+### `npm run test:contract` — 29 checks
 
 Node's built-in test runner. **No server, no database.** These exist because
 two real defects got through every other suite by being *agreements between two
@@ -67,6 +67,16 @@ when a reporter says "Not my pet" and when it is withdrawn because one of its
 reports was marked Returned or Closed; `wasWithdrawn()` tells the two apart by
 the reports, so the second reads "Withdrawn · a report was finished" instead
 of "Ruled out · by the reporter".
+
+The password and name rules add five more. The checklist states the rule the
+server enforces (15 characters at least; 72 **bytes** at most, tested with a
+65-character, 72-byte accented passphrase and the same plus one letter); the
+JavaScript and PHP copies agree on the limits and the common-word list (read
+out of `api/helpers.php`); obvious long passwords are refused and real
+passphrases are not; a password equal to the person's own name or address is
+refused and one merely containing a first name is not; the strength label is
+Weak until the rules are met and then Fair or Strong; and names of every shape
+pass while "A", "1" and "!!!!" do not.
 
 **Mutates nothing.**
 
@@ -216,7 +226,7 @@ end**, so it is safe to run repeatedly on a development database — and it will
 **wipe** whatever is in the database it is pointed at. Never point it at
 production without understanding that.
 
-### `python scripts/auth_lifecycle.py` — 66 checks
+### `python scripts/auth_lifecycle.py` — 100 checks
 
 Registration, verification, sign-in refusal, the password reset, the session
 revocation that comes with it, a reset *not* unlocking a locked account, the
@@ -230,6 +240,20 @@ that is actually new (which spends it, raises `session_version` once and
 records one reset). A locked account is refused the same way and stays locked.
 `RS-5` sends two resets with one link at the same moment: exactly one
 succeeds. Against the previous API, RS-1a–g and RS-4a fail.
+
+Section I holds the account rules (`api/helpers.php`). `N1`–`N12`: "A", "1"
+and "!!!!" are refused as names; Jo Li, Ma. Ana Cruz, Anne-Marie Cruz,
+D'Angelo Reyes, O’Connor and José Santos are accepted; spaces are tidied; and
+the profile refuses "A" on the name field and changes nothing. `P1`–`P12`, at
+registration: 14 characters, 73 bytes, a 66-character password that is 74
+bytes, `passwordpassword`, one character repeated, a common word and digits,
+the email, the part before the @ and the name run together are all refused;
+15+ passphrases, Fair and Strong ones, and one that merely contains the first
+name are accepted. `R1`–`R7`, at reset: too short, too common and the account's
+own name are refused, the current password still has its own reason, **none
+of those spends the link**, and a valid one is accepted and signs the other
+session out. `X1`–`X2`: seeded accounts keep their old 8-character password
+and still sign in; no password is forced to change.
 
 It reads every link out of **captured mail**, exactly as a person reads one out
 of an inbox, because there is no endpoint that hands out a token and there is
@@ -308,7 +332,7 @@ stage and exception, and still reaches the caller. No line carries
 coordinates, addresses, passwords or tokens. Needs `php` on PATH and the local
 database; **changes no data** (it asks about a report that is already finished).
 
-### `npm run test:ui` — 44 checks
+### `npm run test:ui` — 56 checks
 
 Two interface regressions from final manual testing, in a real Chrome.
 `MOD-LINK-1`–`4`: on Administrator > Moderation, "Open the full report" is a
@@ -340,6 +364,14 @@ afterwards reads "Historical comparison" in the Match Queue and on the report
 page, with its stored reasons in the past tense beside today's report; an open
 pairing carries no label; the customer's Possible Matches still leaves ruled-out
 pairings out; and the stored score still equals its seven signals.
+`PWD-1`–`12`: on Register, the label is Weak while a requirement is not met
+(Create account disabled), Fair once every one is (accepted, and not drawn as
+an error), Strong for a long passphrase; a long common password and the email
+address itself are refused; pasting into "Type it again" is allowed; both boxes
+keep `autocomplete="new-password"`; Show password works; a one-letter name is
+marked on the field; it fits at 390 px. On Reset, the same label and checklist
+(no name/email item: the link does not say whose account). On Profile, "A" is
+refused on the field and nothing is sent.
 `REPORT-ACTIONS-1`–`5`: on My Reports, a returned report shows Close report as a
 button inside its own card at 360, 390, 768 and 1366px, instead of a More menu
 holding only that item whose panel hung over the next card; an open report
@@ -470,14 +502,14 @@ the Docker lines are from 27 September (nothing they cover has changed).
 ```
 lint                                     clean
 build                                    green
-test:contract                            24/24
+test:contract                            29/29
 test:calendar                             8/8
 test:mail                                15/15
 audit                                   357/357
-auth_lifecycle                           66/66
+auth_lifecycle                          100/100
 multi-device                             73/73   (71/71 + 2 skipped vs a remote)
 test:signout                             24/24
-test:ui                                  44/44
+test:ui                                  56/56
 test:city                                11/11
 test:matching-log                         6/6
 a11y                                     31 pages, 0 violations

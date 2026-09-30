@@ -167,7 +167,7 @@ Not "later". Rejected, with reasons in `docs/DECISIONS.md`.
 - A new authentication architecture
 - New dependencies, unless a feature being built **now** genuinely needs one
 - Draft reports
-- Password strength meters
+- Password strength meters (a guidance-only Weak / Fair / Strong label was added on 30 September; see `DECISIONS.md`)
 - Forced-scroll consent
 - Exposing exact home addresses
 - Social login / OAuth, SMS verification, PWA

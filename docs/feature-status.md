@@ -39,7 +39,7 @@ rate limiting — 2026-09-27_
 | --- | --- | --- |
 | Authentication | `[x]` | **Real, and reachable from the interface.** The sign-in form posts to `POST /api/auth/login`; PHP sessions, `password_hash`/`password_verify`, session ID regenerated on sign-in, HttpOnly cookies. Guest by default; browsing stays public. Every seeded account uses `demo1234`. |
 | Demo sign-in removed from builds | `[x]` | The role selector and the one-click "Development sign-in" panel are behind `import.meta.env.DEV`, so a production build contains neither them nor the demo password. Verified by searching the built bundle: `demo1234` no longer appears. Signing out is a separate action and works in both builds. |
-| Registration | `[x]` | `POST /api/auth/register` — server-side validation, bcrypt hashing, duplicate email rejected by the unique index (409), and the new account is signed in on success. **The role is never read from the request**, so an account cannot register itself as staff or admin. |
+| Registration | `[x]` | `POST /api/auth/register` — server-side validation, bcrypt hashing, duplicate email rejected by the unique index (409); the new account must verify its address before it can sign in. **The role is never read from the request**, so an account cannot register itself as staff or admin. Password rule, shared with the reset (`password_policy_error()` in `api/helpers.php`): 15+ characters, at most 72 bytes, not an obvious long password (a local list, not a breach database), not simply the person's own name or email; no rule about capitals, digits or symbols. A Weak / Fair / Strong label is guidance; Fair is accepted. Existing passwords still sign in. Names need at least two letters (letters, spaces, apostrophes, hyphens, periods), on registration and the profile alike. |
 | Profile | `[x]` | `PATCH /api/users/me` — name, email, phone, preferred location and the three notification preferences. The account comes from the session, so it can only ever edit your own; `role` and `account_status` are not readable there, so an account cannot promote or un-suspend itself. |
 | Lost report | `[x]` | 3 — multi-step form, validation, submits via `petService` |
 | Found report | `[x]` | 3 — same form, found-specific fields, no pet name |
@@ -145,8 +145,8 @@ is readable over the web, and whether any demo password reached the bundle.
 because localhost is plain HTTP.
 
 Last run in full on 30 September 2026 on the development laptop: audit
-357/357, auth lifecycle 66/66, multi-device 73/73, sign-out 24/24, UI 44/44,
-contract 24/24, calendar 8/8, city 11/11, matching log 6/6, axe clean on 31
+357/357, auth lifecycle 100/100, multi-device 73/73, sign-out 24/24, UI 56/56,
+contract 29/29, calendar 8/8, city 11/11, matching log 6/6, axe clean on 31
 pages, lint clean, build green; and against production, `verify:deploy` 25/25
 with 3 skipped (read-only). Details in `docs/TESTING.md` §3.
 

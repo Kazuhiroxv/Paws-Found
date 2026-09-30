@@ -361,7 +361,7 @@ tables against a database with 17 looks like an omission rather than a decision.
 | **AI or image-recognition matching** | `CLAUDE.md` §16. The matching engine is an explainable weighted comparison of seven signals — it can be added up out loud. A model cannot. The guide lists an AI feature as *bonus only*, so this is a design choice, not a gap. |
 | **Exact addresses in public** | Locations are barangay-level and drawn as a circle, so the imprecision is visible rather than implied. A lost-pet listing that publishes a home address is a burglary notice. |
 | **Forced-scroll consent** | Making somebody scroll a notice before a checkbox unlocks measures patience, not understanding. Consent is recorded per notice version in `privacy_consents`. |
-| **Password strength meter** | A coloured bar rewards `P@ssw0rd!` and punishes a long passphrase. The checklist states the rule the server actually enforces. |
+| **Password strength meter** | A coloured bar rewards `P@ssw0rd!` and punishes a long passphrase. The checklist states the rule the server actually enforces. *Revisited 30 September 2026:* a Weak / Fair / Strong label now sits **beside** the checklist as guidance only — Weak means a requirement is not met, Fair is accepted, Strong is recommended — and it rewards length, not symbols. The rule is still the checklist. |
 | **Draft reports** | A whole second lifecycle — expiry, cleanup, "is this a report?" everywhere. The wizard already has a review step. |
 | **Social login / OAuth** | A second authentication path to secure and explain, for accounts that already work. |
 | **SMS verification** | Costs money per message and adds a provider. |
