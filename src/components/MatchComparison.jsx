@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, Maximize2, X } from 'lucide-react'
+import { Check, History, Maximize2, X } from 'lucide-react'
 import photoPlaceholder from '@/assets/pet-photo-placeholder.png'
 import { PhotoLightbox } from '@/components/PhotoLightbox'
 import { ReportTypeBadge } from '@/components/ReportTypeBadge'
-import { MATCH_STATUSES, MATCH_STATUS_LABELS, PET_SIZE_LABELS, REPORT_TYPES, speciesLabel } from '@/constants'
+import { MATCH_STATUSES, MATCH_STATUS_LABELS, PET_SIZE_LABELS, REPORT_TYPES, isRuledOut, speciesLabel } from '@/constants'
 import { cn } from '@/utils/cn'
 import { formatDate, formatShortDate } from '@/utils/date'
 
@@ -33,6 +33,7 @@ import { formatDate, formatShortDate } from '@/utils/date'
 export function MatchPairCard({ match, lost, found, badge, headingAs: Heading = 'h2', children }) {
   const aligned = match.signals.filter((signal) => signal.matched).length
   const isConfirmed = match.status === MATCH_STATUSES.CONFIRMED
+  const isHistory = isRuledOut(match.status)
 
   return (
     <article className="overflow-hidden rounded-card border border-border bg-panel shadow-card">
@@ -51,28 +52,53 @@ export function MatchPairCard({ match, lost, found, badge, headingAs: Heading = 
 
           <div className="flex flex-col items-center gap-1 text-center md:w-40">
             <span className="text-3xl font-semibold text-fg tabular-nums">{match.score}%</span>
-            <span className="text-sm font-medium text-fg">compatibility</span>
+            <span className="text-sm font-medium text-fg">
+              {isHistory ? 'compatibility when paired' : 'compatibility'}
+            </span>
             <span className="text-sm text-fg-muted">
-              {aligned} of {match.signals.length} characteristics align
+              {aligned} of {match.signals.length} characteristics {isHistory ? 'aligned' : 'align'}
             </span>
             <span
               className={cn(
                 'mt-1 rounded-pill px-2.5 py-0.5 text-xs font-medium',
-                isConfirmed ? 'bg-success-soft text-success-ink' : 'bg-accent-soft text-lost',
+                isConfirmed
+                  ? 'bg-success-soft text-success-ink'
+                  : isHistory
+                    ? 'bg-status-closed-soft text-fg'
+                    : 'bg-accent-soft text-lost',
               )}
             >
-              {isConfirmed ? 'Confirmed match' : 'Possible match'}
+              {isConfirmed ? 'Confirmed match' : isHistory ? 'Historical comparison' : 'Possible match'}
             </span>
           </div>
 
           <PairSide report={found} />
         </div>
 
-        <Evidence match={match} lost={lost} found={found} />
+        {isHistory && <HistoricalNote />}
+        <Evidence match={match} lost={lost} found={found} isHistory={isHistory} />
 
         {children}
       </div>
     </article>
+  )
+}
+
+/**
+ * Said above the evidence of a ruled-out pairing. The score and the reasons
+ * are the ones recorded when the pairing was made and are kept as they were:
+ * rewriting them from today's reports would falsify what was compared. The two
+ * report cards beside them are today's, so the difference is said out loud.
+ */
+export function HistoricalNote({ className }) {
+  return (
+    <p className={cn('flex items-start gap-2 rounded-control bg-status-closed-soft px-3 py-2 text-sm text-fg', className)}>
+      <History size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+      <span>
+        <span className="font-semibold">Historical comparison.</span> The score and details below were
+        recorded when this pairing was created. One or both reports may have changed since then.
+      </span>
+    </p>
   )
 }
 
@@ -200,7 +226,14 @@ function PairSide({ report }) {
  */
 const EVIDENCE_ORDER = ['species', 'breed', 'size', 'color', 'location', 'date', 'characteristics']
 
-function Evidence({ match, lost, found }) {
+/**
+ * For a ruled-out pairing only what was recorded is shown: each stored verdict,
+ * in the past tense, with its stored sentence. The side-by-side values come
+ * from today's reports, so beside a verdict from another day they would put
+ * two moments in one line ("Dog ↔ Other: aligns"). The report cards above
+ * still show today's details.
+ */
+function Evidence({ match, lost, found, isHistory = false }) {
   const signals = [...match.signals].sort(
     (a, b) => EVIDENCE_ORDER.indexOf(a.key) - EVIDENCE_ORDER.indexOf(b.key),
   )
@@ -210,7 +243,7 @@ function Evidence({ match, lost, found }) {
       <h3 className="text-sm font-semibold text-fg">Why these were paired</h3>
       <ul className="divide-y divide-border rounded-card border border-border">
         {signals.map((signal) => {
-          const values = compareValues(signal.key, lost, found)
+          const values = isHistory ? null : compareValues(signal.key, lost, found)
 
           return (
             <li
@@ -238,7 +271,9 @@ function Evidence({ match, lost, found }) {
                     signal.matched ? 'text-success-ink' : 'text-danger',
                   )}
                 >
-                  {signal.matched ? 'Aligns' : 'Does not align'}
+                  {isHistory
+                    ? signal.matched ? 'Aligned when paired' : 'Did not align'
+                    : signal.matched ? 'Aligns' : 'Does not align'}
                 </span>
               </span>
 

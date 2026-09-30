@@ -617,6 +617,52 @@ if (/^(localhost|127\.0\.0\.1)$/.test(new URL(BASE).hostname)) {
   const label = await finder.evaluate(() => document.body.innerText.includes('Withdrawn · a report was finished')
     && !document.body.innerText.includes('Dismissed by User'))
   check('WITHDRAWN-2', "The other reporter's report page says Withdrawn, not Dismissed by User", label)
+
+  // ---- HISTORY: a ruled-out pairing's stored reasons are labelled as history.
+  // Milo's pairing is now withdrawn and report 2 is Active again, so its finder
+  // may edit it. The pairing keeps the reasons it was made with ("dog"), the
+  // report card shows today's turtle, and the page has to say which is which.
+  // (Editing under an OPEN pairing is refused; that is audit EM-03.)
+  const edited = await finder.evaluate(async (api) => {
+    const me = await (await fetch(api + '/auth/me', { credentials: 'include' })).json()
+    return (await fetch(api + '/reports/2', { method: 'PUT', credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': me.csrf_token ?? '' },
+      body: JSON.stringify({ species: 'other', breed: 'turtle' }) })).status
+  }, API)
+  await staff.goto(BASE + '/staff/matches', { waitUntil: 'networkidle2' })
+  await pause(1000)
+  await staff.evaluate(() => [...document.querySelectorAll('[role=tab], button')].find((t) => t.textContent.trim().startsWith('Ruled out'))?.click())
+  await pause(800)
+  const ruledOut = await staff.evaluate(() => {
+    const card = [...document.querySelectorAll('article')].find((a) => a.innerText.includes('Milo'))
+    return card ? card.innerText : ''
+  })
+  check('HISTORY-1', 'Staff Ruled out: stored "dog" reason beside today\'s turtle, labelled Historical comparison',
+    edited === 200 && ruledOut.includes('Historical comparison.') && ruledOut.includes('compatibility when paired')
+      && ruledOut.includes('Both reports describe a dog.') && /turtle/i.test(ruledOut),
+    `PUT ${edited}`)
+  const openCard = await staff.evaluate(async () => {
+    ;[...document.querySelectorAll('[role=tab], button')].find((t) => /^(Needs review|Suggested|Open)/.test(t.textContent.trim()))?.click()
+    await new Promise((r) => setTimeout(r, 800))
+    const card = document.querySelector('article')
+    return card ? card.innerText : ''
+  })
+  check('HISTORY-2', 'An open pairing carries no historical label', openCard !== '' && !openCard.includes('Historical comparison'))
+  await owner.goto(BASE + '/pet/1', { waitUntil: 'networkidle2' })
+  await pause(1200)
+  const ownerPage = await owner.evaluate(() => document.body.innerText)
+  check('HISTORY-3', "The lost report's page labels the earlier pairing as history",
+    ownerPage.includes('Earlier pairing') && ownerPage.includes('Historical comparison.'))
+  await owner.goto(BASE + '/dashboard/matches', { waitUntil: 'networkidle2' })
+  await pause(1000)
+  check('HISTORY-4', "The customer's Possible Matches still leaves ruled-out pairings out",
+    !(await owner.evaluate(() => document.body.innerText.includes('Historical comparison'))))
+  const stored = await staff.evaluate(async (api) => (await (await fetch(api + '/matches/1', { credentials: 'include' })).json()).data, API)
+  const keys = new Set(stored.signals.map((s) => s.key))
+  const summed = stored.signals.reduce((sum, s) => sum + (s.matched ? s.weight : 0), 0)
+  check('HISTORY-5', 'Its stored score still equals its seven signals, one of each, untouched',
+    stored.signals.length === 7 && keys.size === 7 && summed === stored.score && stored.score === 85,
+    `${stored.score} = ${summed}, ${keys.size} keys`)
 }
 
 await browser.close()

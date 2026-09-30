@@ -3,7 +3,8 @@ import { Check, X } from 'lucide-react'
 import photoPlaceholder from '@/assets/pet-photo-placeholder.png'
 import { Card, CardBody, CardFooter, CardHeader } from '@/components/ui'
 import { ReportTypeBadge } from './ReportTypeBadge'
-import { MATCH_STATUS_LABELS, MATCH_STATUSES, speciesLabel, wasWithdrawn } from '@/constants'
+import { MATCH_STATUS_LABELS, MATCH_STATUSES, isRuledOut, speciesLabel, wasWithdrawn } from '@/constants'
+import { HistoricalNote } from './MatchComparison'
 import { formatDate } from '@/utils/date'
 import { cn } from '@/utils/cn'
 
@@ -40,12 +41,13 @@ export function MatchCard({ match, lostReport, foundReport, actions, headingAs =
   const matchedSignals = match.signals.filter((signal) => signal.matched)
   const unmatchedSignals = match.signals.filter((signal) => !signal.matched)
   const isOpen = match.isSuggestion || OPEN_MATCH_STATUSES.includes(match.status)
+  const isHistory = !match.isSuggestion && isRuledOut(match.status)
 
   return (
     <Card>
       <CardHeader
         titleAs={headingAs}
-        title="Possible match"
+        title={isHistory ? 'Earlier pairing' : 'Possible match'}
         action={
           !match.isSuggestion && (
             <span className="text-sm text-fg-muted">
@@ -69,17 +71,22 @@ export function MatchCard({ match, lostReport, foundReport, actions, headingAs =
             <span className="flex size-20 items-center justify-center rounded-full border-2 border-brand bg-brand-soft text-2xl font-semibold text-brand-hover">
               {match.score}%
             </span>
-            <span className="text-sm text-fg-muted">compatibility</span>
+            <span className="text-sm text-fg-muted">
+              {isHistory ? 'compatibility when paired' : 'compatibility'}
+            </span>
           </div>
 
           <ReportSide report={foundReport} />
         </div>
+
+        {isHistory && <HistoricalNote />}
 
         <div className="flex flex-col gap-3">
           {/* One level below the card heading, whatever that is. Fixed at
               h4 it skipped a level as soon as the card became an h2. */}
           <SignalHeading className="font-semibold text-fg">
             {matchedSignals.length} of {match.signals.length} characteristics matched
+            {isHistory && ' when paired'}
           </SignalHeading>
 
           <ul className="grid gap-2 sm:grid-cols-2">

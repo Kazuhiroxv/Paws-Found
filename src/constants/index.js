@@ -217,6 +217,19 @@ export const PROJECT_ADMINISTRATOR_NAME = 'Grace Bautista'
  * leaves both reports open. (If a reporter dismissed it and then finished the
  * report too, "withdrawn" is still true of it.)
  */
+/**
+ * A pairing ruled out, by a coordinator or a reporter (withdrawals included).
+ *
+ * Its score and seven reasons were recorded when it was made, and once it is
+ * ruled out both reports are open to editing again, so the reasons can
+ * describe a report that has since changed. A confirmed pairing cannot drift
+ * that way: confirming marks both reports Returned, and a finished report
+ * refuses edits.
+ */
+export function isRuledOut(status) {
+  return status === MATCH_STATUSES.REJECTED || status === MATCH_STATUSES.DISMISSED
+}
+
 export function wasWithdrawn(status, lost, found) {
   const finished = [REPORT_STATUSES.RETURNED, REPORT_STATUSES.CLOSED]
   return status === MATCH_STATUSES.DISMISSED && [lost, found].some((report) => finished.includes(report?.status))

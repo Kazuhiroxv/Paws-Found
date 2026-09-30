@@ -114,6 +114,19 @@ A decided pairing is final. Confirming twice is refused with **409** — without
 that, the second confirmation would notify both reporters again and add a
 meaningless "returned → returned" entry to each case history.
 
+**The score and the seven reasons are a snapshot.** They are written once, when
+the pairing is made (`matching_store()`), and never recalculated. So the two
+reports must not change underneath them while the pairing is open: a report
+with an open possible match refuses edits and photo changes with **409**
+`match_open`, and an edit to an Active report runs matching again on the new
+details. Once a pairing is ruled out, its reports can be edited again, and the
+pairing keeps the reasons it was made with — rewriting them from today's
+reports would falsify what was compared. Wherever such a pairing is shown, it
+is labelled *Historical comparison*, its verdicts read "Aligned when paired"
+or "Did not align", and today's details stay on the report cards. A confirmed
+pairing cannot drift: confirming marks both reports Returned, and a finished
+report refuses edits.
+
 ---
 
 ## 7. If you are asked to prove it
