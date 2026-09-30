@@ -283,17 +283,19 @@ export function ExplorePage({ role }) {
       </section>
 
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
-        {/* Desktop: a persistent sidebar. Mobile: the same panel in a dialog. */}
+        {/* Desktop: a sidebar beside the results. Mobile: the same panel in a
+            dialog. Not sticky: it used to hold at the top for the whole length
+            of a 3,000–5,000px results page, which read as stuck. The chips
+            above the results show what is applied, and the panel is one
+            scroll back up. */}
         <aside className="hidden lg:block lg:w-65 lg:shrink-0">
-          <div className="sticky top-24">
-            <FilterPanel
-              filters={filters}
-              onChange={changeFilter}
-              onClear={clearFilters}
-              hasActiveFilters={hasActiveFilters}
-              speciesOptions={speciesOptions}
-            />
-          </div>
+          <FilterPanel
+            filters={filters}
+            onChange={changeFilter}
+            onClear={clearFilters}
+            hasActiveFilters={hasActiveFilters}
+            speciesOptions={speciesOptions}
+          />
         </aside>
 
         {/* Results sit directly on the canvas. They used to live in a tinted
