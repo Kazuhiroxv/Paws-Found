@@ -413,6 +413,166 @@ function clear_login_attempts(string $email): void
 }
 
 // -----------------------------------------------------------------------------
+// Account rules: names and passwords
+//
+// One copy of each rule on the server. Registration and the profile form share
+// the name rule; registration and the password reset share the password rule,
+// so a reset cannot be a way around it. src/utils/nameRules.js and
+// src/utils/passwordRules.js say the same thing sooner, and a contract test
+// (scripts/report-form-contract.test.mjs) holds the two copies together.
+// -----------------------------------------------------------------------------
+
+/** The shortest password that may be chosen now. Existing ones still sign in. */
+const PASSWORD_MIN_CHARS = 15;
+
+/** bcrypt ignores everything past 72 BYTES, so the limit is in bytes, not characters. */
+const PASSWORD_MAX_BYTES = 72;
+
+/**
+ * Words that make a long password weak when they are all it is: the word
+ * repeated, or followed or preceded only by digits. A local list of high-risk
+ * choices, not a database of breached passwords.
+ */
+const COMMON_PASSWORD_WORDS = [
+    'password', 'passw0rd', 'qwerty', 'qwertyuiop', 'asdfgh', 'zxcvbn', 'iloveyou', 'letmein',
+    'admin', 'administrator', 'welcome', 'abc123', 'monkey', 'dragon', 'football', 'baseball',
+    'sunshine', 'princess', 'master', 'shadow', 'superman', 'batman', 'trustno1', 'hello',
+    'freedom', 'whatever', 'qazwsx', 'starwars', 'pokemon', 'secret', 'changeme', 'login',
+    'user', 'test', 'guest', 'default', 'pawsandfound', 'pawsfound', 'paws', 'mahalkita',
+];
+
+/**
+ * A full name, cleaned, and what is wrong with it if anything is.
+ *
+ * Human names: letters from any language (with their accents), spaces,
+ * apostrophes, hyphens and periods, and at least two letters. Not "first name
+ * plus surname" — plenty of people have one name, or several.
+ *
+ * @return array{0: string, 1: ?string}  the name to store, and the error or null
+ */
+function validate_full_name(string $raw): array
+{
+    // Runs of spaces become one, so "Maria   Santos" is stored as it reads.
+    $name = trim((string) preg_replace('/\s+/u', ' ', $raw));
+
+    if ($name === '') {
+        return [$name, 'Enter your name.'];
+    }
+    if (mb_strlen($name) > 120) {
+        return [$name, 'That name is too long (120 characters maximum).'];
+    }
+    if (preg_match_all('/\p{L}/u', $name) < 2) {
+        return [$name, 'Enter a real name with at least 2 letters.'];
+    }
+    if (!preg_match("/^[\\p{L}\\p{M} '’.\\-]+$/u", $name)) {
+        return [$name, 'Use letters, spaces, apostrophes, hyphens and periods only.'];
+    }
+
+    return [$name, null];
+}
+
+/** Lower case, letters and digits only — the form most comparisons are made in. */
+function password_letters_and_digits(string $value): string
+{
+    return (string) preg_replace('/[^\p{L}\p{N}]+/u', '', mb_strtolower($value));
+}
+
+/**
+ * Is this a long password that is still one of the obvious ones?
+ *
+ * Deliberately narrow, so it never refuses a real passphrase: the whole
+ * password has to be a single character repeated, one short piece repeated, a
+ * straight run along the digits, the alphabet or the keyboard, or a common word
+ * with nothing but digits added. "password-after-lock" passes; "passwordpassword"
+ * and "Password123456789" do not.
+ */
+function is_common_password(string $password): bool
+{
+    // @ and $ read as the letters they stand for; everything but letters and
+    // digits is then dropped, so "pass word", "pass-word" and "p@ssword" agree.
+    $plain = password_letters_and_digits(strtr(mb_strtolower($password), ['@' => 'a', '$' => 's']));
+
+    if ($plain === '') {
+        return false;
+    }
+
+    // One piece, repeated: aaaa…, passwordpassword, 123123123….
+    if (preg_match('/^(.+?)\1+$/u', $plain)) {
+        return true;
+    }
+
+    // A straight run, forwards or backwards, wrapping round: 123456789012345.
+    foreach (['0123456789', 'abcdefghijklmnopqrstuvwxyz', 'qwertyuiopasdfghjklzxcvbnm'] as $run) {
+        $loop = str_repeat($run, intdiv(strlen($plain), strlen($run)) + 2);
+        if (str_contains($loop, $plain) || str_contains(strrev($loop), $plain)) {
+            return true;
+        }
+    }
+
+    // A common word with only digits before or after it: welcome123456789,
+    // P@ssw0rd123456789. Look-alike digits are read as letters inside the word
+    // only, so the digits after it still count as digits.
+    $lookAlike = ['0' => 'o', '1' => 'i', '3' => 'e', '4' => 'a', '5' => 's', '7' => 't'];
+    foreach (COMMON_PASSWORD_WORDS as $word) {
+        $size = strlen($word);
+        if (strlen($plain) <= $size) {
+            continue;
+        }
+        $wordRead = strtr($word, $lookAlike);
+        if (strtr(substr($plain, 0, $size), $lookAlike) === $wordRead && ctype_digit(substr($plain, $size))) {
+            return true;
+        }
+        if (strtr(substr($plain, -$size), $lookAlike) === $wordRead && ctype_digit(substr($plain, 0, -$size))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * What is wrong with a password being chosen now, or null.
+ *
+ * Used when an account is created and when a password is reset — never at
+ * sign-in, so every existing password keeps working. No rule about capitals,
+ * digits or symbols: those produce "Password1!", and length does more.
+ *
+ * `$email` and `$fullName` are the account's, when known, for the one check
+ * that the password is not simply the person's own name or address. Equality
+ * only: a long passphrase that happens to contain a first name is fine.
+ */
+function password_policy_error(string $password, ?string $email = null, ?string $fullName = null): ?string
+{
+    if (mb_strlen($password) < PASSWORD_MIN_CHARS) {
+        return 'Use at least ' . PASSWORD_MIN_CHARS . ' characters. A few words together make a good one.';
+    }
+    if (strlen($password) > PASSWORD_MAX_BYTES) {
+        // bcrypt ignores everything past 72 bytes, so a longer password would
+        // not mean what the person choosing it thinks it means.
+        return 'That password is too long (72 bytes at most; accented letters and emoji use more than one).';
+    }
+    if (is_common_password($password)) {
+        return 'That password is too commonly used. Try a longer, less predictable passphrase.';
+    }
+
+    $mine = password_letters_and_digits($password);
+    $identity = [];
+    if ($email !== null && $email !== '') {
+        $identity[] = mb_strtolower(trim($email));
+        $identity[] = password_letters_and_digits($email);
+        $identity[] = password_letters_and_digits(strstr($email, '@', true) ?: $email);
+    }
+    if ($fullName !== null && $fullName !== '') {
+        $identity[] = password_letters_and_digits($fullName);
+    }
+    if (in_array(mb_strtolower($password), $identity, true) || ($mine !== '' && in_array($mine, $identity, true))) {
+        return 'Choose a password that is not based on your name or email address.';
+    }
+
+    return null;
+}
+
+// -----------------------------------------------------------------------------
 // Audit logging
 // -----------------------------------------------------------------------------
 

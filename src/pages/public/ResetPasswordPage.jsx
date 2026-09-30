@@ -4,7 +4,7 @@ import { CircleCheck } from 'lucide-react'
 import { AuthShell } from '@/components/AuthShell'
 import { PageHeader } from '@/components/PageHeader'
 import { Button, Card, CardBody } from '@/components/ui'
-import { PasswordChecklist, PasswordField } from '@/components/PasswordField'
+import { PasswordChecklist, PasswordField, PasswordStrength } from '@/components/PasswordField'
 import { passwordChecks } from '@/utils/passwordRules'
 import { userService } from '@/services'
 
@@ -122,7 +122,10 @@ export function ResetPasswordPage() {
               required
             />
 
+            {/* Not "not your name or email" here: the link does not say whose
+                account it is. The server checks it and says so on the field. */}
             <PasswordChecklist password={password} confirmation={confirmation} />
+            <PasswordStrength password={password} />
 
             <div className="flex flex-wrap items-center gap-3">
               <Button type="submit" isLoading={isSubmitting} disabled={!ready}>

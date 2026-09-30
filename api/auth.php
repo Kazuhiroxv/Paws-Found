@@ -304,7 +304,6 @@ function auth_register(): never
     rate_limit_or_fail('register', 'ip:' . client_ip());
     turnstile_or_fail(isset($body['captcha_token']) ? (string) $body['captcha_token'] : null);
 
-    $fullName = trim((string) ($body['full_name'] ?? ''));
     $email = normalise_email((string) ($body['email'] ?? ''));
     $password = (string) ($body['password'] ?? '');
     $contact = trim((string) ($body['contact_number'] ?? ''));
@@ -313,10 +312,10 @@ function auth_register(): never
     // the bad fields at once instead of revealing them one submission at a time.
     $errors = [];
 
-    if ($fullName === '') {
-        $errors['full_name'] = 'Enter your name.';
-    } elseif (mb_strlen($fullName) > 120) {
-        $errors['full_name'] = 'That name is too long (120 characters maximum).';
+    // The same rule the profile form uses (helpers.php).
+    [$fullName, $nameError] = validate_full_name((string) ($body['full_name'] ?? ''));
+    if ($nameError !== null) {
+        $errors['full_name'] = $nameError;
     }
 
     if ($email === '') {
@@ -325,12 +324,11 @@ function auth_register(): never
         $errors['email'] = 'Enter a valid email address.';
     }
 
-    if (strlen($password) < 8) {
-        $errors['password'] = 'Use at least 8 characters.';
-    } elseif (strlen($password) > 72) {
-        // bcrypt ignores everything past 72 bytes, so a longer password would
-        // not mean what the person choosing it thinks it means.
-        $errors['password'] = 'Use 72 characters or fewer.';
+    // The same rule the password reset uses (helpers.php), checked against
+    // this person's own name and address.
+    $passwordError = password_policy_error($password, $email, $fullName);
+    if ($passwordError !== null) {
+        $errors['password'] = $passwordError;
     }
 
     if ($contact !== '' && mb_strlen($contact) > 30) {
@@ -648,25 +646,10 @@ function auth_reset_password(): never
     $raw = trim((string) ($body['token'] ?? ''));
     $password = (string) ($body['password'] ?? '');
 
-    // The same rule as registration, checked in the same order, so the two
-    // forms cannot drift apart.
-    if (strlen($password) < 8) {
-        json_error('Use at least 8 characters.', 422, [
-            'fields' => ['password' => 'Use at least 8 characters.'],
-        ]);
-    }
-
-    if (strlen($password) > 72) {
-        json_error('That password is too long (72 characters maximum).', 422, [
-            'fields' => ['password' => 'That password is too long (72 characters maximum).'],
-        ]);
-    }
-
-    // Look first, spend later. A reset to the password the account already has
-    // used to be accepted: a fresh hash of the same secret, every other
-    // session signed out, and "Password changed" for a password that had not.
-    // It is refused before the link is spent, so the same link still works
-    // for a password that is actually new.
+    // Look first, spend later. The link is only read here; it is spent inside
+    // the transaction below, once the new password has been accepted. So a
+    // refusal — too short, too common, the person's own name, or the password
+    // the account already has — leaves the same link working for a better one.
     $pending = token_peek($raw, 'password_reset');
 
     if ($pending === null) {
@@ -675,10 +658,21 @@ function auth_reset_password(): never
         ]);
     }
 
-    $current = db()->prepare('SELECT password_hash FROM users WHERE user_id = :id');
-    $current->execute([':id' => $pending['user_id']]);
+    $account = db()->prepare('SELECT full_name, email, password_hash FROM users WHERE user_id = :id');
+    $account->execute([':id' => $pending['user_id']]);
+    $account = $account->fetch();
 
-    if (password_verify($password, (string) $current->fetchColumn())) {
+    // The same rule as registration (helpers.php), so a reset is never a way
+    // round it, checked against the account's own name and address.
+    $policyError = password_policy_error($password, $account['email'], $account['full_name']);
+    if ($policyError !== null) {
+        json_error($policyError, 422, ['fields' => ['password' => $policyError]]);
+    }
+
+    // A reset to the password the account already has used to be accepted: a
+    // fresh hash of the same secret, every other session signed out, and
+    // "Password changed" for a password that had not.
+    if (password_verify($password, (string) $account['password_hash'])) {
         $message = 'Choose a new password that is different from your current password.';
         json_error($message, 422, ['fields' => ['password' => $message]]);
     }

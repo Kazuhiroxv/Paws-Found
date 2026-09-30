@@ -134,11 +134,11 @@ function profile_update(): never
 
     $errors = [];
 
-    $fullName = trim((string) ($body['full_name'] ?? ''));
-    if ($fullName === '') {
-        $errors['full_name'] = 'Enter your name.';
-    } elseif (mb_strlen($fullName) > 120) {
-        $errors['full_name'] = 'That name is too long (120 characters maximum).';
+    // The same rule as registration (helpers.php), so a name refused there
+    // cannot be saved here afterwards.
+    [$fullName, $nameError] = validate_full_name((string) ($body['full_name'] ?? ''));
+    if ($nameError !== null) {
+        $errors['full_name'] = $nameError;
     }
 
     $email = trim((string) ($body['email'] ?? ''));

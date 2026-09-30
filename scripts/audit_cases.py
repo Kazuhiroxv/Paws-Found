@@ -52,17 +52,17 @@ def input_validation():
             'incident_date': '2026-09-01', 'city': 'Cebu City', 'province': 'Cebu'}, 422)
     status(C, 'IV-08', 'Sort key outside the whitelist', 'guest', 'GET', '/reports?sort=bogus', None, 422)
     status(C, 'IV-09', 'Status filter outside the ENUM', 'guest', 'GET', '/reports?status=nonsense', None, 422)
-    status(C, 'IV-10', 'Registration password under 8 characters', 'guest', 'POST', '/auth/register',
+    status(C, 'IV-10', 'Registration password under 15 characters', 'guest', 'POST', '/auth/register',
            {'full_name': 'Audit', 'email': 'audit.short@example.com', 'password': 'short',
             'privacy_consent': True}, 422)
     status(C, 'IV-11', 'Registration with a malformed email', 'guest', 'POST', '/auth/register',
-           {'full_name': 'Audit', 'email': 'not-an-email', 'password': 'longenough1',
+           {'full_name': 'Audit', 'email': 'not-an-email', 'password': 'long enough passphrase',
             'privacy_consent': True}, 422)
     status(C, 'IV-12', 'Registration with no name', 'guest', 'POST', '/auth/register',
-           {'full_name': '', 'email': 'audit.noname@example.com', 'password': 'longenough1',
+           {'full_name': '', 'email': 'audit.noname@example.com', 'password': 'long enough passphrase',
             'privacy_consent': True}, 422)
     status(C, 'IV-13', 'Registration reusing an existing email', 'guest', 'POST', '/auth/register',
-           {'full_name': 'Audit', 'email': 'maria.santos@example.com', 'password': 'longenough1',
+           {'full_name': 'Audit', 'email': 'maria.santos@example.com', 'password': 'long enough passphrase',
             'privacy_consent': True}, 409)
     status(C, 'IV-14', 'Sign in with both fields blank', 'guest', 'POST', '/auth/login',
            {'email': '', 'password': ''}, 422)
@@ -175,7 +175,7 @@ def authentication():
     reg = Session()
     code, _ = reg.call('POST', '/auth/register', {
         'full_name': 'Audit Registrant', 'email': 'audit.new@example.com',
-        'password': 'auditpass123', 'contact_number': '+63 917 000 0000',
+        'password': 'audit river passphrase', 'contact_number': '+63 917 000 0000',
         'privacy_consent': True})
     check(C, 'AU-09', 'Register a new account', 201, code, code == 201)
     role = sql("SELECT role FROM users WHERE email='audit.new@example.com';")
@@ -198,9 +198,9 @@ def authentication():
     # attacker can learn by guessing at addresses.
     check(C, 'AU-10c', 'And cannot sign in yet, even with the right password', 403,
           Session().call('POST', '/auth/login',
-                         {'email': 'audit.new@example.com', 'password': 'auditpass123'})[0],
+                         {'email': 'audit.new@example.com', 'password': 'audit river passphrase'})[0],
           Session().call('POST', '/auth/login',
-                         {'email': 'audit.new@example.com', 'password': 'auditpass123'})[0] == 403)
+                         {'email': 'audit.new@example.com', 'password': 'audit river passphrase'})[0] == 403)
     check(C, 'AU-10d', 'And a wrong password is still only a wrong password', 401,
           Session().call('POST', '/auth/login',
                          {'email': 'audit.new@example.com', 'password': 'not-it'})[0],
@@ -210,7 +210,7 @@ def authentication():
     esc = Session()
     esc.call('POST', '/auth/register', {
         'full_name': 'Audit Escalator', 'email': 'audit.esc@example.com',
-        'password': 'auditpass123', 'role': 'admin', 'account_status': 'active',
+        'password': 'audit river passphrase', 'role': 'admin', 'account_status': 'active',
         'privacy_consent': True})
     got = sql("SELECT role FROM users WHERE email='audit.esc@example.com';")
     check(C, 'AU-11', 'Register sending "role":"admin" in the body', 'user', got, got == 'user')
@@ -309,11 +309,11 @@ def authentication():
     status(C, 'AU-25', 'Registering without the privacy acknowledgement',
            'guest', 'POST', '/auth/register',
            {'full_name': 'Consent Audit', 'email': 'audit.consent@example.com',
-            'password': 'auditpass123'}, 422)
+            'password': 'audit river passphrase'}, 422)
     status(C, 'AU-26', 'Sending the acknowledgement as a string rather than true',
            'guest', 'POST', '/auth/register',
            {'full_name': 'Consent Audit', 'email': 'audit.consent@example.com',
-            'password': 'auditpass123', 'privacy_consent': 'true'}, 422)
+            'password': 'audit river passphrase', 'privacy_consent': 'true'}, 422)
 
     none_yet = sql("SELECT COUNT(*) FROM users WHERE email='audit.consent@example.com';")
     check(C, 'AU-27', 'Neither refusal created an account', '0', none_yet, none_yet == '0')
@@ -321,7 +321,7 @@ def authentication():
     status(C, 'AU-28', 'Registering with the acknowledgement given',
            'guest', 'POST', '/auth/register',
            {'full_name': 'Consent Audit', 'email': 'audit.consent@example.com',
-            'password': 'auditpass123', 'privacy_consent': True}, 201)
+            'password': 'audit river passphrase', 'privacy_consent': True}, 201)
 
     recorded = sql("""SELECT c.notice_version FROM privacy_consents c
                         JOIN users u ON u.user_id = c.user_id

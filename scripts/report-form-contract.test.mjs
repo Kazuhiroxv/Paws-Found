@@ -263,21 +263,86 @@ test('the email preference is read the same way, not inferred either', () => {
 test('the checklist states the rule the server actually enforces', async () => {
   const { passwordChecks, PASSWORD_RULES } = await import('@/utils/passwordRules')
 
-  assert.equal(PASSWORD_RULES.min, 8, 'api/auth.php refuses under 8')
-  assert.equal(PASSWORD_RULES.max, 72, "72 is bcrypt's limit, not a preference")
+  assert.equal(PASSWORD_RULES.min, 15, 'api/helpers.php refuses under 15 characters')
+  assert.equal(PASSWORD_RULES.maxBytes, 72, "72 bytes is bcrypt's limit, not a preference")
 
   const met = (password, id) =>
     passwordChecks(password, password).find((check) => check.id === id).met
 
-  // The boundaries, from both sides. Seven characters is the case that used to
-  // be discovered by being refused after submitting.
-  assert.equal(met('a'.repeat(7), 'min'), false, '7 characters must not pass')
-  assert.equal(met('a'.repeat(8), 'min'), true, '8 characters must pass')
-  assert.equal(met('a'.repeat(72), 'max'), true, '72 characters must pass')
-  assert.equal(met('a'.repeat(73), 'max'), false, '73 characters must not pass')
+  // The boundaries, from both sides.
+  assert.equal(met('river bend walk', 'min'), true, '15 characters must pass')
+  assert.equal(met('river bend wal', 'min'), false, '14 characters must not pass')
+  // Bytes, not characters: 65 characters can be 72 bytes, and one more accented letter is too many.
+  const accented = 'añoranza señorío mañana piñata ñandú'
+  const seventyTwo = accented + 'x'.repeat(70 - new TextEncoder().encode(accented).length) + 'yz'
+  assert.equal(new TextEncoder().encode(seventyTwo).length, 72)
+  assert.equal(met(seventyTwo, 'max'), true, '72 bytes must pass')
+  assert.equal(met(seventyTwo + 'é', 'max'), false, '74 bytes must not pass, though it is only 66 characters')
 
   // An empty box is not "within the maximum" — it is nothing typed yet.
   assert.equal(met('', 'max'), false)
+})
+
+test('the JavaScript and PHP copies of the password rule agree', async () => {
+  const { readFileSync } = await import('node:fs')
+  const { PASSWORD_RULES, COMMON_PASSWORD_WORDS } = await import('@/utils/passwordRules')
+  const php = readFileSync(new URL('../api/helpers.php', import.meta.url), 'utf8')
+
+  assert.equal(Number(php.match(/const PASSWORD_MIN_CHARS = (\d+);/)[1]), PASSWORD_RULES.min)
+  assert.equal(Number(php.match(/const PASSWORD_MAX_BYTES = (\d+);/)[1]), PASSWORD_RULES.maxBytes)
+  const phpWords = [...php.match(/const COMMON_PASSWORD_WORDS = \[(.*?)\];/s)[1].matchAll(/'([^']+)'/g)].map((m) => m[1])
+  assert.deepEqual(phpWords, COMMON_PASSWORD_WORDS, 'the common-word lists must be the same list')
+})
+
+test('obvious long passwords are refused, real passphrases are not', async () => {
+  const { isCommonPassword } = await import('@/utils/passwordRules')
+
+  for (const weak of ['passwordpassword', 'password1234567', 'qwertyqwertyqwerty', '123456789012345',
+    '111111111111111', 'aaaaaaaaaaaaaaa', 'iloveyouiloveyou', 'letmeinletmeinletmein', 'adminadminadmin',
+    'welcome123456789', 'P@ssw0rd123456789', 'abcdefghijklmnop', '987654321098765', '1234567password']) {
+    assert.equal(isCommonPassword(weak), true, `${weak} must be refused`)
+  }
+  for (const fine of ['correct horse battery staple', 'password-after-lock', 'a-brand-new-password',
+    'another-password', 'Kape at pandesal tuwing umaga']) {
+    assert.equal(isCommonPassword(fine), false, `${fine} must be allowed`)
+  }
+})
+
+test('a password that is just your own name or address is refused, and only that', async () => {
+  const { passwordChecks } = await import('@/utils/passwordRules')
+  const identity = { email: 'kyle.austria.2026@example.com', fullName: 'Kyle Michael Austria' }
+  const met = (password) => passwordChecks(password, password, { identity }).find((c) => c.id === 'identity').met
+
+  assert.equal(met('kyle.austria.2026@example.com'), false, 'the whole address')
+  assert.equal(met('kyle.austria.2026'), false, 'the part before the @')
+  assert.equal(met('kylemichaelaustria'), false, 'the name, run together')
+  assert.equal(met('Kyle Michael Austria'), false, 'the name as written')
+  assert.equal(met('kyle walks the dog at dawn'), true, 'containing a first name is fine')
+})
+
+test('strength is guidance: Weak until the rules are met, then Fair or Strong', async () => {
+  const { passwordStrength } = await import('@/utils/passwordRules')
+
+  assert.equal(passwordStrength(''), null, 'nothing typed, nothing shown')
+  assert.equal(passwordStrength('short'), 'weak')
+  assert.equal(passwordStrength('passwordpassword'), 'weak', 'long but common')
+  assert.equal(passwordStrength('river bend walks'), 'fair', 'meets every rule: accepted')
+  assert.equal(passwordStrength('correct horse battery staple'), 'strong')
+  assert.equal(passwordStrength('Tide pool 7 at dusk'), 'strong', '16+ with three kinds of character')
+})
+
+test('names: real names of every shape pass, junk does not', async () => {
+  const { nameProblem, cleanName } = await import('@/utils/nameRules')
+
+  for (const name of ['Jo Li', 'Maria Santos', 'Ma. Ana Cruz', 'Anne-Marie Cruz', "D'Angelo Reyes", 'O’Connor', 'José Santos', 'Nguyễn Văn An']) {
+    assert.equal(nameProblem(name), null, `${name} must be accepted`)
+  }
+  for (const name of ['A', '1', '12345', '!!!!', '-']) {
+    assert.equal(nameProblem(name), 'Enter a real name with at least 2 letters.', `${name} must be refused`)
+  }
+  assert.equal(nameProblem(''), 'Enter your name.')
+  assert.equal(nameProblem('Jo2 Li'), 'Use letters, spaces, apostrophes, hyphens and periods only.')
+  assert.equal(cleanName('  Maria   Santos  '), 'Maria Santos')
 })
 
 test('the confirmation has to match, and an empty pair does not count as matching', async () => {
@@ -292,5 +357,5 @@ test('the confirmation has to match, and an empty pair does not count as matchin
 test('the confirmation check can be left out where there is only one box', async () => {
   const { passwordChecks } = await import('@/utils/passwordRules')
   const ids = passwordChecks('a'.repeat(10), '', { confirm: false }).map((check) => check.id)
-  assert.deepEqual(ids, ['min', 'max'])
+  assert.deepEqual(ids, ['min', 'max', 'common'])
 })

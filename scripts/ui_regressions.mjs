@@ -30,7 +30,7 @@
 // registration request is refused by the API on purpose.
 //
 // The page.evaluate() callbacks run inside the page, where these exist.
-/* global document, window */
+/* global document, window, HTMLInputElement, ClipboardEvent, DataTransfer, FocusEvent, innerWidth */
 import puppeteer from 'puppeteer-core'
 
 const BASE = process.env.PAWS_BASE ?? 'http://localhost/pawsandfound'
@@ -216,6 +216,124 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new'
   await pause(500)
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
   check('REG-10', 'At 390 px, with errors showing, nothing overflows', overflow === 0, `${overflow}px`)
+}
+
+// ---- PWD: the password requirements and the strength label (guidance only)
+{
+  const page = await (await browser.createBrowserContext()).newPage()
+  await page.setViewport({ width: 1280, height: 1000 })
+  await page.goto(BASE + '/register', { waitUntil: 'networkidle2' })
+  const ids = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('label')]
+    .map((l) => [l.textContent.replace(/\*|\(required\)/g, '').trim(), l.htmlFor]).filter(([, id]) => id)))
+  const setValue = (id, value) => page.evaluate((id, value) => {
+    const el = document.getElementById(id)
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, value)
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+  }, id, value)
+  const read = () => page.evaluate(() => {
+    const text = document.body.innerText
+    const strength = text.match(/Strength: (Weak|Fair|Strong)/)?.[1] ?? null
+    const meter = [...document.querySelectorAll('p')].find((p) => p.textContent.startsWith('Strength:'))
+    return { strength, disabled: document.querySelector('button[type=submit]').disabled,
+      meterIsError: Boolean(meter && (meter.closest('[role=alert]') || /text-danger/.test(meter.className))) }
+  })
+  await setValue(ids['Full name'], 'Registration Check')
+  await setValue(ids['Email address'], 'registration.check@example.com')
+  await page.evaluate(() => document.querySelector('input[type=checkbox]').click())
+  const both = async (password) => {
+    await setValue(ids['Password'], password)
+    await setValue(ids['Type it again'], password)
+    await pause(150)
+    return read()
+  }
+  const weak = await both('short')
+  check('PWD-1', 'Weak while a requirement is not met, and Create account stays disabled',
+    weak.strength === 'Weak' && weak.disabled, JSON.stringify(weak))
+  const fair = await both('river bend walks')
+  check('PWD-2', 'Fair once every requirement is met: shown as fine, and it may be submitted',
+    fair.strength === 'Fair' && !fair.disabled && !fair.meterIsError, JSON.stringify(fair))
+  const strong = await both('correct horse battery staple')
+  check('PWD-3', 'Strong for a long passphrase, also allowed', strong.strength === 'Strong' && !strong.disabled, JSON.stringify(strong))
+  const common = await both('passwordpassword')
+  const commonText = await page.evaluate(() => document.body.innerText)
+  check('PWD-4', 'A long but common password is Weak, and the checklist says why',
+    common.strength === 'Weak' && common.disabled && /Not a commonly used password\s*— not yet met/.test(commonText))
+  const own = await both('registration.check@example.com')
+  check('PWD-5', 'The email address itself is refused as a password', own.disabled && own.strength === 'Weak')
+  const pasted = await page.evaluate((id) => {
+    const el = document.getElementById(id)
+    const event = new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: new DataTransfer() })
+    el.dispatchEvent(event)
+    return !event.defaultPrevented
+  }, ids['Type it again'])
+  check('PWD-6', 'Pasting into "Type it again" is allowed (password managers)', pasted)
+  const autocomplete = await page.evaluate(() =>
+    [...document.querySelectorAll('input[type=password]')].map((i) => i.getAttribute('autocomplete')).join(','))
+  check('PWD-7', 'Both password boxes offer autocomplete="new-password"', autocomplete === 'new-password,new-password', autocomplete)
+  await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Show password')).click())
+  await pause(200)
+  const revealed = await page.evaluate(() => document.querySelectorAll('input[type=text][autocomplete=new-password]').length)
+  check('PWD-8', 'Show password still reveals the box', revealed === 1)
+  await setValue(ids['Full name'], 'A')
+  await page.evaluate((id) => document.getElementById(id).dispatchEvent(new FocusEvent('focusout', { bubbles: true })), ids['Full name'])
+  await page.evaluate((id) => { document.getElementById(id).focus(); document.getElementById(id).blur() }, ids['Full name'])
+  await pause(200)
+  const name = await page.evaluate((id) => {
+    const el = document.getElementById(id)
+    return { invalid: el.getAttribute('aria-invalid') === 'true', text: document.body.innerText.includes('Enter a real name with at least 2 letters.'),
+      disabled: document.querySelector('button[type=submit]').disabled }
+  }, ids['Full name'])
+  check('PWD-9', 'A one-letter name is marked on the field and blocks Create account', name.invalid && name.text && name.disabled, JSON.stringify(name))
+  await page.setViewport({ width: 390, height: 844, isMobile: true })
+  await pause(400)
+  check('PWD-10', 'At 390 px the requirements and strength fit', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+
+  // The reset page: the same requirements and label, no name/email item (the link does not say whose account).
+  await page.setViewport({ width: 1280, height: 1000 })
+  await page.goto(BASE + '/reset-password?token=' + 'b'.repeat(64), { waitUntil: 'networkidle2' })
+  const resetIds = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('label')]
+    .map((l) => [l.textContent.replace(/\*|\(required\)/g, '').trim(), l.htmlFor]).filter(([, id]) => id)))
+  await page.evaluate((a, b) => {
+    for (const id of [a, b]) {
+      const el = document.getElementById(id)
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, 'river bend walks')
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+  }, resetIds['New password'], resetIds['Type it again'])
+  await pause(150)
+  const reset = await page.evaluate(() => ({
+    strength: document.body.innerText.match(/Strength: (Weak|Fair|Strong)/)?.[1],
+    identityItem: document.body.innerText.includes('Not your name or email address'),
+    disabled: document.querySelector('button[type=submit]').disabled,
+  }))
+  check('PWD-11', 'Reset: the same label and requirements, and a Fair password may be saved',
+    reset.strength === 'Fair' && !reset.identityItem && !reset.disabled, JSON.stringify(reset))
+
+  // The profile: the same name rule, before anything is sent.
+  const profile = await (await browser.createBrowserContext()).newPage()
+  await profile.goto(BASE + '/', { waitUntil: 'networkidle2' })
+  await profile.evaluate(async (api, pw) => {
+    const me = await (await fetch(api + '/auth/me', { credentials: 'include' })).json()
+    await fetch(api + '/auth/login', { method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': me.csrf_token ?? '' },
+      body: JSON.stringify({ email: 'maria.santos@example.com', password: pw }) })
+  }, API, PASSWORD)
+  await profile.goto(BASE + '/dashboard/profile', { waitUntil: 'networkidle2' })
+  await pause(800)
+  const patches = []
+  profile.on('request', (request) => { if (request.method() === 'PATCH' && request.url().includes('/users/me')) patches.push(1) })
+  await profile.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Edit profile').click())
+  await profile.evaluate(() => {
+    const label = [...document.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith('Full name'))
+    const el = document.getElementById(label.htmlFor)
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, 'A')
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await profile.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Save changes').click())
+  await pause(800)
+  const profileName = await profile.evaluate(() => document.body.innerText.includes('Enter a real name with at least 2 letters.'))
+  check('PWD-12', 'Profile: a one-letter name is refused on the field and nothing is sent', profileName && patches.length === 0,
+    `${patches.length} request(s)`)
 }
 
 // ---- MOD-FLAG / MOD-DECIDE: raising a flag and deciding it, through the interface

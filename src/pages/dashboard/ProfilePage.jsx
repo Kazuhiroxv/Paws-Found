@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { ROLE_LABELS } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
 import { userService } from '@/services'
+import { cleanName, nameProblem } from '@/utils/nameRules'
 
 const loadCurrentUser = () => userService.getCurrentUser()
 
@@ -188,6 +189,10 @@ function ProfileForm({ user, onSaved }) {
   // { emailTo, emailSent } when it asked for a new address.
   const [saved, setSaved] = useState(null)
   const [saveError, setSaveError] = useState(null)
+  // The name rule (the same one registration uses), shown once the field has
+  // been left or a save was tried. The server checks it again either way.
+  const [nameTouched, setNameTouched] = useState(false)
+  const nameError = nameProblem(form.fullName)
   // Reading is the default state. The form used to be permanently open, so a
   // stray keystroke on a real account field was a real change waiting for a
   // Save nobody meant to press.
@@ -198,6 +203,7 @@ function ProfileForm({ user, onSaved }) {
     setForm(formFrom(user))
     setSaveError(null)
     setSaved(null)
+    setNameTouched(false)
     setIsEditing(false)
   }
 
@@ -213,6 +219,10 @@ function ProfileForm({ user, onSaved }) {
 
   const save = async (event) => {
     event.preventDefault()
+    if (nameError) {
+      setNameTouched(true)
+      return
+    }
     setIsSaving(true)
     setSaveError(null)
 
@@ -221,7 +231,7 @@ function ProfileForm({ user, onSaved }) {
 
     try {
       const updated = await userService.updateUser(user.id, {
-        fullName: form.fullName.trim(),
+        fullName: cleanName(form.fullName),
         email,
         phone: form.phone.trim(),
         preferredLocation: form.preferredLocation.trim(),
@@ -280,10 +290,11 @@ function ProfileForm({ user, onSaved }) {
               label="Full name"
               value={form.fullName}
               onChange={(event) => change('fullName', event.target.value)}
-              maxLength={80}
+              onBlur={() => setNameTouched(true)}
+              maxLength={120}
               required
               hint="Shown on the reports you file."
-              error={fieldErrors.fullName}
+              error={fieldErrors.fullName ?? (nameTouched ? nameError : undefined)}
             />
 
             <div className="flex flex-col gap-2">

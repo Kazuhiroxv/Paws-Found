@@ -4,9 +4,10 @@ import { MailCheck, TriangleAlert } from 'lucide-react'
 import { Button, Card, CardBody, Input, RequiredNote } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { AuthShell } from '@/components/AuthShell'
-import { PasswordChecklist, PasswordField } from '@/components/PasswordField'
+import { PasswordChecklist, PasswordField, PasswordStrength } from '@/components/PasswordField'
 import { Turnstile } from '@/components/Turnstile'
 import { passwordChecks } from '@/utils/passwordRules'
+import { cleanName, nameProblem } from '@/utils/nameRules'
 import { userService } from '@/services'
 import { cn } from '@/utils/cn'
 
@@ -62,7 +63,7 @@ export function RegisterPage() {
   // The same rules as the API (api/auth.php), said sooner. The API still
   // checks everything, and its answer wins when it arrives.
   const problems = {
-    full_name: form.fullName.trim() === '' ? 'Enter your name.' : null,
+    full_name: nameProblem(form.fullName),
     email:
       form.email.trim() === ''
         ? 'Enter your email address.'
@@ -94,7 +95,7 @@ export function RegisterPage() {
 
     try {
       const result = await userService.register({
-        fullName: form.fullName.trim(),
+        fullName: cleanName(form.fullName),
         email: form.email.trim(),
         phone: form.phone.trim(),
         password: form.password,
@@ -114,8 +115,12 @@ export function RegisterPage() {
     }
   }
 
-  const passwordReady = passwordChecks(form.password, form.confirmation).every((c) => c.met)
-  const canSubmit = form.privacyConsent && passwordReady
+  // Who is choosing, for the one check that the password is not simply their
+  // own name or address.
+  const identity = { email: form.email, fullName: form.fullName }
+  const passwordReady = passwordChecks(form.password, form.confirmation, { identity }).every((c) => c.met)
+  // Every requirement, not the strength label: Fair is accepted.
+  const canSubmit = form.privacyConsent && passwordReady && !problems.full_name && !problems.email
 
   // The account exists; as far as the system is concerned the address does not
   // yet belong to anybody. This screen is the whole reason registration no
@@ -174,7 +179,7 @@ export function RegisterPage() {
               error={shown('full_name', 'fullName')}
               maxLength={120}
               required
-              hint="Shown on the reports you file."
+              hint="Shown on the reports you file. Letters, spaces, apostrophes, hyphens and periods."
             />
             <Input
               label="Email address"
@@ -212,7 +217,8 @@ export function RegisterPage() {
               onChange={(event) => change('confirmation', event.target.value)}
               required
             />
-            <PasswordChecklist password={form.password} confirmation={form.confirmation} />
+            <PasswordChecklist password={form.password} confirmation={form.confirmation} identity={identity} />
+            <PasswordStrength password={form.password} identity={identity} />
 
             <Turnstile onToken={setCaptchaToken} attempt={captchaAttempt} />
 
@@ -265,8 +271,9 @@ export function RegisterPage() {
               </p>
             )}
 
-            {/* Disabled until the box is ticked, so the requirement is visible
-                before it is discovered. The API refuses either way. */}
+            {/* Disabled until the name, the address, every password
+                requirement and the box are all satisfied, so what is missing
+                is visible before it is discovered. The API refuses either way. */}
             <div className="flex flex-wrap items-center gap-3">
               <Button type="submit" isLoading={isSubmitting} disabled={!canSubmit}>
                 {isSubmitting ? 'Creating account…' : 'Create account'}

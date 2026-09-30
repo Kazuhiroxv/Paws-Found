@@ -32,6 +32,9 @@ import audit
 from audit import reseed, sql
 
 PW = audit.PW
+# The test account's own password. The seeded accounts keep PW (demo1234), which
+# still signs in: the 15-character rule applies only when a password is chosen.
+LIFECYCLE_PW = 'lifecycle river passphrase'
 CAPTURE_DIR = os.path.join(os.environ.get('TEMP', '/tmp'), 'pawsandfound-mail')
 LOCAL_CONFIG = os.path.join(audit.PROJECT, 'api', 'config.local.php')
 
@@ -112,7 +115,7 @@ try:
     code, payload = caller.call('POST', '/auth/register', {
         'full_name': 'Lifecycle Tester',
         'email': NEW_EMAIL,
-        'password': PW,
+        'password': LIFECYCLE_PW,
         'privacy_consent': True,
     })
     check('A1', 'The account is created', 201, code)
@@ -138,7 +141,7 @@ try:
 
     # =================================================== B. cannot sign in yet
     banner('B. An unproved address cannot sign in')
-    code, payload = session().call('POST', '/auth/login', {'email': NEW_EMAIL, 'password': PW})
+    code, payload = session().call('POST', '/auth/login', {'email': NEW_EMAIL, 'password': LIFECYCLE_PW})
     check('B1', 'Sign-in is refused', 403, code)
     check('B2', 'And says why, in a way the browser can act on', 'verification_required',
           payload.get('code'))
@@ -156,7 +159,7 @@ try:
     check('C4', 'A made-up token is refused the same way', 400,
           session().call('POST', '/auth/verify-email', {'token': 'a' * 64})[0])
     check('C5', 'Now sign-in works', 200,
-          session().call('POST', '/auth/login', {'email': NEW_EMAIL, 'password': PW})[0])
+          session().call('POST', '/auth/login', {'email': NEW_EMAIL, 'password': LIFECYCLE_PW})[0])
     check('C6', 'And it is in the audit log', 'email_verified',
           sql("SELECT action FROM audit_logs WHERE action='email_verified' "
               "ORDER BY audit_id DESC LIMIT 1") or '(none)')
@@ -185,7 +188,7 @@ try:
     check('E3', 'A reset link was produced', 64, len(reset_token or ''))
 
     signed_in = session()
-    signed_in.call('POST', '/auth/login', {'email': NEW_EMAIL, 'password': PW})
+    signed_in.call('POST', '/auth/login', {'email': NEW_EMAIL, 'password': LIFECYCLE_PW})
     signed_in.prime_csrf()
     check('E4', 'That session is live before the reset', 200,
           signed_in.call('GET', '/notifications')[0])
@@ -201,7 +204,7 @@ try:
     uid = sql(f"SELECT user_id FROM users WHERE email='{NEW_EMAIL}'")
     version_before = sql(f"SELECT session_version FROM users WHERE user_id={uid}")
     audits_before = sql(f"SELECT COUNT(*) FROM audit_logs WHERE action='password_reset' AND target_id={uid}")
-    code, payload = session().call('POST', '/auth/reset-password', {'token': reset_token, 'password': PW})
+    code, payload = session().call('POST', '/auth/reset-password', {'token': reset_token, 'password': LIFECYCLE_PW})
     check('RS-1a', 'Resetting to the current password is refused', 422, code)
     check('RS-1b', '...on the password field, saying why',
           'Choose a new password that is different from your current password.',
@@ -212,7 +215,7 @@ try:
           sql(f"SELECT session_version FROM users WHERE user_id={uid}"))
     check('RS-1e', '...the session open elsewhere still works', 200, signed_in.call('GET', '/notifications')[0])
     check('RS-1f', '...the password still works', 200,
-          session().call('POST', '/auth/login', {'email': NEW_EMAIL, 'password': PW})[0])
+          session().call('POST', '/auth/login', {'email': NEW_EMAIL, 'password': LIFECYCLE_PW})[0])
     check('RS-1g', '...and no reset is recorded', audits_before,
           sql(f"SELECT COUNT(*) FROM audit_logs WHERE action='password_reset' AND target_id={uid}"))
 
@@ -226,7 +229,7 @@ try:
     check('RS-2c', '...and records one reset', str(int(audits_before) + 1),
           sql(f"SELECT COUNT(*) FROM audit_logs WHERE action='password_reset' AND target_id={uid}"))
     check('E7', 'The old password no longer works', 401,
-          session().call('POST', '/auth/login', {'email': NEW_EMAIL, 'password': PW})[0])
+          session().call('POST', '/auth/login', {'email': NEW_EMAIL, 'password': LIFECYCLE_PW})[0])
     check('E8', 'The new one does', 200,
           session().call('POST', '/auth/login',
                          {'email': NEW_EMAIL, 'password': 'a-brand-new-password'})[0])
@@ -336,10 +339,105 @@ try:
     check('H4', 'Registration has its own, separate allowance', True,
           session().call('POST', '/auth/register',
                          {'full_name': 'Rate Check', 'email': 'rate.check@example.com',
-                          'password': PW, 'privacy_consent': True})[0] in (201, 422))
+                          'password': LIFECYCLE_PW, 'privacy_consent': True})[0] in (201, 422))
     check('H5', 'The three-attempt account lock is untouched by any of it', '0',
           sql("SELECT COUNT(*) FROM login_attempts WHERE failed_count >= 3"))
     sql("DELETE FROM users WHERE email='rate.check@example.com'")
+
+    # =================================================== I. names and the password rule
+    # api/helpers.php: validate_full_name() for registration and the profile;
+    # password_policy_error() for registration and the reset. The registration
+    # allowance is cleared before each attempt, so the rate limit (section H)
+    # never stands in for the answer being tested.
+    banner('I. Names and the password rule')
+
+    def register(tag, full_name='Policy Tester', password='harbour lights at six'):
+        sql("DELETE FROM auth_rate_limits")
+        code, body = session().call('POST', '/auth/register', {
+            'full_name': full_name, 'email': f'policy.{tag}@example.com',
+            'password': password, 'privacy_consent': True})
+        return code, (body.get('fields') or {})
+
+    for step, name in (('N1', 'A'), ('N2', '1'), ('N3', '!!!!')):
+        code, fields = register(step.lower(), full_name=name)
+        check(step, f'The name "{name}" is refused', (422, 'Enter a real name with at least 2 letters.'),
+              (code, fields.get('full_name')))
+    for step, name in (('N4', 'Jo Li'), ('N5', 'Ma. Ana Cruz'), ('N6', 'Anne-Marie Cruz'),
+                       ('N7', "D'Angelo Reyes"), ('N8', 'O’Connor'), ('N9', 'José Santos')):
+        check(step, f'The name "{name}" is accepted', 201, register(step.lower(), full_name=name)[0])
+    check('N10', 'Stored with the spaces tidied', 'Maria Santos',
+          (register('n10', full_name='  Maria   Santos ')[0],
+           sql("SELECT full_name FROM users WHERE email='policy.n10@example.com'"))[1])
+    code, payload = owner.call('PATCH', '/users/me', {'full_name': 'A', 'email': MOVED_EMAIL})
+    check('N11', 'The profile refuses "A" too, on the name field', (422, 'Enter a real name with at least 2 letters.'),
+          (code, (payload.get('fields') or {}).get('full_name')))
+    check('N12', '...and the name was not changed', 'Lifecycle Tester',
+          sql(f"SELECT full_name FROM users WHERE user_id={uid}"))
+
+    accented = 'añoranza señorío mañana piñata ñandú'
+    too_many_bytes = accented + 'x' * (72 - len(accented.encode()) - 2) + 'yzé'
+    for step, what, password, expected in (
+        ('P1', '14 characters', 'river bend wal', 'Use at least 15 characters'),
+        ('P3', '73 ASCII bytes', 'river ' * 12 + 'b', 'too long'),
+        ('P4', f'{len(too_many_bytes)} characters but {len(too_many_bytes.encode())} bytes', too_many_bytes, 'too long'),
+        ('P5', 'passwordpassword', 'passwordpassword', 'too commonly used'),
+        ('P6', 'one character repeated', 'z' * 18, 'too commonly used'),
+        ('P6b', 'a common word and digits', 'welcome123456789', 'too commonly used'),
+    ):
+        code, fields = register(step.lower(), password=password)
+        check(step, f'Refused: {what}', (422, True), (code, expected in (fields.get('password') or '')))
+    identity = 'not based on your name or email'
+    code, fields = register('p7', password='policy.p7@example.com')
+    check('P7', 'Refused: the email address itself', (422, True), (code, identity in (fields.get('password') or '')))
+    sql("DELETE FROM auth_rate_limits")
+    code, body = session().call('POST', '/auth/register', {
+        'full_name': 'Policy Tester', 'email': 'harbour.lights.at.six@example.com',
+        'password': 'harbour.lights.at.six', 'privacy_consent': True})
+    check('P8', 'Refused: the part of the email before the @', (422, True),
+          (code, identity in ((body.get('fields') or {}).get('password') or '')))
+    code, fields = register('p9', full_name='Harbour Lighthouse Keeper', password='harbourlighthousekeeper')
+    check('P9', 'Refused: the name, run together', (422, True), (code, identity in (fields.get('password') or '')))
+    check('P2', 'Accepted: a 15+ character passphrase', 201, register('p2', password='river bend walks')[0])
+    check('P10', 'Accepted: a Fair password (every rule met)', 201, register('p10', password='harbour lights ok')[0])
+    check('P11', 'Accepted: a Strong one', 201, register('p11', password='correct horse battery staple')[0])
+    check('P12', 'Accepted: a passphrase that merely contains the first name', 201,
+          register('p12', full_name='Harbour Keeper', password='harbour walks the dog at dawn')[0])
+
+    # The reset: the same rule, checked against the account's own name and
+    # address, and a refusal never spends the link.
+    sql("DELETE FROM auth_rate_limits")
+    started = time.time()
+    session().call('POST', '/auth/forgot-password', {'email': MOVED_EMAIL})
+    link = token_from(newest_mail(started))
+    link_hash = hashlib.sha256(link.encode()).hexdigest() if link else ''
+    reset = lambda password: session().call('POST', '/auth/reset-password', {'token': link, 'password': password})
+    code, payload = reset('river bend wal')
+    check('R1', 'Reset to 14 characters: refused', 422, code)
+    code, payload = reset('passwordpassword')
+    check('R2', 'Reset to a common password: refused', 422, code)
+    code, payload = reset('lifecycletester')
+    check('R3', "Reset to the account's own name: refused", (422, True),
+          (code, identity in ((payload.get('fields') or {}).get('password') or '')))
+    code, payload = reset('password-after-lock')
+    check('R5', 'Reset to the current password: still refused, with its own reason', (422, True),
+          (code, 'different from your current password' in ((payload.get('fields') or {}).get('password') or '')))
+    check('R6', 'None of those spent the link', 'NULL',
+          sql(f"SELECT IFNULL(used_at, 'NULL') FROM auth_tokens WHERE token_hash='{link_hash}'"))
+    elsewhere = session()
+    elsewhere.call('POST', '/auth/login', {'email': MOVED_EMAIL, 'password': 'password-after-lock'})
+    elsewhere.prime_csrf()
+    check('R4', 'A valid new password is accepted', 200, reset('harbour lights at six')[0])
+    check('R7', 'It signed the other session out, and the new password signs in', (401, 200),
+          (elsewhere.call('GET', '/notifications')[0],
+           session().call('POST', '/auth/login', {'email': MOVED_EMAIL, 'password': 'harbour lights at six'})[0]))
+
+    # Nothing changed for passwords chosen before the rule.
+    check('X1', 'A seeded account with its old 8-character password still signs in', 200,
+          session().call('POST', '/auth/login', {'email': audit.ACCOUNTS['customer'], 'password': PW})[0])
+    check('X2', 'No forced change: every seeded account keeps a bcrypt hash that still works', '0',
+          sql("SELECT COUNT(*) FROM users WHERE email LIKE '%@example.com' AND email NOT LIKE 'policy.%' "
+              "AND email NOT LIKE 'lifecycle.%' AND email NOT LIKE 'harbour.%' AND password_hash NOT LIKE '$2y$%'"))
+    sql("DELETE FROM users WHERE email LIKE 'policy.%@example.com' OR email = 'harbour.lights.at.six@example.com'")
     sql("DELETE FROM auth_rate_limits")
 
     print()
