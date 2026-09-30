@@ -353,6 +353,15 @@ tables against a database with 17 looks like an omission rather than a decision.
 
 ---
 
+## Reopening a decided pairing (30 September 2026)
+
+A Pet Coordinator can reopen a pairing they **rejected** or **confirmed** by mistake, with a reason both reporters are told. The pairing goes back to under review and both reports back to Possible Match (frozen again). It is refused for a reporter's own "Not my pet" or a withdrawal, when a report has been closed since, and when a report has changed so that the stored comparison no longer describes it — the comparison is run again and must come out the same (`api/matches.php`, `reopen_preflight()`). It is limited to the coordinator's own decisions so
+that a reporter's "Not my pet" is never overridden, and it re-runs the
+comparison rather than rewriting it, so a reopened pairing can never show old
+evidence as current. No schema change: the pairing returns to `under_review`,
+the notification is `staff_reviewed`, and the audit row is `match_decided` with
+the detail `reopen: rejected -> under_review`.
+
 ## Features deliberately not built
 
 | Rejected | Why |

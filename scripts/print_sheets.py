@@ -66,7 +66,8 @@ assert sum(WEIGHTS.values()) == 100, WEIGHTS
 matches_php = read('api/matches.php')
 ACTIONS = dict(re.findall(r"'(\w+)'\s*=> \['(\w+)'\]", re.search(r'const MATCH_ACTIONS = \[(.*?)\];', matches_php, re.S).group(1)))
 assert ACTIONS == {'request_verification': 'reporter', 'dismiss': 'reporter', 'confirm': 'staff',
-                   'reject': 'staff', 'request_information': 'staff', 'provide_information': 'reporter'}, ACTIONS
+                   'reject': 'staff', 'request_information': 'staff', 'provide_information': 'reporter',
+                   'reopen': 'staff'}, ACTIONS
 
 TABLES = int(query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE()"))
 FKS = int(query("SELECT COUNT(*) FROM information_schema.table_constraints "
@@ -335,6 +336,7 @@ MATRIX = [
     ('Request verification / "Not my pet"', N, own(), api('any'), api('any')),
     ("Answer a coordinator's question", N, own(), N, N),
     ('Confirm / reject a match, ask a question', N, N, Y, api('yes')),
+    ('Reopen a pairing ruled out or confirmed by mistake', N, N, Y, api('yes')),
     ('See unpublished reporter contact', N, N, Y, Y),
     ('Flag a listing', N, Y, Y, Y),
     ('Resolve flags: dismiss, warn, remove, suspend', N, N, N, Y),
@@ -430,6 +432,9 @@ roles_body = f"""
       <div class="step no"><b>Reject</b><span>pairing rejected; both reports back to Active</span></div>
       <div class="step yes"><b>Confirm</b><span>both reports Returned; their other open pairings withdrawn; coordinator arranges a safe handover</span></div>
     </div>
+    <p style="font-size:9.6px;color:var(--muted);margin-top:5px;line-height:1.35">Both ask first. A coordinator can
+      <b style="color:var(--ink)">reopen</b> either by mistake, with a reason — refused if a report has been closed
+      or has changed since.</p>
   </div>
   <div class="side-by">
     <div class="box">
@@ -482,7 +487,7 @@ SUITES = [
      'in a real Chrome: signing out and switching accounts leaves nothing of the last person on screen'),
     ('test:ui', 'Interface regressions', 'npm run test:ui',
      'in a real Chrome: moderation, registration feedback, phone menus, report actions, the edit freeze, '
-     'historical labels on ruled-out pairings, password requirements and strength'),
+     'historical labels, password requirements and strength, reopening, decisions asking first'),
     ('test:contract', 'Contract tests', 'npm run test:contract',
      'what the form sends, what the API returns and what MySQL stores agree; dates in Philippine time; '
      'the password rule matches the one on the server'),

@@ -453,13 +453,13 @@ All run on 27 September 2026 unless noted. Commands and prerequisites:
 | `npm run build` | green | — |
 | `npm run test:contract` | **29/29** | nothing running |
 | `npm run test:mail` | **15/15** | `php` on PATH; one check calls Brevo |
-| `npm run audit` | **357/357** | API + database |
+| `npm run audit` | **378/378** | API + database |
 | `python scripts/auth_lifecycle.py` | **100/100** | API + database, local only |
 | `npm run multi-device` | **73/73** local | API + database |
 | `npm run test:city` | **11/11** | `php` on PATH |
 | `npm run test:calendar` | **8/8** | `php` on PATH, local database |
 | `npm run test:matching-log` | **6/6** | `php` on PATH, local database |
-| `npm run test:ui` | **56/56** | the dev build (`PAWS_BASE=http://localhost:5173`), `PAWS_PW`, Chrome |
+| `npm run test:ui` | **60/60** | the dev build (`PAWS_BASE=http://localhost:5173`), `PAWS_PW`, Chrome |
 | `npm run test:signout` | **24/24** | the dev build (`PAWS_BASE=http://localhost:5173`), `PAWS_PW`, Chrome |
 | `npm run a11y` | 31 pages, **zero violations** | the dev build (`PAWS_BASE=http://localhost:5173`) |
 | `docker build --pull --no-cache` | clean, one MPM, `Syntax OK` | Docker |

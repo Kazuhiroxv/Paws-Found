@@ -52,18 +52,18 @@ table.s tr:nth-child(even) td { background: #F7FAF9 }
 <main>
 <section>
   <div class="strip">
-    <div class="big"><b>664</b><span>automated checks, all passing, in the 9 suites below</span></div>
+    <div class="big"><b>689</b><span>automated checks, all passing, in the 9 suites below</span></div>
     <div class="big"><b>31</b><span>pages checked by axe-core in every role: 0 violations</span></div>
     <div class="big"><b>25/25</b><span>deployment checks against production (read-only; 3 upload checks skipped)</span></div>
     <div class="big"><b>17 / 24</b><span>tables / foreign keys, asserted by the audit so the ERD cannot drift</span></div>
   </div>
   <table class="s">
     <thead><tr><th>Suite</th><th>What it proves</th><th class="r">Result</th></tr></thead>
-    <tbody><tr><td><b>Security and functional audit</b><code>npm run audit</code></td><td>input validation, SQL injection, authentication, authorization, XSS, uploads, location privacy, report access and editing, matching lifecycle, the table and key counts</td><td class="r">357/357</td></tr>
+    <tbody><tr><td><b>Security and functional audit</b><code>npm run audit</code></td><td>input validation, SQL injection, authentication, authorization, XSS, uploads, location privacy, report access and editing, matching lifecycle, the table and key counts</td><td class="r">378/378</td></tr>
 <tr><td><b>Account lifecycle</b><code>scripts/auth_lifecycle.py</code></td><td>registration, email verification, password reset and the sessions it ends, email change, rate limits, the password and name rules</td><td class="r">100/100</td></tr>
 <tr><td><b>Multi-device sessions</b><code>npm run multi-device</code></td><td>independent sessions: suspension, lock and unlock take effect everywhere at once; a coordinator or administrator keeps one session at a time</td><td class="r">73/73</td></tr>
 <tr><td><b>Sign-out privacy</b><code>npm run test:signout</code></td><td>in a real Chrome: signing out and switching accounts leaves nothing of the last person on screen</td><td class="r">24/24</td></tr>
-<tr><td><b>Interface regressions</b><code>npm run test:ui</code></td><td>in a real Chrome: moderation, registration feedback, phone menus, report actions, the edit freeze, historical labels on ruled-out pairings, password requirements and strength</td><td class="r">56/56</td></tr>
+<tr><td><b>Interface regressions</b><code>npm run test:ui</code></td><td>in a real Chrome: moderation, registration feedback, phone menus, report actions, the edit freeze, historical labels, password requirements and strength, reopening, decisions asking first</td><td class="r">60/60</td></tr>
 <tr><td><b>Contract tests</b><code>npm run test:contract</code></td><td>what the form sends, what the API returns and what MySQL stores agree; dates in Philippine time; the password rule matches the one on the server</td><td class="r">29/29</td></tr>
 <tr><td><b>Place comparison</b><code>npm run test:city</code></td><td>how two places compare when a report has no map pin</td><td class="r">11/11</td></tr>
 <tr><td><b>Calendar</b><code>npm run test:calendar</code></td><td>&quot;today&quot; is the Philippine date; the database speaks UTC</td><td class="r">8/8</td></tr>

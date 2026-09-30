@@ -112,6 +112,7 @@ Everything a customer can do, plus:
 | Endpoint | Allowed to | Guard |
 | --- | --- | --- |
 | `PATCH /matches/{id}` | `confirm`, `reject`, `request_information` | `matches.php:85` — *"Only a Pet Coordinator can decide a pairing."* |
+| `PATCH /matches/{id}` | `reopen` a pairing they rejected or confirmed by mistake, with a reason | `reopen_preflight()`, `match_reopen()` |
 | `PATCH /reports/{id}/status` | Move **any** report along an allowed transition | `reports.php:322` |
 | `GET /users/{id}` | See contact details, to arrange a handover | `users.php:107` |
 | `GET /reports/stats` | The dashboard figures | `reports.php:457` |
@@ -155,7 +156,7 @@ deliberate. Each is marked † on the printed roles sheet
 
 | Action | Server allows | Interface offers it to |
 | --- | --- | --- |
-| Confirm / reject a pairing, ask a question | Staff **and** Admin (`matches.php`, `$isStaff` includes admin) | Pet Coordinators only — the Verification page is in the staff workspace, which an administrator cannot open |
+| Confirm / reject / reopen a pairing, ask a question | Staff **and** Admin (`matches.php`, `$isStaff` includes admin) | Pet Coordinators only — the Verification page is in the staff workspace, which an administrator cannot open |
 | Mark any report Returned / Closed | Staff and Admin, any report | The report's owner only (`PetDetailPage.jsx`, `isOwner`) |
 | "This could be mine" / "Not my pet" | The two reporters, and staff or admin acting for one | The two reporters |
 | List every pairing | Staff and Admin | Staff (Match Queue) |
@@ -189,7 +190,7 @@ signed in is not enough; you have to be *in the case*.
 
 ## 5. How this was tested, and what the tests found
 
-`npm run audit` — **357 cases**, of which **31 are category D, Authorization**.
+`npm run audit` — **378 cases**, of which **31 are category D, Authorization**.
 Each one is a request made by the wrong person to a real endpoint, with the
 expected status code asserted.
 
