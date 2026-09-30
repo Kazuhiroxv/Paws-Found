@@ -159,6 +159,16 @@ export async function rejectMatch(id, context = {}) {
   return decide(id, 'reject', context.note)
 }
 
+/**
+ * A Pet Coordinator undoes a rejection or a confirmation made in error. The
+ * server decides whether it may (api/matches.php, reopen_preflight()): it
+ * refuses if a report has been closed since, or has changed so that the stored
+ * comparison no longer describes it.
+ */
+export async function reopenMatch(id, note) {
+  return decide(id, 'reopen', note)
+}
+
 export async function requestMoreInformation(id, context = {}) {
   return decide(id, 'request_information', context.note)
 }

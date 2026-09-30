@@ -39,6 +39,9 @@ const MATCH_ACTIONS = [
     // The answer to request_information, from one of the two reporters. Only
     // they may send it; a coordinator does not answer their own question.
     'provide_information' => ['reporter'],
+    // Undoing a coordinator's own decision — a rejection or a confirmation
+    // made in error. See match_reopen() for what it may and may not undo.
+    'reopen'              => ['staff'],
 ];
 
 /**
@@ -125,8 +128,12 @@ function match_decide(int $id): never
     //
     // Checked after the role guards, so an unauthorised caller still gets 403
     // rather than learning what state the pairing is in.
-    if (in_array($match['match_status'], ['confirmed', 'rejected', 'dismissed'], true)) {
+    if ($action !== 'reopen' && in_array($match['match_status'], ['confirmed', 'rejected', 'dismissed'], true)) {
         json_error('That pairing has already been decided.', 409);
+    }
+
+    if ($action === 'reopen') {
+        reopen_preflight($match, $note);
     }
 
     // Two of the five need a reason, and both for the same purpose: they are
@@ -201,6 +208,7 @@ function match_decide(int $id): never
             'request_information'  => match_request_information($id, $match, $user, $note),
             'provide_information'  => match_provide_information($match, $user, $note),
             'confirm'              => match_confirm($id, $match, $user, $note),
+            'reopen'               => match_reopen($id, $match, $user, $note),
         };
 
         $after = $pdo->prepare('SELECT match_status FROM match_claims WHERE match_id = :id');
@@ -524,6 +532,103 @@ function match_confirm(int $id, array $match, array $user, ?string $note): void
             . 'If the other reporter shared contact details, you can find them on their report. '
             . 'Meet in a public place, ideally in daylight, and bring someone you trust.'
     );
+}
+
+/**
+ * May this decided pairing be reopened? Refuses with the reason if not.
+ *
+ * Only a coordinator's own decisions: a rejection or a confirmation. A
+ * reporter's "Not my pet", or a withdrawal because a report was finished, is
+ * not the coordinator's to undo. A reason is required, because both reporters
+ * are told.
+ *
+ * The comparison must still describe the reports. Its score and seven reasons
+ * were stored when the pairing was made; once rejected, the reports could be
+ * edited. So the comparison is run again on the reports as they are now, and
+ * if any signal comes out differently the pairing is not reopened — it would
+ * put old evidence in front of a coordinator as if it were current.
+ */
+function reopen_preflight(array $match, ?string $note): void
+{
+    if (!in_array($match['match_status'], ['rejected', 'confirmed'], true)) {
+        json_error($match['match_status'] === 'dismissed'
+            ? 'A reporter ruled this pairing out, or one of its reports was finished, so it cannot be reopened.'
+            : 'This pairing is still open; there is nothing to reopen.', 409);
+    }
+
+    if ($note === null) {
+        json_error('Say why this pairing is being reopened.', 422, [
+            'fields' => ['note' => 'Both reporters are told this, so it has to say something.'],
+        ]);
+    }
+
+    // A rejected pairing's reports went back to Active; a confirmed one's were
+    // marked Returned. Anything else means a report has been finished since.
+    $expected = $match['match_status'] === 'confirmed' ? ['returned'] : ['active', 'possible_match'];
+    foreach (['lost_report_id', 'found_report_id'] as $key) {
+        $check = db()->prepare('SELECT status FROM pet_reports WHERE report_id = :id');
+        $check->execute([':id' => (int) $match[$key]]);
+        if (!in_array($check->fetchColumn(), $expected, true)) {
+            json_error('One of these reports has been closed since, so this pairing cannot be reopened.', 409);
+        }
+    }
+
+    require_once __DIR__ . '/matching.php';
+    $now = compare_reports(
+        matching_load_report((int) $match['lost_report_id']),
+        matching_load_report((int) $match['found_report_id'])
+    );
+    $stored = db()->prepare('SELECT signal_key, is_matched FROM match_signals WHERE match_id = :id');
+    $stored->execute([':id' => (int) $match['match_id']]);
+    $was = array_map('boolval', array_column($stored->fetchAll(), 'is_matched', 'signal_key'));
+
+    foreach ($now['signals'] as $signal) {
+        if (($was[$signal['key']] ?? null) !== $signal['matched']) {
+            json_error('The reports have changed since this pairing was decided, so its comparison no '
+                . 'longer describes them. It was not reopened.', 409, ['code' => 'comparison_changed']);
+        }
+    }
+}
+
+/**
+ * Put a decided pairing back in front of a coordinator.
+ *
+ * The pairing goes to under_review and both reports to Possible Match — so
+ * they are frozen again (reports.php refuses edits while a match is open),
+ * with a line in each case history and both reporters told why. A reopened
+ * confirmation takes both reports out of Returned; the other pairings that
+ * confirming withdrew stay withdrawn, because nothing records whether they
+ * would still be wanted.
+ */
+function match_reopen(int $id, array $match, array $user, ?string $note): void
+{
+    match_set_status($id, 'under_review', $user, $note, $match['match_status']);
+
+    foreach (['lost_report_id', 'found_report_id'] as $key) {
+        $reportId = (int) $match[$key];
+        $current = db()->prepare('SELECT status FROM pet_reports WHERE report_id = :id');
+        $current->execute([':id' => $reportId]);
+        $previous = (string) $current->fetchColumn();
+
+        if ($previous === 'possible_match') {
+            continue;   // already frozen by another open pairing
+        }
+
+        $update = db()->prepare(
+            "UPDATE pet_reports SET status = 'possible_match' WHERE report_id = :id AND status = :expected"
+        );
+        $update->execute([':id' => $reportId, ':expected' => $previous]);
+        if ($update->rowCount() === 0) {
+            json_error('One of these reports changed while this page was open.', 409, [
+                'code' => 'stale_state', 'resource' => 'report', 'id' => $reportId,
+            ]);
+        }
+
+        log_match_status_change($reportId, (int) $user['user_id'], $previous, 'possible_match',
+            'A Pet Coordinator reopened the pairing for review.');
+    }
+
+    notify_both($match, 'staff_reviewed', 'A pairing was reopened for review', $note);
 }
 
 // -----------------------------------------------------------------------------

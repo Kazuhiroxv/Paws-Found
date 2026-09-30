@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { ArrowRight, CircleX, Heart, HeartHandshake, Hourglass } from 'lucide-react'
-import { Button, EmptyState, LoadingSkeleton } from '@/components/ui'
+import { ArrowRight, CircleX, Heart, HeartHandshake, Hourglass, RotateCcw } from 'lucide-react'
+import { Button, EmptyState, LoadingSkeleton, Textarea } from '@/components/ui'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PageHeader } from '@/components/PageHeader'
 import { MatchPairCard, MatchStatusBadge, StatusStrip } from '@/components/MatchComparison'
 import { MATCH_STATUSES, wasWithdrawn } from '@/constants'
@@ -44,7 +45,7 @@ const loadAllMatches = () => matchService.getMatchesWithReports()
  */
 export function StaffMatchesPage() {
   const [chosenTab, setChosenTab] = useState(null)
-  const { data, error, isLoading } = useAsync(loadAllMatches)
+  const { data, error, isLoading, reload } = useAsync(loadAllMatches)
   const { hash } = useLocation()
 
   // Links from the Overview and Notifications arrive as #match-3. The card
@@ -117,7 +118,7 @@ export function StaffMatchesPage() {
                   found={foundReport}
                   badge={<MatchStatusBadge status={match.status} withdrawn={wasWithdrawn(match.status, lostReport, foundReport)} />}
                 >
-                  <QueueOutcome match={match} lost={lostReport} found={foundReport} />
+                  <QueueOutcome match={match} lost={lostReport} found={foundReport} onReopened={reload} />
                 </MatchPairCard>
               </li>
             ))}
@@ -130,9 +131,11 @@ export function StaffMatchesPage() {
 
 /**
  * Where a pairing goes from here. No decision buttons: those live in
- * Verification, beside the contact details and the case note.
+ * Verification, beside the contact details and the case note. The one action
+ * here undoes a coordinator's own decision (a rejection or a confirmation)
+ * and sends the pairing back to Verification.
  */
-function QueueOutcome({ match, lost, found }) {
+function QueueOutcome({ match, lost, found, onReopened }) {
   const reportLinks = (
     <div className="flex flex-wrap gap-2">
       <Button as={Link} to={`/pet/${lost.id}`} variant="secondary" size="sm">
@@ -161,9 +164,12 @@ function QueueOutcome({ match, lost, found }) {
       )
     case MATCH_STATUSES.CONFIRMED:
       return (
-        <StatusStrip tone="success" icon={HeartHandshake} title="Match confirmed">
-          Ownership was verified and both reports were marked returned.
-        </StatusStrip>
+        <div className="flex flex-col gap-3">
+          <StatusStrip tone="success" icon={HeartHandshake} title="Match confirmed">
+            Ownership was verified and both reports were marked returned.
+          </StatusStrip>
+          <ReopenAction match={match} onReopened={onReopened} />
+        </div>
       )
     case MATCH_STATUSES.REJECTED:
     case MATCH_STATUSES.DISMISSED:
@@ -181,6 +187,13 @@ function QueueOutcome({ match, lost, found }) {
                   ? 'One of the reports was marked returned or closed, so this pairing is no longer open. Nobody ruled it out.'
                   : 'One of the reporters said this is not their pet. Both reports carry on being searched and matched.'}
             </p>
+            {/* Only a coordinator's own rejection can be undone here. A
+                reporter's "Not my pet", or a withdrawal, is not theirs to reverse. */}
+            {match.status === MATCH_STATUSES.REJECTED && (
+              <div className="mt-2">
+                <ReopenAction match={match} onReopened={onReopened} />
+              </div>
+            )}
           </div>
         </div>
       )
@@ -196,6 +209,79 @@ function QueueOutcome({ match, lost, found }) {
         </div>
       )
   }
+}
+
+/**
+ * Undo a decision made in error: the pairing goes back to Verification and
+ * both reports back to Possible Match, with both reporters told why. The
+ * server refuses if a report has been closed since, or has changed so that the
+ * stored comparison no longer describes it; the refusal is shown in the dialog.
+ */
+function ReopenAction({ match, onReopened }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [reason, setReason] = useState('')
+  const [isBusy, setIsBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const confirmed = match.status === MATCH_STATUSES.CONFIRMED
+
+  const close = () => {
+    setIsOpen(false)
+    setReason('')
+    setError(null)
+  }
+
+  const reopen = async () => {
+    setIsBusy(true)
+    setError(null)
+    try {
+      await matchService.reopenMatch(match.id, reason.trim())
+      close()
+      await onReopened()
+    } catch (caught) {
+      setError(caught instanceof Error ? caught : new Error(String(caught)))
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <Button variant="secondary" size="sm" onClick={() => setIsOpen(true)} className="self-start">
+        <RotateCcw size={15} aria-hidden="true" />
+        Reopen for review
+      </Button>
+      <ConfirmDialog
+        isOpen={isOpen}
+        onCancel={close}
+        onConfirm={reopen}
+        title="Reopen this pairing for review?"
+        confirmLabel="Reopen for review"
+        tone="primary"
+        isBusy={isBusy}
+        confirmDisabled={reason.trim() === ''}
+        error={error}
+      >
+        <p>
+          {confirmed
+            ? 'Both reports come out of Returned and go back to Possible Match, and the pairing returns to Verification.'
+            : 'Both reports go back to Possible Match, and the pairing returns to Verification.'}{' '}
+          Both reporters are told, with the reason below.
+        </p>
+        <p className="text-fg-muted">
+          It cannot be reopened if either report has been closed since, or has changed so that this
+          comparison no longer describes it.
+        </p>
+        <Textarea
+          label="Why is it being reopened?"
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          maxLength={255}
+          required
+          rows={3}
+        />
+      </ConfirmDialog>
+    </>
+  )
 }
 
 /** Stage tabs with their counts, in the same pill style as the owner's page. */

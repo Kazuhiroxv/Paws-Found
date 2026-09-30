@@ -1576,6 +1576,89 @@ def edit_while_matched():
           'unchanged' if after_decided == decided else 'CHANGED', after_decided == decided)
 
 
+
+def reopen_decisions():
+    """A Pet Coordinator can undo their own rejection or confirmation, safely.
+
+    Reopening puts the pairing back to under_review and both reports back to
+    Possible Match, tells both reporters why, and leaves the stored comparison
+    untouched. It is refused for a reporter's own "Not my pet", when a report
+    has been closed since, and when a report has changed so that the stored
+    comparison no longer describes it (the dog/turtle case).
+    """
+    C = 'T. Reopening a decision'
+    dog = dict(species='dog', breed='Shih Tzu', size='small', sex='male', primary_color='Brown',
+               distinct_features='White chest patch, one floppy ear')
+
+    def pair(city):
+        lost, _ = file_report('customer', incident_date='2026-09-10', city=city, **dog)
+        found, _ = file_report('finder', report_type='found', pet_name=None, incident_date='2026-09-11', city=city, **dog)
+        return lost, found, sql(f'SELECT match_id FROM match_claims WHERE lost_report_id = {lost} AND found_report_id = {found};')
+
+    def state(m, lost, found):
+        return '/'.join([sql(f'SELECT match_status FROM match_claims WHERE match_id = {m};'),
+                         sql(f'SELECT status FROM pet_reports WHERE report_id = {lost};'),
+                         sql(f'SELECT status FROM pet_reports WHERE report_id = {found};')])
+
+    lost, found, m = pair('Audit Reopen City')
+    reason = {'action': 'reopen', 'note': 'Ruled out by mistake; the owner sent a clearer photo.'}
+    status(C, 'RO-01', 'A guest cannot reopen anything', 'guest', 'PATCH', f'/matches/{m}', reason, 401)
+    status(C, 'RO-02', 'Nor can a reporter in the pairing', 'customer', 'PATCH', f'/matches/{m}', reason, 403)
+    status(C, 'RO-03', 'An open pairing has nothing to reopen', 'staff', 'PATCH', f'/matches/{m}', reason, 409)
+
+    status(C, 'RO-04', '(the coordinator rules it out)', 'staff', 'PATCH', f'/matches/{m}',
+           {'action': 'reject', 'note': 'Different markings.'}, 200)
+    signals_before = sql(f"SELECT GROUP_CONCAT(signal_key, is_matched ORDER BY signal_id) FROM match_signals WHERE match_id = {m};")
+    score_before = sql(f'SELECT match_score FROM match_claims WHERE match_id = {m};')
+    status(C, 'RO-05', 'Reopening needs a reason', 'staff', 'PATCH', f'/matches/{m}', {'action': 'reopen'}, 422)
+    status(C, 'RO-06', 'With one, the rejection is reopened', 'staff', 'PATCH', f'/matches/{m}', reason, 200)
+    check(C, 'RO-07', '...the pairing is under review and both reports Possible Match',
+          'under_review/possible_match/possible_match', state(m, lost, found),
+          state(m, lost, found) == 'under_review/possible_match/possible_match')
+    lines = sql(f"SELECT COUNT(*) FROM status_logs WHERE report_id IN ({lost}, {found}) "
+                "AND note = 'A Pet Coordinator reopened the pairing for review.';")
+    check(C, 'RO-08', '...each case history says so', '2', lines, lines == '2')
+    told = sql(f"SELECT COUNT(*) FROM notifications WHERE match_id = {m} AND notification_type = 'staff_reviewed' "
+               "AND title = 'A pairing was reopened for review';")
+    check(C, 'RO-09', '...both reporters are told, with the reason', '2', told, told == '2')
+    logged = sql(f"SELECT detail FROM audit_logs WHERE action = 'match_decided' AND target_id = {m} "
+                 "ORDER BY audit_id DESC LIMIT 1;")
+    check(C, 'RO-10', '...and it is in the audit log', 'reopen: rejected -> under_review', logged,
+          logged == 'reopen: rejected -> under_review')
+    same = (sql(f"SELECT GROUP_CONCAT(signal_key, is_matched ORDER BY signal_id) FROM match_signals WHERE match_id = {m};"),
+            sql(f'SELECT match_score FROM match_claims WHERE match_id = {m};'))
+    check(C, 'RO-11', 'The stored comparison is untouched', (signals_before, score_before), same,
+          same == (signals_before, score_before))
+    code, _ = session('finder').call('PUT', f'/reports/{found}', {'description': 'Edited while reopened.'})
+    check(C, 'RO-12', 'The reports are frozen again while it is open', 409, code, code == 409)
+
+    status(C, 'RO-13', 'It can then be confirmed as usual', 'staff', 'PATCH', f'/matches/{m}', {'action': 'confirm'}, 200)
+    status(C, 'RO-14', 'A confirmation can be reopened too', 'staff', 'PATCH', f'/matches/{m}', reason, 200)
+    check(C, 'RO-15', '...both reports come out of Returned', 'under_review/possible_match/possible_match',
+          state(m, lost, found), state(m, lost, found) == 'under_review/possible_match/possible_match')
+
+    # Confirmed, then the owner closes the report: the case has ended.
+    status(C, 'RO-16', '(confirmed again)', 'staff', 'PATCH', f'/matches/{m}', {'action': 'confirm'}, 200)
+    session('customer').call('PATCH', f'/reports/{lost}', {'status': 'closed', 'note': 'All settled.'})
+    status(C, 'RO-17', 'Once a report is closed, the confirmation cannot be reopened', 'staff', 'PATCH',
+           f'/matches/{m}', reason, 409)
+
+    # A reporter's own "Not my pet" is not the coordinator's to undo.
+    lost2, found2, m2 = pair('Audit Reopen Dismiss City')
+    session('finder').call('PATCH', f'/matches/{m2}', {'action': 'dismiss'})
+    status(C, 'RO-18', 'A reporter\'s own "Not my pet" cannot be reopened', 'staff', 'PATCH', f'/matches/{m2}', reason, 409)
+
+    # The dog/turtle case: ruled out, then the found report edited into a turtle.
+    lost3, found3, m3 = pair('Audit Reopen Turtle City')
+    session('staff').call('PATCH', f'/matches/{m3}', {'action': 'reject', 'note': 'Not the same dog.'})
+    code, _ = session('finder').call('PUT', f'/reports/{found3}', {'species': 'other', 'breed': 'turtle'})
+    check(C, 'RO-19', '(after the rejection, the found report is edited into a turtle)', 200, code, code == 200)
+    code, payload = session('staff').call('PATCH', f'/matches/{m3}', reason)
+    check(C, 'RO-20', 'Reopening it is refused: the comparison no longer describes the reports',
+          (409, 'comparison_changed'), (code, payload.get('code')), (code, payload.get('code')) == (409, 'comparison_changed'))
+    check(C, 'RO-21', '...and nothing moved', 'rejected/active/active', state(m3, lost3, found3),
+          state(m3, lost3, found3) == 'rejected/active/active')
+
 def error_handling():
     C = 'H. Error handling'
     status(C, 'EH-01', 'A report that does not exist', 'guest', 'GET', '/reports/99999', None, 404)
@@ -1687,6 +1770,7 @@ if __name__ == '__main__':
     calendar_dates()
     city_names()
     edit_while_matched()
+    reopen_decisions()
     total, passed = report()
 
     reseed()

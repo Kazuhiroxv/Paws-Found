@@ -30,7 +30,7 @@
 // registration request is refused by the API on purpose.
 //
 // The page.evaluate() callbacks run inside the page, where these exist.
-/* global document, window, HTMLInputElement, ClipboardEvent, DataTransfer, FocusEvent, innerWidth */
+/* global document, window, HTMLInputElement, HTMLTextAreaElement, ClipboardEvent, DataTransfer, FocusEvent, innerWidth */
 import puppeteer from 'puppeteer-core'
 
 const BASE = process.env.PAWS_BASE ?? 'http://localhost/pawsandfound'
@@ -781,6 +781,80 @@ if (/^(localhost|127\.0\.0\.1)$/.test(new URL(BASE).hostname)) {
   check('HISTORY-5', 'Its stored score still equals its seven signals, one of each, untouched',
     stored.signals.length === 7 && keys.size === 7 && summed === stored.score && stored.score === 85,
     `${stored.score} = ${summed}, ${keys.size} keys`)
+
+  // ---- REOPEN: a coordinator undoes a rejection made in error. Pairing 4 is
+  // one no earlier check touches (Mochi's, match 3, has a report that
+  // REPORT-ACTIONS closes, and the server rightly refuses to reopen it then).
+  const matchStatus = (id) => staff.evaluate(async (api, id) =>
+    (await (await fetch(`${api}/matches/${id}`, { credentials: 'include' })).json()).data.status, API, id)
+  const rejectCode = await staff.evaluate(async (api) => {
+    const me = await (await fetch(api + '/auth/me', { credentials: 'include' })).json()
+    return (await fetch(api + '/matches/4', { method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': me.csrf_token ?? '' },
+      body: JSON.stringify({ action: 'reject', note: 'Different ear shape.' }) })).status
+  }, API)
+  await staff.goto(BASE + '/staff/matches', { waitUntil: 'networkidle2' })
+  await pause(1000)
+  await staff.evaluate(() => [...document.querySelectorAll('[role=tab], button')].find((t) => t.textContent.trim().startsWith('Ruled out'))?.click())
+  await pause(700)
+  await staff.evaluate(() =>
+    [...document.getElementById('match-4').querySelectorAll('button')].find((b) => b.textContent.trim() === 'Reopen for review').click())
+  await pause(500)
+  const dialog = await staff.evaluate(() => {
+    const d = document.querySelector('dialog[open]')
+    const go = [...d.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Reopen for review')
+    return { title: d.querySelector('h2')?.textContent, blocked: go.disabled }
+  })
+  check('REOPEN-1', 'Reopen asks first, and cannot be sent without a reason',
+    rejectCode === 200 && dialog.title === 'Reopen this pairing for review?' && dialog.blocked, JSON.stringify({ rejectCode, ...dialog }))
+  await staff.evaluate(() => {
+    const box = document.querySelector('dialog[open] textarea')
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(box, 'Ruled out too quickly; the finder sent a clearer photo.')
+    box.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  // Wait for the page to enable the button, then for the server's answer.
+  await staff.waitForFunction(() => {
+    const go = [...document.querySelector('dialog[open]').querySelectorAll('button')].find((b) => b.textContent.trim() === 'Reopen for review')
+    return go && !go.disabled
+  }, { timeout: 5000 })
+  await staff.evaluate(() => [...document.querySelector('dialog[open]').querySelectorAll('button')].find((b) => b.textContent.trim() === 'Reopen for review').click())
+  let reopened = ''
+  for (let tries = 0; tries < 20 && reopened !== 'under_review'; tries++) {
+    await pause(300)
+    reopened = await matchStatus(4)
+  }
+  const dialogError = await staff.evaluate(() => document.querySelector('dialog[open] [role=alert]')?.textContent ?? '')
+  check('REOPEN-2', 'Reopened: the pairing is back with a coordinator', reopened === 'under_review', `${reopened} ${dialogError}`)
+
+  // ---- DECIDE-ASK: Confirm and Not the same pet both ask before anything happens
+  await staff.goto(BASE + '/staff/verification#match-4', { waitUntil: 'networkidle2' })
+  await pause(1200)
+  const ask = async (label) => {
+    await staff.evaluate((label) => [...document.getElementById('match-4').querySelectorAll('button')].find((b) => b.textContent.trim() === label).click(), label)
+    await pause(400)
+    const shown = await staff.evaluate(() => {
+      const d = document.querySelector('dialog[open]')
+      return d ? { title: d.querySelector('h2')?.textContent, focus: document.activeElement?.textContent.trim() } : null
+    })
+    await staff.evaluate(() => [...document.querySelector('dialog[open]').querySelectorAll('button')].find((b) => b.textContent.trim() === 'Go back').click())
+    await pause(400)
+    return shown
+  }
+  const confirmAsk = await ask('Confirm match')
+  check('DECIDE-ASK-1', 'Confirm match asks "Confirm this match?" with Go back focused, and Go back decides nothing',
+    confirmAsk?.title === 'Confirm this match?' && confirmAsk.focus === 'Go back' && (await matchStatus(4)) === 'under_review',
+    JSON.stringify(confirmAsk))
+  await staff.evaluate(() => {
+    const label = [...document.getElementById('match-4').querySelectorAll('label')].find((l) => l.textContent.trim().startsWith('Case note'))
+    const box = document.getElementById(label.htmlFor)
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(box, 'Different markings on the chest.')
+    box.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await pause(200)
+  const rejectAsk = await ask('Not the same pet')
+  check('DECIDE-ASK-2', 'Not the same pet asks "Rule this pairing out?" with Go back focused, and Go back decides nothing',
+    rejectAsk?.title === 'Rule this pairing out?' && rejectAsk.focus === 'Go back' && (await matchStatus(4)) === 'under_review',
+    JSON.stringify(rejectAsk))
 }
 
 await browser.close()
