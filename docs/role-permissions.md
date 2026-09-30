@@ -1,6 +1,7 @@
 # Who is allowed to do what
 
-**ITS122P–AM5 · Group 3** · read out of `api/` on 25 September 2026
+**ITS122P–AM5 · Group 3** · read out of `api/` on 25 September 2026; the public
+table, the edit rule, §3a and §5 re-read on 30 September 2026
 
 Three roles. The question this document answers is not "what does the interface
 show" — it is **"what does the server allow"**, which is the only version that
@@ -67,8 +68,7 @@ behaviour, not the interface's.
 
 | Endpoint | Note |
 | --- | --- |
-| `GET /reports`, `GET /reports/{id}` | Contact details are **omitted from the response** unless the reporter published them on that report. Not hidden in the page: absent from the JSON |
-| `GET /matches`, `GET /matches/{id}` | Score and signals. Proof notes are excluded — see §4 |
+| `GET /reports` | The list, as a **public summary**: no description, no distinguishing features, no landmark, no time, and the map point snapped to a 0.004° grid (`reports.php`, `shape_for_viewer`) |
 | `GET /categories` | The species list the report form and the filters need before anyone signs in |
 | `POST /auth/login`, `POST /auth/register` | |
 
@@ -76,8 +76,10 @@ behaviour, not the interface's.
 
 | Endpoint | Allowed to | Guard |
 | --- | --- | --- |
+| `GET /reports/{id}` | The full report. A guest gets **401** `auth_required` (a missing report is still 404). Contact details are **omitted from the response** unless the reporter published them on that report: absent from the JSON, not hidden in the page | `report_detail()` |
+| `GET /matches`, `GET /matches/{id}` | Pairings, score and signals — **only those involving their own reports**. Asking for somebody else's is 403. Proof notes: see §4 | `matches_list()`, `match_detail()` |
 | `POST /reports` | File a report | `reports.php:124` |
-| `PATCH /reports/{id}` | Edit **their own** report only | `reports.php:253` — *"Only the person who filed a report can edit it."* |
+| `PATCH /reports/{id}` | Edit **their own** report only, and only while it is **Active**: under an open possible match the details and photos are frozen (**409** `match_open`), so nothing changes under the coordinator verifying it | `reports.php:253` — *"Only the person who filed a report can edit it."* |
 | `POST /reports/{id}/photos` | Add photographs to **their own** report | `reports.php:581` |
 | `PATCH /reports/{id}/status` | Move **their own** report, along an allowed transition | `reports.php:324` + `REPORT_TRANSITIONS` |
 | `GET /reports/activity` | Their own reports' recent changes | `reports.php:413` |
@@ -134,6 +136,26 @@ target and what changed. `role_changed`, `account_suspended`,
 
 ---
 
+## 3a. Where the server allows more than the interface offers
+
+The matrix above is the server. The interface is narrower in five places, all
+deliberate. Each is marked † on the printed roles sheet
+(`docs/diagrams/roles-workflow-a4.pdf`).
+
+| Action | Server allows | Interface offers it to |
+| --- | --- | --- |
+| Confirm / reject a pairing, ask a question | Staff **and** Admin (`matches.php`, `$isStaff` includes admin) | Pet Coordinators only — the Verification page is in the staff workspace, which an administrator cannot open |
+| Mark any report Returned / Closed | Staff and Admin, any report | The report's owner only (`PetDetailPage.jsx`, `isOwner`) |
+| "This could be mine" / "Not my pet" | The two reporters, and staff or admin acting for one | The two reporters |
+| List every pairing | Staff and Admin | Staff (Match Queue) |
+| Edit a report | Its owner, whatever the role | The owner, from the customer dashboard |
+
+The accurate sentence: *the interface assigns match verification to Pet
+Coordinators; the backend also recognises an Administrator as privileged for
+that endpoint, although the Administration workspace does not expose it.*
+
+---
+
 ## 4. Three places the rule is finer than "the role"
 
 **Ownership beats role, for editing.** Staff can move any report's *status*,
@@ -156,7 +178,7 @@ signed in is not enough; you have to be *in the case*.
 
 ## 5. How this was tested, and what the tests found
 
-`npm run audit` — **170 cases**, of which **31 are category D, Authorization**.
+`npm run audit` — **357 cases**, of which **31 are category D, Authorization**.
 Each one is a request made by the wrong person to a real endpoint, with the
 expected status code asserted.
 

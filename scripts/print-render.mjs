@@ -5,6 +5,7 @@
  *
  *   node scripts/print-render.mjs <file.svg|file.html> <width mm> <height mm>
  */
+/* global document -- read inside page.evaluate(), which runs in the browser */
 import { readFileSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import puppeteer from 'puppeteer-core'

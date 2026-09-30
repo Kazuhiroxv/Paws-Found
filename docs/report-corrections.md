@@ -1,6 +1,6 @@
 # Corrections to paste into the Phase 4 report
 
-**ITS122P–AM5 · Group 3** · 25 September 2026
+**ITS122P–AM5 · Group 3** · 25 September 2026 · test numbers (§2) updated 30 September 2026
 
 The written report lives outside this repository, so these cannot be applied
 from here. Each item below gives the stale text and the replacement, checked
@@ -57,11 +57,14 @@ the new name.
 
 | Stale | Correct |
 | --- | --- |
-| 117 test cases | **170** |
+| 117 test cases | **357** |
 | C. Authentication: 13 | **41** |
 | G. Functional: 24 | **44** |
 | H. Error handling: 6 | **10** |
-| axe-core over 25 pages | **29 pages** |
+| axe-core over 25 pages | **31 pages** |
+
+An earlier version of this list said 170 cases and 29 pages. That was the
+suite on 25 September, before sections I to S were added; do not paste it.
 
 Current table:
 
@@ -75,13 +78,27 @@ Current table:
 | F. File upload | 7 | 7 |
 | G. Functional | 44 | 44 |
 | H. Error handling | 10 | 10 |
+| I. Location privacy | 8 | 8 |
+| J. Report access | 27 | 27 |
+| K. Information requests | 17 | 17 |
+| L. Report editing | 31 | 31 |
+| M. Report QA rules | 8 | 8 |
+| N. Final integrity | 38 | 38 |
+| O. Match rejection | 24 | 24 |
+| P. Repeat matching | 11 | 11 |
+| Q. Calendar dates | 3 | 3 |
+| R. City names | 2 | 2 |
+| S. Editing and matching | 18 | 18 |
 | SQL-14 (inside B) asserts the ERD's 24 foreign keys | | |
-| **Total** | **170** | **170** |
+| **Total** | **357** | **357** |
 
 Authentication grew with the three-attempt lockout and CSRF. Error handling
 grew when endpoint-level testing found a routing fault (§4). Functional grew
 again in the final hardening pass, with the contact-preference and
-collar-answer cases.
+collar-answer cases. Sections I to S were added in the final week: location
+privacy, who may open what, a coordinator's questions, editing, the final
+integrity rules, match rejection, repeat matching, calendar dates, city names,
+and editing under an open pairing.
 
 There is also a second suite the report does not mention yet:
 
@@ -90,7 +107,7 @@ There is also a second suite the report does not mention yet:
 > three-attempt lock, an administrator unlock and a server-side session expiry
 > are all decided by the shared database rather than by any one device.
 
-> `python scripts/auth_lifecycle.py` — 53 checks over registration,
+> `python scripts/auth_lifecycle.py` — 66 checks over registration,
 > verification, the password reset, session revocation, the safe email change
 > and rate limiting. It reads every link out of captured mail, because there is
 > no endpoint that hands out a token.
@@ -134,7 +151,7 @@ the user. No unit was wrong, so only asking the running API for endpoints it
 does not have could find it. Fixed; cases EH-07 to EH-10.
 
 **Automated accessibility testing could not see the contrast problem.**
-axe-core reported zero violations across all 29 pages, but it cannot judge text
+axe-core reported zero violations across all 31 pages, but it cannot judge text
 over a photograph: it sees a transparent background, declines to guess what is
 behind the words, and reports nothing. Measuring the actual rendered pixels —
 hiding the text, photographing the page, comparing each text colour against

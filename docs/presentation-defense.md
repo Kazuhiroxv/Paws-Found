@@ -221,7 +221,7 @@ asking the running API for endpoints it does not have did. Cases EH-07 to
 EH-10.
 
 **2. Automated accessibility testing could not see the contrast problem.**
-`npm run a11y` runs axe-core over all 29 pages in every role: zero violations.
+`npm run a11y` runs axe-core over all 31 pages in every role: zero violations.
 But axe cannot judge text over a photograph — it sees a transparent background,
 declines to guess what is behind the words, and reports nothing. So we hid the
 text, photographed the page, and compared each text colour against **every
