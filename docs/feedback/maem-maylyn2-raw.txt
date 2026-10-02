@@ -1,0 +1,63 @@
+RAW TRANSCRIPT - machine-generated, unedited
+source: maem maylyn2.m4a   duration: 04:35   detected language: tl (p=0.88)
+model: faster-whisper medium (int8). Taglish speech; expect misheard words.
+
+[00:00] Pabalan siya naman parang isa.
+[00:02] Eh, hindi po pace na pabala akong hindi nakita.
+[00:04] Reports.
+[00:08] Reports in terms po ng...
+[00:10] Di ba yung reports? Filters. Search.
+[00:12] Hindi ko pabala na kita yun.
+[00:14] Pwede po namin ni-filter ba?
+[00:21] Patingin, patingin.
+[00:25] So dog loss and then
+[00:27] spay
+[00:29] any species
+[00:31] and then
+[00:33] Kulang din siya umpaan niyo kung anong date, kasi lalabas yan lahat ng lost eh kahit na 5 years apart.
+[00:46] Pwede po naman hindi nga lang po, by...
+[00:50] Kasi lalabas pati mga 5 years apart.
+[00:54] Ngayon, saan yung search na yun?
+[00:57] In terms of location.
+[01:03] Location po.
+[01:05] Hindi yan. Pero kung gusto ko lang lumabas puro, Anghele City. Wala ko.
+[01:11] Sa search diyan. Ilan kaya yun?
+[01:23] Walang summary? Sa search?
+[01:27] Sige, Anghele City.
+[01:30] Ang galing nga.
+[01:32] Gusto kong iprint sa PDF.
+[01:36] Wala.
+[01:39] Pero hindi ganyan yung picture, so it means listahan lang.
+[01:44] So para po siyang x and yun.
+[01:46] Oo, list lang siya.
+[01:48] Okay, so pwede siyang i-print sa PTS, waka yan ang di-print sa printer.
+[01:53] And then, nakikimakiita rin yung mga, yung mga...
+[02:00] Kasi pati yung panang iba dito sa isang lost and found na yun.
+[02:04] Wala rin kayong filter.
+[02:10] Wala rin kayo yung filter, that means yung mga reporters natin yung names ngayon.
+[02:29] Kasi pwede mo kasi yung names. Pwede natin gyan ng video.
+[02:37] Parang ano sa kanina, parang consuelo sa pang pre-report ngayon.
+[02:43] So, yung mga main consuelotors, pwede silang bigyan lang ng awards.
+[02:50] O kaya, gift lang. Para kisipagin silang mag-report ngayon.
+[02:55] Kasi yung mag-report, actually big effort.
+[03:01] So I hope you already set all of the corrections.
+[03:07] that I told you a while ago, and then you just wait na lang po, when it will be the next presentation, so most probably through Zoom na lang, and then you will submit the remaining documentations siguro before 11th week.
+[03:27] but all corrections should be finished
+[03:31] and then para ready nilang
+[03:33] huwag na natin ingayon
+[03:35] but most probably 11 pictures
+[03:37] anong nalang tayong zoom nalang
+[03:39] kasi hindi naman lahat po kanta nito
+[03:41] 11 pictures
+[03:43] para lang makita ko lang yung mga changes doon
+[03:45] especially doon sa ATAs natin
+[03:47] tapos yung mga basic
+[03:49] doon sa mga testing
+[03:51] sa content
+[03:53] ayun
+[03:55] it's actually a nice
+[03:57] At parang konti pa, improvement pa, and then add more technology, add more features, AI, especially doon sa map pictures na inamadsya nyan, not only map text. Napaganda nyan. You can actually sell na yan.
+[04:14] Tapos in terms of code, I'm not going to get anything. That's yours.
+[04:18] Okay, so ang gagawin niyo lang sa akin is, hibigan niyo lang sa akin ang documentation na kailangan ko, plus yung present niyo na lang yung mga.
+[04:27] Okay? Sige.
+[04:31] Sige, next.

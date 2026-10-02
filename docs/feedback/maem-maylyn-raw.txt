@@ -1,0 +1,321 @@
+RAW TRANSCRIPT - machine-generated, unedited
+source: maem maylyn.m4a   duration: 21:31   detected language: tl (p=0.95)
+model: faster-whisper medium (int8). Taglish speech; expect misheard words.
+
+[00:00] I-remove ko yung pin, yun yung pin. Pero hindi naman yung nakakapture doon.
+[00:07] So pwedeng, ito yung pin ko pero iba yung, ito yung, iba yung...
+[00:13] Tapos...
+[00:15] Pansin ko dito wala siyang contact number.
+[00:18] number?
+[00:20] um, budget ko yan
+[00:22] paano mo nyo pala
+[00:24] mga
+[00:26] pa-validate maliban doon sa email
+[00:28] address na
+[00:30] ako yung own budget
+[00:32] how to contact me
+[00:34] or address ko ng center
+[00:36] wala, wala kayong tinaupdate sa
+[00:38] ako
+[00:40] hindi, eto diba
+[00:42] mayroon akong report
+[00:44] para mong
+[00:46] Ako-konfirm na hindi another system yun na clip-up nito?
+[00:50] How would you be able to contact me?
+[00:52] Ano po, ma'am? May CSRF po kami, CSRF tokens po kami.
+[00:56] Wherein, nababasa po ng system.
+[00:59] Yung CSRF token is the same po.
+[01:03] Pero, if hindi po siya the same, ibig po nang sabihin,
+[01:05] may iba pung gumamit na website kaysa sa user.
+[01:09] Oh, okay. Ito nga, katulad nito. Unyari, wala nang gumamit.
+[01:13] Wala ka naman kayo pinigay ng number na?
+[01:17] Yung Sir Registry
+[01:19] Ayun nga pala, okay.
+[01:21] Nakaanda na kasi ako kaya hindi naman.
+[01:25] So ang ginawa natin dito is...
+[01:29] Nagreport ka.
+[01:32] Saan yung picture?
+[01:34] Kulang copy mo.
+[01:38] Ilan ba dapat?
+[01:42] Wala nga nakalagay e. Diba?
+[01:46] Ako kausap ko, sila ko, ilang ba dapat?
+[01:49] Tapos sasagot, anong nandon ka ba 24-7 sa akin?
+[01:52] Wala siyang feedback, wala siyang instructions kung ilang ba.
+[02:01] Tapos may nakalagay dyan at least 30 characters or whatsoever.
+[02:07] Pwede na kaya yan? Sure? Salang?
+[02:30] Pwede po, pwede po makikita.
+[02:32] Pwede po makikita.
+[02:34] Nababalidate pa to yung size ng picture mo?
+[02:38] May validation to yun.
+[02:40] Kung ilang ento namin kasi may test case na...
+[02:43] Hindi nga, yun nga. Atan ang tanong ko lang kung meron.
+[02:45] Meron po.
+[02:46] Maximum photo.
+[03:05] Paatingin n'yon.
+[03:28] Wala rin feedback sa'ka.
+[03:29] Pag-click ko na submit, ayun na.
+[03:31] Ayun na.
+[03:32] Sa baba.
+[03:33] Sa baba eh.
+[03:34] Ayun na lang.
+[03:36] Dapat lang bumukot tako dito.
+[03:38] Isa.
+[03:40] Okay.
+[03:48] Ang tanong, kailangan
+[03:50] paano mo mababalidate na
+[03:55] ang legit na report dito?
+[03:57] Doon na po yung sir roll naman ako.
+[03:59] Kasi punta ka po na doon, punta ka doon.
+[04:22] Kung kapita mo doon, i-accept muna.
+[04:24] I-accept mo yung report.
+[04:26] Kasi hindi lahat ng report ay legit.
+[04:30] So pwede mo siyang i-reject naman.
+[04:32] Ibig sabihin ba lahat mga reports considered na totoo?
+[04:42] Kasi tingnan mo ito, hindi naman dog yan eh.
+[04:47] Pali din ko siya ma-mark ko as spam.
+[04:51] Hindi eh, dun sa system mo, paano mo siya sasabihin.
+[04:54] Ito yung ano ang...
+[04:56] Ano ang akta mo?
+[04:57] Patingin niya.
+[05:31] Okay, wait, wait, wait, wait.
+[05:35] Okay, so false report.
+[05:39] Pag hindi siya false report.
+[05:43] Pag-accepted siya, confirm.
+[05:48] Pag-confirm siya.
+[05:50] Confirm na widget yung report.
+[05:54] Ano namin yung report na?
+[05:58] Hindi, eh, nagreporto ko naman yung loss eh.
+[06:02] Kung may nag-report ko sa kanya, and you're adding po yung...
+[06:09] Ano yung next step nyo?
+[06:11] Do you mean after the report of the lost dog or...?
+[06:15] Diba, ito yung...
+[06:18] Diba nag-report ako? Ano kalagay? Report to no loss?
+[06:22] Ang tinatanong ko, ano na? Sa na to?
+[06:25] Yan na ba yan?
+[06:27] Oo, ngayon.
+[06:33] Sir Pins, immediately nag-post agad siya.
+[06:39] Someone should...unless intelligence ang system mo.
+[06:45] Kaya ngayon yun niantay ko sa inyo eh. Dapat may nag-a-accept mo na doon eh.
+[06:49] Tapos kung na-find out niya, kasi hindi pa-intelligent ang system mo, diba?
+[06:54] Kasi ang ginagawa mo diyan, ang ginagawa mo diyan, nakita mo no siya.
+[06:59] Pero marami na nakakita.
+[07:01] Diba?
+[07:04] Hindi mo na na-control.
+[07:06] wherein kung nandan muna yun sa dashboard ng o-coordinator
+[07:10] siya ang magsasabi kung this is legit or hindi
+[07:14] kasi napakita niya naman report, spam, bla bla bla. Daming niya eh.
+[07:18] Actually ang actions mo lang gag, it's either
+[07:20] you cancel it, you reject it, or you accept it.
+[07:24] Pag-accept na, saka pa rin siya bumunta.
+[07:26] Mag-reject, hindi siya mabubunta.
+[07:28] Diyan, hindi map-post.
+[07:31] Di ba?
+[07:31] Ngayon,
+[07:33] yung pinapakita mo sa kanyan na report
+[07:35] Spam, bla bla bla.
+[07:37] Dapat yun yun sa user, yun.
+[07:39] Balik kayo doon.
+[07:40] So kapag nagpunta ako dito,
+[07:43] nabas nakita ko,
+[07:44] kunyari, nireport ng kapitbahay ko itong ano na to.
+[07:49] So...
+[07:51] E pero account mo yun eh.
+[07:53] No, akong ginawa naman.
+[07:54] Or isa nyo po isa po pong user.
+[07:56] Hindi, ako to. Adapat ako.
+[08:00] Sige, anong pangalan nito?
+[08:02] Eto?
+[08:03] Okay, san nyo na kaladay?
+[08:05] Ito, diba ito yung may report ko?
+[08:08] Ayun, nakita ko orda do, hindi nandod do pero naka-post ko.
+[08:12] Kosta ka rin kayo 2 days ago?
+[08:14] Ito yung...
+[08:15] Yung time ko na pinili yung...
+[08:18] Yung time ko na walang...
+[08:20] Parang nakita ko 30.
+[08:21] 20 na nandod yung na pinili ko.
+[08:23] Ang nakita ko? Oh sige.
+[08:25] Okay, kaya tulad nito, may nakita ko.
+[08:27] Hindi naman to na wawala.
+[08:28] Oh, pano ko yung may report?
+[08:30] I'll just return.
+[08:35] Ay, pero ito?
+[08:36] Naman niya kung naka-announce and say ko kayo na Chrome, so either add her Chrome account to your video.
+[08:46] Hindi pwede rin naman nandito ko eh. Tapos iba yung i-report ko eh, makanap na ako ng iba.
+[08:52] Patulog nito.
+[08:54] Oh, ayan na. Nakita ko may nakapost dito na no.
+[08:57] I-report ko to.
+[08:59] I-report ko to.
+[09:50] will be list listing
+[09:52] for seed word
+[09:54] in appropriate
+[10:00] ano ang other?
+[10:02] ii sa set
+[10:04] sa set
+[10:08] sa feedback ng tone
+[10:10] don't clean up
+[10:17] back ng pag-review
+[10:19] pero walang nga sya, andito pa rin sya
+[10:21] ano ang may refresh
+[10:23] hindi yung admin po muna yung
+[10:25] titi na yung report ngayon
+[10:27] baka po kasi biglang yung user
+[10:29] Nag-report-report lang po lang kayo.
+[10:31] Ya pa, pwedeng yan nyo.
+[10:37] Ano ngayon yun?
+[10:45] Dalawang report ko na.
+[10:47] Tapat ang ginagawa niyo pag-presentation.
+[10:50] Iba-iba kayo ng laptop.
+[10:52] Yung isa gumagamit ng admin,
+[10:54] yung isa gumagamit ng coordinator.
+[10:56] Kaya naman naghihintayan tayo eh.
+[10:59] Ganito gagawin natin na.
+[11:02] Marami pa kung hindi nakikita.
+[11:04] I-visit nyo pa siya ulit.
+[11:06] Papasitong kulang,
+[11:08] Ayusin niyo muna. Marami palitong pula. Kasi hindi pa natin ito na pupuntahan eh.
+[11:29] So yung mga nakita ko, ato lang yun.
+[11:36] Well, nandun na naka-post na ako.
+[11:39] Sino yung coordinator na yun?
+[11:42] Ito, ito tigay i-accept mo yun. Yung record na yun.
+[11:46] Hindi-dismiss ko namin yung folder kasi yung coordinator na yun.
+[11:49] Hindi, dapat mawala na yung post ng pari niya.
+[11:52] Bago, mag-alagay ko siya ng decision mo.
+[11:54] Let's say po na fake news na.
+[11:56] Let's add a fake news.
+[11:58] Kadi na po siya magbigay ng ano.
+[12:03] Kadi pa i-sustend yung account na ano.
+[12:06] In this case, remove na lang po ng ano.
+[12:09] Ano kung para sa anong word?
+[12:11] Let's say po, ma'am.
+[12:13] A user accidentally nakita ko sa Facebook ko.
+[12:16] Na ay, sige post ko din ko sa Facebook.
+[12:19] Pero may nag-post na po ng isa pa, ilang previous weeks pa po.
+[12:24] Tapos na-report po yung bagong user course pa.
+[12:27] Na ginayan nilang daw po yung previous na user.
+[12:31] So in that case kung pwede namin,
+[12:32] ah sige hindi naman po siya malicious and more of,
+[12:35] hindi lang po siya alam.
+[12:36] Kaya pwede po namin yung warrant alam siya.
+[12:40] This is my confirmation.
+[12:44] hindi rin ang tunabito siya
+[12:50] okay, ngayon ang pakita niya naman sakin ngayon
+[13:13] dun sa koordinator
+[13:15] sa koordinator
+[13:16] yun ba may mga report na loss?
+[13:18] at saka mayroon kayong
+[13:20] para report na pa
+[13:22] ayun na pakita siya
+[13:24] ayun na pakita siya
+[13:31] Pero mag-a-login.
+[14:08] Ayan po.
+[14:09] Mapupunta po kami sa pag-mag-issue.
+[14:11] Similar po yung magiging dalawang report.
+[14:20] Pag-issue makapoko, ano?
+[14:23] Pero hindi yung sa clipboard.
+[14:25] Kasi hindi pa kayo ano eh.
+[14:27] Kaya nga ibig sabihin dun sa pag-input ng user, especially puro mga texts ang nilalatay ngayon.
+[14:37] So, kailangan kong research mo even the colors, kong ano ang mga possible colors.
+[14:47] Or even dun sa choices, pwede kayong mag-doon sa color, kung hindi siya familiar, hindi sa kulan.
+[14:54] Dato, kanyari, mayroong color na peel.
+[14:58] So, maglagay dito ng extra na space to own niyong kulay na to na peel.
+[15:04] O hindi kasi, kasi pwede ang i-report lang niya yung basic colors.
+[15:09] Alam ko lang parang brown eh, pero may iba pa palang klasi ng brown.
+[15:14] Tapos ayun.
+[15:17] Okay, so review this pairing.
+[15:21] Okay.
+[15:25] Ang ganda ng content niya.
+[15:27] Ngayon, manualin niyo na ngayong e.
+[15:30] Eto pa yung videos ng both users para sa'yo po kukomunikin.
+[15:44] As long as may case note na po kami, oh successful po or you're the same, ay ma-test na po namin sila makikita.
+[16:00] Parang similar siya.
+[16:02] So ang gagawin natin,
+[16:04] kukontaki natin
+[16:06] si...
+[16:08] si...
+[16:10] para sila dalawa.
+[16:12] So saan ang meeting place nila?
+[16:14] Doon na po ma'am. Sa kanil na po yung
+[16:16] usap bali. Since for me nandiyan
+[16:18] ah, okay. So matching lang
+[16:20] talaga siya. Okay.
+[16:22] Ngayon,
+[16:24] nagusap silang dalawa. And they found
+[16:26] that ang di niyong dog.
+[16:28] Kaya naman iyan, click you not the same pet.
+[16:30] So, BB2 siya ngayon doon.
+[16:34] Okay.
+[16:38] Sige.
+[16:39] Ah, not the same pet.
+[16:40] Walaplocker rin po, wala na po.
+[16:51] Mas babalik na na po ulit sa system sila,
+[16:54] myelod na si Isa pong dog kanina.
+[16:57] You can also consider
+[17:00] to include different language here,
+[17:03] especially Tagalog.
+[17:05] Meron na rin yun.
+[17:06] Kasi paano kung...
+[17:12] Pusunan din naman ito eh naman.
+[17:18] Ayun gusto ko makita yung searches.
+[17:22] Nandot tayo punta tayo sa explore.
+[17:26] Tapos hanapin ko si Giangpi.
+[17:29] Pero ano ang klasing searches to?
+[17:38] Ayun ko as pin.
+[17:40] Ano yung mga species microbeering system?
+[17:43] Pero diba dapat dito? Pwede rin siya.
+[17:46] So dito...
+[17:51] Talagang totoong galingin dito? Mata?
+[17:59] There's not real and there's not real.
+[18:01] Oh hindi pwede. Dapating mamatch doon.
+[18:04] Hindi ba sa nagpokita ka naman doon.
+[18:06] Kung saan po to, ma'am?
+[18:09] Akala po namin yung picture.
+[18:11] Kung totoo po ba talagang yung picture?
+[18:14] Hindi naman.
+[18:15] Ito lang, dinitignan ko itong mga picture na ito kung dito siya mga hindi kita.
+[18:19] Ang galing na.
+[18:23] Pwede na itong i-bend na kung tingnan na lang ito.
+[18:27] Season color.
+[18:29] Paano kung XL siya?
+[18:32] Yung sobrang laking dog.
+[18:35] Hindi na yun, kaka-tie na lang yun.
+[18:36] Ito nating naman, color.
+[18:39] Status.
+[18:50] Siba naman nila.
+[18:58] Bakit namabas pa rin ito?
+[19:04] Pero dapat hindi na siya.
+[19:06] Kasi paggay niya, katulad niya.
+[19:08] Mapupunta doon sa...
+[19:13] Sabihing ko...
+[19:15] Di ba, nireport ko na to?
+[19:17] Or napanggal na to pero napanggal na siya.
+[19:19] So dapat wala na siya.
+[19:21] Iyan, so ngayon...
+[19:29] Wala kayong...
+[19:31] Asin yung table ng mga nag-
+[19:33] Nag-report ng lost and
+[19:35] Meron kayong...
+[19:37] I don't know.
+[19:39] I don't know.
+[19:41] So, I think doon sa pagdating dito sa mga matching, okay na okay siya even na pangpain.
+[19:52] Doon na pumalpak doon sa mga validations.
+[19:55] Doon pa lang sa pinakamadali pa.
+[19:59] So, ito maganda, maganda yung...
+[20:03] Pwede niyo nga kung kaya pa yan kung lalagyan niyo yan ng AI.
+[20:07] Kung lalagyan niya ng AI, most probably pwede na iyan.
+[20:17] So lalagyan niyo lang ng mga iba pang mga tick na magde-debili niya.
+[20:23] Pero dapat kaya konected kayo diyan sa iba mga sites or sa iba mga organizations.
+[20:32] To help your site, to help other, for parents.
+[20:43] Iyan, isa pa pala sa limitation siya ng boundary, so for adoption, it's not into them.
+[20:52] Adoption din into them.
+[20:55] So, most probably more on ano lang siya.
+[20:59] Reporting, matching, and then reporting yung count at siya.
+[21:04] So nakita niyo yung kanina, di ba?
+[21:10] Ito ngayon yung questions ko, sir.
+[21:12] So review niyo lang ulit ito.
+[21:16] kasi dapat meron tayo ngunit sa presentation ng 10
+[21:20] from the time that you served
+[21:22] all do na tayo sa moment
+[21:24] okay, eto na lang
+[21:27] kasi doon kayo naman
+[21:29] okay, so si Oz kaya, ano yung way
