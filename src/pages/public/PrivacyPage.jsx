@@ -13,7 +13,7 @@ import { PROJECT_CONTACT_EMAIL } from '@/constants'
  * together, or the record will say people agreed to a version that never
  * existed.
  */
-export const PRIVACY_NOTICE_VERSION = '2026-09-25'
+export const PRIVACY_NOTICE_VERSION = '2026-10-02'
 
 /**
  * The Privacy Notice.
@@ -55,8 +55,9 @@ export function PrivacyPage() {
           <li className="flex gap-3">
             <EyeOff size={18} className="mt-0.5 shrink-0 text-brand" aria-hidden="true" />
             <span>
-              <strong className="font-medium text-fg">Your phone number and email are hidden</strong>{' '}
-              unless you choose to publish them on a report. That choice is yours, per report.
+              <strong className="font-medium text-fg">Your phone number is never shown on a report</strong>{' '}
+              — a Pet Coordinator sees it when handling a possible match. Your email address is
+              shown only if you choose to publish it, report by report.
             </span>
           </li>
           <li className="flex gap-3">
@@ -95,7 +96,7 @@ export function PrivacyPage() {
             'What happened, in your own words.',
             'Where it happened, to roughly barangay level, and the date and approximate time.',
             'Any photographs you upload, and the descriptions you write for them.',
-            'Whether you want your phone number or email address shown on that report.',
+            'Whether you want your email address shown on that report, and whether people may reach you through a Pet Coordinator.',
           ]}
         />
 
@@ -134,9 +135,11 @@ export function PrivacyPage() {
           difficult to act on.
         </p>
         <p>
-          Your phone number and email address are <em>not</em> public. They are only shown on a
-          report if you switch them on for that report, and the server leaves them out of its
-          answer entirely when you have not — they are not hidden in the page waiting to be found.
+          Your phone number is <em>never</em> shown on a report, to anybody browsing: the server
+          does not include it in a report at all. Pet Coordinators can see it, because arranging a
+          safe return is their job. Your email address is shown on a report only if you switch it
+          on for that report, and only to signed-in members; when you have not, the server leaves
+          it out of its answer entirely — it is not hidden in the page waiting to be found.
         </p>
         <p>
           The map shows an approximate area, not a point. Coordinates are recorded at barangay

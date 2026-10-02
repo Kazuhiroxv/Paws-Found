@@ -230,7 +230,7 @@ defined('TURNSTILE_ENABLED') || define('TURNSTILE_ENABLED', filter_var(
 defined('SESSION_IDLE_TIMEOUT') || define('SESSION_IDLE_TIMEOUT', 3600);        // 1 hour
 defined('SESSION_ABSOLUTE_TIMEOUT') || define('SESSION_ABSOLUTE_TIMEOUT', 28800); // 8 hours
 
-defined('PRIVACY_NOTICE_VERSION') || define('PRIVACY_NOTICE_VERSION', '2026-09-25');
+defined('PRIVACY_NOTICE_VERSION') || define('PRIVACY_NOTICE_VERSION', '2026-10-02');
 
 /**
  * The matching trace: one server-log line per filing with the candidates, their

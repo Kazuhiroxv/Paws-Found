@@ -1,21 +1,29 @@
+import { useState } from 'react'
 import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet'
 import { MapPin, X } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { KeepMapSized, WheelZoomWhenChosen } from './ReportMap'
 import {
   APPROXIMATE_RADIUS_M,
-  FALLBACK_CENTER,
-  FALLBACK_ZOOM,
+  PH_MAX_BOUNDS,
+  PH_VIEW,
   TILE_LAYER,
   iconForReport,
+  isInsidePhilippines,
 } from './mapSetup'
 
 /**
  * Click the map to mark roughly where a pet went missing or was found.
  *
  * Optional on purpose: someone filing a report at 2am about a missing pet
- * should not be blocked by a map. The written location is what is required —
- * a pin only makes the report easier to find and easier to match.
+ * should not be blocked by a map. The place chosen from the lists is what is
+ * required — a pin only makes the report easier to find and easier to match.
+ *
+ * The map is the Philippines (Correction 3): it opens on the whole country,
+ * cannot be dragged far beyond it, and a click outside it places nothing. A
+ * pin never changes the province or city chosen above it, and nothing reads
+ * an address from it: the two are separate answers, and the reporter gives
+ * both.
  *
  * Asks for the general area rather than a precise spot, because that is all
  * that is ever shown publicly (CLAUDE.md §14).
@@ -28,9 +36,19 @@ import {
  */
 export function LocationPicker({ reportType, lat, lng, onChange }) {
   const hasPin = lat != null && lng != null
+  const [outside, setOutside] = useState(false)
+
+  const pick = (nextLat, nextLng) => {
+    if (!isInsidePhilippines(nextLat, nextLng)) {
+      setOutside(true)
+      return
+    }
+    setOutside(false)
+    onChange(nextLat, nextLng)
+  }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2" data-location-picker>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium text-fg">Pin the area on a map</p>
         {/* Removing the pin throws away where the pet was, so it looks like the
@@ -53,14 +71,18 @@ export function LocationPicker({ reportType, lat, lng, onChange }) {
       </div>
 
       <p className="text-sm text-fg-muted">
-        Optional. Click the general area — a nearby corner or landmark is enough. Never pin
-        your own front door: the pin is shown publicly.
+        Optional. Tap or click the general area — a nearby corner or landmark is enough. Never
+        pin your own front door: the pin is shown publicly. The pin does not change the
+        province or city you chose.
       </p>
 
       <div className="h-64 overflow-hidden rounded-card border border-border sm:h-72">
         <MapContainer
-          center={hasPin ? [lat, lng] : FALLBACK_CENTER}
-          zoom={hasPin ? 15 : FALLBACK_ZOOM}
+          {...(hasPin ? { center: [lat, lng], zoom: 15 } : { bounds: PH_VIEW })}
+          maxBounds={PH_MAX_BOUNDS}
+          maxBoundsViscosity={1}
+          minZoom={4}
+          zoomSnap={0.5}
           scrollWheelZoom={false}
           className="size-full"
         >
@@ -72,7 +94,7 @@ export function LocationPicker({ reportType, lat, lng, onChange }) {
 
           <KeepMapSized />
           <WheelZoomWhenChosen />
-          <ClickToPlacePin onPick={onChange} />
+          <ClickToPlacePin onPick={pick} />
 
           {hasPin && (
             <Marker
@@ -83,11 +105,18 @@ export function LocationPicker({ reportType, lat, lng, onChange }) {
         </MapContainer>
       </div>
 
+      {outside && (
+        <p role="alert" className="text-sm font-medium text-danger">
+          That point is outside the Philippines, so no pin was placed. Tap the area where the
+          pet was.
+        </p>
+      )}
+
       <p className="flex items-center gap-1.5 text-sm text-fg-muted">
         <MapPin size={14} className="shrink-0 text-fg-subtle" aria-hidden="true" />
         {hasPin
           ? `Pinned at about ${lat.toFixed(3)}, ${lng.toFixed(3)} — shown publicly as an area of roughly ${APPROXIMATE_RADIUS_M} m.`
-          : 'No pin yet. Your written description of the location is still used.'}
+          : 'No pin yet. The province, city and your description are still used.'}
       </p>
     </div>
   )

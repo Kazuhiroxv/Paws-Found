@@ -573,7 +573,7 @@ export const petReports = [
     breed: 'Beagle',
     sex: PET_SEXES.FEMALE,
     size: PET_SIZES.MEDIUM,
-    primaryColor: 'Tricolor',
+    primaryColor: 'Tricolour',
     secondaryColor: 'White',
     distinctiveMarkings: 'Classic beagle tricolour, white tip on the tail, floppy ears.',
     description:

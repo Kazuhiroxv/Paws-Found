@@ -18,6 +18,8 @@ const DESCRIBERS = {
   species: (value) => `Species: ${speciesLabel(value)}`,
   size: (value) => `Size: ${PET_SIZE_LABELS[value]}`,
   color: (value) => `Colour: ${value}`,
+  provinceCode: (value, name) => `Province: ${name ?? '…'}`,
+  cityCode: (value, name) => `City: ${name ?? '…'}`,
   city: (value) => `City: ${value}`,
   status: (value) => `Status: ${REPORT_STATUS_LABELS[value]}`,
   dateFrom: (value) => `From ${formatDate(value)}`,
@@ -33,9 +35,11 @@ const DESCRIBERS = {
  *
  * @param {Object} props
  * @param {Object} props.filters
+ * @param {Record<string, string|undefined>} [props.names]  The names behind
+ *   filters held as codes (province and city), for the chip to say.
  * @param {(field: string) => void} props.onRemove
  */
-export function ActiveFilters({ filters, onRemove }) {
+export function ActiveFilters({ filters, names = {}, onRemove }) {
   const active = Object.entries(filters).filter(([, value]) => value !== '')
 
   if (active.length === 0) return null
@@ -49,7 +53,7 @@ export function ActiveFilters({ filters, onRemove }) {
             onClick={() => onRemove(field)}
             className="inline-flex items-center gap-1 rounded-control bg-brand-soft px-2 py-1 text-sm text-brand-hover hover:bg-brand-soft/70"
           >
-            {DESCRIBERS[field]?.(value) ?? `${field}: ${value}`}
+            {DESCRIBERS[field]?.(value, names[field]) ?? `${field}: ${value}`}
             <X size={14} aria-hidden="true" />
             <span className="sr-only">Remove this filter</span>
           </button>

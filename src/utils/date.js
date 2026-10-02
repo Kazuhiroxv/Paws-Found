@@ -136,3 +136,51 @@ export function todayAsInputValue() {
   // Shift to local time before slicing, or users east of UTC get yesterday.
   return new Date(now.getTime() - offsetMinutes * 60000).toISOString().slice(0, 10)
 }
+
+/**
+ * The 12-hour clock the report form shows, and the 24-hour TIME the API and
+ * MySQL store (Correction 3: an approximate time is shown with AM or PM).
+ *
+ *   12:00 AM -> "00:00"   12:00 PM -> "12:00"   1:05 PM -> "13:05"
+ *   11:59 PM -> "23:59"   anything incomplete -> "" (no time given)
+ *
+ * @param {{ hour: string, minute: string, period: 'AM'|'PM'|'' }} parts
+ *   hour "1"–"12", minute "00"–"59".
+ * @returns {string} "HH:MM", or "" when the parts do not make a time.
+ */
+export function timeFrom12Hour({ hour, minute, period }) {
+  const h = Number(hour)
+  const m = Number(minute)
+  if (!hour || minute === '' || minute == null || !['AM', 'PM'].includes(period)) return ''
+  if (!Number.isInteger(h) || h < 1 || h > 12 || !Number.isInteger(m) || m < 0 || m > 59) return ''
+  const hours24 = (h % 12) + (period === 'PM' ? 12 : 0)
+  return `${String(hours24).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+/**
+ * The inverse: "13:05" or "13:05:00" -> { hour: "1", minute: "05", period: "PM" }.
+ * An empty or unreadable value gives empty parts.
+ *
+ * @param {string} value
+ */
+export function timeTo12Hour(value) {
+  const match = /^(\d{1,2}):(\d{2})/.exec(value ?? '')
+  if (!match) return { hour: '', minute: '', period: '' }
+  const hours24 = Number(match[1])
+  if (hours24 > 23 || Number(match[2]) > 59) return { hour: '', minute: '', period: '' }
+  return {
+    hour: String(hours24 % 12 === 0 ? 12 : hours24 % 12),
+    minute: match[2],
+    period: hours24 < 12 ? 'AM' : 'PM',
+  }
+}
+
+/**
+ * "13:05" -> "1:05 PM", for showing a stored time. "" when there is none.
+ *
+ * @param {string} value
+ */
+export function formatTime12Hour(value) {
+  const { hour, minute, period } = timeTo12Hour(value)
+  return hour ? `${hour}:${minute} ${period}` : ''
+}

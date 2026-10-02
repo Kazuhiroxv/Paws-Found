@@ -19,10 +19,24 @@ column, and it never drops the data that is already there.
     007_match_fk_mysql8.sql   let match_claims import on MySQL 8, not only MariaDB
     008_split_user_names.sql  first and last name; full_name becomes generated.
                             Ships WITH the code that uses it — see the file.
+    009_report_reference_data.sql  provinces and cities (PSA PSGC), the colour
+                            list, listed breeds, locations.city_code, size XL.
+                            AFTER 008, WITH the code — see the file.
+
+Deploying 008 and 009 (Correction 3), in one sitting: back up, preview 008
+(query in the file), run 008, preview 009 (queries in the file), run 009, push
+the code, check `/api/health`, run `npm run verify:deploy`. Both were tested
+from the `2947a43` schema on MySQL 9.4 (strict) and on MariaDB, run twice, and
+the result compared with a fresh `schema.sql` + `seed.sql`: identical structure,
+identical reference data.
 
 ## Applying one
 
-    mysql -u root -h 127.0.0.1 -P 3307 pawsandfound < database/migrations/001_login_lockout.sql
+    mysql -u root -h 127.0.0.1 -P 3307 --default-character-set=utf8mb4 pawsandfound < database/migrations/001_login_lockout.sql
+
+The character-set flag matters from 009 on, whose place names contain ñ:
+without it the Windows client reads the file in the console code page and
+stores "Las PiÃ±as". (009 also says `SET NAMES utf8mb4` itself.)
 
 (Use `-P 3306` on an installation that runs MySQL on the default port.)
 

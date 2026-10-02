@@ -125,16 +125,19 @@ export function speciesLabel(value) {
   return value.charAt(0).toUpperCase() + value.slice(1).replace(/-/g, ' ')
 }
 
+/** 'xl' added after the defense (Correction 3): a very large dog had no size. */
 export const PET_SIZES = {
   SMALL: 'small',
   MEDIUM: 'medium',
   LARGE: 'large',
+  XL: 'xl',
 }
 
 export const PET_SIZE_LABELS = {
   [PET_SIZES.SMALL]: 'Small',
   [PET_SIZES.MEDIUM]: 'Medium',
   [PET_SIZES.LARGE]: 'Large',
+  [PET_SIZES.XL]: 'Extra Large (XL)',
 }
 
 export const PET_SEXES = {

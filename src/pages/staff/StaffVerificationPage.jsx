@@ -459,7 +459,6 @@ function Completeness({ lost, found, match }) {
   const photoCount = [lost, found].filter((report) => report.photos.length > 0).length
   const contactable = [lost, found].filter(
     (report) =>
-      report.contactPreferences.showPhone ||
       report.contactPreferences.showEmail ||
       report.contactPreferences.allowPlatformContact,
   ).length

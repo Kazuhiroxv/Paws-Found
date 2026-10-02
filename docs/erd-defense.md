@@ -6,7 +6,9 @@ Every fact here was read out of `information_schema` on the running MariaDB,
 not out of `schema.sql`. If the two ever disagree, the database is right and
 this document is wrong.
 
-**The database has 17 tables. Fifteen are on the ERD.**
+**The database has 20 tables. Fifteen are on the ERD figure; three more were
+added by migration 009 (Correction 3) and are described here in text — the
+figure is redrawn once, in the final ERD pass.**
 
 The two that are not are `schema_migrations`, which records which files in
 `database/migrations/` have been applied, and `auth_rate_limits`, which counts
@@ -21,9 +23,9 @@ Counted from `information_schema`, 27 September 2026:
 
 | | |
 | --- | --- |
-| Tables | **17** (15 on the ERD + `schema_migrations` + `auth_rate_limits`) |
-| Foreign keys | **24** — all of them on the 15; neither operational table has one |
-| Primary keys | 17, one per table |
+| Tables | **20** (15 on the ERD figure + `ph_provinces`, `ph_cities`, `pet_colours` from 009 + `schema_migrations` + `auth_rate_limits`) |
+| Foreign keys | **26** — the 24 among the 15, plus `ph_cities → ph_provinces` and `locations → ph_cities` (009); neither operational table has one |
+| Primary keys | 20, one per table |
 | Unique constraints | 9, over 14 columns |
 | CHECK constraints | 2 |
 | Engine | InnoDB throughout — MyISAM ignores foreign keys silently |
@@ -141,6 +143,10 @@ on the name alone. That is a normalisation point she may well ask for.
 breed. Requiring one would mean either losing the report or collecting a guess
 dressed as a fact.
 
+**`is_listed` (009).** TRUE for the curated breeds the form suggests (32 after
+009). A breed somebody types is still a row — the report keeps what they wrote —
+but unlisted, so it is never offered to anybody else.
+
 ---
 
 ## 4. `locations` — 32 rows
@@ -160,6 +166,42 @@ latitude, longitude and a `precision` flag — and separating them keeps
 seeded row says `approximate`. The detail page draws a 400 m circle rather than
 a pin, so the imprecision is visible rather than implied. An exact home address
 is never asked for and never stored.
+
+**`city_code` (009).** A foreign key to `ph_cities` (RESTRICT): *which* city or
+municipality, chosen from PSA's PSGC. `city` and `province` stay as the names
+the report shows, written from the reference row. NULL only for an old report
+whose typed place did not name one place without doubt.
+
+---
+
+## 4a. `ph_provinces` — 84 rows · `ph_cities` — 1,642 rows (009)
+
+PSA's Philippine Standard Geographic Code, July 2025 publication.
+
+| | |
+| --- | --- |
+| **Primary keys** | `province_code`, `city_code` — PSA's 10-digit codes, not AUTO_INCREMENT: the code *is* the identity |
+| **Foreign keys** | `ph_cities.province_code` → `ph_provinces` (RESTRICT) |
+| **Unique** | `province_name` |
+| **Referenced by** | `locations.city_code` (RESTRICT) |
+
+**Why the code is the key.** It is stable, published and checkable: anybody can
+look `1380300000` up and find the City of Makati. A surrogate number would be a
+second identifier for the same thing. Metro Manila is one entry (NCR has no
+provinces); a highly urbanized city sits under the province it is in.
+Provenance and what is still unverified: `database/reference/README.md`.
+
+## 4b. `pet_colours` — 17 rows (009)
+
+| | |
+| --- | --- |
+| **Primary key** | `colour_code` (`black`, `tricolour`, … `other`) |
+| **Unique** | `colour_name` |
+| **Referenced by** | nothing, deliberately |
+
+**Why the report columns are not a foreign key to it.** Reports filed before the
+list keep the colour they were typed with; a key would have meant rewriting
+them. The API accepts only listed colours from now on, and stores the name.
 
 ---
 
@@ -495,6 +537,8 @@ an email, and its consequence is a 429 and a Retry-After header.
     pet_categories   1 ── N  pet_reports         (RESTRICT)
     pet_breeds     0..1 ── N pet_reports         (SET NULL — breed is optional)
     locations        1 ── N  pet_reports         (RESTRICT)
+    ph_provinces     1 ── N  ph_cities           (RESTRICT, 009)
+    ph_cities      0..1 ── N locations           (RESTRICT, 009 — NULL only for an old, unidentified place)
     pet_reports      1 ── N  report_images       (CASCADE)
     pet_reports      1 ── N  status_logs         (CASCADE)
     pet_reports      1 ── N  notifications       (CASCADE)
@@ -504,9 +548,10 @@ an email, and its consequence is a 429 and a Retry-After header.
     match_claims     1 ── N  match_signals       (CASCADE)
     match_claims     1 ── N  notifications       (CASCADE)
 
-24 foreign keys. Counted from `information_schema`, not from memory.
+26 foreign keys. Counted from `information_schema`, not from memory.
 `auth_rate_limits` and `schema_migrations` appear nowhere above, because
-they have no relationships to appear in.
+they have no relationships to appear in; neither does `pet_colours`, on purpose
+(4b).
 
 ---
 

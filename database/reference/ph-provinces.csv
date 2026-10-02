@@ -1,0 +1,86 @@
+# PSA PSGC Publication Datafile, publication date 31 July 2025; sha256 47864f8be595fdeae44f81fa481403b785488861ba2fe81e91ac8d15b3e6f30e
+province_code,province_name
+1400100000,Abra
+1600200000,Agusan del Norte
+1600300000,Agusan del Sur
+0600400000,Aklan
+0500500000,Albay
+0600600000,Antique
+1408100000,Apayao
+0307700000,Aurora
+1900700000,Basilan
+0300800000,Bataan
+0200900000,Batanes
+0401000000,Batangas
+1401100000,Benguet
+0807800000,Biliran
+0701200000,Bohol
+1001300000,Bukidnon
+0301400000,Bulacan
+0201500000,Cagayan
+0501600000,Camarines Norte
+0501700000,Camarines Sur
+1001800000,Camiguin
+0601900000,Capiz
+0502000000,Catanduanes
+0402100000,Cavite
+0702200000,Cebu
+1204700000,Cotabato
+1108600000,Davao Occidental
+1102500000,Davao Oriental
+1108200000,Davao de Oro
+1102300000,Davao del Norte
+1102400000,Davao del Sur
+1608500000,Dinagat Islands
+0802600000,Eastern Samar
+0607900000,Guimaras
+1402700000,Ifugao
+0102800000,Ilocos Norte
+0102900000,Ilocos Sur
+0603000000,Iloilo
+0203100000,Isabela
+1403200000,Kalinga
+0103300000,La Union
+0403400000,Laguna
+1003500000,Lanao del Norte
+1903600000,Lanao del Sur
+0803700000,Leyte
+1908700000,Maguindanao del Norte
+1908800000,Maguindanao del Sur
+1704000000,Marinduque
+0504100000,Masbate
+1300000000,Metro Manila
+1004200000,Misamis Occidental
+1004300000,Misamis Oriental
+1404400000,Mountain Province
+1804500000,Negros Occidental
+1804600000,Negros Oriental
+0804800000,Northern Samar
+0304900000,Nueva Ecija
+0205000000,Nueva Vizcaya
+1705100000,Occidental Mindoro
+1705200000,Oriental Mindoro
+1705300000,Palawan
+0305400000,Pampanga
+0105500000,Pangasinan
+0405600000,Quezon
+0205700000,Quirino
+0405800000,Rizal
+1705900000,Romblon
+0806000000,Samar
+1208000000,Sarangani
+1806100000,Siquijor
+0506200000,Sorsogon
+1206300000,South Cotabato
+0806400000,Southern Leyte
+1999900000,Special Geographic Area (BARMM)
+1206500000,Sultan Kudarat
+0906600000,Sulu
+1606700000,Surigao del Norte
+1606800000,Surigao del Sur
+0306900000,Tarlac
+1907000000,Tawi-Tawi
+0307100000,Zambales
+0908300000,Zamboanga Sibugay
+0907200000,Zamboanga del Norte
+0907300000,Zamboanga del Sur

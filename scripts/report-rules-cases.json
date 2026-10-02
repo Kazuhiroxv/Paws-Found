@@ -1,0 +1,29 @@
+{
+  "_about": "Shared cases for the report-form rules of Correction 3. Read by scripts/report_rules.php (the server's rules, in api/reports.php) and scripts/report-rules.test.mjs (the browser's copy, in reportFormModel.js and utils/date.js), so the two cannot drift: a case added here is checked on both sides.",
+  "pet_names_accepted": ["Bo", "CJ", "Mi-Mi", "Oreo", "R2", "Mr. Bean", "D'Artagnan", "O’Malley", "Niño", "  Bo  ", "Mr.   Bean"],
+  "pet_names_refused": ["A", "-", ".", "", "   ", "A.", "--", "' .", "<script>", "Bo!", "Max_1", "7"],
+  "descriptions_accepted": [
+    "Brown dog, red collar, very friendly.",
+    "Exactly thirty characters here",
+    "Found near the market.\nCalm and well fed, wearing a collar."
+  ],
+  "descriptions_refused": [
+    "",
+    "                              ",
+    "Brown dog.",
+    "Twenty-nine characters, near.",
+    "Short    with    many            spaces"
+  ],
+  "times_12_to_24": [
+    [{ "hour": "12", "minute": "00", "period": "AM" }, "00:00"],
+    [{ "hour": "12", "minute": "00", "period": "PM" }, "12:00"],
+    [{ "hour": "1", "minute": "05", "period": "PM" }, "13:05"],
+    [{ "hour": "11", "minute": "59", "period": "PM" }, "23:59"],
+    [{ "hour": "7", "minute": "30", "period": "AM" }, "07:30"],
+    [{ "hour": "", "minute": "", "period": "" }, ""],
+    [{ "hour": "7", "minute": "30", "period": "" }, ""],
+    [{ "hour": "13", "minute": "00", "period": "PM" }, ""]
+  ],
+  "times_24_valid": ["00:00", "12:00", "13:05", "23:59", "07:30:00"],
+  "times_24_invalid": ["24:00", "25:99", "7:30", "12:60", "1:05 PM"]
+}

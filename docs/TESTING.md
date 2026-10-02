@@ -573,6 +573,56 @@ What was seen at the defense, driven through the interface.
 Files one found report and tries one registration with a taken address. Reseed
 afterwards.
 
+### Correction 3 suites
+
+**`npm run test:report-rules` — 50 checks** (`scripts/report_rules.php`). The
+server's own name, description and time rules, called directly. The cases live
+in `scripts/report-rules-cases.json`; `scripts/report-rules.test.mjs` (in
+`test:contract`) holds the browser's copy to the same list. `RN` pet name, `RD`
+description, `RT` time.
+
+**`npm run test:scores` — 11 checks** (`scripts/match_scores.php`, needs the
+seeded database). Matching weights unchanged; the four demonstration pairings
+still score 85, 75, 100, 100 through the real `compare_reports()`; "Mixed
+breed" and "Other" never count as agreement; XL matches XL; two reports
+without pins compare the city code when both have one. **If a demonstration
+score moves, stop and explain — do not edit the number.**
+
+**`npm run test:controls` — 53 checks** (`scripts/report_controls.py`, local
+only, reseeds). Through the API: `BR` breeds (listed per species; a typed
+breed stored but unlisted; another case reuses the listed row), `CO` colours,
+`PH` provinces and cities (dependent; a city outside its province refused;
+names written by the server; Explore filters), `RS` XL, `RN/RD/RT-API`,
+`CONTACT` (a crafted `show_phone` is ignored; no report detail carries the
+number, even with `show_phone = 1` in the database; coordinators still see the
+account's number), `MAP-API` (Tokyo, Kota Kinabalu, Sandakan and Miangas
+refused; Kalayaan, Batanes, Tawi-Tawi, the Turtle Islands, Mangsee and
+Sitangkai accepted), `MG` (009 recorded, 84/1642/17 rows, every seeded place
+coded, ñ stored as UTF-8).
+
+**`npm run test:report-ui` — 45 checks** (`scripts/report_ui.mjs`). The form
+in Chrome at 820 px and as an iPhone 13 at 390 px with touch: the map opens on
+Batanes-to-Tawi-Tawi, a tap places a pin without touching province or city, a
+point outside is refused in words; photo rules stated, "2 of 5 photos added",
+"Main photo" moves, a sixth and a non-image refused; the city list follows the
+province; the description counter; AM/PM; no phone option; no `tel:` link on
+ten seeded report pages; Explore's XL, colour and place filters. Files one
+report; reseed afterwards.
+
+**`npm run check:psgc`.** The place CSVs and the two generated SQL blocks
+(`schema.sql`, `009`) are in step, and the counts are PSA's (84 entries, 149
+cities, 1,493 municipalities).
+
+The existing suites changed with the rules they test: `audit` 382 → 384
+(`XSS-00`: markup in a pet name is now refused, so the stored-and-escaped
+payload moved to the place label; `ED-08b`: the place is stored by code;
+`FN-41` and `RA-20` reversed — a phone is never published; table and key counts
+20 / 26); `test:contract` 36 → 45; `test:feedback` files its report with the
+new lists. `scripts/audit.py`'s `file_report()` turns an old-style city name
+into PSGC codes: a real place by name, a made-up one ("Audit QA City") into a
+municipality of its own chosen by hash, so each case still files where no
+other report is.
+
 ## 3. Last verified results
 
 2 October 2026, on the development laptop unless stated, on branch
@@ -582,13 +632,18 @@ afterwards.
 ```
 lint                                     clean
 build                                    green
-test:contract                            36/36
+test:contract                            45/45
 test:identity                            41/41
+test:report-rules                        50/50
+test:scores                              11/11
+test:controls                            53/53
+test:report-ui                           45/45   (820 px, and 390 px with touch)
 test:feedback                            49/49
+check:psgc                               ok, 84 / 1,642, SQL in step
 check:bundle                             0 of 91 mock markers in dist/
 test:calendar                             8/8
 test:mail                                15/15
-audit                                   382/382
+audit                                   384/384
 auth_lifecycle                          106/106
 multi-device                             73/73   (71/71 + 2 skipped vs a remote)
 test:signout                             24/24
@@ -596,12 +651,12 @@ test:ui                                  66/66
 test:city                                11/11
 test:matching-log                         6/6
 a11y                                     31 pages, 0 violations
-docker build --pull --no-cache           clean, curl present, one MPM, Syntax OK
-verify:deploy vs production              25/25 + 3 skipped (read-only default)
-verify:deploy --upload vs local XAMPP    27/28   (7.1, correctly, on plain HTTP)
-verify:deploy vs local production image 24/25 + 3 skipped  (7.1, correctly, on plain HTTP)
-schema.sql vs migrated database          identical across all 17 tables (after 008)
-schema.sql on MySQL 8.0.46 and 9.4.0     imports clean; 17 tables, 24 FKs
+docker build --pull --no-cache           clean, one MPM, Syntax OK  (2 October, Correction 3)
+verify:deploy vs production              25/25 + 3 skipped (read-only default; production untouched since)
+verify:deploy vs local production image 24/25 + 3 skipped  (7.1, correctly, on plain HTTP; image on MySQL 9.4, fresh schema + seed)
+verify:deploy --upload, local only       24/27   (7.1 as above; 5.1-5.2 409 — the verifier picks report 1, which the seed has as Possible Match; register D2)
+2947a43 schema + seed -> 008 -> 009 -> 009, MySQL 9.4 strict and MariaDB   clean, idempotent
+migrated vs fresh schema.sql + seed.sql   identical structure (20 tables, 26 FKs) and reference data, on both engines
 migration 008 on MySQL 9.4 and MariaDB   from the 007 schema: all 10 names split, full_name unchanged
 ```
 

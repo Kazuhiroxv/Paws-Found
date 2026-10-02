@@ -14,6 +14,7 @@
  *   GET    /api/auth/me           who am I
  *   POST   /api/reports/12/photos  attach photographs to a report
  *   GET    /api/categories        species list
+ *   GET    /api/reference/cities?province=…  a list the report form chooses from
  */
 
 declare(strict_types=1);
@@ -54,7 +55,7 @@ try {
         case '':
             json_response([
                 'name' => 'Paws&Found API',
-                'endpoints' => ['/health', '/config', '/auth', '/reports', '/matches', '/notifications', '/users', '/categories', '/moderation'],
+                'endpoints' => ['/health', '/config', '/auth', '/reports', '/matches', '/notifications', '/users', '/categories', '/reference', '/moderation'],
             ]);
 
         // A platform health check, and the first thing to curl after a deploy.
@@ -109,6 +110,12 @@ try {
         case 'categories':
             require __DIR__ . '/categories.php';
             handle_categories($method, $identifier);
+
+        // Colours, breeds, provinces and cities: the lists the report form and
+        // Explore choose from (Correction 3).
+        case 'reference':
+            require __DIR__ . '/reference.php';
+            handle_reference($method, $identifier);
 
         case 'moderation':
             require __DIR__ . '/moderation.php';

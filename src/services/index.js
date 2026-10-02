@@ -16,6 +16,7 @@ import * as matchService from './matchService'
 import * as notificationService from './notificationService'
 import * as moderationService from './moderationService'
 import * as categoryService from './categoryService'
+import * as referenceService from './referenceService'
 
 export {
   petService,
@@ -24,5 +25,6 @@ export {
   notificationService,
   moderationService,
   categoryService,
+  referenceService,
 }
 export { NotFoundError } from './errors'

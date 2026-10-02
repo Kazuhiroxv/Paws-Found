@@ -62,8 +62,16 @@ const MATCH_OPEN_STATUSES = ['active', 'possible_match'];
 const MATCH_STOP_WORDS = [
     'with', 'that', 'this', 'have', 'from', 'both', 'very', 'over', 'near',
     'some', 'left', 'right', 'front', 'back', 'about', 'around', 'looks',
-    'wearing', 'small', 'medium', 'large',
+    'wearing', 'small', 'medium', 'large', 'extra',
 ];
+
+/**
+ * Values that say "not one of the listed ones" rather than describing the pet
+ * (Correction 3). Two reports that both say "Mixed breed", or both choose
+ * "Other" for the colour, have not agreed on anything, so neither counts as a
+ * match. Compared in lower case.
+ */
+const MATCH_UNDESCRIPTIVE = ['mixed breed', 'other'];
 
 // -----------------------------------------------------------------------------
 // Entry point
@@ -119,7 +127,7 @@ function matching_generate(int $reportId, array &$trace, string &$stage): array
                 b.breed_name AS breed,
                 r.pet_size AS size, r.primary_color, r.secondary_color,
                 r.distinct_features, r.incident_date,
-                l.city, l.province, l.latitude, l.longitude
+                l.city, l.province, l.city_code, l.latitude, l.longitude
            FROM pet_reports r
            JOIN pet_categories c ON c.category_id = r.category_id
       LEFT JOIN pet_breeds b     ON b.breed_id = r.breed_id
@@ -314,7 +322,7 @@ function matching_load_report(int $reportId): ?array
                 b.breed_name AS breed,
                 r.pet_size AS size, r.primary_color, r.secondary_color,
                 r.distinct_features, r.incident_date,
-                l.city, l.province, l.latitude, l.longitude
+                l.city, l.province, l.city_code, l.latitude, l.longitude
            FROM pet_reports r
            JOIN pet_categories c ON c.category_id = r.category_id
       LEFT JOIN pet_breeds b     ON b.breed_id = r.breed_id
@@ -448,6 +456,14 @@ function matching_location_signal(array $lost, array $found): array
  */
 function matching_same_city(array $lost, array $found): bool
 {
+    // Both chosen from the place list (migration 009): the codes decide, and
+    // nothing about how the names are written can matter.
+    $lostCode = (string) ($lost['city_code'] ?? '');
+    $foundCode = (string) ($found['city_code'] ?? '');
+    if ($lostCode !== '' && $foundCode !== '') {
+        return $lostCode === $foundCode;
+    }
+
     $lostCity = matching_place($lost['city']);
     $foundCity = matching_place($found['city']);
 
@@ -475,7 +491,8 @@ function matching_breed_signal(array $lost, array $found): array
 {
     $lostBreed = matching_normalise($lost['breed']);
     $foundBreed = matching_normalise($found['breed']);
-    $matched = $lostBreed !== '' && $lostBreed === $foundBreed;
+    $matched = $lostBreed !== '' && $lostBreed === $foundBreed
+        && !in_array($lostBreed, MATCH_UNDESCRIPTIVE, true);
 
     return [
         'key' => 'breed',
@@ -490,7 +507,8 @@ function matching_breed_signal(array $lost, array $found): array
 /** The main colour must agree, and any secondary colours given must agree too. */
 function matching_color_signal(array $lost, array $found): array
 {
-    $primaryMatches = matching_normalise($lost['primary_color']) === matching_normalise($found['primary_color']);
+    $primaryMatches = matching_normalise($lost['primary_color']) === matching_normalise($found['primary_color'])
+        && !in_array(matching_normalise($lost['primary_color']), MATCH_UNDESCRIPTIVE, true);
     $lostSecondary = matching_normalise($lost['secondary_color']);
     $foundSecondary = matching_normalise($found['secondary_color']);
     $secondaryMatches = $lostSecondary === '' || $foundSecondary === '' || $lostSecondary === $foundSecondary;

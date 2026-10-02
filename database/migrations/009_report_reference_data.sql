@@ -1,236 +1,101 @@
 -- =============================================================================
--- Paws&Found — MySQL schema
--- ITS122P – AM5 · Group 3 · Final Project (Database + Backend)
+-- 009 — reference data for the report form: places, colours, breeds, XL
 --
--- Target: MariaDB 10.4+ (what XAMPP ships) or MySQL 8, via phpMyAdmin.
--- Counted from information_schema on the running database, 25 September 2026:
+-- Instructor correction after the 2 October defense (Correction 3): breed,
+-- colour, city and province are chosen from known values rather than typed;
+-- the place list is the Philippines'; and a very large dog needs an XL size.
 --
---   17 tables      the 15 on the ERD, plus schema_migrations and
---                  auth_rate_limits, which are operational
---   24 foreign keys    all 24 on the 15; neither infrastructure table has one
---   17 primary keys    one per table
---    9 unique constraints  over 14 columns (8 over 12 on the 15 ERD tables)
---    2 CHECK constraints
+-- END STATE
 --
--- Recounted 30 September 2026; the 25 September figures for primary and
--- unique keys were taken before migrations 005 and 006.
+--   ph_provinces   84 rows   PSA's 82 provinces, plus "Metro Manila" (NCR,
+--                            a region with no provinces) and the Special
+--                            Geographic Area of BARMM, each under PSA's code
+--   ph_cities    1642 rows   every city (149) and municipality (1,493), with
+--                            the province it is in
+--   pet_colours    17 rows   the colour list, with stable codes
+--   pet_breeds     + is_listed: TRUE for the curated list the form suggests;
+--                  a breed somebody typed is kept, but never suggested
+--   locations      + city_code, the PSGC code of the city or municipality.
+--                  city and province stay as they are: the text the report
+--                  shows. The code is what the form chose and what is
+--                  compared; the text is what people read.
+--   pet_reports    pet_size gains 'xl'
 --
--- First imported on MariaDB 10.4.32 (XAMPP) on 2026-08-19 at 11 tables and 20
--- foreign keys; the lockout, audit and consent tables arrived with the
--- hardening pass as migrations 001 to 004, and the account-lifecycle tables
--- with 005 and 006.
+-- SOURCE of the places: PSA's PSGC Publication Datafile, publication date
+-- 31 July 2025. How it was turned into rows, including where each highly
+-- urbanized city is filed, is in scripts/psgc_reference.py; the rows are in
+-- database/reference/. The block between the PSGC markers below is generated
+-- from those files and is identical in schema.sql.
 --
--- NOTE: this XAMPP installation runs MySQL on PORT 3307, not the default 3306,
--- because a separate MySQL 8.0 Windows service holds 3306. phpMyAdmin is already
--- configured for it. From the command line you must pass the port:
---   mysql -u root -h 127.0.0.1 -P 3307 -e "source database/schema.sql"
--- Engine InnoDB throughout, because the project relies on foreign keys and
--- transactions. MyISAM ignores foreign keys silently.
+-- WHAT THIS DOES NOT CHANGE
 --
--- 17 tables, 15 of them on the ERD. The guide requires a minimum of 8; the
--- extra ones (match_signals, notifications, moderation_cases, login_attempts,
--- audit_logs, privacy_consents, auth_tokens) exist because three of the
--- application's workspaces, the three-attempt lock, the audit trail, the
--- privacy acknowledgement and the emailed one-time links have nowhere to store
--- their data without them. The remaining two, schema_migrations and
--- auth_rate_limits, are operational: no domain data, no foreign keys, and so
--- not on the diagram.
+--   * No row is deleted and no column is dropped.
+--   * city and province text on existing reports is left exactly as typed.
+--     Each location is GIVEN a code where its text names one place without
+--     doubt (below); where it does not, the code stays NULL and the report
+--     reads as before. Nothing is guessed.
+--   * Colours that are spelling variants of a listed colour are rewritten to
+--     the listed spelling ("Tricolor" -> "Tricolour", "gray" -> "Grey"), so
+--     they compare equal. Anything else is left as typed.
+--   * show_phone is left as it is. The API no longer publishes a phone number
+--     whatever the column says (Correction 3), so nothing needs rewriting.
 --
--- A fifteenth table, `schema_migrations`, is created by the first migration.
--- It is infrastructure — a record of which files in database/migrations/ this
--- database has had applied — and is deliberately not on the ERD.
+-- DEPLOYMENT — with the code, AFTER 008, in the same sitting:
 --
--- Every ENUM below matches the values already used in the frontend
--- (src/constants/index.js) exactly, so the API does not have to translate.
+--   1. back up the database
+--   2. preview 008 (query at the top of 008_split_user_names.sql), run 008
+--   3. preview 009 (queries below), run 009
+--   4. push the code; check /api/health; run npm run verify:deploy
+--
+-- Old code against this schema keeps working (every change is an addition),
+-- but new code against the old schema does not: it reads tables that do not
+-- exist yet. So the database goes first.
+--
+-- PREVIEW — run these BEFORE the migration, read only:
+--
+--   -- every distinct place on file, to see which will get a code
+--   SELECT province, city, COUNT(*) AS reports
+--     FROM locations GROUP BY province, city ORDER BY province, city;
+--
+--   -- every distinct colour on file
+--   SELECT primary_color AS colour, COUNT(*) FROM pet_reports GROUP BY 1
+--   UNION ALL
+--   SELECT secondary_color, COUNT(*) FROM pet_reports GROUP BY 1;
+--
+-- AND AFTER, to see what was left without a code or a listed colour:
+--
+--   SELECT location_id, province, city FROM locations WHERE city_code IS NULL;
+--   SELECT report_id, primary_color, secondary_color FROM pet_reports
+--    WHERE primary_color NOT IN (SELECT colour_name FROM pet_colours)
+--       OR secondary_color NOT IN (SELECT colour_name FROM pet_colours);
+--
+-- Safe to run twice: tables are created only if missing, columns and keys
+-- are added only if missing (checked against information_schema, because
+-- MySQL has no ADD COLUMN IF NOT EXISTS), and the rows are INSERT IGNORE.
+--
+-- Run against an existing database — WITH the character-set flag. The place
+-- names include ñ ("City of Las Piñas"), and the Windows client otherwise
+-- reads this UTF-8 file in the console code page and stores mojibake:
+--   mysql -u root -h 127.0.0.1 -P 3307 --default-character-set=utf8mb4 pawsandfound < 009_report_reference_data.sql
+-- SET NAMES below is a second guard for a client that ignores the flag.
 -- =============================================================================
 
-CREATE DATABASE IF NOT EXISTS pawsandfound
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-
 USE pawsandfound;
-
--- Dropped in reverse dependency order so the file can be re-run while we build.
-DROP TABLE IF EXISTS auth_rate_limits;
-DROP TABLE IF EXISTS auth_tokens;
-DROP TABLE IF EXISTS privacy_consents;
-DROP TABLE IF EXISTS audit_logs;
-DROP TABLE IF EXISTS login_attempts;
-DROP TABLE IF EXISTS moderation_cases;
-DROP TABLE IF EXISTS notifications;
-DROP TABLE IF EXISTS status_logs;
-DROP TABLE IF EXISTS match_signals;
-DROP TABLE IF EXISTS match_claims;
-DROP TABLE IF EXISTS report_images;
-DROP TABLE IF EXISTS pet_reports;
-DROP TABLE IF EXISTS locations;
-DROP TABLE IF EXISTS pet_breeds;
-DROP TABLE IF EXISTS pet_categories;
-DROP TABLE IF EXISTS users;
-
+SET NAMES utf8mb4;
 
 -- -----------------------------------------------------------------------------
--- 1. users
---
--- `password_hash`, never `password`. PHP's password_hash() with the default
--- algorithm returns 60 characters today, but the length is documented as
--- variable, so 255 is the recommended column width.
---
--- `account_status` is how an administrator suspends someone. Accounts are
--- suspended, never deleted, because their reports and case history must remain
--- readable (see the ON DELETE RESTRICT on pet_reports.user_id).
---
--- It has a third value, 'locked', which nobody chooses: an account goes there
--- by itself after three failed sign-in attempts, and only an administrator
--- brings it back. Suspended is a decision about a person; locked is something
--- that happened to an account. Keeping them apart is what lets the Users table
--- say which of the two it is looking at.
+-- Places
 -- -----------------------------------------------------------------------------
-CREATE TABLE users (
-  user_id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
-
-  -- The two parts are what the API writes and validates (migration 008).
-  first_name      VARCHAR(60)   NOT NULL,
-  last_name       VARCHAR(60)   NOT NULL,
-
-  -- Derived, never written: always the two parts above, so every query that
-  -- reads full_name keeps working and the three can never disagree. Production
-  -- (strict SQL mode) refuses a write to it; XAMPP's non-strict MariaDB ignores
-  -- one with a warning.
-  full_name       VARCHAR(121)
-                  AS (CONCAT_WS(' ', NULLIF(first_name, ''), NULLIF(last_name, ''))) STORED,
-
-  email           VARCHAR(190)  NOT NULL,
-
-  -- Added by migration 005, in the positions its AFTER clauses produced, so a
-  -- fresh import of this file and a database built from the migrations are
-  -- identical under SHOW CREATE TABLE.
-  --
-  -- NOT another account_status. A suspended account and an unproved address
-  -- are different facts: one is what an administrator decided, the other is
-  -- what the person demonstrated. NULL means never proved, and a timestamp
-  -- rather than a boolean because "when" is the question asked afterwards.
-  email_verified_at TIMESTAMP         NULL DEFAULT NULL,
-
-  -- An address asked for and not yet proved. The column above still governs.
-  pending_email     VARCHAR(190)      NULL DEFAULT NULL,
-  password_hash   VARCHAR(255)  NOT NULL,
-  contact_number  VARCHAR(30)       NULL,
-  role            ENUM('user','staff','admin') NOT NULL DEFAULT 'user',
-  account_status  ENUM('active','suspended','locked') NOT NULL DEFAULT 'active',
-
-  -- Bumped when every existing session for this account must stop working.
-  -- Sessions are files on disk and cannot be enumerated safely, so each one
-  -- remembers the number it signed in under and current_user() compares it on
-  -- every request — the rule the role and account status already follow.
-  session_version   INT UNSIGNED  NOT NULL DEFAULT 1,
-  preferred_location VARCHAR(120)   NULL,
-
-  -- Which updates this person wants to be told about. Three booleans rather
-  -- than a table: there are exactly three, every account has all three, and a
-  -- join table would add work without adding meaning (CLAUDE.md §15).
-  notify_matches    BOOLEAN       NOT NULL DEFAULT TRUE,
-  notify_status     BOOLEAN       NOT NULL DEFAULT TRUE,
-  notify_staff      BOOLEAN       NOT NULL DEFAULT TRUE,
-  created_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-
-
-  PRIMARY KEY (user_id),
-  -- 190 characters so the unique index fits within InnoDB's key limit on
-  -- utf8mb4 in older MySQL versions.
-  UNIQUE KEY uq_users_email (email),
-  KEY idx_users_role (role)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- -----------------------------------------------------------------------------
--- 2. pet_categories  — the species list an administrator manages
---
--- This is the "manage categories" function the guide requires of the
--- Administrator role, and it is already built in the admin workspace.
---
--- `is_active` retires a category without deleting it, because reports already
--- filed against it must keep working.
--- -----------------------------------------------------------------------------
-CREATE TABLE pet_categories (
-  category_id   INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  category_code VARCHAR(30)  NOT NULL,   -- 'dog', 'cat', … matches SPECIES in the frontend
-  category_name VARCHAR(60)  NOT NULL,
-  is_active     BOOLEAN      NOT NULL DEFAULT TRUE,
-
-  PRIMARY KEY (category_id),
-  UNIQUE KEY uq_categories_code (category_code)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- -----------------------------------------------------------------------------
--- 3. pet_breeds — breeds belonging to a category
---
--- Kept from the proposal ERD: it gives a genuine two-level hierarchy
--- (category → breed) and is a normalisation example we can point at.
---
--- NOTE the difference from the draft ERD: a report's breed is OPTIONAL. A
--- finder usually cannot identify a breed, and the report form says as much
--- ("An honest guess is fine"). See pet_reports.breed_id.
--- -----------------------------------------------------------------------------
---
--- `is_listed` (migration 009): TRUE for the curated breeds the report form
--- suggests. A breed somebody types that is not on the list is still kept, so
--- the report says what they wrote, but it is never suggested to anybody else.
--- That is what stops "Golden Retriver" becoming an option.
-CREATE TABLE pet_breeds (
-  breed_id    INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  category_id INT UNSIGNED NOT NULL,
-  breed_name  VARCHAR(80)  NOT NULL,
-  is_listed   BOOLEAN      NOT NULL DEFAULT FALSE,
-
-  PRIMARY KEY (breed_id),
-  UNIQUE KEY uq_breed_per_category (category_id, breed_name),
-  CONSTRAINT fk_breeds_category
-    FOREIGN KEY (category_id) REFERENCES pet_categories (category_id)
-    ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- -----------------------------------------------------------------------------
--- pet_colours — the colours a report may give  (migration 009)
---
--- Codes are stable; names are what pet_reports.primary_color and
--- secondary_color store and show. The report columns stay text rather than a
--- foreign key because reports filed before the list existed keep the colour
--- their reporter typed; the API accepts only listed colours from now on.
--- "Other" means "say it in the description" and never counts as a match.
--- -----------------------------------------------------------------------------
-CREATE TABLE pet_colours (
-  colour_code VARCHAR(20)       NOT NULL,
-  colour_name VARCHAR(30)       NOT NULL,
-  sort_order  SMALLINT UNSIGNED NOT NULL,
-
-  PRIMARY KEY (colour_code),
-  UNIQUE KEY uq_pet_colours_name (colour_name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- -----------------------------------------------------------------------------
--- ph_provinces, ph_cities — the places a report may name  (migration 009)
---
--- From the Philippine Standard Geographic Code (PSA), keyed by its 10-digit
--- codes. "Metro Manila" is the National Capital Region, which has no
--- provinces; it is one entry here so its 16 cities and Pateros have a parent.
--- Which province each highly urbanized city is listed under, and why, is in
--- scripts/psgc_reference.py; the rows themselves are in database/reference/.
--- -----------------------------------------------------------------------------
-CREATE TABLE ph_provinces (
-  province_code CHAR(10)    NOT NULL,
+CREATE TABLE IF NOT EXISTS ph_provinces (
+  province_code CHAR(10)    NOT NULL,   -- PSGC 10-digit code
   province_name VARCHAR(80) NOT NULL,
 
   PRIMARY KEY (province_code),
   UNIQUE KEY uq_ph_provinces_name (province_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE ph_cities (
-  city_code     CHAR(10)    NOT NULL,
+CREATE TABLE IF NOT EXISTS ph_cities (
+  city_code     CHAR(10)    NOT NULL,   -- PSGC 10-digit code
   province_code CHAR(10)    NOT NULL,
   city_name     VARCHAR(80) NOT NULL,
   is_city       BOOLEAN     NOT NULL,   -- a city, or a municipality
@@ -241,568 +106,6 @@ CREATE TABLE ph_cities (
     FOREIGN KEY (province_code) REFERENCES ph_provinces (province_code)
     ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- -----------------------------------------------------------------------------
--- 4. locations
---
--- Coordinates are barangay-level on purpose. `precision` records that, and the
--- report detail page draws a 400 m circle so the imprecision is visible rather
--- than implied. An exact home address is never stored (CLAUDE.md §14).
---
--- Three different things, kept apart (Correction 3):
---   city_code         WHICH city or municipality: chosen from ph_cities, and
---                     what matching and the place filter compare
---   city, province    the names as the report shows them, written from
---                     ph_cities when the report is saved
---   label             the reporter's own words for the spot
---   latitude/longitude  an optional pin, approximate
--- A pin never changes the city, and the city never moves the pin.
---
--- city_code is NULL only for reports filed before 009 whose text did not name
--- one place without doubt; they keep their text and read as before.
--- -----------------------------------------------------------------------------
-CREATE TABLE locations (
-  location_id INT UNSIGNED   NOT NULL AUTO_INCREMENT,
-  label       VARCHAR(160)       NULL,   -- "Near Poblacion Public Market, Barangay Poblacion"
-  city        VARCHAR(80)    NOT NULL,
-  province    VARCHAR(80)    NOT NULL,
-  city_code   CHAR(10)           NULL DEFAULT NULL,   -- PSGC; migration 009
-  latitude    DECIMAL(9,6)       NULL,   -- NULL when the reporter skipped the map pin
-  longitude   DECIMAL(9,6)       NULL,
-  `precision` ENUM('approximate','exact') NOT NULL DEFAULT 'approximate',
-
-  PRIMARY KEY (location_id),
-  KEY idx_locations_city (city),
-  CONSTRAINT fk_locations_city
-    FOREIGN KEY (city_code) REFERENCES ph_cities (city_code)
-    ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- -----------------------------------------------------------------------------
--- 5. pet_reports — the centre of the system
---
--- Two deliberate differences from the proposal ERD:
---
---   a) `category_id` sits directly on the report and is NOT NULL. In the draft
---      it was only reachable through the breed, which meant a report with an
---      unknown breed could not record its species. Species is a mandatory gate
---      in the matching algorithm, so that would have broken matching for most
---      found reports.
---
---   b) `breed_id` is NULLABLE for the same reason.
---
--- The contact preferences are three booleans rather than a table: there are
--- exactly three, they are always all present, and a join table would add work
--- without adding meaning (CLAUDE.md §15).
--- -----------------------------------------------------------------------------
-CREATE TABLE pet_reports (
-  report_id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  user_id           INT UNSIGNED NOT NULL,          -- who filed it
-  category_id       INT UNSIGNED NOT NULL,          -- species: a matching gate
-  breed_id          INT UNSIGNED     NULL,          -- optional, often unknown
-  location_id       INT UNSIGNED NOT NULL,
-  assigned_staff_id INT UNSIGNED     NULL,          -- coordinator handling the case
-
-  report_type       ENUM('lost','found') NOT NULL,
-  status            ENUM('active','possible_match','returned','closed')
-                      NOT NULL DEFAULT 'active',
-
-  -- A found report must not require a pet name: the finder does not know it.
-  pet_name          VARCHAR(80)      NULL,
-  pet_size          ENUM('small','medium','large','xl') NULL,   -- xl: migration 009
-  pet_sex           ENUM('male','female','unknown') NOT NULL DEFAULT 'unknown',
-  primary_color     VARCHAR(40)      NULL,
-  secondary_color   VARCHAR(40)      NULL,
-  distinct_features TEXT             NULL,   -- markings; weighted in matching
-  description       TEXT             NULL,   -- "What the finder said"
-
-  -- Found reports only; a finder can observe these, an owner cannot.
-  has_collar        ENUM('yes','no','unknown') NOT NULL DEFAULT 'unknown',
-  pet_condition     VARCHAR(160)     NULL,
-
-  incident_date     DATE         NOT NULL,
-  incident_time     TIME             NULL,   -- "around 07:50", often unknown
-
-  allow_platform_contact BOOLEAN NOT NULL DEFAULT TRUE,
-  show_phone             BOOLEAN NOT NULL DEFAULT FALSE,
-  show_email             BOOLEAN NOT NULL DEFAULT FALSE,
-
-  created_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                 ON UPDATE CURRENT_TIMESTAMP,
-
-  PRIMARY KEY (report_id),
-
-  -- Reporters are suspended, not deleted, so their reports stay readable.
-  CONSTRAINT fk_reports_user
-    FOREIGN KEY (user_id) REFERENCES users (user_id)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
-
-  -- Mirrors the rule already enforced in the admin UI: a category that is in
-  -- use cannot be deleted, only deactivated.
-  CONSTRAINT fk_reports_category
-    FOREIGN KEY (category_id) REFERENCES pet_categories (category_id)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
-
-  CONSTRAINT fk_reports_breed
-    FOREIGN KEY (breed_id) REFERENCES pet_breeds (breed_id)
-    ON DELETE SET NULL ON UPDATE CASCADE,
-
-  CONSTRAINT fk_reports_location
-    FOREIGN KEY (location_id) REFERENCES locations (location_id)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
-
-  CONSTRAINT fk_reports_staff
-    FOREIGN KEY (assigned_staff_id) REFERENCES users (user_id)
-    ON DELETE SET NULL ON UPDATE CASCADE,
-
-  -- Indexes chosen for the filters the Explore page actually offers, and for
-  -- the sort + pagination the guide requires.
-  KEY idx_reports_type_status (report_type, status),
-  KEY idx_reports_incident_date (incident_date),
-  KEY idx_reports_created_at (created_at),
-  KEY idx_reports_category (category_id),
-  KEY idx_reports_user (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- -----------------------------------------------------------------------------
--- 6. report_images
---
--- Photos are optional: a finder often has no chance to take one, and refusing
--- the report would lose the sighting entirely.
---
--- Only the file path is stored. The file itself goes in the upload directory —
--- storing images in the database bloats it and makes backups painful.
--- -----------------------------------------------------------------------------
-CREATE TABLE report_images (
-  image_id        INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  report_id       INT UNSIGNED NOT NULL,
-  image_path      VARCHAR(255) NOT NULL,
-  alt_text        VARCHAR(180)     NULL,   -- described by the reporter; used by screen readers
-  is_primary_photo BOOLEAN     NOT NULL DEFAULT FALSE,
-  uploaded_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-  PRIMARY KEY (image_id),
-  CONSTRAINT fk_images_report
-    FOREIGN KEY (report_id) REFERENCES pet_reports (report_id)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-  KEY idx_images_report (report_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- -----------------------------------------------------------------------------
--- 7. match_claims — a possible pairing of one lost and one found report
---
--- `match_score` is the percentage the matching algorithm produced. The draft
--- ERD had no score column, but the score is the headline of the whole match
--- comparison screen ("85% possible match").
---
--- `staff_notes` is coordinator-only and is never sent to the API responses the
--- public pages use (CLAUDE.md §6.6).
--- -----------------------------------------------------------------------------
-CREATE TABLE match_claims (
-  match_id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  lost_report_id       INT UNSIGNED NOT NULL,
-  found_report_id      INT UNSIGNED NOT NULL,
-  submitted_by_user_id INT UNSIGNED     NULL,  -- NULL when the system raised it
-  reviewed_by_user_id  INT UNSIGNED     NULL,  -- the coordinator who decided
-  match_score          TINYINT UNSIGNED NOT NULL,
-  match_status         ENUM('suggested','verification_requested','under_review',
-                            'confirmed','rejected','dismissed')
-                         NOT NULL DEFAULT 'suggested',
-  proof_notes          TEXT             NULL,  -- what the claimant offered as proof
-  staff_notes          TEXT             NULL,  -- coordinator only, never public
-  created_at           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                     ON UPDATE CURRENT_TIMESTAMP,
-
-  PRIMARY KEY (match_id),
-
-  -- The same two reports must never be paired twice.
-  UNIQUE KEY uq_match_pair (lost_report_id, found_report_id),
-
-  -- A report cannot be matched with itself.
-  CONSTRAINT chk_match_distinct CHECK (lost_report_id <> found_report_id),
-  CONSTRAINT chk_match_score CHECK (match_score BETWEEN 0 AND 100),
-
-  -- These two are ON DELETE CASCADE but NOT ON UPDATE CASCADE, unlike every
-  -- other foreign key in this file. MySQL 8 refuses a CHECK constraint over a
-  -- column that a foreign key's referential action could rewrite, and
-  -- chk_match_distinct above is over exactly these two columns. MariaDB allows
-  -- it, so the file imported here for weeks and would have failed on the host.
-  --
-  -- Nothing is lost. ON UPDATE CASCADE means "follow the parent key if it
-  -- changes", and report_id is an AUTO_INCREMENT surrogate that never changes.
-  -- The CHECK is a rule we actually rely on. See migration 007.
-  CONSTRAINT fk_match_lost
-    FOREIGN KEY (lost_report_id) REFERENCES pet_reports (report_id)
-    ON DELETE CASCADE,
-  CONSTRAINT fk_match_found
-    FOREIGN KEY (found_report_id) REFERENCES pet_reports (report_id)
-    ON DELETE CASCADE,
-  CONSTRAINT fk_match_submitted_by
-    FOREIGN KEY (submitted_by_user_id) REFERENCES users (user_id)
-    ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT fk_match_reviewed_by
-    FOREIGN KEY (reviewed_by_user_id) REFERENCES users (user_id)
-    ON DELETE SET NULL ON UPDATE CASCADE,
-
-  KEY idx_match_status (match_status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- -----------------------------------------------------------------------------
--- 8. match_signals — why a match scored what it scored
---
--- One row per compared characteristic. This is what makes the matching
--- explainable rather than a black box: the interface renders these directly as
--- "6 of 7 characteristics matched", with a tick or a cross and a sentence.
---
--- Storing them means a coordinator sees the same reasoning the reporter saw,
--- even if the algorithm's weights are tuned later.
--- -----------------------------------------------------------------------------
-CREATE TABLE match_signals (
-  signal_id   INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  match_id    INT UNSIGNED NOT NULL,
-  signal_key  ENUM('species','location','breed','color','size','date','characteristics')
-                NOT NULL,
-  is_matched  BOOLEAN      NOT NULL,
-  weight      TINYINT UNSIGNED NOT NULL,   -- points this signal contributed
-  detail      VARCHAR(255)     NULL,       -- "Both locations are in Makati City, roughly 1 km apart."
-
-  PRIMARY KEY (signal_id),
-  UNIQUE KEY uq_signal_per_match (match_id, signal_key),
-  CONSTRAINT fk_signals_match
-    FOREIGN KEY (match_id) REFERENCES match_claims (match_id)
-    ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- -----------------------------------------------------------------------------
--- 9. status_logs — the case history
---
--- Status history is appended to and never overwritten (CLAUDE.md §6.7). That is
--- what makes a case auditable: you can see when it changed, who changed it and
--- why, rather than only where it ended up.
--- -----------------------------------------------------------------------------
-CREATE TABLE status_logs (
-  log_id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  report_id           INT UNSIGNED NOT NULL,
-  updated_by_user_id  INT UNSIGNED     NULL,   -- NULL when the system did it
-  previous_status     ENUM('active','possible_match','returned','closed') NULL,
-  new_status          ENUM('active','possible_match','returned','closed') NOT NULL,
-  note                VARCHAR(255)     NULL,
-  created_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-  PRIMARY KEY (log_id),
-  CONSTRAINT fk_logs_report
-    FOREIGN KEY (report_id) REFERENCES pet_reports (report_id)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT fk_logs_user
-    FOREIGN KEY (updated_by_user_id) REFERENCES users (user_id)
-    ON DELETE SET NULL ON UPDATE CASCADE,
-  KEY idx_logs_report (report_id, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- -----------------------------------------------------------------------------
--- 10. notifications
---
--- Not in the draft ERD, but the notification centre is built and used by both
--- customers and coordinators. A notification always belongs to exactly one
--- user and optionally points back at the report or match that caused it.
--- -----------------------------------------------------------------------------
-CREATE TABLE notifications (
-  notification_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  user_id         INT UNSIGNED NOT NULL,
-  notification_type ENUM('match_suggested','verification_requested','staff_reviewed',
-                         'match_confirmed','match_rejected','report_updated',
-                         'status_changed','pet_returned','report_flagged') NOT NULL,
-  title           VARCHAR(160) NOT NULL,
-  body            VARCHAR(255)     NULL,
-  report_id       INT UNSIGNED     NULL,
-  match_id        INT UNSIGNED     NULL,
-  is_read         BOOLEAN      NOT NULL DEFAULT FALSE,
-  created_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-  PRIMARY KEY (notification_id),
-  CONSTRAINT fk_notifications_user
-    FOREIGN KEY (user_id) REFERENCES users (user_id)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT fk_notifications_report
-    FOREIGN KEY (report_id) REFERENCES pet_reports (report_id)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT fk_notifications_match
-    FOREIGN KEY (match_id) REFERENCES match_claims (match_id)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-
-  -- The unread badge counts with this index.
-  KEY idx_notifications_user_read (user_id, is_read, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- -----------------------------------------------------------------------------
--- 11. moderation_cases — a flag raised by the community
---
--- Not in the draft ERD, but the whole administrator moderation workspace is
--- built on it. The four decisions an administrator may take are the approved
--- ones only (CLAUDE.md §6.9): dismiss, warn, remove, remove and suspend.
---
--- "Remove" closes the report rather than deleting the row, so the record of
--- what happened survives the decision.
--- -----------------------------------------------------------------------------
-CREATE TABLE moderation_cases (
-  case_id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  report_id             INT UNSIGNED NOT NULL,
-  reported_by_user_id   INT UNSIGNED     NULL,
-  reason                ENUM('false_report','spam','scam','harassment',
-                             'inappropriate','duplicate','other') NOT NULL,
-  details               TEXT             NULL,
-  case_status           ENUM('open','actioned','dismissed') NOT NULL DEFAULT 'open',
-  resolved_by_admin_id  INT UNSIGNED     NULL,
-  resolution_note       VARCHAR(255)     NULL,
-  created_at            TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  resolved_at           TIMESTAMP        NULL,
-
-  PRIMARY KEY (case_id),
-  CONSTRAINT fk_moderation_report
-    FOREIGN KEY (report_id) REFERENCES pet_reports (report_id)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT fk_moderation_reporter
-    FOREIGN KEY (reported_by_user_id) REFERENCES users (user_id)
-    ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT fk_moderation_admin
-    FOREIGN KEY (resolved_by_admin_id) REFERENCES users (user_id)
-    ON DELETE SET NULL ON UPDATE CASCADE,
-  KEY idx_moderation_status (case_status, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- -----------------------------------------------------------------------------
--- 12. login_attempts — the three-attempt counter
---
--- Keyed by the email address that was TYPED, not by the account. That is the
--- whole point of it: an address belonging to no account is counted exactly the
--- same way, so "one attempt left" can be said to everybody without that
--- sentence revealing which addresses are registered.
---
--- `user_id` is filled in when the address does belong to an account, which is
--- what lets an administrator unlock by account rather than by string.
---
--- The column inherits utf8mb4_unicode_ci, which compares case-insensitively,
--- so MARIA@example.com and maria@example.com are one row. Otherwise changing
--- the capitalisation would hand out three fresh attempts.
--- -----------------------------------------------------------------------------
-CREATE TABLE login_attempts (
-  attempt_id      INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  email           VARCHAR(190) NOT NULL,
-  user_id         INT UNSIGNED     NULL,
-  failed_count    TINYINT UNSIGNED NOT NULL DEFAULT 0,
-  first_failed_at TIMESTAMP        NULL,
-  last_failed_at  TIMESTAMP        NULL,
-  locked_at       TIMESTAMP        NULL,
-
-  PRIMARY KEY (attempt_id),
-  UNIQUE KEY uq_attempts_email (email),
-
-  CONSTRAINT fk_attempts_user
-    FOREIGN KEY (user_id) REFERENCES users (user_id)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-
-  KEY idx_attempts_user (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- -----------------------------------------------------------------------------
--- 13. audit_logs — who did what, and when
---
--- `status_logs` records what happened to a REPORT. This records what happened
--- to an ACCOUNT: who signed in, who failed to, who was locked out, who
--- unlocked them, who changed somebody's role, who suspended whom.
---
--- Appended to and never updated or deleted. An audit trail that can be edited
--- is not one.
---
--- `actor_user_id` is SET NULL rather than CASCADE on purpose: deleting an
--- account must not delete the record of what that account did. `actor_email`
--- survives, so the row still means something afterwards.
--- -----------------------------------------------------------------------------
-CREATE TABLE audit_logs (
-  audit_id      INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  actor_user_id INT UNSIGNED     NULL,   -- NULL when the sign-in failed
-  actor_email   VARCHAR(190)     NULL,
-
-  -- Account events first, then the case events added by migration 004. The
-  -- order matters: MySQL stores an ENUM as the position of the word, so moving
-  -- one of these rewrites the meaning of every row already in the table.
-  action        ENUM('login','login_failed','account_locked','account_unlocked',
-                     'logout','register','role_changed','account_suspended',
-                     'account_reinstated',
-                     'report_status_changed','match_decided',
-                     'moderation_resolved','category_changed',
-                     -- migration 005
-                     'email_verified','email_change_completed',
-                     'password_reset') NOT NULL,
-
-  target_type   ENUM('user','report','match','category','moderation_case') NULL,
-  target_id     INT UNSIGNED     NULL,
-  outcome       ENUM('success','failure') NOT NULL DEFAULT 'success',
-
-  -- A short sentence in plain language: "user -> admin", "3 failed attempts".
-  -- Never a password, never a token, never a session id.
-  detail        VARCHAR(255)     NULL,
-  ip_address    VARCHAR(45)      NULL,   -- 45 characters, because IPv6
-  created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-  PRIMARY KEY (audit_id),
-  CONSTRAINT fk_audit_actor
-    FOREIGN KEY (actor_user_id) REFERENCES users (user_id)
-    ON DELETE SET NULL ON UPDATE CASCADE,
-
-  KEY idx_audit_created (created_at),
-  KEY idx_audit_action (action, created_at),
-  KEY idx_audit_target (target_type, target_id),
-  KEY idx_audit_actor (actor_user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- -----------------------------------------------------------------------------
--- 14. privacy_consents — who agreed to the privacy notice, and to which one
---
--- The Data Privacy Act expects a person to be told, before their personal
--- information is processed, what is collected and why. Paws&Found asks for
--- that acknowledgement at registration; this is where the answer is kept.
---
--- A table rather than a column on `users`, because the notice has a version.
--- If the wording changes in a way that matters, we need to know who agreed to
--- WHICH version and WHEN — and a column would be overwritten by the second
--- agreement, losing the first. That is the opposite of what a consent record
--- is for.
---
--- CASCADE, unlike audit_logs: a consent record only means something attached
--- to the person who gave it. An orphaned "somebody agreed to something"
--- protects nobody, and is one more piece of personal data kept for no reason.
--- -----------------------------------------------------------------------------
-CREATE TABLE privacy_consents (
-  consent_id     INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  user_id        INT UNSIGNED NOT NULL,
-  notice_version VARCHAR(20)  NOT NULL,   -- PRIVACY_NOTICE_VERSION in api/config.php
-  consented_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  ip_address     VARCHAR(45)      NULL,
-
-  PRIMARY KEY (consent_id),
-  UNIQUE KEY uq_consent_user_version (user_id, notice_version),
-
-  CONSTRAINT fk_consent_user
-    FOREIGN KEY (user_id) REFERENCES users (user_id)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-
-  KEY idx_consent_user (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- -----------------------------------------------------------------------------
--- Infrastructure, not a domain table, and not on the ERD.
---
--- A database built from this file already contains everything the migrations
--- in database/migrations/ would add, so they are recorded as applied here. A
--- database built before those migrations existed gets the same rows from the
--- migration files themselves.
--- -----------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS schema_migrations (
-  version    VARCHAR(20) NOT NULL,
-  applied_at TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (version)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- A fresh import of this file already contains everything migrations 001 to
--- 009 do, so it records all nine as applied. Otherwise somebody running the
--- migrations afterwards would re-apply changes that are already here.
---
--- 004 and 005 were missing from this list: the baseline had their schema
--- changes but claimed only three migrations had run. Harmless until somebody
--- trusted the list.
-INSERT INTO schema_migrations (version)
-VALUES ('001'), ('002'), ('003'), ('004'), ('005'), ('006'), ('007'), ('008'), ('009')
-  ON DUPLICATE KEY UPDATE version = version;
-
-
--- =============================================================================
--- Reference data
---
--- Categories match the SPECIES values the frontend already uses. Breeds are the
--- curated list the report form suggests (009), including Aspin and Puspin — the
--- Philippine native dog and cat, which most breed lists omit. The first
--- fourteen keep the ids seed.sql relies on; Beagle and German Shepherd were
--- appended by the seed before 009 and are listed here in the same positions.
--- =============================================================================
-
-INSERT INTO pet_categories (category_code, category_name, is_active) VALUES
-  ('dog',    'Dog',    TRUE),
-  ('cat',    'Cat',    TRUE),
-  ('bird',   'Bird',   TRUE),
-  ('rabbit', 'Rabbit', TRUE),
-  ('other',  'Other',  TRUE);
-
-INSERT INTO pet_breeds (category_id, breed_name) VALUES
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'dog'), 'Aspin (Philippine Native Dog)'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'dog'), 'Shih Tzu'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'dog'), 'Labrador Retriever'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'dog'), 'Chihuahua'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'dog'), 'Pomeranian'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'dog'), 'Golden Retriever'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'cat'), 'Puspin (Philippine Domestic Shorthair)'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'cat'), 'Persian'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'cat'), 'Siamese'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'bird'), 'Cockatiel'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'bird'), 'Lovebird'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'rabbit'), 'Holland Lop'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'dog'), 'Beagle'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'dog'), 'German Shepherd'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'dog'), 'Chow Chow'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'dog'), 'Dachshund'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'dog'), 'Japanese Spitz'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'dog'), 'Maltese'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'dog'), 'Poodle'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'dog'), 'Pug'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'dog'), 'Siberian Husky'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'dog'), 'Mixed breed'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'cat'), 'British Shorthair'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'cat'), 'Maine Coon'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'cat'), 'Ragdoll'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'cat'), 'Scottish Fold'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'cat'), 'Mixed breed'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'bird'), 'Budgerigar'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'bird'), 'African Grey Parrot'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'rabbit'), 'Netherland Dwarf'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'rabbit'), 'Lionhead'),
-  ((SELECT category_id FROM pet_categories WHERE category_code = 'rabbit'), 'Mixed breed');
-
--- Every breed above is on the suggested list. One that a reporter types later
--- is added by the API with is_listed left FALSE.
-UPDATE pet_breeds SET is_listed = TRUE;
-
-INSERT INTO pet_colours (colour_code, colour_name, sort_order) VALUES
-  ('black',     'Black',     1),
-  ('white',     'White',     2),
-  ('brown',     'Brown',     3),
-  ('grey',      'Grey',      4),
-  ('cream',     'Cream',     5),
-  ('tan',       'Tan',       6),
-  ('golden',    'Golden',    7),
-  ('orange',    'Orange',    8),
-  ('red',       'Red',       9),
-  ('yellow',    'Yellow',   10),
-  ('green',     'Green',    11),
-  ('blue',      'Blue',     12),
-  ('peach',     'Peach',    13),
-  ('brindle',   'Brindle',  14),
-  ('calico',    'Calico',   15),
-  ('tricolour', 'Tricolour', 16),
-  ('other',     'Other',    99);
 
 -- BEGIN PSGC DATA (generated by scripts/psgc_reference.py; do not edit by hand)
 -- Source: PSA PSGC Publication Datafile, publication date 31 July 2025; sha256 47864f8be595fdeae44f81fa481403b785488861ba2fe81e91ac8d15b3e6f30e
@@ -2552,97 +1855,186 @@ INSERT IGNORE INTO ph_cities (city_code, province_code, city_name, is_city) VALU
 
 -- END PSGC DATA
 
+-- locations.city_code, its index and its key — each only if missing.
+SET @missing := (SELECT COUNT(*) = 0 FROM information_schema.COLUMNS
+                  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'locations'
+                    AND COLUMN_NAME = 'city_code');
+SET @sql := IF(@missing,
+  'ALTER TABLE locations ADD COLUMN city_code CHAR(10) NULL DEFAULT NULL AFTER province',
+  'DO 0');
+PREPARE statement FROM @sql; EXECUTE statement; DEALLOCATE PREPARE statement;
 
--- -----------------------------------------------------------------------------
--- auth_tokens — one table for all three one-time links  (migration 005)
+SET @missing := (SELECT COUNT(*) = 0 FROM information_schema.TABLE_CONSTRAINTS
+                  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'locations'
+                    AND CONSTRAINT_NAME = 'fk_locations_city');
+SET @sql := IF(@missing,
+  'ALTER TABLE locations ADD CONSTRAINT fk_locations_city FOREIGN KEY (city_code) REFERENCES ph_cities (city_code) ON DELETE RESTRICT ON UPDATE CASCADE',
+  'DO 0');
+PREPARE statement FROM @sql; EXECUTE statement; DEALLOCATE PREPARE statement;
+
+-- Give existing locations their code, in two passes, each only where the
+-- text names exactly one place in the province it gives.
 --
--- The RAW token goes in the email and is never written down. What is stored is
--- a SHA-256 of it, so a copy of this table is not a set of working links: an
--- attacker holding the database still cannot verify an address or reset a
--- password. The same reasoning as password_hash, applied to the thing that can
--- replace a password.
+-- Pass 1: the names are PSA's own ("Quezon City", "Metro Manila").
+UPDATE locations l
+  JOIN ph_provinces p ON p.province_name = TRIM(l.province)
+  JOIN ph_cities c    ON c.province_code = p.province_code AND c.city_name = TRIM(l.city)
+   SET l.city_code = c.city_code
+ WHERE l.city_code IS NULL;
+
+-- Pass 2: the everyday form of a city's name. PSA writes "City of Makati";
+-- people write "Makati City" or "Makati". Both sides are compared without
+-- "City of " in front and " City" behind, and only where that leaves one
+-- place in the province: if two places share the shortened name, neither is
+-- chosen. The comparison ignores case (the tables' collation).
+UPDATE locations l
+  JOIN ph_provinces p ON p.province_name = TRIM(l.province)
+  JOIN (
+        SELECT province_code, place_key, MIN(city_code) AS city_code
+          FROM (SELECT province_code, city_code,
+                       TRIM(TRAILING ' City' FROM
+                         CASE WHEN city_name LIKE 'City of %' THEN SUBSTRING(city_name, 9)
+                              ELSE city_name END) AS place_key
+                  FROM ph_cities) keyed
+         GROUP BY province_code, place_key
+        HAVING COUNT(*) = 1
+       ) k ON k.province_code = p.province_code
+          AND k.place_key = TRIM(TRAILING ' City' FROM
+                CASE WHEN TRIM(l.city) LIKE 'City of %' THEN SUBSTRING(TRIM(l.city), 9)
+                     ELSE TRIM(l.city) END)
+   SET l.city_code = k.city_code
+ WHERE l.city_code IS NULL;
+
 -- -----------------------------------------------------------------------------
-CREATE TABLE auth_tokens (
-  token_id     INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  user_id      INT UNSIGNED NOT NULL,
+-- Colours
+--
+-- The codes are stable and are what a program should hold on to; the names
+-- are what a report stores and shows. "Other" means "not in this list — say
+-- it in the description", and it never counts as two reports agreeing.
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS pet_colours (
+  colour_code VARCHAR(20)       NOT NULL,
+  colour_name VARCHAR(30)       NOT NULL,
+  sort_order  SMALLINT UNSIGNED NOT NULL,
 
-  purpose      ENUM('email_verification','password_reset','email_change') NOT NULL,
-
-  -- SHA-256 hex. Unique because a collision would let one link act on two
-  -- accounts, and because the lookup is by hash.
-  token_hash   CHAR(64) NOT NULL,
-
-  -- Only for email_change: the address being proved, which is not yet the
-  -- account's address. NULL for the other two purposes.
-  target_email VARCHAR(190) NULL DEFAULT NULL,
-
-  -- DEFAULT is named explicitly and is never used: token_issue() always
-  -- supplies this value. Naming it is what suppresses the implicit
-  -- ON UPDATE CURRENT_TIMESTAMP that the first bare TIMESTAMP column in a
-  -- table is given, which would reset the expiry on every write to the row
-  -- (migration 006).
-  expires_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-  -- Set the moment it is spent. A used token is kept rather than deleted, so a
-  -- replay can be recognised as a replay instead of as an unknown token.
-  used_at      TIMESTAMP NULL DEFAULT NULL,
-
-  created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-  PRIMARY KEY (token_id),
-  UNIQUE KEY uq_auth_tokens_hash (token_hash),
-  KEY idx_auth_tokens_user_purpose (user_id, purpose),
-  KEY idx_auth_tokens_expiry (expires_at),
-
-  -- CASCADE: a token belongs to an account and means nothing without it.
-  -- Unlike audit_logs, there is nothing here worth preserving afterwards.
-  CONSTRAINT fk_auth_tokens_user
-    FOREIGN KEY (user_id) REFERENCES users (user_id)
-    ON DELETE CASCADE ON UPDATE CASCADE
+  PRIMARY KEY (colour_code),
+  UNIQUE KEY uq_pet_colours_name (colour_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+INSERT IGNORE INTO pet_colours (colour_code, colour_name, sort_order) VALUES
+  ('black',     'Black',     1),
+  ('white',     'White',     2),
+  ('brown',     'Brown',     3),
+  ('grey',      'Grey',      4),
+  ('cream',     'Cream',     5),
+  ('tan',       'Tan',       6),
+  ('golden',    'Golden',    7),
+  ('orange',    'Orange',    8),
+  ('red',       'Red',       9),
+  ('yellow',    'Yellow',   10),
+  ('green',     'Green',    11),
+  ('blue',      'Blue',     12),
+  ('peach',     'Peach',    13),
+  ('brindle',   'Brindle',  14),
+  ('calico',    'Calico',   15),
+  ('tricolour', 'Tricolour', 16),
+  ('other',     'Other',    99);
+
+-- Spelling variants only. Meaning is never reinterpreted ("ginger" is not
+-- turned into "Orange"); a value that is not a variant stays as typed.
+UPDATE pet_reports r
+  JOIN pet_colours c ON c.colour_name = TRIM(r.primary_color)
+   SET r.primary_color = c.colour_name
+ WHERE CAST(r.primary_color AS BINARY) <> CAST(c.colour_name AS BINARY);
+UPDATE pet_reports r
+  JOIN pet_colours c ON c.colour_name = TRIM(r.secondary_color)
+   SET r.secondary_color = c.colour_name
+ WHERE CAST(r.secondary_color AS BINARY) <> CAST(c.colour_name AS BINARY);
+UPDATE pet_reports SET primary_color = 'Tricolour'
+ WHERE primary_color IN ('Tricolor', 'Tri-color', 'Tri-colour', 'Tri color', 'Tri colour');
+UPDATE pet_reports SET secondary_color = 'Tricolour'
+ WHERE secondary_color IN ('Tricolor', 'Tri-color', 'Tri-colour', 'Tri color', 'Tri colour');
+UPDATE pet_reports SET primary_color = 'Grey' WHERE primary_color = 'Gray';
+UPDATE pet_reports SET secondary_color = 'Grey' WHERE secondary_color = 'Gray';
+UPDATE pet_reports SET primary_color = 'Golden' WHERE primary_color = 'Gold';
+UPDATE pet_reports SET secondary_color = 'Golden' WHERE secondary_color = 'Gold';
 
 -- -----------------------------------------------------------------------------
--- auth_rate_limits — how often an unauthenticated stranger may ask  (005)
+-- Breeds
 --
--- Different from the three-attempt account lock, which protects ONE account
--- from guessing. This protects the SYSTEM from somebody registering a thousand
--- accounts or using the password-reset form as a mailing service.
---
--- No foreign key and no domain meaning, so it is operational infrastructure
--- and, like schema_migrations, is deliberately not on the ERD.
---
--- The subject is a keyed hash, never a raw address or IP: the system needs to
--- count, not to know who.
+-- pet_breeds already held every breed ever typed, because the API added any
+-- new spelling (Correction 10 in the register). They all stay — reports point
+-- at them — but only the curated list is suggested from now on.
 -- -----------------------------------------------------------------------------
-CREATE TABLE auth_rate_limits (
-  rate_limit_id     INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  action            VARCHAR(40) NOT NULL,
-  subject_hash      CHAR(64) NOT NULL,
-  window_started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  attempt_count     SMALLINT UNSIGNED NOT NULL DEFAULT 0,
-  updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                          ON UPDATE CURRENT_TIMESTAMP,
+SET @missing := (SELECT COUNT(*) = 0 FROM information_schema.COLUMNS
+                  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'pet_breeds'
+                    AND COLUMN_NAME = 'is_listed');
+SET @sql := IF(@missing,
+  'ALTER TABLE pet_breeds ADD COLUMN is_listed BOOLEAN NOT NULL DEFAULT FALSE',
+  'DO 0');
+PREPARE statement FROM @sql; EXECUTE statement; DEALLOCATE PREPARE statement;
 
-  PRIMARY KEY (rate_limit_id),
-  -- One row per action per subject. The insert-or-increment relies on this:
-  -- two simultaneous requests cannot both create a row and both count 1.
-  UNIQUE KEY uq_auth_rate_limits (action, subject_hash),
-  KEY idx_auth_rate_limits_window (window_started_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT IGNORE INTO pet_breeds (category_id, breed_name, is_listed)
+SELECT c.category_id, b.breed_name, TRUE
+  FROM pet_categories c
+  JOIN (
+        SELECT 'dog' AS code, 'Aspin (Philippine Native Dog)' AS breed_name
+        UNION ALL SELECT 'dog', 'Shih Tzu'
+        UNION ALL SELECT 'dog', 'Labrador Retriever'
+        UNION ALL SELECT 'dog', 'Chihuahua'
+        UNION ALL SELECT 'dog', 'Pomeranian'
+        UNION ALL SELECT 'dog', 'Golden Retriever'
+        UNION ALL SELECT 'cat', 'Puspin (Philippine Domestic Shorthair)'
+        UNION ALL SELECT 'cat', 'Persian'
+        UNION ALL SELECT 'cat', 'Siamese'
+        UNION ALL SELECT 'bird', 'Cockatiel'
+        UNION ALL SELECT 'bird', 'Lovebird'
+        UNION ALL SELECT 'rabbit', 'Holland Lop'
+        UNION ALL SELECT 'dog', 'Beagle'
+        UNION ALL SELECT 'dog', 'German Shepherd'
+        UNION ALL SELECT 'dog', 'Chow Chow'
+        UNION ALL SELECT 'dog', 'Dachshund'
+        UNION ALL SELECT 'dog', 'Japanese Spitz'
+        UNION ALL SELECT 'dog', 'Maltese'
+        UNION ALL SELECT 'dog', 'Poodle'
+        UNION ALL SELECT 'dog', 'Pug'
+        UNION ALL SELECT 'dog', 'Siberian Husky'
+        UNION ALL SELECT 'dog', 'Mixed breed'
+        UNION ALL SELECT 'cat', 'British Shorthair'
+        UNION ALL SELECT 'cat', 'Maine Coon'
+        UNION ALL SELECT 'cat', 'Ragdoll'
+        UNION ALL SELECT 'cat', 'Scottish Fold'
+        UNION ALL SELECT 'cat', 'Mixed breed'
+        UNION ALL SELECT 'bird', 'Budgerigar'
+        UNION ALL SELECT 'bird', 'African Grey Parrot'
+        UNION ALL SELECT 'rabbit', 'Netherland Dwarf'
+        UNION ALL SELECT 'rabbit', 'Lionhead'
+        UNION ALL SELECT 'rabbit', 'Mixed breed'
+       ) b ON b.code = c.category_code;
 
+-- The rows above that already existed were skipped by INSERT IGNORE, so they
+-- are marked listed here. Matched by name within the species, ignoring case.
+UPDATE pet_breeds b
+  JOIN pet_categories c ON c.category_id = b.category_id
+   SET b.is_listed = TRUE
+ WHERE (c.category_code, b.breed_name) IN (
+        ('dog', 'Aspin (Philippine Native Dog)'), ('dog', 'Shih Tzu'),
+        ('dog', 'Labrador Retriever'), ('dog', 'Chihuahua'), ('dog', 'Pomeranian'),
+        ('dog', 'Golden Retriever'), ('cat', 'Puspin (Philippine Domestic Shorthair)'),
+        ('cat', 'Persian'), ('cat', 'Siamese'), ('bird', 'Cockatiel'),
+        ('bird', 'Lovebird'), ('rabbit', 'Holland Lop'), ('dog', 'Beagle'),
+        ('dog', 'German Shepherd'), ('dog', 'Chow Chow'), ('dog', 'Dachshund'),
+        ('dog', 'Japanese Spitz'), ('dog', 'Maltese'), ('dog', 'Poodle'), ('dog', 'Pug'),
+        ('dog', 'Siberian Husky'), ('dog', 'Mixed breed'), ('cat', 'British Shorthair'),
+        ('cat', 'Maine Coon'), ('cat', 'Ragdoll'), ('cat', 'Scottish Fold'),
+        ('cat', 'Mixed breed'), ('bird', 'Budgerigar'), ('bird', 'African Grey Parrot'),
+        ('rabbit', 'Netherland Dwarf'), ('rabbit', 'Lionhead'), ('rabbit', 'Mixed breed'));
 
--- =============================================================================
--- Verification
---
--- Run after importing. Expect 17 tables — the 15 on the ERD plus
--- schema_migrations and auth_rate_limits — and a non-zero foreign key count.
--- =============================================================================
+-- -----------------------------------------------------------------------------
+-- XL — an addition to the ENUM, so every existing value is still valid.
+-- -----------------------------------------------------------------------------
+ALTER TABLE pet_reports
+  MODIFY pet_size ENUM('small','medium','large','xl') NULL;
 
--- SELECT COUNT(*) AS tables_created
---   FROM information_schema.tables
---  WHERE table_schema = 'pawsandfound';
-
--- SELECT COUNT(*) AS foreign_keys
---   FROM information_schema.table_constraints
---  WHERE table_schema = 'pawsandfound' AND constraint_type = 'FOREIGN KEY';
+INSERT INTO schema_migrations (version) VALUES ('009')
+  ON DUPLICATE KEY UPDATE version = version;

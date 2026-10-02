@@ -21,7 +21,6 @@ import {
 } from './reportFormModel'
 
 const loadActiveCategories = () => categoryService.getActiveCategories()
-const loadReporter = () => userService.getCurrentUser()
 
 /**
  * The steps that contain at least one required field.
@@ -31,8 +30,19 @@ const loadReporter = () => userService.getCurrentUser()
  */
 const STEPS_WITH_REQUIRED_FIELDS = ['details', 'incident']
 
-/** The three contact checkboxes, which are validated as one group. */
-const CONTACT_FIELDS = ['allowPlatformContact', 'showPhone', 'showEmail']
+/** The contact checkboxes, which are validated as one group. */
+const CONTACT_FIELDS = ['allowPlatformContact', 'showEmail']
+
+/**
+ * Fields whose error is shown under a different name: the place is chosen by
+ * code but its message sits on the Province and City lists, and the time's
+ * three parts share one message.
+ */
+const ERROR_KEY_OF = {
+  provinceCode: 'province',
+  cityCode: 'city',
+  incidentTimeIncomplete: 'incidentTime',
+}
 
 /**
  * The lost/found reporting wizard.
@@ -79,14 +89,6 @@ export function ReportForm({ reportType, report, guidance }) {
   // a category an administrator adds is immediately fileable against.
   const { data: categories } = useAsync(loadActiveCategories)
 
-  // Whether "show my phone number" can mean anything: only if the account has
-  // a number. Without one the option is off and disabled, and a report filed
-  // before this rule that still says "show phone" is switched off here, so
-  // the form never counts a number that does not exist as a way to be reached.
-  const { data: reporter } = useAsync(loadReporter)
-  const hasPhone = !reporter || Boolean(reporter.phone?.trim())
-  // What is checked and saved: never "show phone" without a phone.
-  const effectiveValues = hasPhone ? values : { ...values, showPhone: false }
   const speciesOptions = (categories ?? []).map((category) => ({
     value: category.id,
     label: category.label,
@@ -120,7 +122,7 @@ export function ReportForm({ reportType, report, guidance }) {
     // reporter press Next again to find out whether they fixed it.
     // The contact choices share one error: ticking any of the three answers
     // it, so touching any of them clears it.
-    const key = CONTACT_FIELDS.includes(field) ? 'contact' : field
+    const key = CONTACT_FIELDS.includes(field) ? 'contact' : (ERROR_KEY_OF[field] ?? field)
     setErrors((current) => {
       if (!current[key]) return current
       const next = { ...current }
@@ -158,7 +160,7 @@ export function ReportForm({ reportType, report, guidance }) {
   }
 
   const handleNext = () => {
-    const stepErrors = validateStep(step.id, effectiveValues)
+    const stepErrors = validateStep(step.id, values)
     setErrors(stepErrors)
     if (Object.keys(stepErrors).length > 0) {
       setRefusals((count) => count + 1)
@@ -207,7 +209,7 @@ export function ReportForm({ reportType, report, guidance }) {
   const handleSubmit = async () => {
     // Re-check every step, in case someone jumped back and emptied a field.
     for (const candidate of STEPS) {
-      const stepErrors = validateStep(candidate.id, effectiveValues)
+      const stepErrors = validateStep(candidate.id, values)
       if (Object.keys(stepErrors).length > 0) {
         setErrors(stepErrors)
         setStepIndex(STEPS.indexOf(candidate))
@@ -225,7 +227,7 @@ export function ReportForm({ reportType, report, guidance }) {
         // shows here. Then the photos, whose failure is carried to the report
         // page rather than hidden: the details did save, and the owner should
         // know exactly which part did not.
-        await petService.updateReport(report.id, toReportInput(effectiveValues, report.reporterId))
+        await petService.updateReport(report.id, toReportInput(values, report.reporterId))
 
         let photoWarning = null
         try {
@@ -241,7 +243,7 @@ export function ReportForm({ reportType, report, guidance }) {
       }
 
       const user = await userService.getCurrentUser()
-      const created = await petService.createReport(toReportInput(effectiveValues, user.id))
+      const created = await petService.createReport(toReportInput(values, user.id))
 
       // The photographs go up separately, once the report has an id. A failure
       // here is reported on its own rather than as a failed submission: the
@@ -315,13 +317,12 @@ export function ReportForm({ reportType, report, guidance }) {
               values={values}
               errors={errors}
               onChange={handleChange}
-              hasPhone={hasPhone}
             />
           )}
           {step.id === 'photos' && <PhotosStep values={values} onChange={handleChange} />}
           {step.id === 'review' && (
             <ReviewStep
-              values={effectiveValues}
+              values={values}
               onEditStep={(id) => goToStep(STEPS.findIndex((item) => item.id === id))}
             />
           )}

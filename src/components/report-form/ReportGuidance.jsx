@@ -74,8 +74,8 @@ export function ReportGuidance({ reportType }) {
       <p className="flex items-start gap-2.5 px-1 text-sm text-fg-muted">
         <Lock size={16} className="mt-0.5 shrink-0 text-fg-subtle" aria-hidden="true" />
         <span>
-          Your name appears on the report. Your phone number and email address do not, unless
-          you choose to share them on the next step.
+          Your name appears on the report. Your phone number never does, and your email address
+          only if you choose to share it on the next step.
         </span>
       </p>
     </aside>

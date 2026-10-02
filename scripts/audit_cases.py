@@ -7,8 +7,8 @@ import urllib.parse
 import zlib
 
 import audit
-from audit import (PROJECT, check, file_report, multipart, reseed, results,
-                   session, sql, status)
+from audit import (PROJECT, check, file_report, multipart, place_codes, reseed,
+                   results, session, sql, status)
 
 
 def png(width=40, height=30):
@@ -112,17 +112,20 @@ def sql_injection():
     check(C, 'SQL-11', 'pet_reports table intact afterwards', '32 rows',
           sql('SELECT COUNT(*) FROM pet_reports;') + ' rows',
           sql('SELECT COUNT(*) FROM pet_reports;') == '32')
-    # 17 physical: the 15 on the ERD, plus schema_migrations and
+    # 20 physical: the 15 on the ERD, the three reference lists migration 009
+    # added (ph_provinces, ph_cities, pet_colours), plus schema_migrations and
     # auth_rate_limits, which are infrastructure rather than domain tables
     # (database/migrations/README.md).
-    check(C, 'SQL-12', 'Schema intact afterwards', '17 tables',
+    check(C, 'SQL-12', 'Schema intact afterwards', '20 tables',
           sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='pawsandfound';") + ' tables',
-          sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='pawsandfound';") == '17')
-    # The ERD claims 24. A diagram cannot be wrong quietly if the suite counts
+          sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='pawsandfound';") == '20')
+    # 26 since migration 009: ph_cities -> ph_provinces and locations -> ph_cities.
+    # docs/erd-defense.md lists 26 (the figure is redrawn in the final ERD
+    # pass). A diagram cannot be wrong quietly if the suite counts
     # the same thing the diagram is drawing.
     fks = sql("SELECT COUNT(*) FROM information_schema.table_constraints "
               "WHERE table_schema='pawsandfound' AND constraint_type='FOREIGN KEY';")
-    check(C, 'SQL-14', 'Foreign keys match the ERD', '24 keys', fks + ' keys', fks == '24')
+    check(C, 'SQL-14', 'Foreign keys match the ERD', '26 keys', fks + ' keys', fks == '26')
     roles = sql('SELECT GROUP_CONCAT(role ORDER BY user_id) FROM users WHERE user_id<=3;')
     check(C, 'SQL-13', 'No account was promoted', 'user,user,user', roles, roles == 'user,user,user')
 
@@ -476,22 +479,28 @@ def authorization():
 # ====================================================================== E. XSS
 def xss():
     C = 'E. Cross-site scripting'
+    # Since Correction 3 a pet's name takes letters, digits, spaces and
+    # ' . - only, so markup there is refused outright (XSS-00). The stored-
+    # and-escaped path is tested through the free-text fields instead.
+    _, code = file_report('customer', pet_name='<script>alert(1)</script>')
+    check(C, 'XSS-00', 'Markup in a pet name is refused (Correction 3 name rule)', 422, code, code == 422)
     payloads = {
-        'pet_name': '<script>alert(1)</script>',
+        'location_label': '<script>alert(1)</script>',
         'distinct_features': '<img src=x onerror=alert(document.cookie)>',
-        'description': '"><svg/onload=alert(1)>',
+        'description': '"><svg/onload=alert(1)> and enough words to pass the minimum',
     }
     rid, code = file_report('customer', **payloads)
     check(C, 'XSS-01', 'Report accepted with script payloads in three fields', 200, code, code == 200)
 
-    stored = sql(f"SELECT pet_name FROM pet_reports WHERE report_id={rid};")
+    stored = sql(f"SELECT l.label FROM pet_reports r JOIN locations l ON l.location_id = r.location_id "
+                 f"WHERE r.report_id={rid};")
     check(C, 'XSS-02', 'Payload stored verbatim (escaping belongs at output)',
-          payloads['pet_name'], stored, stored == payloads['pet_name'])
+          payloads['location_label'], stored, stored == payloads['location_label'])
 
     _, body = session('finder').call('GET', f'/reports/{rid}')
-    returned = body.get('data', {}).get('pet_name')
-    check(C, 'XSS-03', 'API returns it as data, not markup', payloads['pet_name'],
-          returned, returned == payloads['pet_name'])
+    returned = (body.get('data', {}).get('location') or {}).get('label')
+    check(C, 'XSS-03', 'API returns it as data, not markup', payloads['location_label'],
+          returned, returned == payloads['location_label'])
 
     src = open(os.path.join(PROJECT, 'src', 'pages', 'public', 'PetDetailPage.jsx'),
                 encoding='utf-8').read()
@@ -589,7 +598,7 @@ def functional():
         check(C, 'FN-13', 'A ruled-out report goes back to Active', 'active', st, st == 'active')
 
     status(C, 'FN-14', 'The owner edits their own report', 'customer', 'PUT', f'/reports/{r2}',
-           {'pet_name': 'Audit Dog', 'description': 'Updated during the audit.'}, 200)
+           {'pet_name': 'Audit Dog', 'description': 'Updated during the audit, with enough words to count.'}, 200)
     status(C, 'FN-15', 'The owner closes their own report', 'customer', 'PATCH', f'/reports/{r2}',
            {'status': 'closed', 'note': 'Found on our own.'}, 200)
 
@@ -717,9 +726,11 @@ def functional():
     sql("UPDATE pet_reports SET show_phone = 1 WHERE report_id = 1;")
     _, owner_view = session('customer').call('GET', '/reports/1')
     prefs = (owner_view.get('data') or {}).get('contact_preferences')
-    check(C, 'FN-41', 'The owner is told the stored preference, not the masked value',
-          True, prefs.get('show_phone') if prefs else '(absent)',
-          bool(prefs) and prefs.get('show_phone') is True)
+    # Reversed by Correction 3: a phone number is never published, so even a
+    # stored show_phone = 1 is reported as off — no form offers it back.
+    check(C, 'FN-41', 'A stored show_phone = 1 reaches the owner as off (phone never published)',
+          False, prefs.get('show_phone') if prefs else '(absent)',
+          bool(prefs) and prefs.get('show_phone') is False)
     _, public_view = session('finder').call('GET', '/reports/1')
     check(C, 'FN-42', 'Another member is told nothing about preferences', True,
           'contact_preferences' not in (public_view.get('data') or {}),
@@ -772,7 +783,7 @@ def location_privacy():
         loc = (data or {}).get('location') or {}
         return code, (loc.get('lat'), loc.get('lng'))
 
-    _, point = published('guest', '/reports?city=Audit%20Town&per_page=50')
+    _, point = published('guest', f'/reports?city_code={place_codes("Audit Town", "Laguna")[1]}&per_page=50')
     check(C, 'LP-02', 'Anonymous list: the grid point, not the pin', 'grid point', str(point),
           None not in point and point != pin and all(map(on_grid, point)))
     code, _ = published('guest', f'/reports/{lost}')
@@ -817,8 +828,9 @@ def access_control():
           'extra: ' + ','.join(sorted(keys - summary)) if keys - summary else 'summary keys',
           bool(rows) and keys == summary)
     loc_keys = set().union(*(r['location'].keys() for r in rows)) if rows else set()
-    check(C, 'RA-02', 'Its location has no place label', 'city,lat,lng,province',
-          ','.join(sorted(loc_keys)), loc_keys == {'city', 'province', 'lat', 'lng'})
+    check(C, 'RA-02', 'Its location has no place label', 'city,city_code,lat,lng,province,province_code',
+          ','.join(sorted(loc_keys)),
+          loc_keys == {'city', 'province', 'city_code', 'province_code', 'lat', 'lng'})
     code, body = session('guest').call('GET', '/reports/1')
     check(C, 'RA-03', 'A guest opening a real report: 401 auth_required', '401 auth_required',
           f'{code} {body.get("code")}', code == 401 and body.get('code') == 'auth_required')
@@ -890,9 +902,10 @@ def access_control():
     check(C, 'RA-19', 'Email shared, phone not: exactly that', 'email only',
           f"email {'yes' if a.get('email') else 'no'}, phone {'yes' if a.get('phone') else 'no'}",
           bool(a.get('email')) and a.get('phone') is None)
-    check(C, 'RA-20', 'Phone shared, email not: exactly that', 'phone only',
-          f"email {'yes' if b.get('email') else 'no'}, phone {'yes' if b.get('phone') else 'no'}",
-          b.get('email') is None and bool(b.get('phone')))
+    # Reversed by Correction 3: asking to show the phone shows nothing.
+    check(C, 'RA-20', 'Phone asked for, email not: neither is shown (a phone is never published)',
+          'neither', f"email {'yes' if b.get('email') else 'no'}, phone {'yes' if b.get('phone') else 'no'}",
+          b.get('email') is None and b.get('phone') is None)
 
     # ---- pairings
     status(C, 'RA-21', 'A guest cannot list pairings', 'guest', 'GET', '/matches', None, 401)
@@ -1025,7 +1038,8 @@ def report_editing():
         # Somewhere no seeded report is near: an Active report is compared
         # again after an edit, and a pairing would freeze it for the photo
         # checks below. This section is about edits persisting, not matching.
-        'location_label': 'Behind the public market', 'city': 'Basco', 'province': 'Batanes',
+        'location_label': 'Behind the public market',
+        'province_code': '0200900000', 'city_code': '0200901000',   # Basco, Batanes
         'lat': 20.4487, 'lng': 121.9702,
         'allow_platform_contact': False, 'show_phone': True, 'show_email': True,
     })
@@ -1043,7 +1057,10 @@ def report_editing():
         ('ED-06', 'Label, city and province persist',
          'CONCAT_WS("|", l.label, l.city, l.province)', 'Behind the public market|Basco|Batanes'),
         ('ED-07', 'The map pin persists exactly', 'CONCAT(l.latitude, ",", l.longitude)', '20.448700,121.970200'),
-        ('ED-08', 'Contact choices persist', 'CONCAT(r.allow_platform_contact, r.show_phone, r.show_email)', '011'),
+        # show_phone stays 0 whatever is sent: a phone is never published.
+        ('ED-08', 'Contact choices persist (show_phone ignored)',
+         'CONCAT(r.allow_platform_contact, r.show_phone, r.show_email)', '001'),
+        ('ED-08b', 'The place is stored by its PSGC code', 'l.city_code', '0200901000'),
     ]:
         got = col(expr)
         check(C, tid, desc, want, got, got == want)
@@ -1057,7 +1074,7 @@ def report_editing():
     status(C, 'ED-12', 'An invalid collar answer is refused', 'customer', 'PUT', path, {'has_collar': 'maybe'}, 422)
     status(C, 'ED-13', 'A future date is refused', 'customer', 'PUT', path, {'incident_date': '2099-01-01'}, 422)
     status(C, 'ED-14', "A lost pet's name cannot be emptied", 'customer', 'PUT', path, {'pet_name': '  '}, 422)
-    status(C, 'ED-15', 'A city cannot be emptied', 'customer', 'PUT', path, {'city': ''}, 422)
+    status(C, 'ED-15', 'A city cannot be emptied', 'customer', 'PUT', path, {'city_code': ''}, 422)
 
     # ---- photographs
     def upload(role, rid_, n):
@@ -1158,7 +1175,7 @@ def final_integrity():
         ('FI-01', 'pet_name', '', "A lost pet's name"), ('FI-02', 'species', '', 'Species'),
         ('FI-03', 'size', '', 'Size'), ('FI-04', 'primary_color', '', 'Main colour'),
         ('FI-05', 'incident_date', '', 'Date'), ('FI-06', 'location_label', '', 'Where it happened'),
-        ('FI-07', 'city', '', 'City'), ('FI-08', 'province', '', 'Province'),
+        ('FI-07', 'city_code', '', 'City'), ('FI-08', 'province_code', '', 'Province'),
         ('FI-09', 'description', '', 'Description'), ('FI-10', 'sex', None, 'Sex (B4)'),
     ]:
         _, code = file_report('customer', **{field: value})
@@ -1172,7 +1189,7 @@ def final_integrity():
 
     limits = {'pet_name': 40, 'breed': 60, 'primary_color': 30, 'secondary_color': 30,
               'distinct_features': 300, 'description': 1000, 'location_label': 120,
-              'city': 60, 'province': 60, 'condition': 300}
+              'condition': 300}
     over = {f: file_report('customer', **{f: 'x' * (n + 1)})[1] for f, n in limits.items()}
     check(C, 'FI-14', 'Every text field over its limit is a 422, never a 500', 'all 422',
           ','.join(f'{f}={c}' for f, c in over.items() if c != 422) or 'all 422',
@@ -1188,14 +1205,15 @@ def final_integrity():
     status(C, 'FI-18', 'An edit cannot leave neither breed nor feature', 'customer', 'PUT', path,
            {'breed': '', 'distinct_features': ''}, 422)
     status(C, 'FI-19', 'An edit to "Other" must name the animal', 'customer', 'PUT', path, {'species': 'other'}, 422)
-    status(C, 'FI-20', 'An edit over a length limit is a 422', 'customer', 'PUT', path, {'city': 'x' * 61}, 422)
+    status(C, 'FI-20', 'An edit over a length limit is a 422', 'customer', 'PUT', path,
+           {'location_label': 'x' * 121}, 422)
 
     # ---- B5: a phone that does not exist is not a way to be reached
     liza = sql("SELECT user_id FROM users WHERE email = 'liza.ocampo@example.com';")
     phone = sql(f'SELECT contact_number FROM users WHERE user_id = {liza};')
     sql(f'UPDATE users SET contact_number = NULL WHERE user_id = {liza};')
     _, code = file_report('customer2', allow_platform_contact=False, show_phone=True)
-    check(C, 'FI-21', '"Show phone" with no phone on the account is refused', 422, code, code == 422)
+    check(C, 'FI-21', '"Show phone" is not a way to be reached (never published)', 422, code, code == 422)
     _, code = file_report('customer2', allow_platform_contact=True, show_phone=False)
     check(C, 'FI-22', '...another way to be reached still works', 200, code, code == 200)
     sql(f"UPDATE users SET contact_number = '{phone}' WHERE user_id = {liza};")
@@ -1496,7 +1514,7 @@ def edit_while_matched():
     # EM-01: an Active report with no open match can be edited.
     alone, _ = file_report('customer', city='Audit Alone City', **dog)
     status(C, 'EM-01', 'An Active report with no open match can be edited', 'customer', 'PUT',
-           f'/reports/{alone}', {'description': 'Edited while nothing is open.'}, 200)
+           f'/reports/{alone}', {'description': 'Edited while nothing is open, with enough words to count.'}, 200)
 
     # The reported bug: a dog/Shih Tzu pair, then the found report edited into a turtle.
     city = 'Audit Freeze City'
@@ -1569,7 +1587,7 @@ def edit_while_matched():
     decided = sql("SELECT GROUP_CONCAT(CONCAT(match_id,':',match_status,':',match_score) ORDER BY match_id) FROM match_claims "
                   "WHERE match_status IN ('confirmed','rejected');")
     status(C, 'EM-17', 'An unrelated Active report is edited', 'customer', 'PUT', f'/reports/{alone}',
-           {'description': 'Edited again.'}, 200)
+           {'description': 'Edited again, with enough words to count.'}, 200)
     after_decided = sql("SELECT GROUP_CONCAT(CONCAT(match_id,':',match_status,':',match_score) ORDER BY match_id) FROM match_claims "
                         "WHERE match_status IN ('confirmed','rejected');")
     check(C, 'EM-18', '...and no confirmed or rejected pairing changes', 'unchanged',
@@ -1629,7 +1647,7 @@ def reopen_decisions():
             sql(f'SELECT match_score FROM match_claims WHERE match_id = {m};'))
     check(C, 'RO-11', 'The stored comparison is untouched', (signals_before, score_before), same,
           same == (signals_before, score_before))
-    code, _ = session('finder').call('PUT', f'/reports/{found}', {'description': 'Edited while reopened.'})
+    code, _ = session('finder').call('PUT', f'/reports/{found}', {'description': 'Edited while reopened, with enough words to count.'})
     check(C, 'RO-12', 'The reports are frozen again while it is open', 409, code, code == 409)
 
     status(C, 'RO-13', 'It can then be confirmed as usual', 'staff', 'PATCH', f'/matches/{m}', {'action': 'confirm'}, 200)

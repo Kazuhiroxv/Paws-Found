@@ -123,7 +123,7 @@ const TOPICS = [
     faqs: [
       {
         q: 'Is my phone number or email shown?',
-        a: 'Only if you choose to share it, report by report. Otherwise the report says you prefer to be reached through a Pet Coordinator, who can see how to contact you when checking a possible match. There is no messaging between members.',
+        a: 'Your phone number never is — not on a report, a card or the map. A Pet Coordinator can see it when checking a possible match. Your email address is shown only if you choose to share it, report by report, and only to signed-in members. Otherwise the report says you prefer to be reached through a Pet Coordinator. There is no messaging between members.',
       },
       {
         q: 'Does the map show where I live?',

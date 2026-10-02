@@ -13,7 +13,7 @@ import { FilterPanel } from '@/components/FilterPanel'
 import { RadarOrnament } from '@/components/Ornament'
 import { ActiveFilters } from '@/components/ActiveFilters'
 import { useAsync } from '@/hooks/useAsync'
-import { categoryService, petService } from '@/services'
+import { categoryService, petService, referenceService } from '@/services'
 
 /** Every filter, empty. Also the shape used to detect "nothing is filtered". */
 const EMPTY_FILTERS = {
@@ -22,6 +22,10 @@ const EMPTY_FILTERS = {
   species: '',
   size: '',
   color: '',
+  // The place lists (Correction 3), by PSGC code.
+  provinceCode: '',
+  cityCode: '',
+  // A city named in a link (?city=Makati); there is no box for it any more.
   city: '',
   status: '',
   dateFrom: '',
@@ -39,6 +43,8 @@ const PAGE_SIZE = 9
 const MAP_RESULT_LIMIT = 50
 
 const loadActiveCategories = () => categoryService.getActiveCategories()
+const loadColours = () => referenceService.getColours()
+const loadProvinces = () => referenceService.getProvinces()
 
 /**
  * The search placeholder, sized to the field. Below 640px (`sm`) the input sits
@@ -144,6 +150,25 @@ export function ExplorePage({ role }) {
     label: category.label,
   }))
 
+  // The colour and place lists come from the database, like the report form's.
+  const { data: colours } = useAsync(loadColours)
+  const { data: provinces } = useAsync(loadProvinces)
+  const loadCities = useCallback(
+    () => referenceService.getCities(filters.provinceCode),
+    [filters.provinceCode],
+  )
+  const { data: cities } = useAsync(loadCities)
+  const listOptions = {
+    colourOptions: (colours ?? []).map((colour) => ({ value: colour.name, label: colour.name })),
+    provinceOptions: (provinces ?? []).map((province) => ({ value: province.code, label: province.name })),
+    cityOptions: (cities ?? []).map((city) => ({ value: city.code, label: city.name })),
+  }
+  // What the place chips say: a name, never a code.
+  const placeNames = {
+    provinceCode: provinces?.find((province) => province.code === filters.provinceCode)?.name,
+    cityCode: cities?.find((city) => city.code === filters.cityCode)?.name,
+  }
+
   const activeFilterCount = useMemo(
     () => Object.values(filters).filter((value) => value !== '').length,
     [filters],
@@ -151,7 +176,12 @@ export function ExplorePage({ role }) {
   const hasActiveFilters = activeFilterCount > 0
 
   const changeFilter = (field, value) => {
-    setFilters((current) => ({ ...current, [field]: value }))
+    // A city belongs to one province, so a new (or no) province clears it.
+    setFilters((current) =>
+      field === 'provinceCode'
+        ? { ...current, provinceCode: value, cityCode: '' }
+        : { ...current, [field]: value },
+    )
     setPage(1) // A new filter means a new result set: start again.
   }
 
@@ -295,6 +325,7 @@ export function ExplorePage({ role }) {
             onClear={clearFilters}
             hasActiveFilters={hasActiveFilters}
             speciesOptions={speciesOptions}
+            {...listOptions}
           />
         </aside>
 
@@ -377,7 +408,11 @@ export function ExplorePage({ role }) {
             </div>
           </div>
 
-          <ActiveFilters filters={filters} onRemove={(field) => changeFilter(field, '')} />
+          <ActiveFilters
+            filters={filters}
+            names={placeNames}
+            onRemove={(field) => changeFilter(field, '')}
+          />
 
           {isLoading && (
             <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true">
@@ -519,6 +554,7 @@ export function ExplorePage({ role }) {
           onClear={clearFilters}
           hasActiveFilters={hasActiveFilters}
           speciesOptions={speciesOptions}
+          {...listOptions}
         />
       </Modal>
     </Container>

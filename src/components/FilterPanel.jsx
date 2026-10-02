@@ -45,6 +45,11 @@ const ANY = ''
  * @param {boolean} props.hasActiveFilters
  * @param {{value: string, label: string}[]} props.speciesOptions  From
  *   `categoryService` — administrators manage the list.
+ * @param {{value: string, label: string}[]} props.colourOptions  The colour
+ *   list, from `referenceService`, the same one the report form uses.
+ * @param {{value: string, label: string}[]} props.provinceOptions
+ * @param {{value: string, label: string}[]} props.cityOptions  The cities of
+ *   the chosen province; empty until one is chosen.
  */
 export function FilterPanel({
   filters,
@@ -52,6 +57,9 @@ export function FilterPanel({
   onClear,
   hasActiveFilters,
   speciesOptions = [],
+  colourOptions = [],
+  provinceOptions = [],
+  cityOptions = [],
 }) {
   const setCount = (...fields) => fields.filter((field) => filters[field]).length
 
@@ -149,20 +157,35 @@ export function FilterPanel({
           onChange={(event) => onChange('size', event.target.value)}
           options={[{ value: ANY, label: 'Any size' }, ...optionsFromLabels(PET_SIZE_LABELS)]}
         />
-        <Input
+        <Select
           label="Colour"
           value={filters.color}
           onChange={(event) => onChange('color', event.target.value)}
-          placeholder="e.g. brown"
+          options={[{ value: ANY, label: 'Any colour' }, ...colourOptions]}
+          hint="Either colour of the pet."
         />
       </FilterGroup>
 
-      <FilterGroup icon={MapPin} title="Place" activeCount={setCount('city')}>
-        <Input
-          label="City"
-          value={filters.city}
-          onChange={(event) => onChange('city', event.target.value)}
-          placeholder="e.g. Makati"
+      <FilterGroup
+        icon={MapPin}
+        title="Place"
+        activeCount={setCount('provinceCode', 'cityCode', 'city')}
+      >
+        <Select
+          label="Province"
+          value={filters.provinceCode}
+          onChange={(event) => onChange('provinceCode', event.target.value)}
+          options={[{ value: ANY, label: 'Any province' }, ...provinceOptions]}
+        />
+        <Select
+          label="City or municipality"
+          value={filters.cityCode}
+          onChange={(event) => onChange('cityCode', event.target.value)}
+          disabled={!filters.provinceCode}
+          options={[
+            { value: ANY, label: filters.provinceCode ? 'Any in this province' : 'Choose a province first' },
+            ...cityOptions,
+          ]}
         />
       </FilterGroup>
 

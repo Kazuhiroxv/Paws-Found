@@ -30,13 +30,13 @@ curl.exe -s https://paws-found-production.up.railway.app/api/health
 Expected at the time of writing (2 October): on branch
 **`post-defense/revisions`**, local commits ahead of `portfolio/team/current`
 = **`2947a43`** (what production runs) — the §4 checkpoint, Correction 1, the
-instructor-feedback documents and Correction 2; see §4a. None is pushed or
-deployed. Health `{"status":"ok","database":"ok"}`. Untracked:
+instructor-feedback documents, Correction 2 and Correction 3; see §4a. None is
+pushed or deployed. Health `{"status":"ok","database":"ok"}`. Untracked:
 `docs/dbeaver-defense-queries.pdf`.
 
-**The local database has migration `008` applied** (first and last name). The
-production database does not, and must get it immediately before Correction 2
-is pushed — see §4a.
+**The local database has migrations `008` and `009` applied** (first and last
+name; the report reference data). The production database has neither, and
+must get both, in order, immediately before the code is pushed — see §4a.
 
 ---
 
@@ -50,7 +50,7 @@ is pushed — see §4a.
 | Team repository | remote **`origin`** → `Arkemic/paws-and-found`. **Its push URL is disabled on purpose** (`DISABLED-do-not-push-to-team-repo`). Do not re-enable it. |
 | Last deployed commit | **`2947a43`** "docs: reopening a decision; counts to 689" (bundle `assets/index-C9niofAT.js`) |
 | Local stack | XAMPP at `C:\xampp`: Apache + PHP 8.3, **MariaDB 10.4 on port 3307** (not 3306), database `pawsandfound`. Vite dev server on `:5173`. |
-| Stack | React 19 + Vite 8 + Tailwind 4 + React Router 7 + Leaflet; PHP REST API in `api/`; MySQL schema `database/schema.sql` (17 tables, 24 FKs) |
+| Stack | React 19 + Vite 8 + Tailwind 4 + React Router 7 + Leaflet; PHP REST API in `api/`; MySQL schema `database/schema.sql` (20 tables, 26 FKs) |
 
 ---
 
@@ -172,8 +172,39 @@ an XL size, presentation flow, and a date filter that exists but was not found).
 | --- | --- | --- |
 | 1 | API should connect to the database | **Done** — audit plus cleanup, see below |
 | 2 | Identity, password, form feedback, responsive follow-up | **Done** — see below |
-| 10 | Breed / colour / city / province: suggested values | **Recorded, not started** — see below |
-| others | | Not started — the register in `docs/feedback/` is the list |
+| 3 | Report data quality, PH places, contact safety, report-form quality | **Done** — see below |
+| 10 | Breed / colour / city / province: suggested values | **Done in Correction 3** |
+| others | | Not started — the register in `docs/feedback/` is the list (Reset: awaiting clarification) |
+
+**Correction 3.** Province and city are chosen from PSA's PSGC (84 / 1,642,
+in `ph_provinces` / `ph_cities`), the city list depending on the province;
+`locations.city_code` records which place, and the names the report shows are
+written by the server. Breed is chosen from the species' listed breeds
+(`pet_breeds.is_listed`; a typed breed is kept, never suggested), colour from
+`pet_colours` (17). All lists come through `/api/reference`. Size gains
+Extra Large (XL). A lost pet's name needs 2 letters or digits; a description
+30 characters, counted live. Time is Hour / Minutes / AM or PM on screen,
+24-hour in the API. The map is the Philippines and refuses a pin outside it.
+A phone number is never published (the API ignores `show_phone`); coordinators
+still see it. Photo rules are stated and counted. Matching weights and the
+four demonstration scores are unchanged. Field-by-field before/after:
+`docs/feedback/correction-3-field-audit.md`; reasons: `docs/DECISIONS.md`;
+the place data's provenance and **what is still unverified**:
+`database/reference/README.md`.
+
+**Deploying Corrections 2 and 3 — the database goes first, both migrations,
+in the same sitting.** New code reads `ph_cities` and `pet_colours` and writes
+`city_code`, which do not exist before 009; and 009 assumes 008. Use the
+official MySQL client with `--default-character-set=utf8mb4`:
+
+1. back up the Railway database (`docs/PRODUCTION_RUNBOOK.md`)
+2. preview 008 (query at the top of `008_split_user_names.sql`), run 008
+3. preview 009 (queries at the top of `009_report_reference_data.sql`), run 009
+4. push; check `/api/health`; run `npm run verify:deploy <url>`
+
+Both were tested from the `2947a43` schema and seed on MySQL 9.4 (strict) and
+on MariaDB, run twice, and compared with a fresh install: identical structure
+and reference data. Never run either against Railway without Kyle.
 
 **Correction 2.** First and last name replace full name: migration `008` adds
 `first_name` and `last_name`, backfills them (particles stay with the surname:
@@ -281,21 +312,27 @@ C:\xampp\mysql\bin\mysql.exe -uroot -P3307 -h127.0.0.1 --default-character-set=u
 ```bash
 npm run lint
 npm run build
-npm run test:contract                                         # 36
+npm run test:contract                                         # 45
 C:\xampp\php\php.exe scripts/identity_rules.php              # 41
-PAWS_PW=<seeded password> npm run audit                       # 382  (reseeds, restores)
+C:\xampp\php\php.exe scripts/report_rules.php                # 50
+C:\xampp\php\php.exe scripts/match_scores.php                # 11
+python scripts/report_controls.py                             # 53  (reseeds)
+python scripts/psgc_reference.py check                        # place data and SQL in step
+PAWS_PW=<seeded password> npm run audit                       # 384  (reseeds, restores)
 PAWS_PW=<seeded password> python scripts/auth_lifecycle.py    # 106
 PAWS_PW=<seeded password> npm run multi-device                # 73
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:ui       # 66
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:signout  # 24
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:feedback # 49
+PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:report-ui # 45
 PAWS_BASE=http://localhost:5173 npm run a11y                      # 31 pages
 C:\xampp\php\php.exe scripts/city_fallback.php                # 11
 C:\xampp\php\php.exe scripts/calendar_today.php               # 8
 C:\xampp\php\php.exe scripts/matching_log.php                 # 6
 ```
 
-**802 checks in total** on `post-defense/revisions` (689 in production).
+**972 checks in total, in fifteen suites** on `post-defense/revisions` (802
+in eleven after Correction 2; 689 in production).
 Reseed after the browser suites; they change data.
 
 After `npm run build`, also run `npm run check:bundle`: it fails if any of the
@@ -359,12 +396,16 @@ Rolling back and operating the live site: [PRODUCTION_RUNBOOK.md](PRODUCTION_RUN
 
 ## 10. Still open
 
-- **Section 4, Corrections 1 and 2 are committed locally, not deployed.**
-  Shipping them is Kyle's call, and Correction 2 needs migration `008` on
+- **Section 4 and Corrections 1–3 are committed locally, not deployed.**
+  Shipping them is Kyle's call, and they need migrations `008` then `009` on
   Railway first (§4a).
-- **The ERD figure still shows `full_name`.** Redrawing is deliberately left
-  for the final ERD pass, after the remaining schema corrections, so it is
-  drawn once.
+- **The ERD figure still shows `full_name` and lacks the three 009 tables.**
+  `docs/erd-defense.md` describes them in text; the figure is redrawn once, in
+  the final ERD pass.
+- **The PSGC file is not yet compared with PSA's own download**, and newer
+  quarterly publications could not be reached — `database/reference/README.md`.
+- **Contact number (register N1) — meaning to confirm with Ma'am.** Built as
+  "never published"; the transcript may mean a number should be collected.
 - **Instructor corrections in progress** — see §4a.
 - **An intermittent sign-out race** — see §4a. Not fixed.
 - **The printed defense packet** from the morning of 30 September says 590

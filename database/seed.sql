@@ -35,13 +35,6 @@ DELETE FROM pet_reports;
 DELETE FROM locations;
 DELETE FROM users;
 
--- Breeds present in the demo data but not seeded by schema.sql.
--- INSERT IGNORE so this file stays re-runnable: schema.sql owns the first
--- twelve breeds and this seed does not delete them.
-INSERT IGNORE INTO pet_breeds (breed_id, category_id, breed_name) VALUES
-  (13, 1, 'Beagle'),
-  (14, 1, 'German Shepherd');
-
 -- 10 accounts: 7 community members, 2 coordinators, 1 administrator.
 INSERT INTO users (user_id, first_name, last_name, email, password_hash, contact_number, role, account_status, preferred_location, created_at, email_verified_at) VALUES
   (1, 'Maria', 'Santos', 'maria.santos@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0101', 'user', 'active', 'Makati City, Metro Manila', '2026-03-14 02:11:00', '2026-03-14 02:11:00'),
@@ -70,39 +63,39 @@ INSERT INTO privacy_consents (user_id, notice_version, consented_at) VALUES
   (10, '2026-09-23', '2026-01-05 00:30:00');
 
 -- One location per report. Coordinates are barangay-level (approximate).
-INSERT INTO locations (location_id, label, city, province, latitude, longitude, `precision`) VALUES
-  (1,'Near Poblacion Public Market, Barangay Poblacion', 'Makati City', 'Metro Manila', 14.5654, 121.0296, 'approximate'),
-  (2,'Service road near Jupiter Street, Barangay Bel-Air', 'Makati City', 'Metro Manila', 14.5606, 121.0261, 'approximate'),
-  (3,'Along Holy Spirit Drive, Barangay Holy Spirit', 'Quezon City', 'Metro Manila', 14.6829, 121.0736, 'approximate'),
-  (4,'Near IBP Road, Barangay Batasan Hills', 'Quezon City', 'Metro Manila', 14.6893, 121.0925, 'approximate'),
-  (5,'Near Guadalupe Elementary School, Barangay Guadalupe', 'Cebu City', 'Cebu', 10.3067, 123.8797, 'approximate'),
-  (6,'Near Talomo Public Market, Barangay Talomo', 'Davao City', 'Davao del Sur', 7.0631, 125.5486, 'approximate'),
-  (7,'Along Bautista Street, Barangay San Antonio', 'Makati City', 'Metro Manila', 14.5637, 121.0125, 'approximate'),
-  (10,'Along Estrella Street, Barangay San Antonio', 'Makati City', 'Metro Manila', 14.5661, 121.0161, 'approximate'),
-  (8,'Near the subdivision gate, Barangay Novaliches Proper', 'Quezon City', 'Metro Manila', 14.7167, 121.0333, 'approximate'),
-  (11,'Near Maginhawa Street, Barangay Teachers Village East', 'Quezon City', 'Metro Manila', 14.6478, 121.0631, 'approximate'),
-  (12,'Near Kalayaan Avenue, Barangay Sikatuna Village', 'Quezon City', 'Metro Manila', 14.6402, 121.0587, 'approximate'),
-  (13,'Near Sanciangko Street, Barangay Kalubihan', 'Cebu City', 'Cebu', 10.2965, 123.8938, 'approximate'),
-  (14,'Near Burgos Street, Barangay Villamonte', 'Bacolod City', 'Negros Occidental', 10.6714, 122.9531, 'approximate'),
-  (15,'Near Iznart Street, Barangay Sampaguita', 'Iloilo City', 'Iloilo', 10.6969, 122.5644, 'approximate'),
-  (16,'Near Session Road, Barangay Kayang-Hilltop', 'Baguio City', 'Benguet', 16.4119, 120.5931, 'approximate'),
-  (17,'Near Limketkai Drive, Barangay Nazareth', 'Cagayan de Oro', 'Misamis Oriental', 8.4822, 124.6472, 'approximate'),
-  (18,'Near McKinley Parkway, Barangay Fort Bonifacio', 'Taguig City', 'Metro Manila', 14.5486, 121.0509, 'approximate'),
-  (19,'Near Rizal Avenue, Barangay Maningning', 'Puerto Princesa', 'Palawan', 9.7392, 118.7353, 'approximate'),
-  (20,'Near Boni Avenue, Barangay Plainview', 'Mandaluyong City', 'Metro Manila', 14.5776, 121.0327, 'approximate'),
-  (21,'Near Quimpo Boulevard, Barangay Matina Crossing', 'Davao City', 'Davao del Sur', 7.0665, 125.5932, 'approximate'),
-  (22,'Near Fields Avenue, Barangay Balibago', 'Angeles City', 'Pampanga', 15.1694, 120.5906, 'approximate'),
-  (23,'Near Sumulong Highway, Barangay Mayamot', 'Antipolo City', 'Rizal', 14.6116, 121.1355, 'approximate'),
-  (24,'Near Governor Camins Avenue, Barangay Camino Nuevo', 'Zamboanga City', 'Zamboanga del Sur', 6.9128, 122.0761, 'approximate'),
-  (9,'Barangay 659, Sampaloc', 'Manila', 'Metro Manila', 14.6091, 120.9938, 'approximate'),
-  (25,'Near Quimpo Boulevard, Barangay Matina Crossing', 'Davao City', 'Davao del Sur', 7.0658, 125.5981, 'approximate'),
-  (26,'Near Ecoland Drive, Barangay Talomo', 'Davao City', 'Davao del Sur', 7.0731, 125.5872, 'approximate'),
-  (27,'Near Diversion Road, Barangay San Rafael', 'Iloilo City', 'Iloilo', 10.7202, 122.5621, 'approximate'),
-  (28,'Near Leonard Wood Road, Barangay Lualhati', 'Baguio City', 'Benguet', 16.4118, 120.6039, 'approximate'),
-  (29,'Near Lacson Street, Barangay Mandalagan', 'Bacolod City', 'Negros Occidental', 10.6785, 122.9553, 'approximate'),
-  (30,'Near Kalayaan Avenue, Barangay Diliman', 'Quezon City', 'Metro Manila', 14.6488, 121.0509, 'approximate'),
-  (31,'Near Salinas Drive, Barangay Lahug', 'Cebu City', 'Cebu', 10.3324, 123.8987, 'approximate'),
-  (32,'Near General Luna Avenue, Barangay Ususan', 'Taguig City', 'Metro Manila', 14.5241, 121.0703, 'approximate');
+INSERT INTO locations (location_id, label, city, province, city_code, latitude, longitude, `precision`) VALUES
+  (1,'Near Poblacion Public Market, Barangay Poblacion', 'Makati City', 'Metro Manila', '1380300000', 14.5654, 121.0296, 'approximate'),
+  (2,'Service road near Jupiter Street, Barangay Bel-Air', 'Makati City', 'Metro Manila', '1380300000', 14.5606, 121.0261, 'approximate'),
+  (3,'Along Holy Spirit Drive, Barangay Holy Spirit', 'Quezon City', 'Metro Manila', '1381300000', 14.6829, 121.0736, 'approximate'),
+  (4,'Near IBP Road, Barangay Batasan Hills', 'Quezon City', 'Metro Manila', '1381300000', 14.6893, 121.0925, 'approximate'),
+  (5,'Near Guadalupe Elementary School, Barangay Guadalupe', 'Cebu City', 'Cebu', '0730600000', 10.3067, 123.8797, 'approximate'),
+  (6,'Near Talomo Public Market, Barangay Talomo', 'Davao City', 'Davao del Sur', '1130700000', 7.0631, 125.5486, 'approximate'),
+  (7,'Along Bautista Street, Barangay San Antonio', 'Makati City', 'Metro Manila', '1380300000', 14.5637, 121.0125, 'approximate'),
+  (10,'Along Estrella Street, Barangay San Antonio', 'Makati City', 'Metro Manila', '1380300000', 14.5661, 121.0161, 'approximate'),
+  (8,'Near the subdivision gate, Barangay Novaliches Proper', 'Quezon City', 'Metro Manila', '1381300000', 14.7167, 121.0333, 'approximate'),
+  (11,'Near Maginhawa Street, Barangay Teachers Village East', 'Quezon City', 'Metro Manila', '1381300000', 14.6478, 121.0631, 'approximate'),
+  (12,'Near Kalayaan Avenue, Barangay Sikatuna Village', 'Quezon City', 'Metro Manila', '1381300000', 14.6402, 121.0587, 'approximate'),
+  (13,'Near Sanciangko Street, Barangay Kalubihan', 'Cebu City', 'Cebu', '0730600000', 10.2965, 123.8938, 'approximate'),
+  (14,'Near Burgos Street, Barangay Villamonte', 'Bacolod City', 'Negros Occidental', '1830200000', 10.6714, 122.9531, 'approximate'),
+  (15,'Near Iznart Street, Barangay Sampaguita', 'Iloilo City', 'Iloilo', '0631000000', 10.6969, 122.5644, 'approximate'),
+  (16,'Near Session Road, Barangay Kayang-Hilltop', 'Baguio City', 'Benguet', '1430300000', 16.4119, 120.5931, 'approximate'),
+  (17,'Near Limketkai Drive, Barangay Nazareth', 'Cagayan de Oro', 'Misamis Oriental', '1030500000', 8.4822, 124.6472, 'approximate'),
+  (18,'Near McKinley Parkway, Barangay Fort Bonifacio', 'Taguig City', 'Metro Manila', '1381500000', 14.5486, 121.0509, 'approximate'),
+  (19,'Near Rizal Avenue, Barangay Maningning', 'Puerto Princesa', 'Palawan', '1731500000', 9.7392, 118.7353, 'approximate'),
+  (20,'Near Boni Avenue, Barangay Plainview', 'Mandaluyong City', 'Metro Manila', '1380500000', 14.5776, 121.0327, 'approximate'),
+  (21,'Near Quimpo Boulevard, Barangay Matina Crossing', 'Davao City', 'Davao del Sur', '1130700000', 7.0665, 125.5932, 'approximate'),
+  (22,'Near Fields Avenue, Barangay Balibago', 'Angeles City', 'Pampanga', '0330100000', 15.1694, 120.5906, 'approximate'),
+  (23,'Near Sumulong Highway, Barangay Mayamot', 'Antipolo City', 'Rizal', '0405802000', 14.6116, 121.1355, 'approximate'),
+  (24,'Near Governor Camins Avenue, Barangay Camino Nuevo', 'Zamboanga City', 'Zamboanga del Sur', '0931700000', 6.9128, 122.0761, 'approximate'),
+  (9,'Barangay 659, Sampaloc', 'Manila', 'Metro Manila', '1380600000', 14.6091, 120.9938, 'approximate'),
+  (25,'Near Quimpo Boulevard, Barangay Matina Crossing', 'Davao City', 'Davao del Sur', '1130700000', 7.0658, 125.5981, 'approximate'),
+  (26,'Near Ecoland Drive, Barangay Talomo', 'Davao City', 'Davao del Sur', '1130700000', 7.0731, 125.5872, 'approximate'),
+  (27,'Near Diversion Road, Barangay San Rafael', 'Iloilo City', 'Iloilo', '0631000000', 10.7202, 122.5621, 'approximate'),
+  (28,'Near Leonard Wood Road, Barangay Lualhati', 'Baguio City', 'Benguet', '1430300000', 16.4118, 120.6039, 'approximate'),
+  (29,'Near Lacson Street, Barangay Mandalagan', 'Bacolod City', 'Negros Occidental', '1830200000', 10.6785, 122.9553, 'approximate'),
+  (30,'Near Kalayaan Avenue, Barangay Diliman', 'Quezon City', 'Metro Manila', '1381300000', 14.6488, 121.0509, 'approximate'),
+  (31,'Near Salinas Drive, Barangay Lahug', 'Cebu City', 'Cebu', '0730600000', 10.3324, 123.8987, 'approximate'),
+  (32,'Near General Luna Avenue, Barangay Ususan', 'Taguig City', 'Metro Manila', '1381500000', 14.5241, 121.0703, 'approximate');
 
 -- 24 reports across both types, five species, four statuses and many regions.
 INSERT INTO pet_reports (report_id, user_id, category_id, breed_id, location_id, report_type, status, pet_name, pet_size, pet_sex, primary_color, secondary_color, distinct_features, description, has_collar, pet_condition, incident_date, incident_time, allow_platform_contact, show_phone, show_email, created_at, updated_at) VALUES
@@ -114,7 +107,7 @@ INSERT INTO pet_reports (report_id, user_id, category_id, breed_id, location_id,
   (6, 5, 3, 11, 6, 'found', 'active', NULL, 'small', 'unknown', 'Green', 'Peach', 'Green body with a peach-coloured face. Has a small metal leg band.', 'This lovebird flew into our laundry area and did not leave. It is clearly used to people and steps onto a finger. We placed it in a spare cage. The leg band suggests it belongs to a breeder or a hobbyist.', 'unknown', 'Healthy and active. Eating seeds normally. Kept in a spare cage indoors.', '2026-06-22', '15:20:00', TRUE, FALSE, TRUE, '2026-06-22 08:14:00', '2026-06-22 08:14:00'),
   (7, 3, 2, 8, 7, 'lost', 'returned', 'Mochi', 'medium', 'female', 'White', 'Cream', 'Flat face, very long white coat, blue collar with a small silver tag.', 'Mochi was missing for five days after the door was left open during a delivery. She was found two streets away and returned by a neighbour who saw the report here.', 'unknown', NULL, '2026-05-20', '11:45:00', TRUE, FALSE, FALSE, '2026-05-20 04:50:00', '2026-05-25 07:30:00'),
   (10, 1, 2, 8, 10, 'found', 'returned', NULL, 'medium', 'female', 'White', 'Cream', 'Very long white coat, flat face, blue collar with a silver tag.', 'Found a long-haired white cat hiding under a parked van on our street. She was matted and hungry. We kept her indoors while looking for the owner.', 'unknown', 'Matted coat and hungry, otherwise healthy. Given food and water.', '2026-05-24', '09:20:00', TRUE, FALSE, FALSE, '2026-05-24 01:35:00', '2026-05-25 07:30:00'),
-  (8, 2, 1, 13, 8, 'lost', 'closed', 'Coco', 'medium', 'female', 'Tricolor', 'White', 'Classic beagle tricolour, white tip on the tail, floppy ears.', 'Coco went missing near the subdivision gate. The family has since moved provinces and asked for the report to be closed.', 'unknown', NULL, '2026-04-12', '07:10:00', FALSE, FALSE, FALSE, '2026-04-12 01:40:00', '2026-05-16 09:00:00'),
+  (8, 2, 1, 13, 8, 'lost', 'closed', 'Coco', 'medium', 'female', 'Tricolour', 'White', 'Classic beagle tricolour, white tip on the tail, floppy ears.', 'Coco went missing near the subdivision gate. The family has since moved provinces and asked for the report to be closed.', 'unknown', NULL, '2026-04-12', '07:10:00', FALSE, FALSE, FALSE, '2026-04-12 01:40:00', '2026-05-16 09:00:00'),
   (11, 2, 1, 3, 11, 'lost', 'active', 'Nala', 'large', 'female', 'Cream', 'White', 'Pale cream coat, faint scar above the right eye, blue collar with a bone-shaped tag.', 'Nala pushed through a gap in the fence during a thunderstorm. She is gentle with children but panics at loud noises and will keep running.', 'unknown', NULL, '2026-08-03', '20:15:00', TRUE, TRUE, FALSE, '2026-08-03 13:40:00', '2026-08-03 13:40:00'),
   (12, 6, 1, 3, 12, 'found', 'active', NULL, 'large', 'female', 'Cream', 'White', 'Light-coloured big dog, small scar near one eye, blue collar, no tag.', 'A large pale dog followed my kids home from the store and would not leave. Very friendly, clearly someone''s pet. She is in our garage where it is dry.', 'unknown', 'Wet and tired but unhurt. Ate a full meal and slept.', '2026-08-12', '07:50:00', TRUE, FALSE, FALSE, '2026-08-12 00:12:00', '2026-08-12 00:12:00'),
   (13, 4, 2, 7, 13, 'lost', 'active', 'Ming', 'small', 'male', 'White', 'Grey', 'White with grey patches over both ears, one eye is pale blue.', 'Ming is barely a year old and has never been outside on his own. He was last seen on the roof of the neighbour''s extension.', 'unknown', NULL, '2026-07-05', '05:30:00', TRUE, FALSE, FALSE, '2026-07-05 02:10:00', '2026-07-05 02:10:00'),

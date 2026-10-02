@@ -40,8 +40,10 @@ function foundValues(overrides = {}) {
     incidentDate: '2026-09-20',
     incidentTime: '14:30',
     locationLabel: 'Near the covered court',
-    city: 'Pasay City',
+    provinceCode: '1300000000',
     province: 'Metro Manila',
+    cityCode: '1381100000',
+    city: 'Pasay City',
     condition: 'Healthy',
     ...overrides,
   }
@@ -64,9 +66,12 @@ function reportFromApi(hasCollar) {
     incidentTime: '14:30',
     condition: 'Healthy',
     hasCollar,
-    location: { label: 'Near the covered court', city: 'Pasay City', province: 'Metro Manila', lat: null, lng: null },
+    location: {
+      label: 'Near the covered court', city: 'Pasay City', province: 'Metro Manila',
+      cityCode: '1381100000', provinceCode: '1300000000', lat: null, lng: null,
+    },
     photos: [],
-    contactPreferences: { allowPlatformContact: true, showPhone: false, showEmail: false },
+    contactPreferences: { allowPlatformContact: true, showEmail: false },
   }
 }
 
@@ -129,7 +134,6 @@ function modelShape(row) {
     contactPreferences: {
       allowPlatformContact:
         row.contact_preferences?.allow_platform_contact ?? row.reporter?.accepts_messages ?? true,
-      showPhone: row.contact_preferences?.show_phone ?? Boolean(row.reporter?.phone),
       showEmail: row.contact_preferences?.show_email ?? Boolean(row.reporter?.email),
     },
   }
@@ -207,7 +211,7 @@ test('every other enum field is passed through untouched', () => {
   const cases = [
     ['species', ['dog', 'cat', 'bird', 'rabbit', 'other']],
     ['sex', ['male', 'female', 'unknown']],
-    ['size', ['small', 'medium', 'large']],
+    ['size', ['small', 'medium', 'large', 'xl']],
   ]
 
   for (const [field, allowed] of cases) {
@@ -228,27 +232,36 @@ test('the report type decides the pet name, and says so consistently', () => {
 
 
 // ============================ the contact preference, which is not the value
-test('the phone preference survives an edit when the account has no number', () => {
-  // The defect this replaces: showPhone used to be inferred from whether a
-  // phone came back. The number is optional, so an account without one made a
-  // stored 1 look like false, and an untouched edit saved it that way.
+test('no phone preference exists to send or to reopen (Correction 3)', () => {
+  // A phone number is never published, so the form has no such choice: it is
+  // not in a blank form, not read back from a report, and not sent. The server
+  // ignores show_phone anyway; this keeps the browser from offering it back.
+  assert.equal('showPhone' in createEmptyValues('lost'), false)
   for (const showPhone of [true, false]) {
-    for (const phoneOnAccount of [true, false]) {
-      const reopened = valuesFromReport(modelShape(apiRow({ showPhone, phoneOnAccount })))
-      assert.equal(
-        reopened.showPhone,
-        showPhone,
-        `stored ${showPhone} with ${phoneOnAccount ? 'a' : 'no'} number opened as ${reopened.showPhone}`,
-      )
-
-      const resaved = toReportInput(reopened, '1')
-      assert.equal(
-        resaved.contactPreferences.showPhone,
-        showPhone,
-        `an untouched edit changed it to ${resaved.contactPreferences.showPhone}`,
-      )
-    }
+    const reopened = valuesFromReport(modelShape(apiRow({ showPhone, phoneOnAccount: true })))
+    assert.equal('showPhone' in reopened, false, 'reopened values carry showPhone')
+    assert.equal('showPhone' in toReportInput(reopened, '1').contactPreferences, false, 'showPhone was sent')
   }
+})
+
+test('the place is sent by PSGC code and survives an edit untouched (Correction 3)', () => {
+  const input = toReportInput(foundValues(), '1')
+  assert.equal(input.location.provinceCode, '1300000000')
+  assert.equal(input.location.cityCode, '1381100000')
+
+  const reopened = valuesFromReport(reportFromApi('yes'))
+  assert.equal(reopened.provinceCode, '1300000000')
+  assert.equal(reopened.cityCode, '1381100000')
+  const resaved = toReportInput(reopened, '1')
+  assert.deepEqual([resaved.location.provinceCode, resaved.location.cityCode], ['1300000000', '1381100000'])
+})
+
+test('a report filed before the place lists reopens with the place to be chosen', () => {
+  // No codes: its typed names are not offered as if they were list choices.
+  const legacy = reportFromApi('yes')
+  legacy.location = { label: 'x', city: 'Makati City', province: 'Metro Manila', lat: null, lng: null }
+  const reopened = valuesFromReport(legacy)
+  assert.deepEqual([reopened.provinceCode, reopened.cityCode, reopened.city], ['', '', ''])
 })
 
 test('the email preference is read the same way, not inferred either', () => {

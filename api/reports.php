@@ -157,7 +157,7 @@ function report_create(): never
     }
 
     // Every rule the form has, checked again here (report_validated()).
-    $v = report_validated($body, $type, reporter_phone((int) $user['user_id']), !empty($body['show_phone']));
+    $v = report_validated($body, $type);
 
     $pdo = db();
 
@@ -167,13 +167,14 @@ function report_create(): never
 
     try {
         $location = $pdo->prepare(
-            'INSERT INTO locations (label, city, province, latitude, longitude, `precision`)
-             VALUES (:label, :city, :province, :lat, :lng, :precision)'
+            'INSERT INTO locations (label, city, province, city_code, latitude, longitude, `precision`)
+             VALUES (:label, :city, :province, :city_code, :lat, :lng, :precision)'
         );
         $location->execute([
             ':label' => $v['label'],
             ':city' => $v['city'],
             ':province' => $v['province'],
+            ':city_code' => $v['city_code'],
             ':lat' => $v['latitude'],
             ':lng' => $v['longitude'],
             // The reporter pins an area, never a doorstep (CLAUDE.md §14).
@@ -260,11 +261,13 @@ function report_update(int $id): never
                 r.has_collar, r.pet_condition AS `condition`,
                 r.incident_date, r.incident_time,
                 l.label AS location_label, l.city, l.province,
+                l.city_code, pc.province_code,
                 l.latitude AS lat, l.longitude AS lng,
                 r.allow_platform_contact, r.show_phone, r.show_email
            FROM pet_reports r
            JOIN pet_categories c ON c.category_id = r.category_id
            JOIN locations l      ON l.location_id = r.location_id
+      LEFT JOIN ph_cities pc     ON pc.city_code  = l.city_code
       LEFT JOIN pet_breeds b     ON b.breed_id    = r.breed_id
           WHERE r.report_id = :id"
     );
@@ -275,11 +278,16 @@ function report_update(int $id): never
 
     // Every field the edit form offers, and nothing else: anything else in the
     // body is ignored. Absent means "leave it as it is".
+    //
+    // The place is chosen by code; the city and province names are written
+    // from ph_cities, never taken from the request. show_phone is not here:
+    // a phone number is never published (Correction 3), so there is nothing
+    // to edit.
     $editable = [
         'pet_name', 'species', 'breed', 'size', 'sex', 'primary_color', 'secondary_color',
         'distinct_features', 'description', 'has_collar', 'condition',
-        'incident_date', 'incident_time', 'location_label', 'city', 'province', 'lat', 'lng',
-        'allow_platform_contact', 'show_phone', 'show_email',
+        'incident_date', 'incident_time', 'location_label', 'province_code', 'city_code',
+        'lat', 'lng', 'allow_platform_contact', 'show_email',
     ];
     $sent = array_values(array_filter($editable, fn ($key) => array_key_exists($key, $body)));
     if ($sent === []) {
@@ -296,13 +304,11 @@ function report_update(int $id): never
         $merged['breed'] = null;
     }
 
-    // The same rules as filing, applied to the report as it would be.
-    $v = report_validated(
-        $merged,
-        $current['report_type'],
-        reporter_phone((int) $user['user_id']),
-        in_array('show_phone', $sent, true) && !empty($body['show_phone'])
-    );
+    // The same rules as filing, applied to the report as it would be. The
+    // chosen-from-a-list fields are checked when this edit sends them: a
+    // report filed before the lists existed keeps its typed colour or place
+    // through an edit that does not touch them.
+    $v = report_validated($merged, $current['report_type'], $sent);
 
     // Only the columns this request changes are written.
     $report = [];
@@ -313,8 +319,7 @@ function report_update(int $id): never
         'distinct_features' => 'distinct_features', 'description' => 'description',
         'has_collar' => 'has_collar', 'condition' => 'pet_condition',
         'incident_date' => 'incident_date', 'incident_time' => 'incident_time',
-        'allow_platform_contact' => 'allow_platform_contact',
-        'show_phone' => 'show_phone', 'show_email' => 'show_email',
+        'allow_platform_contact' => 'allow_platform_contact', 'show_email' => 'show_email',
     ];
     foreach ($columns as $key => $column) {
         if (in_array($key, $sent, true)) {
@@ -325,9 +330,14 @@ function report_update(int $id): never
         $report['category_id'] = $v['category_id'];
         $report['breed_id'] = breed_id_for($v['category_id'], $v['breed']);
     }
-    foreach (['location_label' => 'label', 'city' => 'city', 'province' => 'province',
-              'lat' => 'latitude', 'lng' => 'longitude'] as $key => $column) {
+    foreach (['location_label' => 'label', 'lat' => 'latitude', 'lng' => 'longitude'] as $key => $column) {
         if (in_array($key, $sent, true)) {
+            $location[$column] = $v[$column];
+        }
+    }
+    // A new place is the code and both names, together.
+    if (in_array('province_code', $sent, true) || in_array('city_code', $sent, true)) {
+        foreach (['city_code', 'city', 'province'] as $column) {
             $location[$column] = $v[$column];
         }
     }
@@ -1028,6 +1038,38 @@ function report_open_for_owner(int $id, array $user, string $notOwner): array
  * 422 naming the field instead of strict MySQL refusing a too-long value and
  * the caller seeing a generic 500.
  */
+/** Sizes a report may give. 'xl' added by migration 009 (Correction 3). */
+const REPORT_SIZES = ['small', 'medium', 'large', 'xl'];
+
+/** A lost pet's name needs at least this many letters or digits ("Bo", "R2"). */
+const PET_NAME_MIN_CHARACTERS = 2;
+
+/** A description shorter than this, spaces in a row counted once, is refused. */
+const DESCRIPTION_MIN_CHARACTERS = 30;
+
+/**
+ * The Philippines, as a box a map pin must fall inside. South to Saluag in
+ * Tawi-Tawi (4.6°), north past Y'Ami in Batanes (21.1°), east past Pusan Point
+ * (126.6°), and west to 114° so Kalayaan — a municipality of Palawan, in the
+ * place list — is inside. Mirrored as PH_BOUNDS in src/components/mapSetup.js.
+ */
+const PH_BOUNDS = ['south' => 4.2, 'west' => 114.0, 'north' => 21.4, 'east' => 127.0];
+
+/**
+ * Parts of that box that are another country's land, cut out of it as
+ * [south, west, north, east]: Sabah's north and west coast (Kota Kinabalu,
+ * Kudat, Banggi), Sabah's east coast (Sandakan, Lahad Datu, Semporna), and
+ * Miangas, Indonesia. Each edge was checked against the nearest Philippine
+ * land — Mangsee (7.5°N), the Turtle Islands (6.0°N), Sitangkai (119.4°E),
+ * Balut (125.4°E) — so no Philippine island is cut off. Still a sketch, not a
+ * coastline: a pin on the open sea is accepted.
+ */
+const PH_EXCLUDED = [
+    [4.2, 114.0, 7.4, 117.6],
+    [4.2, 117.6, 5.95, 119.0],
+    [4.2, 126.0, 5.7, 127.0],
+];
+
 const REPORT_LIMITS = [
     'pet_name' => 40,
     'breed' => 60,
@@ -1036,8 +1078,6 @@ const REPORT_LIMITS = [
     'distinct_features' => 300,
     'description' => 1000,
     'location_label' => 120,
-    'city' => 60,
-    'province' => 60,
     'condition' => 300,
 ];
 
@@ -1046,26 +1086,22 @@ const REPORT_LIMITS = [
  * editing alike, so the two can never drift and the browser can be bypassed
  * without the database ever seeing an incomplete report.
  *
- * `$v` is the report as it WOULD be: the whole request when filing; on an edit,
- * the stored report with the request's changes laid over it. That is what lets
- * a rule about a pair of fields (a breed OR a distinctive feature; "Other"
- * naming its animal) hold whichever one an edit touches.
- *
- * Returns the values cleaned up, or answers 422 with every field that failed,
- * worded as the form words it.
+ * Refuses with a 422 naming every field that failed; returns the values ready
+ * for the database otherwise. The messages are the form's own, so a refusal
+ * is worded as the form words it.
  *
  * @param array  $v      Report fields, keyed by their API names.
  * @param string $type   'lost' or 'found'.
- * @param string|null $phone  The reporter's phone number, if they have one.
- * @param bool $phoneAsked  Whether this request itself asks to show the phone.
- *   A report filed before this rule may say "show phone" with no number; that
- *   stale setting must not block an unrelated edit, so only asking for it
- *   now is refused. It never counts as a way to be reached either way.
+ * @param array|null $sent  On an edit, the fields the request sends. The
+ *   fields chosen from a list (colours, place) are checked only when sent, so
+ *   a report filed before the lists existed can still be edited elsewhere.
+ *   Null when filing: everything is checked.
  */
-function report_validated(array $v, string $type, ?string $phone, bool $phoneAsked): array
+function report_validated(array $v, string $type, ?array $sent = null): array
 {
     $errors = [];
     $text = fn (string $key) => trim((string) ($v[$key] ?? ''));
+    $checking = fn (string $key) => $sent === null || in_array($key, $sent, true);
 
     foreach (REPORT_LIMITS as $key => $max) {
         if (mb_strlen($text($key)) > $max) {
@@ -1073,10 +1109,12 @@ function report_validated(array $v, string $type, ?string $phone, bool $phoneAsk
         }
     }
 
-    $petName = $text('pet_name');
-    // A found report never requires a name: the finder does not know it.
-    if ($type === 'lost' && $petName === '') {
-        $errors['pet_name'] = "Enter your pet's name, so people know what to call out.";
+    // Required for a lost report; a found report never requires one, because
+    // the finder does not know it. Checked whenever one is given.
+    $petName = meaningful_text($text('pet_name'));
+    $nameProblem = pet_name_problem($petName, $type === 'lost');
+    if ($nameProblem !== null) {
+        $errors['pet_name'] = $nameProblem;
     }
 
     $speciesCode = $text('species');
@@ -1085,14 +1123,14 @@ function report_validated(array $v, string $type, ?string $phone, bool $phoneAsk
         $errors['species'] = 'Choose the kind of animal.';
     }
 
-    $breed = $text('breed');
+    $breed = meaningful_text($text('breed'));
     // "Other" names no animal, so the breed field names it instead.
     if ($speciesCode === 'other' && $breed === '') {
         $errors['breed'] = 'Tell us what kind of animal this is.';
     }
 
     $size = blank_to_null($v['size'] ?? null);
-    if (!in_array($size, ['small', 'medium', 'large'], true)) {
+    if (!in_array($size, REPORT_SIZES, true)) {
         $errors['size'] = 'Choose a size.';
     }
 
@@ -1101,8 +1139,21 @@ function report_validated(array $v, string $type, ?string $phone, bool $phoneAsk
         $errors['sex'] = 'Choose Male, Female, or Unknown.';
     }
 
-    if ($text('primary_color') === '') {
-        $errors['primary_color'] = 'Enter the main colour — it is one of the first things people notice.';
+    // Colours come from pet_colours. The stored value is the listed name,
+    // whatever case or code the request used.
+    $primary = $text('primary_color');
+    $secondary = $text('secondary_color');
+    if ($checking('primary_color')) {
+        if ($primary === '') {
+            $errors['primary_color'] = 'Choose the main colour — it is one of the first things people notice.';
+        } elseif (($primary = colour_name_for($primary)) === null) {
+            $errors['primary_color'] = 'Choose the main colour from the list. If it is not there, choose Other and describe it.';
+        }
+    }
+    if ($checking('secondary_color') && $secondary !== '') {
+        if (($secondary = colour_name_for($secondary)) === null) {
+            $errors['secondary_color'] = 'Choose the other colour from the list, or leave it empty.';
+        }
     }
 
     // Colour alone matches hundreds of animals.
@@ -1124,6 +1175,8 @@ function report_validated(array $v, string $type, ?string $phone, bool $phoneAsk
         $errors['incident_date'] = 'The date cannot be in the future.';
     }
 
+    // Stored as a 24-hour TIME. The form shows it with AM and PM and converts;
+    // the API takes the 24-hour value, which is unambiguous.
     $time = $text('incident_time');
     if ($time !== '' && preg_match('/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/', $time) !== 1) {
         $errors['incident_time'] = 'Enter a time such as 07:30.';
@@ -1132,37 +1185,46 @@ function report_validated(array $v, string $type, ?string $phone, bool $phoneAsk
     if ($text('location_label') === '') {
         $errors['location_label'] = 'Describe the area.';
     }
-    if ($text('city') === '') {
-        $errors['city'] = 'Enter the city or municipality.';
-    }
-    if ($text('province') === '') {
-        $errors['province'] = 'Enter the province.';
-    }
-    if ($text('description') === '') {
-        $errors['description'] = 'Add a short description — behaviour, temperament, anything that helps.';
+
+    // The place, chosen from ph_provinces and ph_cities by code. The names
+    // stored with the report are written from the reference rows, never taken
+    // from the request.
+    $place = ['city_code' => null, 'city' => $text('city'), 'province' => $text('province')];
+    if ($checking('province_code') || $checking('city_code')) {
+        $found = place_for($text('province_code'), $text('city_code'));
+        if (is_string($found['error'] ?? null)) {
+            $errors[$found['field']] = $found['error'];
+        } else {
+            $place = $found;
+        }
+    } else {
+        $place['city_code'] = blank_to_null($v['city_code'] ?? null);
     }
 
-    // A pin is both coordinates or neither, and on the planet.
+    $descriptionProblem = description_problem($text('description'));
+    if ($descriptionProblem !== null) {
+        $errors['description'] = $descriptionProblem;
+    }
+
+    // A pin is both coordinates or neither, and inside the Philippines.
     $lat = $v['lat'] ?? null;
     $lng = $v['lng'] ?? null;
     $hasLat = $lat !== null && $lat !== '';
     $hasLng = $lng !== null && $lng !== '';
     if ($hasLat !== $hasLng
-        || ($hasLat && (!is_numeric($lat) || abs((float) $lat) > 90))
-        || ($hasLng && (!is_numeric($lng) || abs((float) $lng) > 180))) {
+        || ($hasLat && !is_numeric($lat))
+        || ($hasLng && !is_numeric($lng))) {
         $errors['lat'] = 'That map pin is not a valid position.';
+    } elseif ($hasLat && !inside_philippines((float) $lat, (float) $lng)) {
+        $errors['lat'] = 'Place the pin inside the Philippines, or remove it.';
     }
 
-    // At least one way to be reached that actually works. A coordinator can
-    // always be reached; a phone number only counts if the reporter has one.
+    // At least one way to be reached. A phone number is never published
+    // (Correction 3), so it is not one of them: a coordinator, who can see the
+    // account's number, or the email address.
     $platform = !empty($v['allow_platform_contact']);
-    $showPhone = !empty($v['show_phone']);
     $showEmail = !empty($v['show_email']);
-    $hasPhone = trim((string) $phone) !== '';
-    if ($phoneAsked && $showPhone && !$hasPhone) {
-        $errors['show_phone'] = 'Add a phone number in your profile to use this option.';
-    }
-    if (!$platform && !($showPhone && $hasPhone) && !$showEmail) {
+    if (!$platform && !$showEmail) {
         $errors['contact'] = 'Choose at least one way people or Pet Coordinators can reach you.';
     }
 
@@ -1176,8 +1238,8 @@ function report_validated(array $v, string $type, ?string $phone, bool $phoneAsk
         'pet_name' => $petName === '' ? null : $petName,
         'pet_size' => $size,
         'pet_sex' => $sex,
-        'primary_color' => $text('primary_color'),
-        'secondary_color' => $text('secondary_color') === '' ? null : $text('secondary_color'),
+        'primary_color' => $primary,
+        'secondary_color' => $secondary === '' ? null : $secondary,
         'distinct_features' => $text('distinct_features') === '' ? null : $text('distinct_features'),
         'description' => $text('description'),
         'has_collar' => $collar ?? 'unknown',
@@ -1185,24 +1247,127 @@ function report_validated(array $v, string $type, ?string $phone, bool $phoneAsk
         'incident_date' => $date,
         'incident_time' => $time === '' ? null : $time,
         'label' => $text('location_label'),
-        'city' => $text('city'),
-        'province' => $text('province'),
+        'city_code' => $place['city_code'],
+        'city' => $place['city'],
+        'province' => $place['province'],
         'latitude' => $hasLat ? (float) $lat : null,
         'longitude' => $hasLng ? (float) $lng : null,
         'allow_platform_contact' => $platform ? 1 : 0,
-        'show_phone' => $showPhone ? 1 : 0,
+        'show_phone' => 0,
         'show_email' => $showEmail ? 1 : 0,
     ];
 }
 
-/** The reporter's phone number, or null. It decides whether "show phone" can work. */
-function reporter_phone(int $userId): ?string
+/** Trimmed, with every run of spaces, tabs or line breaks counted as one space. */
+function meaningful_text(string $raw): string
 {
-    $statement = db()->prepare('SELECT contact_number FROM users WHERE user_id = :id');
-    $statement->execute([':id' => $userId]);
-    $phone = $statement->fetchColumn();
+    return trim(preg_replace('/\s+/u', ' ', $raw) ?? '');
+}
 
-    return $phone === false ? null : $phone;
+/**
+ * What is wrong with a pet's name, or null.
+ *
+ * At least two letters or digits ("Bo", "CJ", "R2"), and nothing but letters,
+ * digits, spaces, apostrophes, periods and hyphens ("Mi-Mi", "Mr. Bean").
+ * Mirrored in src/components/report-form/reportFormModel.js; both copies are
+ * held to scripts/report-rules-cases.json.
+ */
+function pet_name_problem(string $name, bool $required): ?string
+{
+    if ($name === '') {
+        return $required ? "Enter your pet's name, so people know what to call out." : null;
+    }
+    if (preg_match("/^[\p{L}\p{M}\p{N} '\x{2019}.\-]+$/u", $name) !== 1) {
+        return 'Use letters, numbers, spaces, apostrophes, periods and hyphens only.';
+    }
+    if (preg_match_all('/[\p{L}\p{N}]/u', $name) < PET_NAME_MIN_CHARACTERS) {
+        return 'Enter a name with at least 2 letters or numbers.';
+    }
+
+    return null;
+}
+
+/** What is wrong with a description, or null. Spaces in a row count once. */
+function description_problem(string $raw): ?string
+{
+    $length = mb_strlen(meaningful_text($raw));
+    if ($length === 0) {
+        return 'Add a short description — behaviour, temperament, anything that helps.';
+    }
+    if ($length < DESCRIPTION_MIN_CHARACTERS) {
+        return 'Write at least ' . DESCRIPTION_MIN_CHARACTERS . " characters (you have {$length}): "
+            . 'what happened, and how the pet behaves around strangers.';
+    }
+
+    return null;
+}
+
+/** The listed name of a colour, given its code or its name in any case; or null. */
+function colour_name_for(string $value): ?string
+{
+    $statement = db()->prepare(
+        'SELECT colour_name FROM pet_colours WHERE colour_code = :code OR colour_name = :name'
+    );
+    $statement->execute([':code' => $value, ':name' => $value]);
+    $name = $statement->fetchColumn();
+
+    return $name === false ? null : $name;
+}
+
+/**
+ * A city or municipality and its province, by PSGC code.
+ *
+ * Returns the code and both names, or ['field' => ..., 'error' => ...]. The
+ * city must belong to the province: the form clears the city when the
+ * province changes, and a request that pairs them wrongly is refused rather
+ * than corrected, because either half could be the mistake.
+ */
+function place_for(string $provinceCode, string $cityCode): array
+{
+    if ($provinceCode === '') {
+        return ['field' => 'province_code', 'error' => 'Choose the province.'];
+    }
+    if ($cityCode === '') {
+        return ['field' => 'city_code', 'error' => 'Choose the city or municipality.'];
+    }
+
+    $statement = db()->prepare(
+        'SELECT c.city_code, c.city_name, p.province_code, p.province_name
+           FROM ph_cities c
+           JOIN ph_provinces p ON p.province_code = c.province_code
+          WHERE c.city_code = :city'
+    );
+    $statement->execute([':city' => $cityCode]);
+    $row = $statement->fetch();
+
+    if (!$row) {
+        return ['field' => 'city_code', 'error' => 'Choose a city or municipality from the list.'];
+    }
+    if ($row['province_code'] !== $provinceCode) {
+        return ['field' => 'city_code', 'error' => 'That city or municipality is not in the province you chose.'];
+    }
+
+    return [
+        'city_code' => $row['city_code'],
+        'city' => $row['city_name'],
+        'province' => $row['province_name'],
+    ];
+}
+
+/** Whether a point is inside PH_BOUNDS and outside every PH_EXCLUDED box. */
+function inside_philippines(float $lat, float $lng): bool
+{
+    if ($lat < PH_BOUNDS['south'] || $lat > PH_BOUNDS['north']
+        || $lng < PH_BOUNDS['west'] || $lng > PH_BOUNDS['east']) {
+        return false;
+    }
+    foreach (PH_EXCLUDED as [$south, $west, $north, $east]) {
+        if ($lat >= $south && $lat <= $north && $lng >= $west && $lng <= $east) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 function find_report_or_404(int $id): array
@@ -1320,7 +1485,7 @@ function reports_list(): never
         $params[':species'] = $species;
     }
 
-    $size = require_one_of(query_string_param('size'), ['small', 'medium', 'large'], 'size');
+    $size = require_one_of(query_string_param('size'), REPORT_SIZES, 'size');
     if ($size !== null) {
         $where[] = 'r.pet_size = :size';
         $params[':size'] = $size;
@@ -1331,13 +1496,36 @@ function reports_list(): never
         $params[':city'] = '%' . $city . '%';
     }
 
+    // The place lists on Explore (Correction 3): by PSGC code, so "City of
+    // Makati" and a report that says "Makati City" are the same place.
+    if (($provinceCode = query_string_param('province_code')) !== null) {
+        $where[] = 'pc.province_code = :province_code';
+        $params[':province_code'] = $provinceCode;
+    }
+
+    if (($cityCode = query_string_param('city_code')) !== null) {
+        $where[] = 'l.city_code = :city_code';
+        $params[':city_code'] = $cityCode;
+    }
+
     if (($colour = query_string_param('colour')) !== null) {
+        // A listed colour is matched exactly: "Tan" must not find "Tangerine".
+        // Anything else keeps the old substring search, for colours typed
+        // before the list existed.
+        //
         // Each placeholder is used exactly once. With native prepared
         // statements (PDO::ATTR_EMULATE_PREPARES => false) MySQL rejects a
         // named placeholder that appears twice — "Invalid parameter number".
-        $where[] = '(r.primary_color LIKE :colour1 OR r.secondary_color LIKE :colour2)';
-        $params[':colour1'] = '%' . $colour . '%';
-        $params[':colour2'] = '%' . $colour . '%';
+        $listed = colour_name_for($colour);
+        if ($listed !== null) {
+            $where[] = '(r.primary_color = :colour1 OR r.secondary_color = :colour2)';
+            $params[':colour1'] = $listed;
+            $params[':colour2'] = $listed;
+        } else {
+            $where[] = '(r.primary_color LIKE :colour1 OR r.secondary_color LIKE :colour2)';
+            $params[':colour1'] = '%' . $colour . '%';
+            $params[':colour2'] = '%' . $colour . '%';
+        }
     }
 
     // Someone's own reports, for the dashboard. Only your own: listing a
@@ -1406,6 +1594,7 @@ function reports_list(): never
     $from_sql = 'FROM pet_reports r
                  JOIN pet_categories c ON c.category_id = r.category_id
                  JOIN locations l      ON l.location_id = r.location_id
+                 LEFT JOIN ph_cities pc ON pc.city_code = l.city_code
                  LEFT JOIN pet_breeds b ON b.breed_id = r.breed_id';
 
     // Total first, so the frontend can render "Showing 9 of 24" and page links.
@@ -1420,6 +1609,7 @@ function reports_list(): never
                    c.category_code AS species, c.category_name AS species_label,
                    b.breed_name AS breed,
                    l.label AS location_label, l.city, l.province, l.latitude, l.longitude,
+                   l.city_code, pc.province_code,
                    (SELECT i.image_path FROM report_images i
                      WHERE i.report_id = r.report_id
                      ORDER BY i.is_primary_photo DESC, i.image_id ASC
@@ -1465,13 +1655,15 @@ function report_detail(int $id): never
         'SELECT r.*, c.category_code AS species, c.category_name AS species_label,
                 b.breed_name AS breed,
                 l.label AS location_label, l.city, l.province,
+                l.city_code, pc.province_code,
                 l.latitude, l.longitude, l.`precision` AS location_precision,
                 u.user_id AS reporter_id, u.full_name AS reporter_name,
-                u.email AS reporter_email, u.contact_number AS reporter_phone
+                u.email AS reporter_email
            FROM pet_reports r
            JOIN pet_categories c ON c.category_id = r.category_id
            JOIN locations l      ON l.location_id = r.location_id
            JOIN users u          ON u.user_id     = r.user_id
+      LEFT JOIN ph_cities pc     ON pc.city_code  = l.city_code
       LEFT JOIN pet_breeds b     ON b.breed_id    = r.breed_id
           WHERE r.report_id = :id'
     );
@@ -1524,12 +1716,17 @@ function report_detail(int $id): never
 
     // Contact details are private unless the reporter chose to publish them
     // (CLAUDE.md §14). The columns are filtered out here, on the server, so an
-    // unshared phone number never reaches the browser at all.
+    // unshared detail never reaches the browser at all.
+    //
+    // A phone number is never published, whatever show_phone says
+    // (Correction 3): the number is not even read by this query. `phone`
+    // stays in the payload, always null, so the shape does not change. A Pet
+    // Coordinator still sees the account's number where they handle the case.
     $report['reporter'] = [
         'user_id' => (int) $row['reporter_id'],
         'full_name' => $row['reporter_name'],
         'accepts_messages' => (bool) $row['allow_platform_contact'],
-        'phone' => $row['show_phone'] ? $row['reporter_phone'] : null,
+        'phone' => null,
         'email' => $row['show_email'] ? $row['reporter_email'] : null,
     ];
 
@@ -1582,7 +1779,8 @@ function report_detail(int $id): never
     if ($mayEdit) {
         $report['contact_preferences'] = [
             'allow_platform_contact' => (bool) $row['allow_platform_contact'],
-            'show_phone' => (bool) $row['show_phone'],
+            // Retired: always false, so no form can offer it back.
+            'show_phone' => false,
             'show_email' => (bool) $row['show_email'],
         ];
 
@@ -1668,6 +1866,10 @@ function shape_report_row(array $row): array
             'label' => $row['location_label'],
             'city' => $row['city'],
             'province' => $row['province'],
+            // The PSGC codes the form chose (migration 009). Null for a report
+            // filed before then whose place could not be identified.
+            'city_code' => $row['city_code'] ?? null,
+            'province_code' => $row['province_code'] ?? null,
             // Approximate for everybody. report_detail() puts the stored pin
             // back for the reporter and staff, who already know it.
             'lat' => public_coordinate($row['latitude']),

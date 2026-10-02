@@ -25,6 +25,55 @@ export const FALLBACK_CENTER = [12.8797, 121.774]
 export const FALLBACK_ZOOM = 5
 
 /**
+ * Where a pin may go: the Philippines as a box (Correction 3). South to
+ * Saluag, Tawi-Tawi (4.6°), north past Y'Ami, Batanes (21.1°), east past
+ * Pusan Point (126.6°), and west to 114° so Kalayaan, a municipality of
+ * Palawan, is inside. The same numbers as PH_BOUNDS in api/reports.php, which
+ * refuses a pin outside them whatever the browser does.
+ *
+ * A box, not a coastline: a click on the sea inside it is accepted. The
+ * written place and the chosen city are what a report is matched and found
+ * by; the pin only narrows it down.
+ */
+export const PH_BOUNDS = { south: 4.2, west: 114.0, north: 21.4, east: 127.0 }
+
+/**
+ * Another country's land inside that box, cut out as [south, west, north,
+ * east]: Sabah's north-west and east coasts, and Miangas (Indonesia). The
+ * same boxes as PH_EXCLUDED in api/reports.php, where the reasons are.
+ */
+export const PH_EXCLUDED = [
+  [4.2, 114.0, 7.4, 117.6],
+  [4.2, 117.6, 5.95, 119.0],
+  [4.2, 126.0, 5.7, 127.0],
+]
+
+/**
+ * What the report form's map shows before a pin is placed: Batanes to
+ * Tawi-Tawi and Palawan to eastern Mindanao, fitted to the map's size, so it
+ * is the whole country at 1280, 820 and 390 px alike.
+ */
+export const PH_VIEW = [
+  [4.5, 116.8],
+  [21.2, 126.7],
+]
+
+/** How far the map can be dragged: the box above, with a little room around it. */
+export const PH_MAX_BOUNDS = [
+  [PH_BOUNDS.south - 1.5, PH_BOUNDS.west - 1.5],
+  [PH_BOUNDS.north + 1.5, PH_BOUNDS.east + 1.5],
+]
+
+/** Whether a point is inside PH_BOUNDS and outside every PH_EXCLUDED box. */
+export function isInsidePhilippines(lat, lng) {
+  const inBox = (south, west, north, east) => lat >= south && lat <= north && lng >= west && lng <= east
+  return (
+    inBox(PH_BOUNDS.south, PH_BOUNDS.west, PH_BOUNDS.north, PH_BOUNDS.east) &&
+    !PH_EXCLUDED.some((box) => inBox(...box))
+  )
+}
+
+/**
  * How precise a single report's pin should look. Report coordinates are
  * barangay-level (CLAUDE.md §14), so the detail page draws this circle to make
  * "approximate area" visible rather than implying a doorstep.

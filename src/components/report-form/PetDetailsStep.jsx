@@ -1,7 +1,15 @@
+import { useCallback, useState } from 'react'
 import { Input, Select, Textarea } from '@/components/ui'
 import { PET_SEX_LABELS, PET_SIZE_LABELS, REPORT_TYPES } from '@/constants'
+import { referenceService } from '@/services'
+import { useAsync } from '@/hooks/useAsync'
 import { optionsFromLabels } from '@/utils/options'
 import { LIMITS, OTHER_SPECIES } from './reportFormModel'
+
+const loadColours = () => referenceService.getColours()
+
+/** The breed select's value for "it is not in the list — let me type it". */
+const TYPED_BREED = '__typed__'
 
 /**
  * Step 1 — what the animal looks like.
@@ -12,6 +20,12 @@ import { LIMITS, OTHER_SPECIES } from './reportFormModel'
  */
 export function PetDetailsStep({ values, errors, onChange, speciesOptions = [] }) {
   const isFound = values.reportType === REPORT_TYPES.FOUND
+
+  // Colours and breeds come from the database through the API (Correction 3),
+  // never from a list in this file.
+  const { data: colours } = useAsync(loadColours)
+  const colourOptions = (colours ?? []).map((colour) => ({ value: colour.name, label: colour.name }))
+  const saysOther = values.primaryColor === 'Other' || values.secondaryColor === 'Other'
 
   return (
     <div className="flex flex-col gap-8">
@@ -49,10 +63,10 @@ export function PetDetailsStep({ values, errors, onChange, speciesOptions = [] }
           value={values.species}
           onChange={(event) => {
             const next = event.target.value
-            // Switching into or out of "Other" changes what the next field
-            // means, so its value goes: "Turtle" is not a dog's breed, and a
-            // dog's breed is not an animal.
-            if ((values.species === OTHER_SPECIES) !== (next === OTHER_SPECIES)) onChange('breed', '')
+            // A breed belongs to one species, so changing the species clears
+            // it: "Shih Tzu" is not a cat's breed, "Turtle" is not a dog's,
+            // and the breed list itself changes with the species.
+            if (next !== values.species) onChange('breed', '')
             onChange('species', next)
           }}
           error={errors.species}
@@ -73,13 +87,12 @@ export function PetDetailsStep({ values, errors, onChange, speciesOptions = [] }
             error={errors.breed}
           />
         ) : (
-          <Input
-            label="Breed"
+          // Keyed by species, so "type it" does not carry over to the next one.
+          <BreedField
+            key={values.species}
+            species={values.species}
             value={values.breed}
-            onChange={(event) => onChange('breed', event.target.value)}
-            maxLength={LIMITS.breed}
-            placeholder="e.g. Shih Tzu, Aspin, Puspin"
-            hint="An honest guess is fine."
+            onChange={(breed) => onChange('breed', breed)}
           />
         )}
       </div>
@@ -116,24 +129,33 @@ export function PetDetailsStep({ values, errors, onChange, speciesOptions = [] }
       >
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <Input
+        <Select
           label="Main colour"
           required
           value={values.primaryColor}
           onChange={(event) => onChange('primaryColor', event.target.value)}
           error={errors.primaryColor}
-          maxLength={LIMITS.primaryColor}
-          placeholder="e.g. Brown"
+          placeholder="Choose one"
+          options={colourOptions}
         />
 
-        <Input
+        <Select
           label="Other colour"
           value={values.secondaryColor}
           onChange={(event) => onChange('secondaryColor', event.target.value)}
-          maxLength={LIMITS.secondaryColor}
-          placeholder="e.g. White"
+          options={[{ value: '', label: 'None' }, ...colourOptions]}
+          hint="Optional — a second colour, if there is one."
         />
       </div>
+
+      {/* "Other" is an honest answer, but it says nothing on its own, so the
+          form asks for the words. It never counts as two reports agreeing. */}
+      {saysOther && (
+        <p className="text-sm text-fg">
+          You chose Other: describe the colour in Distinctive features below, for example
+          "silver with black stripes".
+        </p>
+      )}
 
       <Textarea
         label="Distinctive features"
@@ -197,5 +219,54 @@ function FieldGroup({ title, hint, children }) {
       </div>
       {children}
     </fieldset>
+  )
+}
+
+/**
+ * Breed, chosen from the suggested breeds of the species (Correction 3).
+ *
+ * "Not sure" leaves it empty, which is what a finder usually has to say.
+ * "Mixed breed" is one of the listed breeds. A breed that is not listed can
+ * still be typed: it is kept on this report, but it is never added to the
+ * list anybody else sees (pet_breeds.is_listed).
+ */
+function BreedField({ species, value, onChange }) {
+  const loadBreeds = useCallback(() => referenceService.getBreeds(species), [species])
+  const { data: breeds } = useAsync(loadBreeds)
+  const listed = (breeds ?? []).map((breed) => breed.name)
+  // Typing is a mode the reporter chose, or the only way to show a breed
+  // that is not on the list (a report filed before the list existed).
+  const [isTyping, setIsTyping] = useState(false)
+  const showsTyped = isTyping || (Boolean(value) && breeds !== null && !listed.includes(value))
+
+  return (
+    <div className="flex flex-col gap-3">
+      <Select
+        label="Breed"
+        value={showsTyped ? TYPED_BREED : value}
+        onChange={(event) => {
+          const next = event.target.value
+          setIsTyping(next === TYPED_BREED)
+          onChange(next === TYPED_BREED ? '' : next)
+        }}
+        disabled={!species}
+        hint={species ? 'An honest guess is fine. Not sure? Leave it as it is.' : 'Choose the species first.'}
+        options={[
+          { value: '', label: 'Not sure' },
+          ...listed.map((name) => ({ value: name, label: name })),
+          { value: TYPED_BREED, label: 'Not in the list — type it' },
+        ]}
+      />
+      {showsTyped && (
+        <Input
+          label="Type the breed"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          maxLength={LIMITS.breed}
+          placeholder="e.g. Shiba Inu"
+          hint="Kept on this report only; it is not added to the list."
+        />
+      )}
+    </div>
   )
 }

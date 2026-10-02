@@ -185,17 +185,65 @@ def multipart(fields, files):
     return b''.join(out), f'multipart/form-data; boundary={boundary}'
 
 
+_PLACES = None
+
+
+def place_codes(city, province=None):
+    """(province_code, city_code) for a place named the way these cases always
+    named it, now that the API takes the place by PSGC code (Correction 3).
+
+    A real place is found by name, the way migration 009 finds one: "Iloilo
+    City" in Iloilo is the City of Iloilo. A made-up one ("Audit QA City")
+    is what the cases use to put a report where no other report is, so it
+    still gets a place of its own: a municipality chosen by a hash of the name
+    and province, so the same name always lands in the same place and two
+    different names almost never share one. Only municipalities, never the
+    cities the seeded reports are in.
+    """
+    global _PLACES
+    import re
+    import zlib
+    if _PLACES is None:
+        rows = sql('SELECT c.city_code, c.province_code, c.city_name, p.province_name, c.is_city '
+                   'FROM ph_cities c JOIN ph_provinces p ON p.province_code = c.province_code '
+                   'ORDER BY c.city_code;') or ''
+        _PLACES = [line.split('	') for line in rows.splitlines() if line.strip()]
+
+    def key(name):
+        name = re.sub(r'\s+', ' ', (name or '').strip().lower())
+        return re.sub(r' city$', '', re.sub(r'^city of ', '', name))
+
+    real = [r for r in _PLACES if key(r[2]) == key(city)
+            and (province is None or r[3].lower() == province.strip().lower())]
+    if len(real) == 1:
+        return real[0][1], real[0][0]
+    pool = [r for r in _PLACES if r[4] == '0']
+    pick = pool[zlib.crc32(f'{key(city)}|{(province or "").strip().lower()}'.encode()) % len(pool)]
+    return pick[1], pick[0]
+
+
 def file_report(role, **overrides):
     body = {
         'report_type': 'lost', 'species': 'dog', 'pet_name': 'Audit Dog',
         'breed': 'Aspin (Philippine Native Dog)', 'size': 'medium', 'sex': 'male',
         'primary_color': 'Brown', 'distinct_features': 'A notched left ear',
-        'incident_date': '2026-09-09', 'city': 'Pasay City', 'province': 'Metro Manila',
+        'incident_date': '2026-09-09',
+        # Pasay City, Metro Manila, by PSGC code: the place is chosen from a
+        # list now, and the server writes the names (Correction 3).
+        'province_code': '1300000000', 'city_code': '1381100000',
         # As the form sends them: a report must be reachable some way, and a
         # found report must answer the collar question (not sure is an answer).
         'allow_platform_contact': True, 'has_collar': 'unknown',
-        'location_label': 'Near the barangay hall', 'description': 'Filed by the automated audit.',
+        'location_label': 'Near the barangay hall',
+        # At least 30 characters since Correction 3.
+        'description': 'Filed by the automated audit, to check the API end to end.',
     }
+    # Cases written before the place lists name a city (and sometimes a
+    # province) in words; they become codes here, so each keeps its meaning.
+    if 'city' in overrides or 'province' in overrides:
+        province_code, city_code = place_codes(overrides.pop('city', 'Pasay City'),
+                                               overrides.pop('province', None))
+        body['province_code'], body['city_code'] = province_code, city_code
     body.update(overrides)
     code, payload = session(role).call('POST', '/reports', body)
     return payload.get('data', {}).get('report_id'), code

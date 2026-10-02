@@ -17,13 +17,21 @@ export const LIMITS = {
   distinctiveMarkings: 300,
   description: 1000,
   locationLabel: 120,
-  city: 60,
-  province: 60,
   condition: 300,
   photoAlt: 120,
 }
 
-/** Photo upload rules. Nothing is uploaded anywhere yet — see PhotosStep. */
+/** A lost pet's name needs at least this many letters or digits: "Bo", "R2". */
+export const PET_NAME_MIN = 2
+
+/** A description needs at least this many characters, spaces in a row counted once. */
+export const DESCRIPTION_MIN = 30
+
+/**
+ * Photo rules — the same numbers the server enforces (PHOTO_MAX_PER_REPORT,
+ * PHOTO_MAX_BYTES and PHOTO_TYPES in api/reports.php). There is no minimum:
+ * a finder may have had no chance to take one.
+ */
 export const PHOTO_RULES = {
   maxCount: 5,
   maxBytes: 5 * 1024 * 1024,
@@ -57,10 +65,17 @@ export function createEmptyValues(reportType) {
     distinctiveMarkings: '',
     description: '',
     incidentDate: '',
+    // 24-hour "HH:MM", what the API stores; the form shows it with AM/PM.
     incidentTime: '',
+    // True while an hour, minutes or AM/PM is chosen but not all three.
+    incidentTimeIncomplete: false,
     locationLabel: '',
-    city: '',
+    // Chosen from the PSGC lists by code; the names are kept beside them for
+    // the review step (Correction 3).
+    provinceCode: '',
     province: '',
+    cityCode: '',
+    city: '',
     // Optional map pin. Null until the reporter places one.
     lat: null,
     lng: null,
@@ -71,7 +86,6 @@ export function createEmptyValues(reportType) {
     hasCollar: '',
     photos: [],
     allowPlatformContact: true,
-    showPhone: false,
     showEmail: false,
   }
 }
@@ -98,21 +112,68 @@ export function valuesFromReport(report) {
     description: report.description,
     incidentDate: report.incidentDate,
     incidentTime: report.incidentTime,
+    incidentTimeIncomplete: false,
     locationLabel: report.location.label,
-    city: report.location.city,
-    province: report.location.province,
+    // A report filed before the place lists has no codes, so its place has
+    // to be chosen again before it can be saved.
+    provinceCode: report.location.provinceCode ?? '',
+    province: report.location.provinceCode ? report.location.province : '',
+    cityCode: report.location.cityCode ?? '',
+    city: report.location.cityCode ? report.location.city : '',
     lat: report.location.lat,
     lng: report.location.lng,
     condition: report.condition,
     hasCollar: report.hasCollar ?? 'unknown',
     photos: report.photos.map((photo) => ({ ...photo })),
     allowPlatformContact: report.contactPreferences.allowPlatformContact,
-    showPhone: report.contactPreferences.showPhone,
     showEmail: report.contactPreferences.showEmail,
   }
 }
 
 const required = (value) => !String(value ?? '').trim()
+
+/** Trimmed, with every run of spaces, tabs or line breaks counted as one space. */
+export function meaningfulText(value) {
+  return String(value ?? '').replace(/\s+/gu, ' ').trim()
+}
+
+/**
+ * What is wrong with a pet's name, or null.
+ *
+ * At least two letters or digits ("Bo", "CJ", "R2"), and nothing but letters,
+ * digits, spaces, apostrophes, periods and hyphens ("Mi-Mi", "Mr. Bean").
+ * The same rule as pet_name_problem() in api/reports.php; both are held to
+ * scripts/report-rules-cases.json.
+ *
+ * @param {string} value
+ * @param {boolean} isRequired  True for a lost report.
+ */
+export function petNameProblem(value, isRequired) {
+  const name = meaningfulText(value)
+  if (!name) return isRequired ? "Enter your pet's name, so people know what to call out." : null
+  if (!/^[\p{L}\p{M}\p{N} '\u2019.-]+$/u.test(name)) {
+    return 'Use letters, numbers, spaces, apostrophes, periods and hyphens only.'
+  }
+  if ((name.match(/[\p{L}\p{N}]/gu) ?? []).length < PET_NAME_MIN) {
+    return 'Enter a name with at least 2 letters or numbers.'
+  }
+  return null
+}
+
+/** How long a description is, the way the minimum counts it. */
+export function descriptionLength(value) {
+  return [...meaningfulText(value)].length
+}
+
+/** What is wrong with a description, or null. The same rule as the server's. */
+export function descriptionProblem(value) {
+  const length = descriptionLength(value)
+  if (length === 0) return 'Add a short description — behaviour, temperament, anything that helps.'
+  if (length < DESCRIPTION_MIN) {
+    return `Write at least ${DESCRIPTION_MIN} characters (you have ${length}): what happened, and how the pet behaves around strangers.`
+  }
+  return null
+}
 
 /** The species code for the catch-all category, and the collar answers. */
 export const OTHER_SPECIES = 'other'
@@ -134,9 +195,8 @@ export function validateStep(stepId, values) {
   const isFound = values.reportType === REPORT_TYPES.FOUND
 
   if (stepId === 'details') {
-    if (!isFound && required(values.petName)) {
-      errors.petName = "Enter your pet's name, so people know what to call out."
-    }
+    const nameProblem = petNameProblem(values.petName, !isFound)
+    if (!isFound && nameProblem) errors.petName = nameProblem
     if (required(values.species)) errors.species = 'Choose the kind of animal.'
     // "Other" names no animal, so the breed field becomes "Please specify
     // animal" and is required: the report has to say what it is about.
@@ -149,7 +209,7 @@ export function validateStep(stepId, values) {
     if (required(values.size)) errors.size = 'Choose a size.'
     if (!SEX_ANSWERS.includes(values.sex)) errors.sex = 'Choose Male, Female, or Unknown.'
     if (required(values.primaryColor)) {
-      errors.primaryColor = 'Enter the main colour — it is one of the first things people notice.'
+      errors.primaryColor = 'Choose the main colour — it is one of the first things people notice.'
     }
 
     // "At least one useful characteristic": colour alone matches hundreds of
@@ -175,21 +235,26 @@ export function validateStep(stepId, values) {
       }
     }
 
+    if (values.incidentTimeIncomplete) {
+      errors.incidentTime = 'Choose the hour, the minutes and AM or PM — or leave all three empty.'
+    }
+
     if (required(values.locationLabel)) {
       errors.locationLabel = isFound
         ? 'Describe where you found the pet.'
         : 'Describe where your pet was last seen.'
     }
-    if (required(values.city)) errors.city = 'Enter the city or municipality.'
-    // A report nobody can answer helps nobody. Any one way will do; which is
-    // the reporter's choice.
-    if (!values.allowPlatformContact && !values.showPhone && !values.showEmail) {
-      errors.contact = 'Choose at least one way people or Pet Coordinators can reach you.'
-    }
-    if (required(values.province)) errors.province = 'Enter the province.'
+    if (required(values.provinceCode)) errors.province = 'Choose the province.'
+    if (required(values.cityCode)) errors.city = 'Choose the city or municipality.'
 
-    if (required(values.description)) {
-      errors.description = 'Add a short description — behaviour, temperament, anything that helps.'
+    const problem = descriptionProblem(values.description)
+    if (problem) errors.description = problem
+
+    // A report nobody can answer helps nobody. Either way will do; which is
+    // the reporter's choice. A phone number is never shown on a report
+    // (Correction 3), so it is not one of them.
+    if (!values.allowPlatformContact && !values.showEmail) {
+      errors.contact = 'Choose at least one way people or Pet Coordinators can reach you.'
     }
   }
 
@@ -214,7 +279,7 @@ export function toReportInput(values, reporterId) {
 
   return {
     reportType: values.reportType,
-    petName: isFound ? null : values.petName.trim(),
+    petName: isFound ? null : meaningfulText(values.petName),
     species: values.species,
     breed: values.breed.trim(),
     sex: values.sex,
@@ -227,8 +292,10 @@ export function toReportInput(values, reporterId) {
     incidentTime: values.incidentTime,
     location: {
       label: values.locationLabel.trim(),
-      city: values.city.trim(),
-      province: values.province.trim(),
+      provinceCode: values.provinceCode,
+      cityCode: values.cityCode,
+      city: values.city,
+      province: values.province,
       lat: values.lat,
       lng: values.lng,
       // Always approximate: reporters are asked for an area, never an address.
@@ -252,7 +319,6 @@ export function toReportInput(values, reporterId) {
     reporterId,
     contactPreferences: {
       allowPlatformContact: values.allowPlatformContact,
-      showPhone: values.showPhone,
       showEmail: values.showEmail,
     },
   }

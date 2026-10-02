@@ -79,6 +79,9 @@ const seededBreeds = [
   ['cat', 'Puspin (Philippine Domestic Shorthair)'], ['cat', 'Persian'],
   ['cat', 'Siamese'], ['bird', 'Cockatiel'], ['bird', 'Lovebird'],
   ['rabbit', 'Holland Lop'],
+  // Appended by this seed before migration 009, and since then listed in
+  // schema.sql in these same positions, 13 and 14.
+  ['dog', 'Beagle'], ['dog', 'German Shepherd'],
 ]
 const breedId = new Map(seededBreeds.map(([sp, name], i) => [`${sp}|${name}`, i + 1]))
 
@@ -173,15 +176,39 @@ L.push(users.map((u, i) =>
 ).join(',\n') + ';')
 L.push('')
 
+// The PSGC code of each report's city (migration 009), found the way the
+// migration finds it for a database that already exists: the province by
+// name, then the city by name, either exactly or without "City of " in front
+// and " City" behind ("Makati City" -> "City of Makati"). The reference rows
+// are the ones schema.sql holds, read from database/reference/.
+const readCsv = (file) => {
+  const lines = fs.readFileSync(`${ROOT}/database/reference/${file}`, 'utf8')
+    .split(/\r?\n/).filter((line) => line && !line.startsWith('#'))
+  const header = lines.shift().split(',')
+  return lines.map((line) => Object.fromEntries(line.split(',').map((v, i) => [header[i], v])))
+}
+const provinceCode = new Map(readCsv('ph-provinces.csv').map((p) => [p.province_name.toLowerCase(), p.province_code]))
+const placeKey = (name) => name.trim().toLowerCase().replace(/^city of /, '').replace(/ city$/, '')
+const psgcCities = readCsv('ph-cities.csv')
+function cityCodeOf(location) {
+  const province = provinceCode.get(location.province.trim().toLowerCase())
+  const inProvince = psgcCities.filter((c) => c.province_code === province)
+  const exact = inProvince.filter((c) => c.city_name.toLowerCase() === location.city.trim().toLowerCase())
+  const keyed = inProvince.filter((c) => placeKey(c.city_name) === placeKey(location.city))
+  const found = exact.length === 1 ? exact : keyed
+  if (found.length !== 1) throw new Error(`No single PSGC place for ${location.city}, ${location.province}`)
+  return found[0].city_code
+}
+
 // locations — one per report, numbered by the report's own id. The report
 // row below points at location_id = report_id, so numbering these by their
 // position in the file instead put 17 of 32 reports at another report's
 // place wherever src/mock/ is not in id order (report-010 sits before 008).
 L.push('-- One location per report. Coordinates are barangay-level (approximate).')
-L.push('INSERT INTO locations (location_id, label, city, province, latitude, longitude, `precision`) VALUES')
+L.push('INSERT INTO locations (location_id, label, city, province, city_code, latitude, longitude, `precision`) VALUES')
 L.push(petReports.map((r) => {
   const l = r.location
-  return `  (${reportId.get(r.id)},${q(l.label)}, ${q(l.city)}, ${q(l.province)}, ${n(l.lat)}, ${n(l.lng)}, ${q(l.precision ?? 'approximate')})`
+  return `  (${reportId.get(r.id)},${q(l.label)}, ${q(l.city)}, ${q(l.province)}, ${q(cityCodeOf(l))}, ${n(l.lat)}, ${n(l.lng)}, ${q(l.precision ?? 'approximate')})`
 }).join(',\n') + ';')
 L.push('')
 

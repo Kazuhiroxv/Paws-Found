@@ -9,10 +9,14 @@ import { LIMITS, PHOTO_RULES } from './reportFormModel'
 /**
  * Step 3 — photographs.
  *
- * NOTHING IS UPLOADED. Files are held in memory and previewed with
- * `URL.createObjectURL`, which is enough to build and demonstrate the whole
- * flow. Real storage arrives with the backend (CLAUDE.md §8). Object URLs are
- * revoked when a photo is removed so the tab does not leak memory.
+ * Files are held in memory and previewed with `URL.createObjectURL` until the
+ * report is filed; ReportForm then uploads them (POST /reports/:id/photos),
+ * where the server checks the same rules again. Object URLs are revoked when
+ * a photo is removed so the tab does not leak memory.
+ *
+ * The rules are stated before anything is chosen (Correction 3 — "how many
+ * photos?" had no answer on screen): optional, up to five, which types, how
+ * large, and which one is the main photo.
  *
  * Photos are optional on purpose: a finder often has no chance to take one, and
  * refusing the report would lose the sighting entirely.
@@ -124,9 +128,11 @@ export function PhotosStep({ values, onChange }) {
           A clear, well-lit picture of the whole animal is the single most useful thing you
           can add — it is what people recognise, and what a coordinator compares.
         </p>
-        <p className="mt-1 text-sm text-fg-muted">
-          Up to {PHOTO_RULES.maxCount} images · JPEG, PNG or WebP · 5 MB each
-        </p>
+        <ul className="mx-auto mt-3 flex max-w-prose flex-col gap-1 text-left text-sm text-fg-muted">
+          <li>Optional, but one clear photo of the whole animal helps the most.</li>
+          <li>Up to {PHOTO_RULES.maxCount} photos, each a JPEG, PNG or WebP image of 5 MB or less.</li>
+          <li>The first photo you add is the main photo, shown on the report card and the map. You can choose another.</li>
+        </ul>
         <p className="mt-1 hidden text-sm text-fg-muted sm:block">
           {isDraggingOver ? 'Drop them here' : 'Drag them here, or choose them below.'}
         </p>
@@ -144,6 +150,13 @@ export function PhotosStep({ values, onChange }) {
           Choose photos
         </Button>
       </div>
+
+      {/* Said in words and announced, so "how many more can I add?" never
+          needs counting thumbnails. */}
+      <p className="text-sm font-medium text-fg" aria-live="polite" data-photo-count>
+        {values.photos.length} of {PHOTO_RULES.maxCount} photos added
+        {values.photos.length >= PHOTO_RULES.maxCount ? ' — that is the most a report can have.' : '.'}
+      </p>
 
       {fileErrors.length > 0 && (
         <ul role="alert" className="flex flex-col gap-1 text-sm text-danger">

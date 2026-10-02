@@ -23,7 +23,6 @@ import {
   Star,
   UserRound,
   MessageSquare,
-  Phone,
   SearchX,
   TriangleAlert,
 } from 'lucide-react'
@@ -60,7 +59,7 @@ import {
 } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
 import { NotFoundError, matchService, petService, userService } from '@/services'
-import { formatDate } from '@/utils/date'
+import { formatDate, formatTime12Hour } from '@/utils/date'
 import { cn } from '@/utils/cn'
 
 /** What the history says when a reporter closes a report without a reason. */
@@ -502,7 +501,7 @@ export function PetDetailPage({ role }) {
                       <Clock size={18} className="mt-0.5 shrink-0 text-brand" aria-hidden="true" />
                       <div>
                         <p className="text-sm text-fg-muted">Around</p>
-                        <p className="font-medium text-fg">{report.incidentTime}</p>
+                        <p className="font-medium text-fg">{formatTime12Hour(report.incidentTime)}</p>
                       </div>
                     </div>
                   )}
@@ -596,16 +595,8 @@ export function PetDetailPage({ role }) {
 
               <div className="flex flex-col gap-3 border-t border-border pt-4 text-sm">
 
-              {report.contactPreferences.showPhone && (
-                <a
-                  href={`tel:${reporter.phone.replace(/\s/g, '')}`}
-                  className="flex items-center gap-2 text-brand hover:underline"
-                >
-                  <Phone size={16} aria-hidden="true" />
-                  {reporter.phone}
-                </a>
-              )}
-
+              {/* No phone number, ever (Correction 3): the API does not send
+                  one, and nothing here would show it if it did. */}
               {report.contactPreferences.showEmail && (
                 <a
                   href={`mailto:${reporter.email}`}
@@ -626,7 +617,6 @@ export function PetDetailPage({ role }) {
                   Prefers to be reached through a Pet Coordinator.
                 </p>
               ) : (
-                !report.contactPreferences.showPhone &&
                 !report.contactPreferences.showEmail && (
                   <p className="text-fg-muted">
                     This reporter has not shared any contact details.

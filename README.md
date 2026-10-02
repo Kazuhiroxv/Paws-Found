@@ -53,7 +53,7 @@ are checked by what the file actually is; administrators add, rename, retire and
 delete pet categories. Nothing the app shows comes from mock data any more. See
 [`docs/feature-status.md`](docs/feature-status.md) for the item-by-item picture.
 
-**It is tested.** 802 automated checks in eleven suites, all passing, and
+**It is tested.** 972 automated checks in fifteen suites, all passing, and
 axe-core over 31 pages — see [`docs/TESTING.md`](docs/TESTING.md) §3.
 
 ## Getting started
@@ -223,7 +223,7 @@ api/                 The PHP REST API — flat files, no framework
 └── auth · reports · matches · users · notifications · categories · moderation
 
 database/
-├── schema.sql       17 tables (15 on the ERD + schema_migrations, auth_rate_limits)
+├── schema.sql       20 tables (15 on the ERD, 3 reference lists, schema_migrations, auth_rate_limits)
 └── seed.sql         Generated — do not hand-edit
 
 scripts/gen-seed.mjs  Turns src/mock/ into database/seed.sql

@@ -15,6 +15,7 @@ in a sitting, because every member has to be able to explain the whole system.
 | `auth.php` | `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`. |
 | `reports.php` | `GET /reports` (search, filter, sort, page) and `GET /reports/{id}`. |
 | `categories.php` | `GET /categories`. |
+| `reference.php` | `GET /reference/{colours,breeds,provinces,cities}` — the lists the report form and Explore choose from (Correction 3). |
 | `moderation.php` | `GET /moderation`, `POST /moderation`, `PATCH /moderation/{id}`. |
 
 ## Local setup
@@ -68,6 +69,11 @@ PATCH  /api/users/{id}           role or suspension       (administrators)
 
 GET    /api/categories           active species
 
+GET    /api/reference/colours                   the colour list, {code, name}
+GET    /api/reference/breeds?species=dog        that species' listed breeds
+GET    /api/reference/provinces                 84: PSGC provinces + Metro Manila
+GET    /api/reference/cities?province=<code>    that province's cities and municipalities
+
 GET    /api/moderation           the flag queue, with the report and both
                                  people attached          (administrators)
 POST   /api/moderation           flag a report            (signed in)
@@ -83,9 +89,23 @@ filed it; `suspend` additionally sets `account_status`. All of it runs in one
 transaction, and a case that has already been decided answers `409`.
 
 `GET /api/reports` accepts `q`, `type`, `status`, `species`, `size`, `city`,
-`colour`, `date_from`, `date_to`, `sort` (`newest` | `oldest` | `updated`),
-`page` and `per_page`. It answers with `data` and a `meta` block carrying
-`page`, `per_page`, `total` and `total_pages`.
+`province_code`, `city_code`, `colour`, `date_from`, `date_to`, `sort`
+(`newest` | `oldest` | `updated`), `page` and `per_page`. It answers with
+`data` and a `meta` block carrying `page`, `per_page`, `total` and
+`total_pages`. `size` includes `xl`. A `colour` that is on the list matches
+exactly; anything else is the old substring search. Each row's `location`
+carries `city_code` and `province_code` (null for an old report whose place
+could not be identified).
+
+**Filing and editing a report (Correction 3).** The place is sent as
+`province_code` and `city_code` (PSGC); the server checks the city is in the
+province and writes `city` and `province` itself — text sent under those names
+is ignored. `primary_color` / `secondary_color` must be listed colours (code or
+name, any case). `pet_name` on a lost report needs two letters or digits;
+`description` thirty characters; `lat`/`lng` must be inside the Philippines.
+`incident_time` is 24-hour `HH:MM`. `show_phone` is accepted and ignored: a
+phone number is never published, the detail's `reporter.phone` is always null
+and `contact_preferences.show_phone` always false.
 
 ## How the security requirements are met
 

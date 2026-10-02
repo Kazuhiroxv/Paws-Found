@@ -41,6 +41,10 @@ function fromApi(row) {
       label: row.location?.label ?? '',
       city: row.location?.city ?? '',
       province: row.location?.province ?? '',
+      // The PSGC codes the place was chosen by (Correction 3). Empty for a
+      // report filed before the place lists whose place was not identified.
+      cityCode: row.location?.city_code ?? '',
+      provinceCode: row.location?.province_code ?? '',
       lat: row.location?.lat ?? null,
       lng: row.location?.lng ?? null,
       precision: 'approximate',
@@ -56,12 +60,14 @@ function fromApi(row) {
     //
     // The fallback is for the public payload, which deliberately carries no
     // preferences. Nothing reads it in an edit context.
+    //
+    // No phone preference: a phone number is never shown on a report
+    // (Correction 3), and the server ignores the old setting.
     contactPreferences: {
       allowPlatformContact:
         row.contact_preferences?.allow_platform_contact ??
         row.reporter?.accepts_messages ??
         true,
-      showPhone: row.contact_preferences?.show_phone ?? Boolean(row.reporter?.phone),
       showEmail: row.contact_preferences?.show_email ?? Boolean(row.reporter?.email),
     },
     photos: row.photos
@@ -109,8 +115,10 @@ function fromApi(row) {
  *   status      one of REPORT_STATUSES
  *   species     one of SPECIES
  *   size        one of PET_SIZES
- *   color       matches either colour field
- *   city        substring of the city
+ *   color       a listed colour (exact), matched against either colour field
+ *   provinceCode  PSGC code of a province (or Metro Manila)
+ *   cityCode    PSGC code of a city or municipality
+ *   city        substring of the city's name, for links that name one
  *   dateFrom    incident on or after this ISO date
  *   dateTo      incident on or before this ISO date
  *   reporterId  reports filed by one user
@@ -127,6 +135,8 @@ export async function getReportsPage(query = {}) {
     species: query.species,
     size: query.size,
     city: query.city,
+    province_code: query.provinceCode,
+    city_code: query.cityCode,
     colour: query.color,
     date_from: query.dateFrom,
     date_to: query.dateTo,
@@ -215,12 +225,12 @@ export async function createReport(input) {
       incident_date: input.incidentDate,
       incident_time: input.incidentTime,
       location_label: input.location?.label,
-      city: input.location?.city,
-      province: input.location?.province,
+      // The place by PSGC code; the server writes the names from its list.
+      province_code: input.location?.provinceCode,
+      city_code: input.location?.cityCode,
       lat: input.location?.lat,
       lng: input.location?.lng,
       allow_platform_contact: input.contactPreferences?.allowPlatformContact ?? true,
-      show_phone: input.contactPreferences?.showPhone ?? false,
       show_email: input.contactPreferences?.showEmail ?? false,
     }),
   })
@@ -280,12 +290,12 @@ export async function updateReport(id, input) {
       incident_date: input.incidentDate,
       incident_time: input.incidentTime,
       location_label: input.location?.label,
-      city: input.location?.city,
-      province: input.location?.province,
+      // The place by PSGC code; the server writes the names from its list.
+      province_code: input.location?.provinceCode,
+      city_code: input.location?.cityCode,
       lat: input.location?.lat,
       lng: input.location?.lng,
       allow_platform_contact: input.contactPreferences?.allowPlatformContact,
-      show_phone: input.contactPreferences?.showPhone,
       show_email: input.contactPreferences?.showEmail,
     }),
   })

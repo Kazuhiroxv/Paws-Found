@@ -215,12 +215,14 @@ async function fileFoundReport(width) {
     await page.evaluate((el) => `${el?.tagName} invalid=${el?.getAttribute('aria-invalid')}`, refused))
 
   // Step one: the pet.
+  // Breed and colour are chosen from lists since Correction 3, and the
+  // breed list arrives after the species is chosen.
   await chooseOption(page, 'Species', 'Dog')
-  await pause(150)
-  await setField(page, 'Breed', 'Aspin')
+  await pause(700)
+  await chooseOption(page, 'Breed', 'Aspin (Philippine Native Dog)')
   await chooseOption(page, 'Size', 'Medium')
   await chooseOption(page, 'Sex', 'Unknown')
-  await setField(page, 'Main colour', 'Brown')
+  await chooseOption(page, 'Main colour', 'Brown')
   await chooseOption(page, 'Was it wearing a collar?', 'Not sure')
   await clickButton(page, 'Continue')
   await pause(600)
@@ -229,8 +231,10 @@ async function fileFoundReport(width) {
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
   await setField(page, 'Date found', yesterday)
   await setField(page, 'Where you found the pet', 'Near the covered court')
-  await setField(page, 'City or municipality', 'Makati City')
-  await setField(page, 'Province', 'Metro Manila')
+  // The province, then a city from its list (Correction 3).
+  await chooseOption(page, 'Province', 'Metro Manila')
+  await pause(800)
+  await chooseOption(page, 'City or municipality', 'City of Makati')
   await setField(page, 'Description', 'Friendly brown dog wearing a red collar, waiting by the gate.')
   await clickButton(page, 'Continue')
   await pause(600)

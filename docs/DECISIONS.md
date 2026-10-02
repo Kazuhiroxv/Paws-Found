@@ -460,6 +460,104 @@ not touch** — nothing in the code detects touch. Windows scaling of 150–175%
 a 1920px screen gives about 1100–1280 CSS pixels, where the navigation becomes a
 menu button.
 
+### The place lists are PSA's PSGC, loaded into MySQL (Correction 3)
+
+Province and city are chosen, not typed: 84 entries (82 provinces, Metro
+Manila, the Special Geographic Area of BARMM) and 1,642 cities and
+municipalities, from PSA's PSGC Publication Datafile of 31 July 2025, keyed by
+PSA's own 10-digit codes. They live in `ph_provinces` and `ph_cities` and reach
+the browser through `/api/reference` — no geography is typed into JSX.
+
+PSA's site sits behind a Cloudflare human check, which was not bypassed; the
+file came from a public copy and was checked against itself and against an
+independent derivation, but **not** against PSA's own download, and newer
+quarterly publications could not be reached. `database/reference/README.md`
+says exactly what Kyle should still verify.
+
+Two placements are choices, not facts in the file. **Metro Manila** is one
+entry, because the National Capital Region has no provinces and a person in
+Makati looks for "Metro Manila", not for a district. A **highly urbanized
+city** (Cebu City, Davao City, Baguio, …) is listed under the province it is
+inside, read from PSA's Correspondence Code, because nobody looks for Cebu City
+anywhere but under Cebu. Barangay is not asked: the reporter's own words for
+the spot already carry it.
+
+### Where a report is: a code, two names, words and a pin — kept apart (Correction 3)
+
+`locations.city_code` (a foreign key to `ph_cities`) says *which* place; the
+`city` and `province` text the report always had stays, written by the server
+from the reference row, never from the request. The label is the reporter's
+own words; the pin is optional and approximate. A pin never changes the city.
+
+Why a code plus names rather than only a code: every query, card, poster and
+test that reads `city` and `province` keeps working unchanged, reports filed
+before the lists keep exactly the words they were filed with, and the code is
+what matching and the place filter compare. Rewriting 30 queries to join for a
+name would have been the large rewrite this correction was told to avoid.
+
+Reports filed before 009 are given a code only where their text names one
+place without doubt ("Makati City" in Metro Manila is the City of Makati);
+otherwise the code stays NULL and nothing is guessed.
+
+### Breeds: a curated list, and typed breeds kept but never suggested (Correction 3)
+
+`pet_breeds.is_listed` marks the breeds the form offers for each species,
+"Mixed breed" last, with "Not sure" (empty) and "Not in the list — type it".
+A typed breed is still stored — the report should say what the reporter wrote
+— but as an unlisted row, so it is never offered to anybody else. That ends
+Correction 10 (every spelling became a choice) without refusing the honest
+"it looks like a Shiba Inu". The 20 breeds added to the 12 seeded ones are
+common in the Philippines and **are a proposal for the team to edit**.
+
+### Colours: a list, stored by name (Correction 3)
+
+17 colours with stable codes in `pet_colours`; reports keep storing the name,
+so nothing that reads a colour changed. The report columns are not a foreign
+key on purpose: reports filed before the list keep the colour they were typed
+with (spelling variants such as "Tricolor" and "gray" were normalised by 009;
+nothing else was reinterpreted). "Other" means "describe it in the features".
+
+### "Other" and "Mixed breed" never count as two reports agreeing (Correction 3)
+
+Matching weights are unchanged (species 25, location 20, breed 15, colour 15,
+size 10, date 10, features 5), and the four demonstration pairings still score
+85, 75, 100 and 100. What is new: two reports that both say "Other" colour or
+"Mixed breed" have agreed on nothing, so those signals do not fire; and two
+reports without pins compare the city **code** when both have one, so "Makati
+City" and "City of Makati" are one place.
+
+### A phone number is never published (Correction 3)
+
+The "show my phone number" option is gone from the form, and the server
+enforces it whatever is sent: `show_phone` is written as 0, reported as false,
+and the report query does not even read the number. The column stays (no data
+is dropped). The account keeps its number and Pet Coordinators still see it
+when handling a case, so a reporter remains reachable. Email is unchanged:
+opt-in per report, visible only to signed-in members. The privacy notice was
+revised and its version moved to 2026-10-02.
+
+The instructor's words here are ambiguous (register N1): this is what the team
+specified, and the item to revisit if she meant a number should be shown.
+
+### The map is the Philippines (Correction 3)
+
+The report form's map opens on the whole country, cannot be dragged far off
+it, and a point outside it places no pin — in the browser and in the API,
+which refuses one whatever is sent. "Outside" is a box (Kalayaan to Pusan
+Point, Saluag to Y'Ami) minus three rectangles of other countries' land:
+Sabah's north-west and east coasts and Miangas. A sketch, not a coastline:
+the open sea inside it is accepted. The place lists, not the pin, are what a
+report is found and matched by. Moving the map to the chosen city was not
+done: PSGC has no coordinates, and inventing centre points would be
+fabricated data.
+
+### Time: AM/PM on screen, 24-hour in the API (Correction 3)
+
+Hour, minutes and AM or PM as three choices, because a native time box shows
+AM/PM only in some locales. The API and the TIME column stay 24-hour, which is
+unambiguous; the browser converts (12:00 AM is 00:00, 12:00 PM is 12:00). Half
+a time is refused rather than guessed.
+
 ## Features deliberately not built
 
 | Rejected | Why |
