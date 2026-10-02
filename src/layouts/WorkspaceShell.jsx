@@ -2,7 +2,7 @@ import { useId, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { ArrowLeft, LogOut, Menu, X } from 'lucide-react'
 import logoLockup from '@/assets/pawsfound-logo-horizontal.webp'
-import { ROLE_LABELS } from '@/constants'
+import { ROLE_LABELS, ROLES } from '@/constants'
 import { cn } from '@/utils/cn'
 
 const linkClasses = ({ isActive }) =>
@@ -24,8 +24,10 @@ const linkClasses = ({ isActive }) =>
  * So the public bar comes off inside a workspace and the rail carries
  * everything instead: the brand, which workspace this is, the sections, and
  * the account controls that used to live in the top-right menu. "Back to the
- * public site" is a link rather than an assumption — leaving is deliberate,
- * and it is always available.
+ * public site" is a link rather than an assumption — leaving is deliberate.
+ * The administrator has no such link, and the logo takes them to their own
+ * Overview: the community pages send them back here anyway
+ * (AdminStaysInWorkspace), so a link out would only bounce.
  *
  * ONE shell for both workspaces, not one each. The canvases already differ
  * (`canvas-staff` is cooler than `canvas-admin`), which is the amount of
@@ -45,6 +47,8 @@ const linkClasses = ({ isActive }) =>
 export function WorkspaceShell({ label, items, counts, user, onSignOut, children }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuId = useId()
+  const isAdmin = user?.role === ROLES.ADMIN
+  const homePath = isAdmin ? '/admin' : '/'
 
   // Choosing a section closes the drawer, on the click rather than in an
   // effect watching the path: the click is the moment the decision is made,
@@ -88,14 +92,16 @@ export function WorkspaceShell({ label, items, counts, user, onSignOut, children
         </div>
       )}
 
-      <Link
-        to="/"
-        onClick={onNavigate}
-        className="flex items-center gap-2.5 rounded-control px-3 py-2 text-sm text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
-      >
-        <ArrowLeft size={16} aria-hidden="true" />
-        Back to the public site
-      </Link>
+      {!isAdmin && (
+        <Link
+          to="/"
+          onClick={onNavigate}
+          className="flex items-center gap-2.5 rounded-control px-3 py-2 text-sm text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
+        >
+          <ArrowLeft size={16} aria-hidden="true" />
+          Back to the public site
+        </Link>
+      )}
 
       <button
         type="button"
@@ -119,7 +125,7 @@ export function WorkspaceShell({ label, items, counts, user, onSignOut, children
           at the top of the page, out of sight. */}
       <div className="sticky top-0 z-30 lg:hidden">
       <header className="flex items-center justify-between gap-3 border-b border-border bg-panel px-4 py-2.5">
-        <Link to="/" className="flex items-center">
+        <Link to={homePath} className="flex items-center">
           <img src={logoLockup} alt="Paws&Found" className="h-8 w-auto" />
         </Link>
 
@@ -153,7 +159,7 @@ export function WorkspaceShell({ label, items, counts, user, onSignOut, children
       {/* Desktop: a fixed rail. `sticky` with its own scroll, so a long queue
           scrolls under navigation that stays put. */}
       <div className="hidden w-60 shrink-0 border-r border-border bg-panel lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col">
-        <Link to="/" className="flex items-center border-b border-border px-4 py-4">
+        <Link to={homePath} className="flex items-center border-b border-border px-4 py-4">
           <img src={logoLockup} alt="Paws&Found" className="h-9 w-auto" />
         </Link>
 

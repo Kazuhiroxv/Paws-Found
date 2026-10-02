@@ -67,17 +67,17 @@ table.w tr.total td { border-top: 1px solid var(--ink); font-weight: 700; paddin
   <div class="label t">Who may do what: enforced by the PHP API on every request</div>
   <table class="m">
     <thead><tr><th style="width:44%">Action</th><th>Guest</th><th>Customer /<br>User</th><th>Staff / Pet<br>Coordinator</th><th>Admin</th></tr></thead>
-    <tbody><tr><td>Browse public reports, search, map</td><td><span class="y">✓</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td></tr>
+    <tbody><tr><td>Browse public reports, search, map</td><td><span class="y">✓</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td><td><span class="a">reports only†</span></td></tr>
 <tr><td>Stay signed in on several devices at once</td><td><span class="n">—</span></td><td><span class="y">✓</span></td><td><span class="o">one session</span></td><td><span class="o">one session</span></td></tr>
 <tr><td>Open full report details</td><td><span class="n">—</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td></tr>
-<tr><td>File a lost or found report</td><td><span class="n">—</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td></tr>
+<tr><td>File a lost or found report</td><td><span class="n">—</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td><td><span class="a">yes†</span></td></tr>
 <tr><td>Edit own report (Active only)</td><td><span class="n">—</span></td><td><span class="o">own</span></td><td><span class="a">own†</span></td><td><span class="a">own†</span></td></tr>
 <tr><td>Mark report Returned / Closed</td><td><span class="n">—</span></td><td><span class="o">own</span></td><td><span class="a">any†</span></td><td><span class="a">any†</span></td></tr>
 <tr><td>See possible matches</td><td><span class="n">—</span></td><td><span class="o">own</span></td><td><span class="y">✓</span></td><td><span class="a">all†</span></td></tr>
 <tr><td>Request verification / &quot;Not my pet&quot;</td><td><span class="n">—</span></td><td><span class="o">own</span></td><td><span class="a">any†</span></td><td><span class="a">any†</span></td></tr>
 <tr><td>Answer a coordinator&#x27;s question</td><td><span class="n">—</span></td><td><span class="o">own</span></td><td><span class="n">—</span></td><td><span class="n">—</span></td></tr>
 <tr><td>Confirm / reject a match, ask a question</td><td><span class="n">—</span></td><td><span class="n">—</span></td><td><span class="y">✓</span></td><td><span class="a">yes†</span></td></tr>
-<tr><td>Reopen a pairing ruled out or confirmed by mistake</td><td><span class="n">—</span></td><td><span class="n">—</span></td><td><span class="y">✓</span></td><td><span class="a">yes†</span></td></tr>
+<tr><td>Reopen a pairing ruled out, confirmed or dismissed by mistake</td><td><span class="n">—</span></td><td><span class="n">—</span></td><td><span class="y">✓</span></td><td><span class="a">yes†</span></td></tr>
 <tr><td>See unpublished reporter contact</td><td><span class="n">—</span></td><td><span class="n">—</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td></tr>
 <tr><td>Flag a listing</td><td><span class="n">—</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td></tr>
 <tr><td>Resolve flags: dismiss, warn, remove, suspend</td><td><span class="n">—</span></td><td><span class="n">—</span></td><td><span class="n">—</span></td><td><span class="y">✓</span></td></tr>
@@ -88,7 +88,8 @@ table.w tr.total td { border-top: 1px solid var(--ink); font-weight: 700; paddin
   <p class="notes"><span class="y">✓</span> allowed &nbsp; <span class="o">own</span> only on their own reports or pairings &nbsp;
     <span class="n">—</span> refused (401 not signed in / 403 wrong role)<br>
     <span class="a">†</span> <b>The API accepts it from this role, but the interface gives that role no screen for it.</b>
-    Staff work in the Staff workspace and administrators in Administration; only Pet Coordinators verify pairings in the interface.</p>
+    Staff work in the Staff workspace and administrators in Administration; only Pet Coordinators verify pairings in the interface.
+    An administrator's Home, Explore and Report a pet send them back to Administration; a report's own page still opens.</p>
   <div class="rule">The role is re-read from the database on every request, so a role change or suspension takes effect at once.
     Nobody edits another person's report: the server lets staff change a report's <i>status</i>, never its details,
     and a Pet Coordinator's confirmation is what marks both reports Returned.</div>
@@ -112,8 +113,8 @@ table.w tr.total td { border-top: 1px solid var(--ink); font-weight: 700; paddin
       <div class="step yes"><b>Confirm</b><span>both reports Returned; their other open pairings withdrawn; coordinator arranges a safe handover</span></div>
     </div>
     <p style="font-size:9.6px;color:var(--muted);margin-top:5px;line-height:1.35">Both ask first. A coordinator can
-      <b style="color:var(--ink)">reopen</b> either by mistake, with a reason — refused if a report has been closed
-      or has changed since.</p>
+      <b style="color:var(--ink)">reopen</b> either, or a reporter's "Not my pet", with a reason — refused for a withdrawal,
+      or if a report has been closed or has changed since.</p>
   </div>
   <div class="side-by">
     <div class="box">

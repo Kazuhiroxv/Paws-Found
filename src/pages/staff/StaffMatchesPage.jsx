@@ -187,9 +187,9 @@ function QueueOutcome({ match, lost, found, onReopened }) {
                   ? 'One of the reports was marked returned or closed, so this pairing is no longer open. Nobody ruled it out.'
                   : 'One of the reporters said this is not their pet. Both reports carry on being searched and matched.'}
             </p>
-            {/* Only a coordinator's own rejection can be undone here. A
-                reporter's "Not my pet", or a withdrawal, is not theirs to reverse. */}
-            {match.status === MATCH_STATUSES.REJECTED && (
+            {/* A rejection, or a reporter's "Not my pet" pressed by mistake,
+                can be reopened. A withdrawal cannot: its case has ended. */}
+            {!wasWithdrawn(match.status, lost, found) && (
               <div className="mt-2">
                 <ReopenAction match={match} onReopened={onReopened} />
               </div>

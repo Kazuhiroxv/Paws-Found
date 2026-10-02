@@ -6,7 +6,7 @@ import { WorkspaceLayout } from '@/layouts/WorkspaceLayout'
 import { loadDashboardCounts } from '@/pages/dashboard/dashboardSummary'
 import { loadAdminCounts } from '@/pages/admin/adminCounts'
 import { loadStaffCounts } from '@/pages/staff/staffCounts'
-import { RequireAccess } from '@/components/RequireAccess'
+import { AdminStaysInWorkspace, RequireAccess } from '@/components/RequireAccess'
 import { useSession } from '@/hooks/useSession'
 import { ROLES } from '@/constants'
 import { ADMIN_NAV, STAFF_NAV, USER_NAV } from '@/constants/navigation'
@@ -142,13 +142,10 @@ export default function App() {
             />
           }
         >
-          {/* Public */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/explore" element={<ExplorePage role={role} />} />
+          {/* Public. A report's own page stays open to everyone, the
+              administrator included: their Moderation, Records and Overview
+              link to it. The rest of the community site is not theirs. */}
           <Route path="/pet/:id" element={<PetDetailPage role={role} />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/help" element={<HelpPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
           <Route
             path="/login"
             element={<LoginPage onSignedIn={setSignedInUser} onDemoSignIn={changeRole} />}
@@ -159,25 +156,33 @@ export default function App() {
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route element={<AdminStaysInWorkspace role={role} />}>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/explore" element={<ExplorePage role={role} />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/help" element={<HelpPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
 
-          {/* Filing a report requires an account, so a report can be traced
-              back to a person and followed up. Any signed-in role may file. */}
-          <Route
-            path="/report/lost"
-            element={
-              <RequireAccess role={role}>
-                <ReportLostPage />
-              </RequireAccess>
-            }
-          />
-          <Route
-            path="/report/found"
-            element={
-              <RequireAccess role={role}>
-                <ReportFoundPage />
-              </RequireAccess>
-            }
-          />
+            {/* Filing a report requires an account, so a report can be traced
+                back to a person and followed up. Any signed-in role but the
+                administrator may file. */}
+            <Route
+              path="/report/lost"
+              element={
+                <RequireAccess role={role}>
+                  <ReportLostPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="/report/found"
+              element={
+                <RequireAccess role={role}>
+                  <ReportFoundPage />
+                </RequireAccess>
+              }
+            />
+          </Route>
 
           {/* Customer / User */}
           <Route

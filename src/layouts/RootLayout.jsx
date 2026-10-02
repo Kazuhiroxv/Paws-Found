@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate, useNavigationType } from 'react-route
 import { Navbar } from '@/components/Navbar'
 import { Footer } from '@/components/Footer'
 import { SessionNotice } from '@/components/SessionNotice'
+import { ROLES } from '@/constants'
 import { cn } from '@/utils/cn'
 
 /**
@@ -53,10 +54,19 @@ export function RootLayout({
   // it as the way back, and whoever signed in next on this browser was sent
   // there. A guest bounced to sign-in from a page they asked for still gets
   // that page back; that path is set by the guard, not here.
+  //
+  // Except the administrator: home sends them back to Administration, which
+  // once signed out sends them to sign-in. Their one public page, a report, has
+  // no guard to record a way back, so the session goes first and then home.
   const signOutToHome = useCallback(async () => {
+    if (role === ROLES.ADMIN) {
+      await onSignOut()
+      navigate('/', { replace: true })
+      return
+    }
     navigate('/', { replace: true })
     await onSignOut()
-  }, [navigate, onSignOut])
+  }, [navigate, onSignOut, role])
 
   // Opening a page asks the server who this is, so arriving somewhere is itself
   // a check. Without it, a device left on one page could show a workspace the

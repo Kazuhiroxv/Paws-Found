@@ -53,8 +53,8 @@ are checked by what the file actually is; administrators add, rename, retire and
 delete pet categories. Nothing the app shows comes from mock data any more. See
 [`docs/feature-status.md`](docs/feature-status.md) for the item-by-item picture.
 
-**It is tested.** `npm run audit` runs 117 test cases against the live API and
-database; `npm run a11y` runs axe-core over 25 pages.
+**It is tested.** 699 automated checks in nine suites, all passing, and
+axe-core over 31 pages — see [`docs/TESTING.md`](docs/TESTING.md) §3.
 
 ## Getting started
 
@@ -168,14 +168,14 @@ with the password itself. On a built site everyone signs in through the form.
 | `npm run build` | Production build to `dist/` |
 | `npm run preview` | Serve the production build locally |
 | `npm run lint` | ESLint over the project |
-| `npm run audit` | 378 security, functional, privacy, access, editing, integrity and matching-lifecycle cases against the live API and database (**reseeds it**) |
+| `npm run audit` | 382 security, functional, privacy, access, editing, integrity and matching-lifecycle cases against the live API and database (**reseeds it**) |
 | `npm run test:contract` | 29 checks of the form/API contract, the sign-in destination, date handling, how a settled pairing is described, and the password and name rules (held to the PHP copy) — needs nothing running |
 | `npm run test:mail` | 15 checks of the mail transports (needs `php` on PATH) |
 | `npm run multi-device` | 73 checks across independent sessions, including one session at a time for coordinators and administrators |
 | `npm run test:city` | 11 checks of how places compare without a map pin (needs `php` on PATH) |
 | `npm run test:calendar` | 8 checks that "today" is the Philippine date and the database speaks UTC (needs `php` on PATH) |
 | `npm run test:matching-log` | 6 checks of what matching logs, with `MATCH_DEBUG` off and on (needs `php` on PATH) |
-| `npm run test:ui` | 60 browser checks: moderation (the report link, raising and deciding a flag, who is told), registration's field feedback, the phone workspace menu, My Reports card actions, no Edit while a match is open, withdrawn wording, sticky table headers, the historical label on ruled-out pairings, the password requirements and strength label, reopening a decision, and Confirm / Not the same pet asking first (same `PAWS_BASE`, `PAWS_PW`) |
+| `npm run test:ui` | 66 browser checks: moderation (the report link, raising and deciding a flag, who is told), registration's field feedback, the phone workspace menu, My Reports card actions, no Edit while a match is open, withdrawn wording, sticky table headers, the historical label on ruled-out pairings, the password requirements and strength label, reopening a decision (including a reporter's "Not my pet", never a withdrawal), the administrator kept in Administration, and Confirm / Not the same pet asking first (same `PAWS_BASE`, `PAWS_PW`) |
 | `npm run test:signout` | 24 browser privacy checks: signing out, switching accounts, the guest map, in a real Chrome (`PAWS_BASE=http://localhost:5173`, `PAWS_PW` set to the password above) |
 | `npm run a11y` | axe-core over all 31 pages in every role (`PAWS_BASE=http://localhost:5173` for the dev build) |
 | `npm run verify:deploy <url>` | 28 checks that only fail on a real host |
@@ -261,6 +261,7 @@ Full rules for contributors and for AI assistance are in
 
 | File | Contents |
 | --- | --- |
+| [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md) | **Read first.** What is live, what is local and uncommitted, the rules for changing anything, and how to pick up work |
 | [`docs/HANDOFF.md`](docs/HANDOFF.md) | The verified state of everything — architecture, database, auth, email, deployment, git, tests |
 | [`docs/PRODUCTION_RUNBOOK.md`](docs/PRODUCTION_RUNBOOK.md) | Operating the live site: presentation day, deploying, rolling back, troubleshooting |
 | [`docs/TESTING.md`](docs/TESTING.md) | Every suite, what it needs, what it mutates, the smoke test |

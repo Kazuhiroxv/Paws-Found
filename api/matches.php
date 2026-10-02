@@ -537,10 +537,12 @@ function match_confirm(int $id, array $match, array $user, ?string $note): void
 /**
  * May this decided pairing be reopened? Refuses with the reason if not.
  *
- * Only a coordinator's own decisions: a rejection or a confirmation. A
- * reporter's "Not my pet", or a withdrawal because a report was finished, is
- * not the coordinator's to undo. A reason is required, because both reporters
- * are told.
+ * A rejection, a confirmation, or a reporter's "Not my pet" — a reporter can
+ * press it on the wrong pairing, and the coordinator is who they would ask.
+ * A withdrawal, because one of the reports was marked returned or closed, stays
+ * final: the case it belonged to has ended. The two are told apart the same way
+ * the queue labels them (wasWithdrawn() in src/constants): a withdrawn pairing
+ * has a finished report. A reason is required, because both reporters are told.
  *
  * The comparison must still describe the reports. Its score and seven reasons
  * were stored when the pairing was made; once rejected, the reports could be
@@ -550,10 +552,8 @@ function match_confirm(int $id, array $match, array $user, ?string $note): void
  */
 function reopen_preflight(array $match, ?string $note): void
 {
-    if (!in_array($match['match_status'], ['rejected', 'confirmed'], true)) {
-        json_error($match['match_status'] === 'dismissed'
-            ? 'A reporter ruled this pairing out, or one of its reports was finished, so it cannot be reopened.'
-            : 'This pairing is still open; there is nothing to reopen.', 409);
+    if (!in_array($match['match_status'], ['rejected', 'confirmed', 'dismissed'], true)) {
+        json_error('This pairing is still open; there is nothing to reopen.', 409);
     }
 
     if ($note === null) {
@@ -562,14 +562,17 @@ function reopen_preflight(array $match, ?string $note): void
         ]);
     }
 
-    // A rejected pairing's reports went back to Active; a confirmed one's were
-    // marked Returned. Anything else means a report has been finished since.
+    // A rejected or dismissed pairing's reports went back to Active; a
+    // confirmed one's were marked Returned. Anything else means a report has
+    // been finished since — and for a dismissed pairing, that is a withdrawal.
     $expected = $match['match_status'] === 'confirmed' ? ['returned'] : ['active', 'possible_match'];
     foreach (['lost_report_id', 'found_report_id'] as $key) {
         $check = db()->prepare('SELECT status FROM pet_reports WHERE report_id = :id');
         $check->execute([':id' => (int) $match[$key]]);
         if (!in_array($check->fetchColumn(), $expected, true)) {
-            json_error('One of these reports has been closed since, so this pairing cannot be reopened.', 409);
+            json_error($match['match_status'] === 'dismissed'
+                ? 'This pairing was withdrawn because one of its reports was marked returned or closed, so it cannot be reopened.'
+                : 'One of these reports has been closed since, so this pairing cannot be reopened.', 409);
         }
     }
 

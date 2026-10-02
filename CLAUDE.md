@@ -4,6 +4,19 @@
 > Read it before any development work. The detailed phase plan lives in
 > [docs/roadmap.md](docs/roadmap.md) — read that only when working on a phase.
 
+## 0. Start here (the project is deployed and past its defense)
+
+The phase plan below is history; the system is built and live on Railway.
+**Before any change, read [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md)**: what
+is in production, what is uncommitted on this laptop, Kyle's rules for
+committing, pushing and touching production, the local setup and the test gate.
+Then check `git status` yourself. In short:
+
+- Commit or push only when Kyle asks; never force, amend, rebase or squash.
+- Production deploys from remote `portfolio`, branch `team/current`. `origin`'s
+  push URL stays disabled.
+- The production database is read only for you, and no secret is ever shown.
+
 ---
 
 ## 1. Project Identity

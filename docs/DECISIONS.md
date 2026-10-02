@@ -355,12 +355,33 @@ tables against a database with 17 looks like an omission rather than a decision.
 
 ## Reopening a decided pairing (30 September 2026)
 
-A Pet Coordinator can reopen a pairing they **rejected** or **confirmed** by mistake, with a reason both reporters are told. The pairing goes back to under review and both reports back to Possible Match (frozen again). It is refused for a reporter's own "Not my pet" or a withdrawal, when a report has been closed since, and when a report has changed so that the stored comparison no longer describes it — the comparison is run again and must come out the same (`api/matches.php`, `reopen_preflight()`). It is limited to the coordinator's own decisions so
-that a reporter's "Not my pet" is never overridden, and it re-runs the
-comparison rather than rewriting it, so a reopened pairing can never show old
+A Pet Coordinator can reopen a pairing they **rejected** or **confirmed** by mistake, with a reason both reporters are told. The pairing goes back to under review and both reports back to Possible Match (frozen again). A reporter's "Not my pet" pressed on the wrong pairing can be reopened the same way. It is refused for a withdrawal (a pairing dismissed because one of its reports was marked returned or closed), when a report has been closed since, and when a report has changed so that the stored comparison no longer describes it — the comparison is run again and must come out the same (`api/matches.php`, `reopen_preflight()`). It re-runs the comparison rather than rewriting it, so a reopened pairing can never show old
 evidence as current. No schema change: the pairing returns to `under_review`,
 the notification is `staff_reviewed`, and the audit row is `match_decided` with
 the detail `reopen: rejected -> under_review`.
+
+**Amended the same day: a reporter's "Not my pet" can be reopened too.** At
+first only the coordinator's own decisions could be, so that a reporter's
+answer was never overridden. In QA that left no way back when a reporter
+pressed "Not my pet" on the wrong pairing, and the coordinator is who they
+would ask. A withdrawal stays final: the case it belonged to has ended. The
+two are told apart the way the queue already labels them (`wasWithdrawn()`):
+a withdrawn pairing has a finished report. One consequence, accepted: if a
+confirmation is reopened, the pairings it withdrew have open reports again,
+so they read as "Not my pet" and may be reopened one at a time.
+
+## The administrator stays in Administration (30 September 2026)
+
+A signed-in administrator opening Home, Explore, Report a pet, About, Help or
+Privacy is sent to `/admin` (`AdminStaysInWorkspace` in
+`src/components/RequireAccess.jsx`). The administrator manages the system; they
+do not look for pets or file reports. A report's own page, `/pet/:id`, stays
+open, because Moderation, Records and the Overview link to it and it is where
+the report being decided about is read. Sign-in and the pages reached from an
+email stay open too. The admin rail loses "Back to the public site" and its
+logo goes to the Overview. This is interface only: the API is unchanged, so the
+roles sheet marks the administrator's browsing and filing with †. Staff are
+unaffected.
 
 ## Features deliberately not built
 

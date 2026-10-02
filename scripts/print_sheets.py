@@ -113,6 +113,8 @@ CHECKS = [
     ('api/reports.php', r'\$pdo->commit\(\);.*?generate_matches_for_report\(\$reportId\);', 'matching runs after the report is saved'),
     ('src/App.jsx', r'allowed=\{\[ROLES\.STAFF\]\}', 'staff workspace is staff only'),
     ('src/App.jsx', r'allowed=\{\[ROLES\.ADMIN\]\}', 'admin workspace is admin only'),
+    ('src/App.jsx', r'<Route element=\{<AdminStaysInWorkspace role=\{role\} />\}>', 'admin kept out of the community pages'),
+    ('api/matches.php', r"in_array\(\$match\['match_status'\], \['rejected', 'confirmed', 'dismissed'\], true\)", 'reopen covers a dismissal too'),
 ]
 failed = [(f, meaning) for f, pattern, meaning in CHECKS if not re.search(pattern, read(f), re.S)]
 if failed:
@@ -326,17 +328,17 @@ def api(text):
 
 # (action, guest, customer, staff, admin). Each rule is one of the CHECKS above.
 MATRIX = [
-    ('Browse public reports, search, map', Y, Y, Y, Y),
+    ('Browse public reports, search, map', Y, Y, Y, api('reports only')),
     ('Stay signed in on several devices at once', N, Y, own('one session'), own('one session')),
     ('Open full report details', N, Y, Y, Y),
-    ('File a lost or found report', N, Y, Y, Y),
+    ('File a lost or found report', N, Y, Y, api('yes')),
     ('Edit own report (Active only)', N, own(), api('own'), api('own')),
     ('Mark report Returned / Closed', N, own(), api('any'), api('any')),
     ('See possible matches', N, own(), Y, api('all')),
     ('Request verification / "Not my pet"', N, own(), api('any'), api('any')),
     ("Answer a coordinator's question", N, own(), N, N),
     ('Confirm / reject a match, ask a question', N, N, Y, api('yes')),
-    ('Reopen a pairing ruled out or confirmed by mistake', N, N, Y, api('yes')),
+    ('Reopen a pairing ruled out, confirmed or dismissed by mistake', N, N, Y, api('yes')),
     ('See unpublished reporter contact', N, N, Y, Y),
     ('Flag a listing', N, Y, Y, Y),
     ('Resolve flags: dismiss, warn, remove, suspend', N, N, N, Y),
@@ -409,7 +411,8 @@ roles_body = f"""
   <p class="notes"><span class="y">✓</span> allowed &nbsp; <span class="o">own</span> only on their own reports or pairings &nbsp;
     <span class="n">—</span> refused (401 not signed in / 403 wrong role)<br>
     <span class="a">†</span> <b>The API accepts it from this role, but the interface gives that role no screen for it.</b>
-    Staff work in the Staff workspace and administrators in Administration; only Pet Coordinators verify pairings in the interface.</p>
+    Staff work in the Staff workspace and administrators in Administration; only Pet Coordinators verify pairings in the interface.
+    An administrator's Home, Explore and Report a pet send them back to Administration; a report's own page still opens.</p>
   <div class="rule">The role is re-read from the database on every request, so a role change or suspension takes effect at once.
     Nobody edits another person's report: the server lets staff change a report's <i>status</i>, never its details,
     and a Pet Coordinator's confirmation is what marks both reports Returned.</div>
@@ -433,8 +436,8 @@ roles_body = f"""
       <div class="step yes"><b>Confirm</b><span>both reports Returned; their other open pairings withdrawn; coordinator arranges a safe handover</span></div>
     </div>
     <p style="font-size:9.6px;color:var(--muted);margin-top:5px;line-height:1.35">Both ask first. A coordinator can
-      <b style="color:var(--ink)">reopen</b> either by mistake, with a reason — refused if a report has been closed
-      or has changed since.</p>
+      <b style="color:var(--ink)">reopen</b> either, or a reporter's "Not my pet", with a reason — refused for a withdrawal,
+      or if a report has been closed or has changed since.</p>
   </div>
   <div class="side-by">
     <div class="box">

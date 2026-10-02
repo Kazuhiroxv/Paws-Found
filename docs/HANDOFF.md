@@ -1,5 +1,10 @@
 # Handoff — the state of Paws&Found
 
+> **Newer:** [CURRENT_STATE.md](CURRENT_STATE.md) (1 October 2026) has what
+> changed since — what is deployed, what is uncommitted, and the working rules.
+> Read it first. §9 (git) and §12 (open items) below are superseded by it where
+> they differ.
+
 **Written 27 September 2026.** Everything below was read from the running
 system, the live site or `git` on the day it was written. Where a number
 appears, it was measured, not remembered.
@@ -453,13 +458,13 @@ All run on 27 September 2026 unless noted. Commands and prerequisites:
 | `npm run build` | green | — |
 | `npm run test:contract` | **29/29** | nothing running |
 | `npm run test:mail` | **15/15** | `php` on PATH; one check calls Brevo |
-| `npm run audit` | **378/378** | API + database |
+| `npm run audit` | **382/382** | API + database |
 | `python scripts/auth_lifecycle.py` | **100/100** | API + database, local only |
 | `npm run multi-device` | **73/73** local | API + database |
 | `npm run test:city` | **11/11** | `php` on PATH |
 | `npm run test:calendar` | **8/8** | `php` on PATH, local database |
 | `npm run test:matching-log` | **6/6** | `php` on PATH, local database |
-| `npm run test:ui` | **60/60** | the dev build (`PAWS_BASE=http://localhost:5173`), `PAWS_PW`, Chrome |
+| `npm run test:ui` | **66/66** | the dev build (`PAWS_BASE=http://localhost:5173`), `PAWS_PW`, Chrome |
 | `npm run test:signout` | **24/24** | the dev build (`PAWS_BASE=http://localhost:5173`), `PAWS_PW`, Chrome |
 | `npm run a11y` | 31 pages, **zero violations** | the dev build (`PAWS_BASE=http://localhost:5173`) |
 | `docker build --pull --no-cache` | clean, one MPM, `Syntax OK` | Docker |
@@ -519,8 +524,8 @@ fails, correctly. Production then passed **28/28**.
 
 Stated plainly so nobody rediscovers them the hard way.
 
-- **`3ad16be` is unpushed**, and the team repository (`origin`) is two commits
-  behind. Kyle decides when and where those go.
+- **The team repository (`origin`) is far behind** Kyle's (`portfolio`), which
+  is what production runs. Kyle decides when and where commits go.
 - **The MySQL public TCP proxy should be disabled** once the remote suites have
   been run.
 - **`npm run test:mail` needs `php` on PATH**, which XAMPP does not add. The
@@ -529,10 +534,10 @@ Stated plainly so nobody rediscovers them the hard way.
   demonstration; the reason the live URL should not be shared widely while they
   exist.
 - **`origin`'s push URL is disabled on purpose.** Do not re-enable it casually.
-- **Editing a report does not re-run matching.** Filing a report looks for
-  possible matches once. Editing now saves every field (species, location,
-  pin, colours and the rest), but existing pairings are not re-scored and new
-  ones are not searched for. A coordinator still sees the edited report.
+- **A pairing's comparison is a snapshot.** Editing an Active report re-runs
+  matching (since 30 September), and a report with an open pairing refuses
+  edits (409 `match_open`). Existing pairings are never re-scored; a ruled-out
+  pairing's reasons are labelled "Historical comparison".
 - **Removing a seeded photo removes its row, not a file.** The seed photos ship
   with the frontend rather than living in `api/uploads/`; only files this server
   generated (32 hex characters) are ever deleted from disk.

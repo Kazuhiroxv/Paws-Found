@@ -855,6 +855,81 @@ if (/^(localhost|127\.0\.0\.1)$/.test(new URL(BASE).hostname)) {
   check('DECIDE-ASK-2', 'Not the same pet asks "Rule this pairing out?" with Go back focused, and Go back decides nothing',
     rejectAsk?.title === 'Rule this pairing out?' && rejectAsk.focus === 'Go back' && (await matchStatus(4)) === 'under_review',
     JSON.stringify(rejectAsk))
+
+  // ---- REOPEN-DISMISS: a "Not my pet" can be reopened; a withdrawal cannot.
+  // Pairing 4 is under review again; a reporter's "Not my pet" is sent for it
+  // (staff may act for a reporter). Milo's pairing, 1, was withdrawn above.
+  const dismissCode = await staff.evaluate(async (api) => {
+    const me = await (await fetch(api + '/auth/me', { credentials: 'include' })).json()
+    return (await fetch(api + '/matches/4', { method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': me.csrf_token ?? '' },
+      body: JSON.stringify({ action: 'dismiss' }) })).status
+  }, API)
+  await staff.goto(BASE + '/staff/matches', { waitUntil: 'networkidle2' })
+  await pause(1000)
+  await staff.evaluate(() => [...document.querySelectorAll('[role=tab], button')].find((t) => t.textContent.trim().startsWith('Ruled out'))?.click())
+  await pause(800)
+  const reopenButtons = await staff.evaluate(() => {
+    const has = (id) => [...(document.getElementById(id)?.querySelectorAll('button') ?? [])]
+      .some((b) => b.textContent.trim() === 'Reopen for review')
+    return { dismissed: has('match-4'), withdrawn: has('match-1'), withdrawnShown: Boolean(document.getElementById('match-1')) }
+  })
+  check('REOPEN-3', 'A reporter\'s "Not my pet" offers Reopen for review',
+    dismissCode === 200 && reopenButtons.dismissed, `PATCH ${dismissCode}, ${JSON.stringify(reopenButtons)}`)
+  check('REOPEN-4', 'A withdrawn pairing does not', reopenButtons.withdrawnShown && !reopenButtons.withdrawn,
+    JSON.stringify(reopenButtons))
+}
+
+// ---- ADMIN-SITE: the administrator stays in Administration; report pages stay open
+{
+  const page = await (await browser.createBrowserContext()).newPage()
+  await page.setViewport({ width: 1366, height: 900 })
+  await page.goto(BASE + '/login', { waitUntil: 'networkidle2' })
+  await page.evaluate(async (api, pw) => {
+    const me = await (await fetch(api + '/auth/me', { credentials: 'include' })).json()
+    await fetch(api + '/auth/login', { method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': me.csrf_token ?? '' },
+      body: JSON.stringify({ email: 'grace.bautista@example.com', password: pw }) })
+  }, API, PASSWORD)
+  const landsOn = async (route) => {
+    await page.goto(BASE + route, { waitUntil: 'networkidle2' })
+    await pause(700)
+    return page.evaluate(() => window.location.pathname)
+  }
+  const sent = {}
+  for (const route of ['/', '/explore', '/report/lost', '/report/found', '/about', '/help', '/privacy']) {
+    sent[route] = await landsOn(route)
+  }
+  check('ADMIN-SITE-1', 'Home, Explore, Report a pet, About, Help and Privacy send the administrator to /admin',
+    Object.values(sent).every((path) => path === '/admin'), JSON.stringify(sent))
+  const report = await landsOn('/pet/1')
+  check('ADMIN-SITE-2', 'A report page still opens for the administrator (Moderation and Records link to it)',
+    report === '/pet/1', report)
+  await landsOn('/admin/moderation')
+  const rail = await page.evaluate(() => ({
+    backLink: document.body.innerText.includes('Back to the public site'),
+    logo: [...document.querySelectorAll('a')].find((a) => a.querySelector('img[alt="Paws&Found"]') && a.offsetParent)?.getAttribute('href'),
+  }))
+  check('ADMIN-SITE-3', 'The admin rail has no "Back to the public site", and its logo goes to the Overview',
+    !rail.backLink && rail.logo === '/admin', JSON.stringify(rail))
+
+  const staffPage = await (await browser.createBrowserContext()).newPage()
+  await staffPage.setViewport({ width: 1366, height: 900 })
+  await staffPage.goto(BASE + '/login', { waitUntil: 'networkidle2' })
+  await staffPage.evaluate(async (api, pw) => {
+    const me = await (await fetch(api + '/auth/me', { credentials: 'include' })).json()
+    await fetch(api + '/auth/login', { method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': me.csrf_token ?? '' },
+      body: JSON.stringify({ email: 'patricia.lim@example.com', password: pw }) })
+  }, API, PASSWORD)
+  await staffPage.goto(BASE + '/explore', { waitUntil: 'networkidle2' })
+  await pause(700)
+  const staffExplore = await staffPage.evaluate(() => window.location.pathname)
+  await staffPage.goto(BASE + '/staff', { waitUntil: 'networkidle2' })
+  await pause(700)
+  const staffBack = await staffPage.evaluate(() => document.body.innerText.includes('Back to the public site'))
+  check('ADMIN-SITE-4', 'A Pet Coordinator is unaffected: Explore opens, and the rail keeps its way back',
+    staffExplore === '/explore' && staffBack, `${staffExplore}, back link ${staffBack}`)
 }
 
 await browser.close()

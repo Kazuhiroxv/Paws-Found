@@ -57,7 +57,7 @@ the new name.
 
 | Stale | Correct |
 | --- | --- |
-| 117 test cases | **378** |
+| 117 test cases | **382** |
 | C. Authentication: 13 | **41** |
 | G. Functional: 24 | **44** |
 | H. Error handling: 6 | **10** |
@@ -89,9 +89,9 @@ Current table:
 | Q. Calendar dates | 3 | 3 |
 | R. City names | 2 | 2 |
 | S. Editing and matching | 18 | 18 |
-| T. Reopening a decision | 21 | 21 |
+| T. Reopening a decision | 25 | 25 |
 | SQL-14 (inside B) asserts the ERD's 24 foreign keys | | |
-| **Total** | **378** | **378** |
+| **Total** | **382** | **382** |
 
 Authentication grew with the three-attempt lockout and CSRF. Error handling
 grew when endpoint-level testing found a routing fault (§4). Functional grew

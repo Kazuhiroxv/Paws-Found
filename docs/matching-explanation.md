@@ -114,7 +114,7 @@ A decided pairing is final. Confirming twice is refused with **409** — without
 that, the second confirmation would notify both reporters again and add a
 meaningless "returned → returned" entry to each case history.
 
-**Except to undo a mistake.** A Pet Coordinator can reopen a pairing they **rejected** or **confirmed** by mistake, with a reason both reporters are told. The pairing goes back to under review and both reports back to Possible Match (frozen again). It is refused for a reporter's own "Not my pet" or a withdrawal, when a report has been closed since, and when a report has changed so that the stored comparison no longer describes it — the comparison is run again and must come out the same (`api/matches.php`, `reopen_preflight()`).
+**Except to undo a mistake.** A Pet Coordinator can reopen a pairing they **rejected** or **confirmed** by mistake, with a reason both reporters are told. The pairing goes back to under review and both reports back to Possible Match (frozen again). A reporter's "Not my pet" pressed on the wrong pairing can be reopened the same way. It is refused for a withdrawal (a pairing dismissed because one of its reports was marked returned or closed), when a report has been closed since, and when a report has changed so that the stored comparison no longer describes it — the comparison is run again and must come out the same (`api/matches.php`, `reopen_preflight()`).
 
 **The score and the seven reasons are a snapshot.** They are written once, when
 the pairing is made (`matching_store()`), and never recalculated. So the two

@@ -112,7 +112,7 @@ Everything a customer can do, plus:
 | Endpoint | Allowed to | Guard |
 | --- | --- | --- |
 | `PATCH /matches/{id}` | `confirm`, `reject`, `request_information` | `matches.php:85` — *"Only a Pet Coordinator can decide a pairing."* |
-| `PATCH /matches/{id}` | `reopen` a pairing they rejected or confirmed by mistake, with a reason | `reopen_preflight()`, `match_reopen()` |
+| `PATCH /matches/{id}` | `reopen` a pairing rejected, confirmed or dismissed ("Not my pet") by mistake, with a reason; never a withdrawn one | `reopen_preflight()`, `match_reopen()` |
 | `PATCH /reports/{id}/status` | Move **any** report along an allowed transition | `reports.php:322` |
 | `GET /users/{id}` | See contact details, to arrange a handover | `users.php:107` |
 | `GET /reports/stats` | The dashboard figures | `reports.php:457` |
@@ -150,7 +150,7 @@ target and what changed. `role_changed`, `account_suspended`,
 
 ## 3a. Where the server allows more than the interface offers
 
-The matrix above is the server. The interface is narrower in five places, all
+The matrix above is the server. The interface is narrower in six places, all
 deliberate. Each is marked † on the printed roles sheet
 (`docs/diagrams/roles-workflow-a4.pdf`).
 
@@ -161,6 +161,7 @@ deliberate. Each is marked † on the printed roles sheet
 | "This could be mine" / "Not my pet" | The two reporters, and staff or admin acting for one | The two reporters |
 | List every pairing | Staff and Admin | Staff (Match Queue) |
 | Edit a report | Its owner, whatever the role | The owner, from the customer dashboard |
+| Browse, search and file reports | Any role (browsing is public; filing needs any sign-in) | Everyone but the administrator: Home, Explore, About, Help, Privacy and Report a pet send them to `/admin` (`AdminStaysInWorkspace`). A report's own page stays open to them |
 
 The accurate sentence: *the interface assigns match verification to Pet
 Coordinators; the backend also recognises an Administrator as privileged for
@@ -190,7 +191,7 @@ signed in is not enough; you have to be *in the case*.
 
 ## 5. How this was tested, and what the tests found
 
-`npm run audit` — **378 cases**, of which **31 are category D, Authorization**.
+`npm run audit` — **382 cases**, of which **31 are category D, Authorization**.
 Each one is a request made by the wrong person to a real endpoint, with the
 expected status code asserted.
 

@@ -1578,13 +1578,13 @@ def edit_while_matched():
 
 
 def reopen_decisions():
-    """A Pet Coordinator can undo their own rejection or confirmation, safely.
+    """A Pet Coordinator can undo a rejection, confirmation or "Not my pet", safely.
 
     Reopening puts the pairing back to under_review and both reports back to
     Possible Match, tells both reporters why, and leaves the stored comparison
-    untouched. It is refused for a reporter's own "Not my pet", when a report
-    has been closed since, and when a report has changed so that the stored
-    comparison no longer describes it (the dog/turtle case).
+    untouched. It is refused for a withdrawal (a report was finished), when a
+    report has been closed since, and when a report has changed so that the
+    stored comparison no longer describes it (the dog/turtle case).
     """
     C = 'T. Reopening a decision'
     dog = dict(species='dog', breed='Shih Tzu', size='small', sex='male', primary_color='Brown',
@@ -1643,20 +1643,34 @@ def reopen_decisions():
     status(C, 'RO-17', 'Once a report is closed, the confirmation cannot be reopened', 'staff', 'PATCH',
            f'/matches/{m}', reason, 409)
 
-    # A reporter's own "Not my pet" is not the coordinator's to undo.
+    # A reporter's "Not my pet" pressed on the wrong pairing: the coordinator can reopen it.
     lost2, found2, m2 = pair('Audit Reopen Dismiss City')
     session('finder').call('PATCH', f'/matches/{m2}', {'action': 'dismiss'})
-    status(C, 'RO-18', 'A reporter\'s own "Not my pet" cannot be reopened', 'staff', 'PATCH', f'/matches/{m2}', reason, 409)
+    status(C, 'RO-18', 'A reporter\'s "Not my pet" can be reopened by a coordinator', 'staff', 'PATCH', f'/matches/{m2}', reason, 200)
+    check(C, 'RO-19', '...the pairing is under review and both reports Possible Match',
+          'under_review/possible_match/possible_match', state(m2, lost2, found2),
+          state(m2, lost2, found2) == 'under_review/possible_match/possible_match')
+
+    # A withdrawal is final: the pairing was dismissed because a report ended.
+    lost4, found4, m4 = pair('Audit Reopen Withdrawn City')
+    session('finder').call('PATCH', f'/reports/{found4}', {'status': 'closed', 'note': 'Handed to the city shelter.'})
+    check(C, 'RO-20', '(closing the found report withdraws the pairing)', 'dismissed/active/closed',
+          state(m4, lost4, found4), state(m4, lost4, found4) == 'dismissed/active/closed')
+    code, payload = session('staff').call('PATCH', f'/matches/{m4}', reason)
+    check(C, 'RO-21', 'A withdrawn pairing cannot be reopened', 409, code,
+          code == 409 and 'withdrawn' in str(payload))
+    check(C, 'RO-22', '...and nothing moved', 'dismissed/active/closed', state(m4, lost4, found4),
+          state(m4, lost4, found4) == 'dismissed/active/closed')
 
     # The dog/turtle case: ruled out, then the found report edited into a turtle.
     lost3, found3, m3 = pair('Audit Reopen Turtle City')
     session('staff').call('PATCH', f'/matches/{m3}', {'action': 'reject', 'note': 'Not the same dog.'})
     code, _ = session('finder').call('PUT', f'/reports/{found3}', {'species': 'other', 'breed': 'turtle'})
-    check(C, 'RO-19', '(after the rejection, the found report is edited into a turtle)', 200, code, code == 200)
+    check(C, 'RO-23', '(after the rejection, the found report is edited into a turtle)', 200, code, code == 200)
     code, payload = session('staff').call('PATCH', f'/matches/{m3}', reason)
-    check(C, 'RO-20', 'Reopening it is refused: the comparison no longer describes the reports',
+    check(C, 'RO-24', 'Reopening it is refused: the comparison no longer describes the reports',
           (409, 'comparison_changed'), (code, payload.get('code')), (code, payload.get('code')) == (409, 'comparison_changed'))
-    check(C, 'RO-21', '...and nothing moved', 'rejected/active/active', state(m3, lost3, found3),
+    check(C, 'RO-25', '...and nothing moved', 'rejected/active/active', state(m3, lost3, found3),
           state(m3, lost3, found3) == 'rejected/active/active')
 
 def error_handling():

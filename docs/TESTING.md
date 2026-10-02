@@ -104,7 +104,7 @@ skips that one check when there is no network.
 
 **Mutates nothing.** Sends no real email.
 
-### `npm run audit` — 378 checks
+### `npm run audit` — 382 checks
 
 The security and functional suite, against the running API and database.
 
@@ -129,7 +129,7 @@ The security and functional suite, against the running API and database.
 | Q. Calendar dates | 3 |
 | R. City names | 2 |
 | S. Editing and matching | 18 |
-| T. Reopening a decision | 21 |
+| T. Reopening a decision | 25 |
 
 `RA-01`–`RA-27` pin down who receives what. A guest's list row is exactly the
 public summary, a guest opening a report gets `401 auth_required` (a missing
@@ -215,14 +215,16 @@ report re-runs matching, so a corrected species or place can surface a new
 pairing, and a decided pairing is never rewritten. Against the previous API,
 EM-03, EM-04, EM-05, EM-05b and EM-13 fail.
 
-`RO-01`–`RO-21` hold reopening a decision. A guest (401) and a reporter (403)
+`RO-01`–`RO-25` hold reopening a decision. A guest (401) and a reporter (403)
 cannot; an open pairing has nothing to reopen (409); a reason is required
 (422). A rejection reopens to under review with both reports Possible Match,
 a line in each case history, both reporters told and an audit row, and the
 stored comparison untouched; the reports are frozen again, and the pairing can
 then be confirmed as usual. A confirmation reopens too, taking both reports out
-of Returned — unless a report has since been closed (409). A reporter's own
-"Not my pet" cannot be reopened (409). And the dog/turtle case: a pairing ruled
+of Returned — unless a report has since been closed (409). A reporter's
+"Not my pet" can be reopened too, back to under review with both reports
+Possible Match; a pairing withdrawn because a report was closed cannot (409,
+and nothing moves). And the dog/turtle case: a pairing ruled
 out and then its found report edited into a turtle is refused with
 `comparison_changed`, and nothing moves.
 
@@ -344,7 +346,7 @@ stage and exception, and still reaches the caller. No line carries
 coordinates, addresses, passwords or tokens. Needs `php` on PATH and the local
 database; **changes no data** (it asks about a report that is already finished).
 
-### `npm run test:ui` — 60 checks
+### `npm run test:ui` — 66 checks
 
 Two interface regressions from final manual testing, in a real Chrome.
 `MOD-LINK-1`–`4`: on Administrator > Moderation, "Open the full report" is a
@@ -386,7 +388,12 @@ marked on the field; it fits at 390 px. On Reset, the same label and checklist
 refused on the field and nothing is sent.
 `REOPEN-1`–`2` (local only): in the Match Queue a ruled-out pairing offers
 Reopen for review, which asks first and cannot be sent without a reason, and
-reopening sends it back to a coordinator. `DECIDE-ASK-1`–`2`: in Verification,
+reopening sends it back to a coordinator. `REOPEN-3`–`4`: a reporter's "Not
+my pet" offers Reopen for review; a withdrawn pairing does not.
+`ADMIN-SITE-1`–`4`: a signed-in administrator opening Home, Explore, Report a
+pet, About, Help or Privacy is sent to `/admin`; a report page (`/pet/1`) still
+opens; the admin rail has no "Back to the public site" and its logo goes to
+the Overview; a Pet Coordinator is unaffected. `DECIDE-ASK-1`–`2`: in Verification,
 Confirm match asks "Confirm this match?" and Not the same pet asks "Rule this
 pairing out?", each with Go back focused, and Go back decides nothing.
 `REPORT-ACTIONS-1`–`5`: on My Reports, a returned report shows Close report as a
@@ -522,11 +529,11 @@ build                                    green
 test:contract                            29/29
 test:calendar                             8/8
 test:mail                                15/15
-audit                                   378/378
+audit                                   382/382
 auth_lifecycle                          100/100
 multi-device                             73/73   (71/71 + 2 skipped vs a remote)
 test:signout                             24/24
-test:ui                                  60/60
+test:ui                                  66/66
 test:city                                11/11
 test:matching-log                         6/6
 a11y                                     31 pages, 0 violations
