@@ -61,8 +61,14 @@ export function CardHeader({ title, subtitle, action, titleAs: Heading = 'h3', c
   )
 }
 
-export function CardBody({ className, children }) {
-  return <div className={cn('px-5 py-5', className)}>{children}</div>
+// Passes anything else through — `ref` included, which React 19 hands to a
+// function component as an ordinary prop — so a page can focus a card body.
+export function CardBody({ className, children, ...rest }) {
+  return (
+    <div className={cn('px-5 py-5', className)} {...rest}>
+      {children}
+    </div>
+  )
 }
 
 export function CardFooter({ className, children }) {

@@ -1,15 +1,21 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { MailCheck, TriangleAlert } from 'lucide-react'
 import { Button, Card, CardBody, Input, RequiredNote } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { AuthShell } from '@/components/AuthShell'
-import { PasswordChecklist, PasswordField, PasswordStrength } from '@/components/PasswordField'
+import {
+  ConfirmPasswordField,
+  PasswordChecklist,
+  PasswordField,
+  PasswordStrength,
+} from '@/components/PasswordField'
 import { Turnstile } from '@/components/Turnstile'
-import { passwordChecks } from '@/utils/passwordRules'
+import { passwordChecks, passwordRequirementsMet } from '@/utils/passwordRules'
 import { cleanName, nameProblem } from '@/utils/nameRules'
 import { userService } from '@/services'
 import { cn } from '@/utils/cn'
+import { reveal, useRevealWhen } from '@/utils/reveal'
 
 /**
  * Create an account.
@@ -33,9 +39,13 @@ import { cn } from '@/utils/cn'
  */
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+/** Who is choosing the password, for the name and email rules. */
+const identityOf = (form) => ({ email: form.email, firstName: form.firstName, lastName: form.lastName })
+
 export function RegisterPage() {
   const [form, setForm] = useState({
-    fullName: '',
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
     password: '',
@@ -60,10 +70,19 @@ export function RegisterPage() {
   const [touched, setTouched] = useState({})
   const leave = (field) => setTouched((current) => ({ ...current, [field]: true }))
 
+  // Every refused submit bumps this, and the effect below takes the person to
+  // whatever refused it: the first marked field, or the message if none is.
+  const formRef = useRef(null)
+  const [refusals, setRefusals] = useState(0)
+  useEffect(() => {
+    if (refusals) reveal(formRef.current?.querySelector('[aria-invalid="true"], [data-reveal="error"]'))
+  }, [refusals])
+
   // The same rules as the API (api/auth.php), said sooner. The API still
   // checks everything, and its answer wins when it arrives.
   const problems = {
-    full_name: nameProblem(form.fullName),
+    first_name: nameProblem(form.firstName, 'first'),
+    last_name: nameProblem(form.lastName, 'last'),
     email:
       form.email.trim() === ''
         ? 'Enter your email address.'
@@ -74,7 +93,14 @@ export function RegisterPage() {
   const shown = (apiField, field) => fieldErrors[apiField] ?? (touched[field] ? problems[apiField] : null)
 
   const change = (field, value) => {
-    setForm((current) => ({ ...current, [field]: value }))
+    setForm((current) => {
+      const next = { ...current, [field]: value }
+      // A confirmation is only kept for a password that is still acceptable.
+      // Changing the password, or a name it now contains, hides the second
+      // box again and empties it, so a stale match can never carry over.
+      if (!passwordRequirementsMet(next.password, { identity: identityOf(next) })) next.confirmation = ''
+      return next
+    })
     setError(null)
     setFieldErrors({})
   }
@@ -84,8 +110,9 @@ export function RegisterPage() {
 
     // Submitting counts as leaving every field: anything still wrong is shown,
     // and nothing is sent.
-    if (problems.full_name || problems.email) {
-      setTouched({ fullName: true, email: true })
+    if (problems.first_name || problems.last_name || problems.email) {
+      setTouched({ firstName: true, lastName: true, email: true })
+      setRefusals((count) => count + 1)
       return
     }
 
@@ -95,7 +122,8 @@ export function RegisterPage() {
 
     try {
       const result = await userService.register({
-        fullName: cleanName(form.fullName),
+        firstName: cleanName(form.firstName),
+        lastName: cleanName(form.lastName),
         email: form.email.trim(),
         phone: form.phone.trim(),
         password: form.password,
@@ -112,15 +140,24 @@ export function RegisterPage() {
       setCaptchaToken(null)
       setCaptchaAttempt((attempt) => attempt + 1)
       setIsSubmitting(false)
+      setRefusals((count) => count + 1)
     }
   }
 
-  // Who is choosing, for the one check that the password is not simply their
-  // own name or address.
-  const identity = { email: form.email, fullName: form.fullName }
+  // Who is choosing: the password may not be their email address, nor contain
+  // their first or last name anywhere.
+  const identity = identityOf(form)
+  // Every requirement but the match. The Confirm box appears only once this is
+  // true (instructor requirement).
+  const requirementsMet = passwordRequirementsMet(form.password, { identity })
   const passwordReady = passwordChecks(form.password, form.confirmation, { identity }).every((c) => c.met)
   // Every requirement, not the strength label: Fair is accepted.
-  const canSubmit = form.privacyConsent && passwordReady && !problems.full_name && !problems.email
+  const canSubmit =
+    form.privacyConsent && passwordReady && !problems.first_name && !problems.last_name && !problems.email
+
+  // The confirmation replaces the form, which can leave the window scrolled to
+  // where the button was. Taken to it, with focus, so the result is seen.
+  const sentRef = useRevealWhen(sent)
 
   // The account exists; as far as the system is concerned the address does not
   // yet belong to anybody. This screen is the whole reason registration no
@@ -129,7 +166,11 @@ export function RegisterPage() {
     return (
       <AuthShell>
         <Card>
-          <CardBody className="flex flex-col items-center gap-4 text-center">
+          <CardBody
+            ref={sentRef}
+            tabIndex={-1}
+            className="flex scroll-mt-24 flex-col items-center gap-4 text-center outline-none"
+          >
             {sent.emailSent ? (
               <MailCheck size={40} className="text-brand" aria-hidden="true" />
             ) : (
@@ -166,21 +207,39 @@ export function RegisterPage() {
 
       <Card>
         <CardBody>
-          <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+          <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-4">
             <RequiredNote className="text-sm text-fg-muted" />
 
-            <Input
-              label="Full name"
-              autoComplete="name"
-              placeholder="e.g. Maria Santos"
-              value={form.fullName}
-              onChange={(event) => change('fullName', event.target.value)}
-              onBlur={() => leave('fullName')}
-              error={shown('full_name', 'fullName')}
-              maxLength={120}
-              required
-              hint="Shown on the reports you file. Letters, spaces, apostrophes, hyphens and periods."
-            />
+            {/* Two fields since the post-defense corrections (migration 008).
+                Side by side where there is room, one above the other on a
+                phone. */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input
+                label="First name"
+                autoComplete="given-name"
+                placeholder="e.g. Maria"
+                value={form.firstName}
+                onChange={(event) => change('firstName', event.target.value)}
+                onBlur={() => leave('firstName')}
+                error={shown('first_name', 'firstName')}
+                maxLength={60}
+                required
+              />
+              <Input
+                label="Last name"
+                autoComplete="family-name"
+                placeholder="e.g. Dela Cruz"
+                value={form.lastName}
+                onChange={(event) => change('lastName', event.target.value)}
+                onBlur={() => leave('lastName')}
+                error={shown('last_name', 'lastName')}
+                maxLength={60}
+                required
+              />
+            </div>
+            <p className="-mt-2 text-sm text-fg-muted">
+              Shown on the reports you file. Letters, spaces, apostrophes, hyphens and periods.
+            </p>
             <Input
               label="Email address"
               type="email"
@@ -211,14 +270,18 @@ export function RegisterPage() {
               error={fieldErrors.password}
               required
             />
-            <PasswordField
-              label="Type it again"
+            <PasswordChecklist
+              password={form.password}
+              confirmation={form.confirmation}
+              confirm={requirementsMet}
+              identity={identity}
+            />
+            <PasswordStrength password={form.password} identity={identity} />
+            <ConfirmPasswordField
+              ready={requirementsMet}
               value={form.confirmation}
               onChange={(event) => change('confirmation', event.target.value)}
-              required
             />
-            <PasswordChecklist password={form.password} confirmation={form.confirmation} identity={identity} />
-            <PasswordStrength password={form.password} identity={identity} />
 
             <Turnstile onToken={setCaptchaToken} attempt={captchaAttempt} />
 
@@ -266,7 +329,12 @@ export function RegisterPage() {
 
             {/* Only shown when it says something the marked fields do not. */}
             {error && Object.keys(fieldErrors).length === 0 && (
-              <p role="alert" className="text-sm text-danger">
+              <p
+                role="alert"
+                data-reveal="error"
+                tabIndex={-1}
+                className="scroll-mt-24 text-sm text-danger outline-none"
+              >
                 {error.message}
               </p>
             )}

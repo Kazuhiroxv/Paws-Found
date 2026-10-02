@@ -9,6 +9,7 @@ import { MATCH_STATUSES, wasWithdrawn } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
 import { matchService } from '@/services'
 import { cn } from '@/utils/cn'
+import { useRevealWhen } from '@/utils/reveal'
 
 const TABS = [
   { id: 'open', label: 'Open', statuses: [MATCH_STATUSES.SUGGESTED] },
@@ -47,6 +48,15 @@ export function StaffMatchesPage() {
   const [chosenTab, setChosenTab] = useState(null)
   const { data, error, isLoading, reload } = useAsync(loadAllMatches)
   const { hash } = useLocation()
+
+  // A reopened pairing moves to another tab, so its card simply vanishes from
+  // the one in front of the coordinator. Say what happened, where they are.
+  const [reopened, setReopened] = useState(0)
+  const reopenedRef = useRevealWhen(reopened)
+  const onReopened = async () => {
+    await reload()
+    setReopened((count) => count + 1)
+  }
 
   // Links from the Overview and Notifications arrive as #match-3. The card
   // exists only once the data has loaded and its tab is showing.
@@ -99,6 +109,14 @@ export function StaffMatchesPage() {
     <div className="flex flex-col gap-6">
       {header}
 
+      {reopened > 0 && (
+        <div ref={reopenedRef} tabIndex={-1} role="status" className="scroll-mt-24 outline-none">
+          <StatusStrip tone="brand" icon={RotateCcw} title="Pairing reopened for review">
+            It is back under “With a coordinator”, and both reporters have been told why.
+          </StatusStrip>
+        </div>
+      )}
+
       <StageTabs
         tabs={TABS.map((item) => ({ ...item, count: countFor(item.statuses) }))}
         selected={tab}
@@ -118,7 +136,7 @@ export function StaffMatchesPage() {
                   found={foundReport}
                   badge={<MatchStatusBadge status={match.status} withdrawn={wasWithdrawn(match.status, lostReport, foundReport)} />}
                 >
-                  <QueueOutcome match={match} lost={lostReport} found={foundReport} onReopened={reload} />
+                  <QueueOutcome match={match} lost={lostReport} found={foundReport} onReopened={onReopened} />
                 </MatchPairCard>
               </li>
             ))}

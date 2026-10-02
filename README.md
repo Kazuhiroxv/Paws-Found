@@ -53,7 +53,7 @@ are checked by what the file actually is; administrators add, rename, retire and
 delete pet categories. Nothing the app shows comes from mock data any more. See
 [`docs/feature-status.md`](docs/feature-status.md) for the item-by-item picture.
 
-**It is tested.** 702 automated checks in nine suites, all passing, and
+**It is tested.** 802 automated checks in eleven suites, all passing, and
 axe-core over 31 pages — see [`docs/TESTING.md`](docs/TESTING.md) §3.
 
 ## Getting started

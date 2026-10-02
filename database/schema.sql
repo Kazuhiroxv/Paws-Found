@@ -88,7 +88,18 @@ DROP TABLE IF EXISTS users;
 -- -----------------------------------------------------------------------------
 CREATE TABLE users (
   user_id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  full_name       VARCHAR(120)  NOT NULL,
+
+  -- The two parts are what the API writes and validates (migration 008).
+  first_name      VARCHAR(60)   NOT NULL,
+  last_name       VARCHAR(60)   NOT NULL,
+
+  -- Derived, never written: always the two parts above, so every query that
+  -- reads full_name keeps working and the three can never disagree. Production
+  -- (strict SQL mode) refuses a write to it; XAMPP's non-strict MariaDB ignores
+  -- one with a warning.
+  full_name       VARCHAR(121)
+                  AS (CONCAT_WS(' ', NULLIF(first_name, ''), NULLIF(last_name, ''))) STORED,
+
   email           VARCHAR(190)  NOT NULL,
 
   -- Added by migration 005, in the positions its AFTER clauses produced, so a
@@ -636,14 +647,14 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- A fresh import of this file already contains everything migrations 001 to
--- 007 do, so it records all seven as applied. Otherwise somebody running the
+-- 008 do, so it records all eight as applied. Otherwise somebody running the
 -- migrations afterwards would re-apply changes that are already here.
 --
 -- 004 and 005 were missing from this list: the baseline had their schema
 -- changes but claimed only three migrations had run. Harmless until somebody
 -- trusted the list.
 INSERT INTO schema_migrations (version)
-VALUES ('001'), ('002'), ('003'), ('004'), ('005'), ('006'), ('007')
+VALUES ('001'), ('002'), ('003'), ('004'), ('005'), ('006'), ('007'), ('008')
   ON DUPLICATE KEY UPDATE version = version;
 
 

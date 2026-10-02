@@ -7,6 +7,7 @@ import { REPORT_TYPES } from '@/constants'
 import { categoryService, userService, petService } from '@/services'
 import { useAsync } from '@/hooks/useAsync'
 import { cn } from '@/utils/cn'
+import { revealFirstInvalid, useRevealWhen } from '@/utils/reveal'
 import { PetDetailsStep } from './PetDetailsStep'
 import { LocationDateStep } from './LocationDateStep'
 import { PhotosStep } from './PhotosStep'
@@ -101,6 +102,18 @@ export function ReportForm({ reportType, report, guidance }) {
     headingRef.current?.focus()
   }, [stepIndex])
 
+  // A refused Next or Submit takes the person to the first field that refused
+  // it, not just the step heading — the problem may be a long way down. A
+  // counter rather than the errors themselves, so this runs on a refusal and
+  // not every time a fixed field clears its own error. Declared after the
+  // effect above so that, when a submit jumps back to an earlier step, the
+  // invalid field wins over the heading.
+  const formAreaRef = useRef(null)
+  const [refusals, setRefusals] = useState(0)
+  useEffect(() => {
+    if (refusals) revealFirstInvalid(formAreaRef.current)
+  }, [refusals])
+
   const handleChange = (field, value) => {
     setValues((current) => ({ ...current, [field]: value }))
     // Clear a field's error as soon as it is touched, rather than making the
@@ -147,7 +160,10 @@ export function ReportForm({ reportType, report, guidance }) {
   const handleNext = () => {
     const stepErrors = validateStep(step.id, effectiveValues)
     setErrors(stepErrors)
-    if (Object.keys(stepErrors).length > 0) return
+    if (Object.keys(stepErrors).length > 0) {
+      setRefusals((count) => count + 1)
+      return
+    }
 
     // A new lost report with no photo gets one gentle question. Photos stay
     // optional: somebody may have none to hand at 2am. Not asked of a finder,
@@ -195,6 +211,7 @@ export function ReportForm({ reportType, report, guidance }) {
       if (Object.keys(stepErrors).length > 0) {
         setErrors(stepErrors)
         setStepIndex(STEPS.indexOf(candidate))
+        setRefusals((count) => count + 1)
         return
       }
     }
@@ -253,7 +270,7 @@ export function ReportForm({ reportType, report, guidance }) {
   return (
     // onKeyDown on the wrapper rather than on each field: one rule, in one
     // place, for every control the wizard will ever contain.
-    <div className="flex flex-col gap-7" onKeyDown={handleKeyDown}>
+    <div ref={formAreaRef} className="flex flex-col gap-7" onKeyDown={handleKeyDown}>
       {/* Full width, above both columns: the progress belongs to the whole
           task, not to the column the fields happen to be in. */}
       <Stepper steps={STEPS} currentIndex={stepIndex} />
@@ -495,9 +512,19 @@ function Stepper({ steps, currentIndex }) {
 function SubmissionSuccess({ report, photoWarning }) {
   const isLost = report.reportType === REPORT_TYPES.LOST
 
+  // This card replaces the whole wizard, and the Submit button was at the
+  // bottom of its longest step. Without this the window stayed down there,
+  // the confirmation sat above it out of sight, and it looked as though
+  // nothing had happened — which is what was seen at the defense.
+  const confirmationRef = useRevealWhen(true)
+
   return (
     <Card>
-      <CardBody className="flex flex-col items-center gap-3 py-10 text-center">
+      <CardBody
+        ref={confirmationRef}
+        tabIndex={-1}
+        className="flex scroll-mt-24 flex-col items-center gap-3 py-10 text-center outline-none"
+      >
         <CircleCheck size={40} className="text-success" aria-hidden="true" />
 
         <h2 className="text-xl font-semibold text-fg">Report submitted</h2>

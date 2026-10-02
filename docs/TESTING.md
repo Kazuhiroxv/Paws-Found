@@ -35,7 +35,7 @@ from Docker when pointing at Railway.
 
 ESLint over everything; Vite production build. Touch nothing, need nothing.
 
-### `npm run test:contract` — 32 checks
+### `npm run test:contract` — 36 checks
 
 Node's built-in test runner. **No server, no database.** These exist because
 two real defects got through every other suite by being *agreements between two
@@ -257,11 +257,18 @@ end**, so it is safe to run repeatedly on a development database — and it will
 **wipe** whatever is in the database it is pointed at. Never point it at
 production without understanding that.
 
-### `python scripts/auth_lifecycle.py` — 100 checks
+### `python scripts/auth_lifecycle.py` — 106 checks
 
 Registration, verification, sign-in refusal, the password reset, the session
 revocation that comes with it, a reset *not* unlocking a locked account, the
 safe email change, and rate limiting.
+
+Section I was rewritten for Correction 2: first and last name are refused or
+accepted separately (`N1`–`N13`, including the profile saving both parts and
+`full_name` following), and a password containing the first or last name
+anywhere is refused at registration (`P9`–`P12`) and at reset (`R3`, `R3b`) —
+where the name comes from the database, and the refusal leaves the link unspent
+(`R6`) so the same link then sets a valid password (`R4`).
 
 `RS-1`–`RS-5` cover a reset to the password the account already has. It used
 to be accepted, sign every other session out and say "Password changed". It is
@@ -398,9 +405,10 @@ pairings out; and the stored score still equals its seven signals.
 `PWD-1`–`12`: on Register, the label is Weak while a requirement is not met
 (Create account disabled), Fair once every one is (accepted, and not drawn as
 an error), Strong for a long passphrase; a long common password and the email
-address itself are refused; pasting into "Type it again" is allowed; both boxes
-keep `autocomplete="new-password"`; Show password works; a one-letter name is
-marked on the field; it fits at 390 px. On Reset, the same label and checklist
+address itself are refused; pasting into Confirm password is refused with the
+reason shown (reversed by Correction 2 — it used to assert paste was allowed);
+both boxes keep `autocomplete="new-password"`; Show password works; a one-letter
+first name is marked on the field; it fits at 390 px. On Reset, the same label and checklist
 (no name/email item: the link does not say whose account). On Profile, "A" is
 refused on the field and nothing is sent.
 `REOPEN-1`–`2` (local only): in the Match Queue a ruled-out pairing offers
@@ -535,6 +543,36 @@ everything passes.
 
 ---
 
+### `npm run test:identity` — 41 checks (Correction 2)
+
+The server's own name and password-identity rules, called directly — no
+database, no HTTP. First and last name each accept real names of every shape
+("Ma.", "Anne-Marie", "D'Angelo", "O’Connor", "José", "Dela Cruz") and refuse
+"A", "1", "!!!!" and "-"; a password containing either name anywhere is refused,
+case-insensitively, piece by piece ("Anne-Marie" refuses "…marie…"). The cases
+live in `scripts/identity-cases.json`, which `identity-rules.test.mjs` (in
+`test:contract`) runs against the browser's copy — so the two copies are held to
+the same list and cannot drift. Needs `php` (XAMPP's: `C:\xampp\php\php.exe`).
+
+### `npm run test:feedback` — 49 checks (Correction 2)
+
+What was seen at the defense, driven through the interface.
+
+- `CF-1`–`8`: Confirm password is absent until the password qualifies (and
+  while it contains the first name), refuses a paste and a drop with a reason,
+  accepts typing, keeps Create account disabled on a mismatch, and is emptied
+  and hidden if the password stops qualifying.
+- `SB-*`: a form submitted from the **bottom** of the page ends with its answer
+  on screen and focused — registration refused by the server, the wizard's
+  Continue refused, and a found report filed — at 1280 and at 820 px.
+- `RW-*`: at 390, 768, 820, 912, 1023, 1024, 1280, 1440 and 1920 px, the date
+  filter is visible (on arrival from 1024; one click on Filters below), a filter
+  can be set and cleared, navigation has a way through, and no control is under
+  24 px (the map's attribution links are exempt as inline text).
+
+Files one found report and tries one registration with a taken address. Reseed
+afterwards.
+
 ## 3. Last verified results
 
 2 October 2026, on the development laptop unless stated, on branch
@@ -544,12 +582,14 @@ everything passes.
 ```
 lint                                     clean
 build                                    green
-test:contract                            32/32
+test:contract                            36/36
+test:identity                            41/41
+test:feedback                            49/49
 check:bundle                             0 of 91 mock markers in dist/
 test:calendar                             8/8
 test:mail                                15/15
 audit                                   382/382
-auth_lifecycle                          100/100
+auth_lifecycle                          106/106
 multi-device                             73/73   (71/71 + 2 skipped vs a remote)
 test:signout                             24/24
 test:ui                                  66/66
@@ -560,8 +600,9 @@ docker build --pull --no-cache           clean, curl present, one MPM, Syntax OK
 verify:deploy vs production              25/25 + 3 skipped (read-only default)
 verify:deploy --upload vs local XAMPP    27/28   (7.1, correctly, on plain HTTP)
 verify:deploy vs local production image 24/25 + 3 skipped  (7.1, correctly, on plain HTTP)
-schema.sql vs migrated database          identical across all 17 tables
+schema.sql vs migrated database          identical across all 17 tables (after 008)
 schema.sql on MySQL 8.0.46 and 9.4.0     imports clean; 17 tables, 24 FKs
+migration 008 on MySQL 9.4 and MariaDB   from the 007 schema: all 10 names split, full_name unchanged
 ```
 
 Against production:

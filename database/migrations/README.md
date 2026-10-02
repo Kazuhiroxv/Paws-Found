@@ -17,6 +17,8 @@ column, and it never drops the data that is already there.
                             revoking sessions without hunting for session files
     006_token_expiry_explicit.sql  stop auth_tokens.expires_at rewriting itself
     007_match_fk_mysql8.sql   let match_claims import on MySQL 8, not only MariaDB
+    008_split_user_names.sql  first and last name; full_name becomes generated.
+                            Ships WITH the code that uses it — see the file.
 
 ## Applying one
 

@@ -491,9 +491,14 @@ SUITES = [
     ('test:ui', 'Interface regressions', 'npm run test:ui',
      'in a real Chrome: moderation, registration feedback, phone menus, report actions, the edit freeze, '
      'historical labels, password requirements and strength, reopening, decisions asking first'),
+    ('test:feedback', 'Form feedback', 'npm run test:feedback',
+     'in a real Chrome: Confirm password appears when the password qualifies and must be retyped; a submit '
+     'from the bottom of a page ends on its answer; the date filter and controls at touch-laptop widths'),
     ('test:contract', 'Contract tests', 'npm run test:contract',
      'what the form sends, what the API returns and what MySQL stores agree; dates in Philippine time; '
      'the password rule matches the one on the server'),
+    ('test:identity', 'Name and password rules', 'npm run test:identity',
+     'first and last name on the server; a password may not contain either; the same cases the browser copy is held to'),
     ('test:city', 'Place comparison', 'npm run test:city', 'how two places compare when a report has no map pin'),
     ('test:calendar', 'Calendar', 'npm run test:calendar', '"today" is the Philippine date; the database speaks UTC'),
     ('test:matching-log', 'Matching log', 'npm run test:matching-log', 'what matching writes to the log, with debugging off and on'),

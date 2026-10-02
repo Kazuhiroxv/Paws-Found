@@ -139,7 +139,9 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new'
       describedBy: (input.getAttribute('aria-describedby') ?? '').includes(`${i}-error`) }
   }, id)
 
-  const name = await fieldId('Full name')
+  // First and last name separately since Correction 2 (migration 008).
+  const name = await fieldId('First name')
+  const lastName = await fieldId('Last name')
   const email = await fieldId('Email address')
   const phone = await fieldId('Phone number')
 
@@ -166,7 +168,7 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new'
   await page.keyboard.press('Tab')
   await pause(200)
   const blankName = await state(name)
-  check('REG-5', 'Leaving the name blank says so', blankName.invalid && blankName.error === 'Enter your name.', blankName.error)
+  check('REG-5', 'Leaving the first name blank says so', blankName.invalid && blankName.error === 'Enter your first name.', blankName.error)
 
   await page.click(`#${phone}`)
   await page.keyboard.press('Tab')
@@ -175,11 +177,15 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new'
   check('REG-6', 'A blank phone number is fine (it is optional)', !blankPhone.invalid && blankPhone.error === '')
 
   // Everything else valid except the email, so only the email blocks it.
-  await page.type(`#${name}`, 'Registration Check')
+  await page.type(`#${name}`, 'Registration')
+  await page.type(`#${lastName}`, 'Check')
   await page.click(`#${email}`, { clickCount: 3 })
   await page.type(`#${email}`, 'not-an-email')
+  // The second box only appears once the first password qualifies, so it is
+  // looked for after typing the first one, not before.
+  await (await page.$('input[type=password]')).type('correct horse battery')
+  await pause(200)
   const passwords = await page.$$('input[type=password]')
-  await passwords[0].type('correct horse battery')
   await passwords[1].type('correct horse batterY')
   const mismatch = await page.evaluate(() => {
     const button = [...document.querySelectorAll('button[type=submit]')][0]
@@ -206,7 +212,7 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new'
     const response = await fetch(api + '/auth/register', {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': me.csrf_token ?? '' },
-      body: JSON.stringify({ full_name: 'Hand Built', email: 'yuuriko1506', password: 'correct horse battery', privacy_consent: true }),
+      body: JSON.stringify({ first_name: 'Hand', last_name: 'Built', email: 'yuuriko1506', password: 'correct horse battery', privacy_consent: true }),
     })
     return response.status
   }, API)
@@ -237,12 +243,19 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new'
     return { strength, disabled: document.querySelector('button[type=submit]').disabled,
       meterIsError: Boolean(meter && (meter.closest('[role=alert]') || /text-danger/.test(meter.className))) }
   })
-  await setValue(ids['Full name'], 'Registration Check')
+  await setValue(ids['First name'], 'Registration')
+  await setValue(ids['Last name'], 'Check')
   await setValue(ids['Email address'], 'registration.check@example.com')
   await page.evaluate(() => document.querySelector('input[type=checkbox]').click())
+  // The Confirm box exists only while the password qualifies (Correction 2),
+  // so it is found afresh each time rather than from the ids read at load.
+  const confirmId = () => page.evaluate(() =>
+    [...document.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith('Confirm password'))?.htmlFor ?? null)
   const both = async (password) => {
     await setValue(ids['Password'], password)
-    await setValue(ids['Type it again'], password)
+    await pause(150)
+    const confirm = await confirmId()
+    if (confirm) await setValue(confirm, password)
     await pause(150)
     return read()
   }
@@ -260,13 +273,19 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new'
     common.strength === 'Weak' && common.disabled && /Not a commonly used password\s*— not yet met/.test(commonText))
   const own = await both('registration.check@example.com')
   check('PWD-5', 'The email address itself is refused as a password', own.disabled && own.strength === 'Weak')
-  const pasted = await page.evaluate((id) => {
+  // Reversed by Correction 2: the instructor requires the confirmation to be
+  // retyped. It used to assert that pasting was allowed, for password
+  // managers; the password box itself still accepts a paste.
+  await both('correct horse battery staple')
+  const refusedPaste = await page.evaluate((id) => {
     const el = document.getElementById(id)
     const event = new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: new DataTransfer() })
     el.dispatchEvent(event)
-    return !event.defaultPrevented
-  }, ids['Type it again'])
-  check('PWD-6', 'Pasting into "Type it again" is allowed (password managers)', pasted)
+    return event.defaultPrevented
+  }, await confirmId())
+  await pause(150)
+  const told = await page.evaluate(() => document.body.innerText.includes('Please retype your password instead of pasting it.'))
+  check('PWD-6', 'Pasting into Confirm password is refused, and the reason is shown', refusedPaste && told)
   const autocomplete = await page.evaluate(() =>
     [...document.querySelectorAll('input[type=password]')].map((i) => i.getAttribute('autocomplete')).join(','))
   check('PWD-7', 'Both password boxes offer autocomplete="new-password"', autocomplete === 'new-password,new-password', autocomplete)
@@ -274,16 +293,16 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new'
   await pause(200)
   const revealed = await page.evaluate(() => document.querySelectorAll('input[type=text][autocomplete=new-password]').length)
   check('PWD-8', 'Show password still reveals the box', revealed === 1)
-  await setValue(ids['Full name'], 'A')
-  await page.evaluate((id) => document.getElementById(id).dispatchEvent(new FocusEvent('focusout', { bubbles: true })), ids['Full name'])
-  await page.evaluate((id) => { document.getElementById(id).focus(); document.getElementById(id).blur() }, ids['Full name'])
+  await setValue(ids['First name'], 'A')
+  await page.evaluate((id) => document.getElementById(id).dispatchEvent(new FocusEvent('focusout', { bubbles: true })), ids['First name'])
+  await page.evaluate((id) => { document.getElementById(id).focus(); document.getElementById(id).blur() }, ids['First name'])
   await pause(200)
   const name = await page.evaluate((id) => {
     const el = document.getElementById(id)
-    return { invalid: el.getAttribute('aria-invalid') === 'true', text: document.body.innerText.includes('Enter a real name with at least 2 letters.'),
+    return { invalid: el.getAttribute('aria-invalid') === 'true', text: document.body.innerText.includes('Enter a real first name with at least 2 letters.'),
       disabled: document.querySelector('button[type=submit]').disabled }
-  }, ids['Full name'])
-  check('PWD-9', 'A one-letter name is marked on the field and blocks Create account', name.invalid && name.text && name.disabled, JSON.stringify(name))
+  }, ids['First name'])
+  check('PWD-9', 'A one-letter first name is marked on the field and blocks Create account', name.invalid && name.text && name.disabled, JSON.stringify(name))
   await page.setViewport({ width: 390, height: 844, isMobile: true })
   await pause(400)
   check('PWD-10', 'At 390 px the requirements and strength fit', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
@@ -293,17 +312,19 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new'
   await page.goto(BASE + '/reset-password?token=' + 'b'.repeat(64), { waitUntil: 'networkidle2' })
   const resetIds = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('label')]
     .map((l) => [l.textContent.replace(/\*|\(required\)/g, '').trim(), l.htmlFor]).filter(([, id]) => id)))
-  await page.evaluate((a, b) => {
-    for (const id of [a, b]) {
-      const el = document.getElementById(id)
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, 'river bend walks')
-      el.dispatchEvent(new Event('input', { bubbles: true }))
-    }
-  }, resetIds['New password'], resetIds['Type it again'])
+  // The password first; the Confirm box appears once it qualifies.
+  const typeInto = (id, value) => page.evaluate((id, value) => {
+    const el = document.getElementById(id)
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, value)
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+  }, id, value)
+  await typeInto(resetIds['New password'], 'river bend walks')
+  await pause(150)
+  await typeInto(await confirmId(), 'river bend walks')
   await pause(150)
   const reset = await page.evaluate(() => ({
     strength: document.body.innerText.match(/Strength: (Weak|Fair|Strong)/)?.[1],
-    identityItem: document.body.innerText.includes('Not your name or email address'),
+    identityItem: /first or last name|Not your email address/.test(document.body.innerText),
     disabled: document.querySelector('button[type=submit]').disabled,
   }))
   check('PWD-11', 'Reset: the same label and requirements, and a Fair password may be saved',
@@ -324,15 +345,15 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new'
   profile.on('request', (request) => { if (request.method() === 'PATCH' && request.url().includes('/users/me')) patches.push(1) })
   await profile.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Edit profile').click())
   await profile.evaluate(() => {
-    const label = [...document.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith('Full name'))
+    const label = [...document.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith('First name'))
     const el = document.getElementById(label.htmlFor)
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, 'A')
     el.dispatchEvent(new Event('input', { bubbles: true }))
   })
   await profile.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Save changes').click())
   await pause(800)
-  const profileName = await profile.evaluate(() => document.body.innerText.includes('Enter a real name with at least 2 letters.'))
-  check('PWD-12', 'Profile: a one-letter name is refused on the field and nothing is sent', profileName && patches.length === 0,
+  const profileName = await profile.evaluate(() => document.body.innerText.includes('Enter a real first name with at least 2 letters.'))
+  check('PWD-12', 'Profile: a one-letter first name is refused on the field and nothing is sent', profileName && patches.length === 0,
     `${patches.length} request(s)`)
 }
 

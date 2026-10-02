@@ -16,6 +16,10 @@ import { apiFetch, queryString } from './api'
 function userFromApi(row) {
   return {
     id: row.user_id,
+    // The two parts are what is edited; full_name is generated from them by
+    // the database (migration 008) and is what every screen shows.
+    firstName: row.first_name ?? '',
+    lastName: row.last_name ?? '',
     fullName: row.full_name,
     email: row.email ?? '',
     phone: row.contact_number ?? '',
@@ -70,6 +74,8 @@ export async function getCurrentUser() {
 
   return {
     id: payload.user.user_id,
+    firstName: payload.user.first_name ?? '',
+    lastName: payload.user.last_name ?? '',
     fullName: payload.user.full_name,
     email: payload.user.email,
     phone: payload.user.contact_number ?? '',
@@ -124,7 +130,8 @@ export async function signOut() {
  * so a crafted request cannot register an administrator.
  */
 export async function register({
-  fullName,
+  firstName,
+  lastName,
   email,
   password,
   phone = '',
@@ -134,7 +141,8 @@ export async function register({
   const payload = await apiFetch('/auth/register', {
     method: 'POST',
     body: JSON.stringify({
-      full_name: fullName,
+      first_name: firstName,
+      last_name: lastName,
       email,
       password,
       contact_number: phone,
@@ -272,7 +280,8 @@ export async function updateUser(id, changes) {
   const payload = await apiFetch('/users/me', {
     method: 'PATCH',
     body: JSON.stringify({
-      full_name: changes.fullName,
+      first_name: changes.firstName,
+      last_name: changes.lastName,
       email: changes.email,
       contact_number: changes.phone ?? '',
       preferred_location: changes.preferredLocation ?? '',

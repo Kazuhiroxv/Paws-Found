@@ -281,7 +281,7 @@ function current_user(): ?array
     $_SESSION['last_activity'] = time();
 
     $statement = db()->prepare(
-        'SELECT user_id, full_name, email, contact_number, role, account_status,
+        'SELECT user_id, first_name, last_name, full_name, email, contact_number, role, account_status,
                 preferred_location, notify_matches, notify_status, notify_staff,
                 created_at, email_verified_at, pending_email, session_version
            FROM users
@@ -441,34 +441,68 @@ const COMMON_PASSWORD_WORDS = [
     'user', 'test', 'guest', 'default', 'pawsandfound', 'pawsfound', 'paws', 'mahalkita',
 ];
 
+/** The longest first or last name, in characters. Matches users.first_name / last_name. */
+const NAME_PART_MAX = 60;
+
 /**
- * A full name, cleaned, and what is wrong with it if anything is.
+ * A first or last name, cleaned, and what is wrong with it if anything is.
  *
- * Human names: letters from any language (with their accents), spaces,
- * apostrophes, hyphens and periods, and at least two letters. Not "first name
- * plus surname" — plenty of people have one name, or several.
+ * Asked for separately since the post-defense corrections: the instructor wants
+ * First Name and Last Name as two fields, and the password rule below needs the
+ * parts to check against. `$which` is 'first' or 'last', for the messages.
+ *
+ * Human names: letters from any language with their accents, plus spaces,
+ * apostrophes (straight or curly), hyphens and periods — "Ma.", "Anne-Marie",
+ * "D'Angelo", "O’Connor", "Dela Cruz". At least two letters, which refuses "A",
+ * "1", "!!!!" and "-" while allowing two-letter names such as "Jo" and "Li".
  *
  * @return array{0: string, 1: ?string}  the name to store, and the error or null
  */
-function validate_full_name(string $raw): array
+function validate_name_part(string $raw, string $which): array
 {
-    // Runs of spaces become one, so "Maria   Santos" is stored as it reads.
+    $label = $which === 'last' ? 'last name' : 'first name';
+
+    // Runs of spaces become one, so "Dela   Cruz" is stored as it reads.
     $name = trim((string) preg_replace('/\s+/u', ' ', $raw));
 
     if ($name === '') {
-        return [$name, 'Enter your name.'];
+        return [$name, "Enter your {$label}."];
     }
-    if (mb_strlen($name) > 120) {
-        return [$name, 'That name is too long (120 characters maximum).'];
+    if (mb_strlen($name) > NAME_PART_MAX) {
+        return [$name, "That {$label} is too long (" . NAME_PART_MAX . ' characters maximum).'];
     }
     if (preg_match_all('/\p{L}/u', $name) < 2) {
-        return [$name, 'Enter a real name with at least 2 letters.'];
+        return [$name, "Enter a real {$label} with at least 2 letters."];
     }
-    if (!preg_match("/^[\\p{L}\\p{M} '’.\\-]+$/u", $name)) {
+    if (!preg_match("/^[\p{L}\p{M} '’.\-]+$/u", $name)) {
         return [$name, 'Use letters, spaces, apostrophes, hyphens and periods only.'];
     }
 
     return [$name, null];
+}
+
+/**
+ * The pieces of a person's name a password may not contain.
+ *
+ * Each name is split on anything that is not a letter, lower-cased, and every
+ * piece of two letters or more kept: "Anne-Marie" gives "anne" and "marie",
+ * "Dela Cruz" gives "dela" and "cruz", "Ma." gives "ma". A one-letter piece is
+ * dropped — refusing every password containing an "a" helps nobody.
+ *
+ * @return string[]
+ */
+function password_name_pieces(?string $firstName, ?string $lastName): array
+{
+    $pieces = [];
+    foreach ([$firstName, $lastName] as $name) {
+        foreach (preg_split('/[^\p{L}\p{M}]+/u', mb_strtolower((string) $name)) ?: [] as $piece) {
+            if (mb_strlen($piece) >= 2) {
+                $pieces[] = $piece;
+            }
+        }
+    }
+
+    return array_values(array_unique($pieces));
 }
 
 /** Lower case, letters and digits only — the form most comparisons are made in. */
@@ -537,11 +571,25 @@ function is_common_password(string $password): bool
  * sign-in, so every existing password keeps working. No rule about capitals,
  * digits or symbols: those produce "Password1!", and length does more.
  *
- * `$email` and `$fullName` are the account's, when known, for the one check
- * that the password is not simply the person's own name or address. Equality
- * only: a long passphrase that happens to contain a first name is fine.
+ * `$email`, `$firstName` and `$lastName` are the account's, when known.
+ *
+ * The NAME rule is a substring rule, by instructor requirement: the password may
+ * not contain the person's first or last name — any piece of either, two letters
+ * or more — anywhere, ignoring case. For "Ja" that refuses "123jaabcdefghijk"
+ * and "secure-ja-password". Deterministic, not fuzzy: no misspellings, no
+ * look-alikes. It is strict on purpose and it costs something — a two-letter
+ * name rules out every password containing those two letters — which is why
+ * the form shows the rule live as the password is typed.
+ *
+ * The EMAIL rule stays an equality rule: the password may not simply be the
+ * address, or the part before the @.
  */
-function password_policy_error(string $password, ?string $email = null, ?string $fullName = null): ?string
+function password_policy_error(
+    string $password,
+    ?string $email = null,
+    ?string $firstName = null,
+    ?string $lastName = null,
+): ?string
 {
     if (mb_strlen($password) < PASSWORD_MIN_CHARS) {
         return 'Use at least ' . PASSWORD_MIN_CHARS . ' characters. A few words together make a good one.';
@@ -562,11 +610,15 @@ function password_policy_error(string $password, ?string $email = null, ?string 
         $identity[] = password_letters_and_digits($email);
         $identity[] = password_letters_and_digits(strstr($email, '@', true) ?: $email);
     }
-    if ($fullName !== null && $fullName !== '') {
-        $identity[] = password_letters_and_digits($fullName);
-    }
     if (in_array(mb_strtolower($password), $identity, true) || ($mine !== '' && in_array($mine, $identity, true))) {
-        return 'Choose a password that is not based on your name or email address.';
+        return 'Choose a password that is not your email address.';
+    }
+
+    $lowered = mb_strtolower($password);
+    foreach (password_name_pieces($firstName, $lastName) as $piece) {
+        if (str_contains($lowered, $piece)) {
+            return 'Choose a password that does not contain your first or last name.';
+        }
     }
 
     return null;

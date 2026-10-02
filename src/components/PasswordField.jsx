@@ -20,6 +20,7 @@ export function PasswordField({
   hint,
   autoComplete = 'new-password',
   required = false,
+  ...rest
 }) {
   const [revealed, setRevealed] = useState(false)
 
@@ -35,6 +36,7 @@ export function PasswordField({
         autoComplete={autoComplete}
         required={required}
         className="pr-11"
+        {...rest}
       />
       <button
         type="button"
@@ -46,6 +48,56 @@ export function PasswordField({
         {revealed ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
         <span className="sr-only">{revealed ? 'Hide password' : 'Show password'}</span>
       </button>
+    </div>
+  )
+}
+
+/**
+ * The second password box, shown only once the first one is acceptable.
+ *
+ * Two instructor requirements from the post-defense corrections:
+ *
+ *   - it does not appear until every password requirement is met, so nobody
+ *     types a confirmation of a password that is about to be refused (the page
+ *     also clears it if the password stops being acceptable — see `ready`);
+ *   - it has to be typed, not pasted. A paste or a drop is refused WITH a
+ *     reason, shown as the field's hint and announced, because a box that
+ *     silently ignores Ctrl+V looks broken.
+ *
+ * Typing is untouched, and the show/hide button still works.
+ */
+export const RETYPE_MESSAGE = 'Please retype your password instead of pasting it.'
+
+export function ConfirmPasswordField({ ready, value, onChange, error, label = 'Confirm password' }) {
+  const [notice, setNotice] = useState('')
+
+  if (!ready) return null
+
+  const refuse = (event) => {
+    event.preventDefault()
+    setNotice(RETYPE_MESSAGE)
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <PasswordField
+        label={label}
+        value={value}
+        onChange={(event) => {
+          setNotice('')
+          onChange(event)
+        }}
+        onPaste={refuse}
+        onDrop={refuse}
+        error={error}
+        hint={notice || 'Type the same password again, to catch a typing mistake.'}
+        required
+      />
+      {/* The hint above is already tied to the box; this says it aloud the
+          moment a paste is refused, without moving focus. */}
+      <p role="status" className="sr-only">
+        {notice}
+      </p>
     </div>
   )
 }

@@ -73,7 +73,7 @@ function users_list(): never
     $clause = $where === [] ? '' : ' WHERE ' . implode(' AND ', $where);
 
     $statement = db()->prepare(
-        "SELECT user_id, full_name, email, contact_number, role, account_status,
+        "SELECT user_id, first_name, last_name, full_name, email, contact_number, role, account_status,
                 preferred_location, created_at
            FROM users
            {$clause}
@@ -101,7 +101,7 @@ function user_detail(int $id, array $extra = []): never
     $viewer = require_login();
 
     $statement = db()->prepare(
-        'SELECT user_id, full_name, email, contact_number, role, account_status,
+        'SELECT user_id, first_name, last_name, full_name, email, contact_number, role, account_status,
                 preferred_location, created_at, email_verified_at, pending_email
            FROM users
           WHERE user_id = :id'
@@ -135,10 +135,15 @@ function profile_update(): never
     $errors = [];
 
     // The same rule as registration (helpers.php), so a name refused there
-    // cannot be saved here afterwards.
-    [$fullName, $nameError] = validate_full_name((string) ($body['full_name'] ?? ''));
-    if ($nameError !== null) {
-        $errors['full_name'] = $nameError;
+    // cannot be saved here afterwards. Two parts since migration 008; the
+    // database derives full_name from them.
+    [$firstName, $firstError] = validate_name_part((string) ($body['first_name'] ?? ''), 'first');
+    if ($firstError !== null) {
+        $errors['first_name'] = $firstError;
+    }
+    [$lastName, $lastError] = validate_name_part((string) ($body['last_name'] ?? ''), 'last');
+    if ($lastError !== null) {
+        $errors['last_name'] = $lastError;
     }
 
     $email = trim((string) ($body['email'] ?? ''));
@@ -161,6 +166,10 @@ function profile_update(): never
     if ($errors !== []) {
         json_error('Please check the highlighted fields.', 422, ['fields' => $errors]);
     }
+
+    // For the greeting in the email-change message. The same value the
+    // database generates into users.full_name from the two parts.
+    $fullName = $firstName . ' ' . $lastName;
 
     // The address is NOT changed here.
     //
@@ -194,7 +203,8 @@ function profile_update(): never
 
     $statement = db()->prepare(
         'UPDATE users
-            SET full_name = :name,
+            SET first_name = :first_name,
+                last_name = :last_name,
                 contact_number = :phone,
                 preferred_location = :location,
                 notify_matches = :matches,
@@ -205,7 +215,8 @@ function profile_update(): never
 
     try {
         $statement->execute([
-            ':name' => $fullName,
+            ':first_name' => $firstName,
+            ':last_name' => $lastName,
             ':phone' => $phone === '' ? null : $phone,
             ':location' => $location === '' ? null : $location,
             // Absent means "leave as it is", so an update that only changes a
@@ -374,6 +385,8 @@ function shape_user(array $row, bool $includeContact = true): array
 {
     $user = [
         'user_id' => (int) $row['user_id'],
+        'first_name' => $row['first_name'],
+        'last_name' => $row['last_name'],
         'full_name' => $row['full_name'],
         'role' => $row['role'],
         'account_status' => $row['account_status'],

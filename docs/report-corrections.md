@@ -109,7 +109,7 @@ There is also a second suite the report does not mention yet:
 > are all decided by the shared database rather than by any one device, and
 > that a coordinator or administrator keeps one session at a time.
 
-> `python scripts/auth_lifecycle.py` — 100 checks over registration,
+> `python scripts/auth_lifecycle.py` — 106 checks over registration,
 > verification, the password reset, session revocation, the safe email change
 > and rate limiting. It reads every link out of captured mail, because there is
 > no endpoint that hands out a token.

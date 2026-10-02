@@ -53,21 +53,21 @@ def input_validation():
     status(C, 'IV-08', 'Sort key outside the whitelist', 'guest', 'GET', '/reports?sort=bogus', None, 422)
     status(C, 'IV-09', 'Status filter outside the ENUM', 'guest', 'GET', '/reports?status=nonsense', None, 422)
     status(C, 'IV-10', 'Registration password under 15 characters', 'guest', 'POST', '/auth/register',
-           {'full_name': 'Audit', 'email': 'audit.short@example.com', 'password': 'short',
+           {'first_name': 'Audit', 'last_name': 'Tester', 'email': 'audit.short@example.com', 'password': 'short',
             'privacy_consent': True}, 422)
     status(C, 'IV-11', 'Registration with a malformed email', 'guest', 'POST', '/auth/register',
-           {'full_name': 'Audit', 'email': 'not-an-email', 'password': 'long enough passphrase',
+           {'first_name': 'Audit', 'last_name': 'Tester', 'email': 'not-an-email', 'password': 'long enough passphrase',
             'privacy_consent': True}, 422)
     status(C, 'IV-12', 'Registration with no name', 'guest', 'POST', '/auth/register',
-           {'full_name': '', 'email': 'audit.noname@example.com', 'password': 'long enough passphrase',
+           {'first_name': '', 'last_name': '', 'email': 'audit.noname@example.com', 'password': 'long enough passphrase',
             'privacy_consent': True}, 422)
     status(C, 'IV-13', 'Registration reusing an existing email', 'guest', 'POST', '/auth/register',
-           {'full_name': 'Audit', 'email': 'maria.santos@example.com', 'password': 'long enough passphrase',
+           {'first_name': 'Audit', 'last_name': 'Tester', 'email': 'maria.santos@example.com', 'password': 'long enough passphrase',
             'privacy_consent': True}, 409)
     status(C, 'IV-14', 'Sign in with both fields blank', 'guest', 'POST', '/auth/login',
            {'email': '', 'password': ''}, 422)
     status(C, 'IV-15', 'Profile update with no email', 'customer', 'PATCH', '/users/me',
-           {'full_name': 'Maria Santos'}, 422)
+           {'first_name': 'Maria', 'last_name': 'Santos'}, 422)
     status(C, 'IV-16', 'Coordinator asking for information with no note', 'staff', 'PATCH',
            '/matches/2', {'action': 'request_information'}, 422)
     status(C, 'IV-17', 'Match action outside the permitted list', 'staff', 'PATCH',
@@ -174,8 +174,8 @@ def authentication():
 
     reg = Session()
     code, _ = reg.call('POST', '/auth/register', {
-        'full_name': 'Audit Registrant', 'email': 'audit.new@example.com',
-        'password': 'audit river passphrase', 'contact_number': '+63 917 000 0000',
+        'first_name': 'Audit', 'last_name': 'Registrant', 'email': 'audit.new@example.com',
+        'password': 'quiet river passphrase', 'contact_number': '+63 917 000 0000',
         'privacy_consent': True})
     check(C, 'AU-09', 'Register a new account', 201, code, code == 201)
     role = sql("SELECT role FROM users WHERE email='audit.new@example.com';")
@@ -198,9 +198,9 @@ def authentication():
     # attacker can learn by guessing at addresses.
     check(C, 'AU-10c', 'And cannot sign in yet, even with the right password', 403,
           Session().call('POST', '/auth/login',
-                         {'email': 'audit.new@example.com', 'password': 'audit river passphrase'})[0],
+                         {'email': 'audit.new@example.com', 'password': 'quiet river passphrase'})[0],
           Session().call('POST', '/auth/login',
-                         {'email': 'audit.new@example.com', 'password': 'audit river passphrase'})[0] == 403)
+                         {'email': 'audit.new@example.com', 'password': 'quiet river passphrase'})[0] == 403)
     check(C, 'AU-10d', 'And a wrong password is still only a wrong password', 401,
           Session().call('POST', '/auth/login',
                          {'email': 'audit.new@example.com', 'password': 'not-it'})[0],
@@ -209,8 +209,8 @@ def authentication():
 
     esc = Session()
     esc.call('POST', '/auth/register', {
-        'full_name': 'Audit Escalator', 'email': 'audit.esc@example.com',
-        'password': 'audit river passphrase', 'role': 'admin', 'account_status': 'active',
+        'first_name': 'Audit', 'last_name': 'Escalator', 'email': 'audit.esc@example.com',
+        'password': 'quiet river passphrase', 'role': 'admin', 'account_status': 'active',
         'privacy_consent': True})
     got = sql("SELECT role FROM users WHERE email='audit.esc@example.com';")
     check(C, 'AU-11', 'Register sending "role":"admin" in the body', 'user', got, got == 'user')
@@ -308,20 +308,20 @@ def authentication():
     # trustworthy is that the account cannot be created without it here.
     status(C, 'AU-25', 'Registering without the privacy acknowledgement',
            'guest', 'POST', '/auth/register',
-           {'full_name': 'Consent Audit', 'email': 'audit.consent@example.com',
-            'password': 'audit river passphrase'}, 422)
+           {'first_name': 'Consent', 'last_name': 'Audit', 'email': 'audit.consent@example.com',
+            'password': 'quiet river passphrase'}, 422)
     status(C, 'AU-26', 'Sending the acknowledgement as a string rather than true',
            'guest', 'POST', '/auth/register',
-           {'full_name': 'Consent Audit', 'email': 'audit.consent@example.com',
-            'password': 'audit river passphrase', 'privacy_consent': 'true'}, 422)
+           {'first_name': 'Consent', 'last_name': 'Audit', 'email': 'audit.consent@example.com',
+            'password': 'quiet river passphrase', 'privacy_consent': 'true'}, 422)
 
     none_yet = sql("SELECT COUNT(*) FROM users WHERE email='audit.consent@example.com';")
     check(C, 'AU-27', 'Neither refusal created an account', '0', none_yet, none_yet == '0')
 
     status(C, 'AU-28', 'Registering with the acknowledgement given',
            'guest', 'POST', '/auth/register',
-           {'full_name': 'Consent Audit', 'email': 'audit.consent@example.com',
-            'password': 'audit river passphrase', 'privacy_consent': True}, 201)
+           {'first_name': 'Consent', 'last_name': 'Audit', 'email': 'audit.consent@example.com',
+            'password': 'quiet river passphrase', 'privacy_consent': True}, 201)
 
     recorded = sql("""SELECT c.notice_version FROM privacy_consents c
                         JOIN users u ON u.user_id = c.user_id
@@ -339,7 +339,7 @@ def authentication():
     forged.call('POST', '/auth/login', {'email': ACCOUNTS['customer'], 'password': PW})
 
     code, body = forged.call('PATCH', '/users/me',
-                             {'full_name': 'Forged Name', 'email': ACCOUNTS['customer']},
+                             {'first_name': 'Forged', 'last_name': 'Name', 'email': ACCOUNTS['customer']},
                              csrf=False)
     check(C, 'AU-30', 'A write from a signed-in session with no token', '403 marked csrf',
           f'{code} {"marked" if body.get("csrf") else "unmarked"}',
@@ -357,14 +357,14 @@ def authentication():
     borrowed = dict(forged.__dict__)                       # keep the real one
     forged.csrf = stranger.csrf
     code, _ = forged.call('PATCH', '/users/me',
-                          {'full_name': 'Forged Name', 'email': ACCOUNTS['customer']})
+                          {'first_name': 'Forged', 'last_name': 'Name', 'email': ACCOUNTS['customer']})
     check(C, 'AU-32', "Another session's token", 403, code, code == 403)
     forged.csrf = borrowed['csrf']
 
     # And the control: the same request, with the right token, goes through.
     forged.prime_csrf()
     code, _ = forged.call('PATCH', '/users/me',
-                          {'full_name': 'Maria Santos', 'email': ACCOUNTS['customer'],
+                          {'first_name': 'Maria', 'last_name': 'Santos', 'email': ACCOUNTS['customer'],
                            'contact_number': '+63 917 010 0101',
                            'preferred_location': 'Makati City, Metro Manila'})
     check(C, 'AU-33', 'Control: the same write with the token', 200, code, code == 200)
@@ -463,7 +463,7 @@ def authorization():
     sql("UPDATE match_claims SET proof_notes=NULL WHERE match_id=2;")
 
     _, me = session('customer').call('PATCH', '/users/me', {
-        'full_name': 'Maria Santos', 'email': 'maria.santos@example.com', 'role': 'admin'})
+        'first_name': 'Maria', 'last_name': 'Santos', 'email': 'maria.santos@example.com', 'role': 'admin'})
     got = sql('SELECT role FROM users WHERE user_id=1;')
     check(C, 'AZ-29', 'Customer sending "role":"admin" to their own profile', 'user', got, got == 'user')
 
@@ -620,7 +620,7 @@ def functional():
     status(C, 'FN-25', 'A category still in use cannot be deleted', 'admin', 'DELETE',
            '/categories/dog', None, 409)
     status(C, 'FN-26', 'A person updates their own profile', 'customer', 'PATCH', '/users/me',
-           {'full_name': 'Maria Santos', 'email': 'maria.santos@example.com',
+           {'first_name': 'Maria', 'last_name': 'Santos', 'email': 'maria.santos@example.com',
             'contact_number': '+63 917 010 0101', 'preferred_location': 'Makati City, Metro Manila'}, 200)
 
     # ------------------------------------------------- the report state machine

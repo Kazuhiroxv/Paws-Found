@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Check, KeyRound, Lock, MailCheck, MailWarning, MapPin, Pencil, ShieldCheck, UserRound,
 } from 'lucide-react'
@@ -10,6 +10,7 @@ import { ROLE_LABELS } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
 import { userService } from '@/services'
 import { cleanName, nameProblem } from '@/utils/nameRules'
+import { reveal } from '@/utils/reveal'
 
 const loadCurrentUser = () => userService.getCurrentUser()
 
@@ -23,7 +24,8 @@ const header = (
 
 /** The API's field names → this form's, so a rejected field is marked where it is. */
 const API_FIELDS = {
-  full_name: 'fullName',
+  first_name: 'firstName',
+  last_name: 'lastName',
   email: 'email',
   contact_number: 'phone',
   preferred_location: 'preferredLocation',
@@ -171,7 +173,8 @@ function AccountSecurity({ email }) {
 /** The form's fields, as the account currently has them on the server. */
 function formFrom(user) {
   return {
-    fullName: user.fullName,
+    firstName: user.firstName,
+    lastName: user.lastName,
     email: user.email,
     phone: user.phone,
     preferredLocation: user.preferredLocation,
@@ -189,10 +192,19 @@ function ProfileForm({ user, onSaved }) {
   // { emailTo, emailSent } when it asked for a new address.
   const [saved, setSaved] = useState(null)
   const [saveError, setSaveError] = useState(null)
-  // The name rule (the same one registration uses), shown once the field has
+  // The name rule (the same one registration uses), shown once a field has
   // been left or a save was tried. The server checks it again either way.
   const [nameTouched, setNameTouched] = useState(false)
-  const nameError = nameProblem(form.fullName)
+  const firstNameError = nameProblem(form.firstName, 'first')
+  const lastNameError = nameProblem(form.lastName, 'last')
+
+  // A refused save takes the person to the first field that refused it: the
+  // name fields are at the top, far above the Save button (see reveal.js).
+  const formRef = useRef(null)
+  const [refusals, setRefusals] = useState(0)
+  useEffect(() => {
+    if (refusals) reveal(formRef.current?.querySelector('[aria-invalid="true"], [data-reveal="error"]'))
+  }, [refusals])
   // Reading is the default state. The form used to be permanently open, so a
   // stray keystroke on a real account field was a real change waiting for a
   // Save nobody meant to press.
@@ -219,8 +231,9 @@ function ProfileForm({ user, onSaved }) {
 
   const save = async (event) => {
     event.preventDefault()
-    if (nameError) {
+    if (firstNameError || lastNameError) {
       setNameTouched(true)
+      setRefusals((count) => count + 1)
       return
     }
     setIsSaving(true)
@@ -231,7 +244,8 @@ function ProfileForm({ user, onSaved }) {
 
     try {
       const updated = await userService.updateUser(user.id, {
-        fullName: cleanName(form.fullName),
+        firstName: cleanName(form.firstName),
+        lastName: cleanName(form.lastName),
         email,
         phone: form.phone.trim(),
         preferredLocation: form.preferredLocation.trim(),
@@ -251,13 +265,14 @@ function ProfileForm({ user, onSaved }) {
       onSaved()
     } catch (caught) {
       setSaveError(caught instanceof Error ? caught : new Error(String(caught)))
+      setRefusals((count) => count + 1)
     } finally {
       setIsSaving(false)
     }
   }
 
   return (
-    <form onSubmit={save} className="flex flex-col gap-6">
+    <form ref={formRef} onSubmit={save} className="flex flex-col gap-6">
       {header}
 
       {/* One disabled fieldset rather than a second, read-only copy of every
@@ -286,16 +301,31 @@ function ProfileForm({ user, onSaved }) {
 
         <CardBody className="flex flex-col gap-7">
           <FieldGroup icon={UserRound} title="Personal information">
-            <Input
-              label="Full name"
-              value={form.fullName}
-              onChange={(event) => change('fullName', event.target.value)}
-              onBlur={() => setNameTouched(true)}
-              maxLength={120}
-              required
-              hint="Shown on the reports you file."
-              error={fieldErrors.fullName ?? (nameTouched ? nameError : undefined)}
-            />
+            {/* Two fields since the post-defense corrections (migration 008).
+                The database joins them into the name shown everywhere else. */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input
+                label="First name"
+                autoComplete="given-name"
+                value={form.firstName}
+                onChange={(event) => change('firstName', event.target.value)}
+                onBlur={() => setNameTouched(true)}
+                maxLength={60}
+                required
+                error={fieldErrors.firstName ?? (nameTouched ? firstNameError : undefined)}
+              />
+              <Input
+                label="Last name"
+                autoComplete="family-name"
+                value={form.lastName}
+                onChange={(event) => change('lastName', event.target.value)}
+                onBlur={() => setNameTouched(true)}
+                maxLength={60}
+                required
+                error={fieldErrors.lastName ?? (nameTouched ? lastNameError : undefined)}
+              />
+            </div>
+            <p className="-mt-2 text-sm text-fg-muted">Shown on the reports you file.</p>
 
             <div className="flex flex-col gap-2">
               <Input
@@ -405,7 +435,12 @@ function ProfileForm({ user, onSaved }) {
           </p>
         ))}
         {saveError && (
-          <p role="alert" className="text-sm text-danger">
+          <p
+            role="alert"
+            data-reveal="error"
+            tabIndex={-1}
+            className="scroll-mt-24 text-sm text-danger outline-none"
+          >
             {saveError.fields
               ? 'Please check the highlighted fields.'
               : `Your profile could not be saved: ${saveError.message}`}

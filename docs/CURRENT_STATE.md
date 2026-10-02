@@ -28,11 +28,15 @@ curl.exe -s https://paws-found-production.up.railway.app/api/health
 ```
 
 Expected at the time of writing (2 October): on branch
-**`post-defense/revisions`**, two local commits ahead of
-`portfolio/team/current` = **`2947a43`** (what production runs) — the §4
-checkpoint and Correction 1, see §4a. Neither is pushed or deployed. Health
-`{"status":"ok","database":"ok"}`. Untracked: `docs/feedback/` (instructor
-transcripts, pending review) and `docs/dbeaver-defense-queries.pdf`.
+**`post-defense/revisions`**, local commits ahead of `portfolio/team/current`
+= **`2947a43`** (what production runs) — the §4 checkpoint, Correction 1, the
+instructor-feedback documents and Correction 2; see §4a. None is pushed or
+deployed. Health `{"status":"ok","database":"ok"}`. Untracked:
+`docs/dbeaver-defense-queries.pdf`.
+
+**The local database has migration `008` applied** (first and last name). The
+production database does not, and must get it immediately before Correction 2
+is pushed — see §4a.
 
 ---
 
@@ -154,10 +158,11 @@ each as its own commit on `post-defense/revisions`, in dependency order rather
 than the order written. Nothing is pushed until Kyle says so.
 
 **Recordings.** Two recordings of the session were transcribed locally with
-Whisper into `docs/feedback/` (untracked until Kyle has reviewed them):
-`recording-1-raw-transcript.txt`, `recording-2-raw-transcript.txt`, and
-`instructor-feedback-notes.md`, which is an interpretation kept separate from
-the raw text. **The recordings do not cover** the API/database item, the
+Whisper into `docs/feedback/`: `maem-maylyn-raw.txt` and `maem-maylyn2-raw.txt`
+(unedited), `instructor-feedback-notes.md` (an interpretation, kept separate
+from the raw text), and `post-defense-correction-register.md` — every
+correction with its **source**: the audio, Kyle's written notes, or a team
+observation (Hayns), so nothing is attributed to Ma'am that she did not say. **The recordings do not cover** the API/database item, the
 password-confirmation rule, activity logging, admin levels, Reset or drafts, so
 those still come from the written notes alone. They do add seven items the notes
 miss (contact number, photo guidance, submit feedback, PDF export of the list,
@@ -166,8 +171,32 @@ an XL size, presentation flow, and a date filter that exists but was not found).
 | # | Correction | State |
 | --- | --- | --- |
 | 1 | API should connect to the database | **Done** — audit plus cleanup, see below |
+| 2 | Identity, password, form feedback, responsive follow-up | **Done** — see below |
 | 10 | Breed / colour / city / province: suggested values | **Recorded, not started** — see below |
-| others | | Not started |
+| others | | Not started — the register in `docs/feedback/` is the list |
+
+**Correction 2.** First and last name replace full name: migration `008` adds
+`first_name` and `last_name`, backfills them (particles stay with the surname:
+"Jomar Dela Cruz" is *Jomar* / *Dela Cruz*), and makes `full_name` a
+**generated** column, so every query that reads it is unchanged and nothing can
+write it. A password may not contain the first or last name anywhere
+(`password_policy_error()` and `password_name_pieces()` in `api/helpers.php`,
+mirrored in `src/utils/passwordRules.js`, held together by
+`scripts/identity-cases.json`). Confirm password appears only once the
+password qualifies and must be retyped (`ConfirmPasswordField` in
+`src/components/PasswordField.jsx`). After a submit, the answer is scrolled to
+and focused (`src/utils/reveal.js`) on registration, reset, profile, the report
+wizard, verification, moderation and the match queue. The date filter is under
+species and open. Reasons and costs: `docs/DECISIONS.md`, "Post-defense
+corrections".
+
+**Deploying Correction 2 — the database goes first, in the same sitting.** Old
+code against the new schema writes `full_name`, which production's strict
+MySQL refuses (registration and profile saves would fail); new code against
+the old schema writes columns that do not exist. So: back up, preview the
+split with the query at the top of `008_split_user_names.sql`, run `008` on
+Railway, then push. The migration was tested on MySQL 9.4 from the `007`
+schema with the seeded data.
 
 **Correction 1.** The audit found every workflow already goes through the PHP
 API to MySQL; nothing falls back to mock data. What remained was scaffolding
@@ -252,19 +281,21 @@ C:\xampp\mysql\bin\mysql.exe -uroot -P3307 -h127.0.0.1 --default-character-set=u
 ```bash
 npm run lint
 npm run build
-npm run test:contract                                         # 32
+npm run test:contract                                         # 36
+C:\xampp\php\php.exe scripts/identity_rules.php              # 41
 PAWS_PW=<seeded password> npm run audit                       # 382  (reseeds, restores)
-PAWS_PW=<seeded password> python scripts/auth_lifecycle.py    # 100
+PAWS_PW=<seeded password> python scripts/auth_lifecycle.py    # 106
 PAWS_PW=<seeded password> npm run multi-device                # 73
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:ui       # 66
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:signout  # 24
+PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:feedback # 49
 PAWS_BASE=http://localhost:5173 npm run a11y                      # 31 pages
 C:\xampp\php\php.exe scripts/city_fallback.php                # 11
 C:\xampp\php\php.exe scripts/calendar_today.php               # 8
 C:\xampp\php\php.exe scripts/matching_log.php                 # 6
 ```
 
-**702 checks in total** on `post-defense/revisions` (689 in production).
+**802 checks in total** on `post-defense/revisions` (689 in production).
 Reseed after the browser suites; they change data.
 
 After `npm run build`, also run `npm run check:bundle`: it fails if any of the
@@ -328,8 +359,12 @@ Rolling back and operating the live site: [PRODUCTION_RUNBOOK.md](PRODUCTION_RUN
 
 ## 10. Still open
 
-- **Section 4 and Correction 1 are committed locally, not deployed.** Shipping
-  them is Kyle's call.
+- **Section 4, Corrections 1 and 2 are committed locally, not deployed.**
+  Shipping them is Kyle's call, and Correction 2 needs migration `008` on
+  Railway first (§4a).
+- **The ERD figure still shows `full_name`.** Redrawing is deliberately left
+  for the final ERD pass, after the remaining schema corrections, so it is
+  drawn once.
 - **Instructor corrections in progress** — see §4a.
 - **An intermittent sign-out race** — see §4a. Not fixed.
 - **The printed defense packet** from the morning of 30 September says 590

@@ -10,7 +10,8 @@
  *     accented letter or an emoji is more than one, so this counts bytes
  *   - not one of the obvious long passwords (a local list of high-risk
  *     choices, not a database of breached passwords)
- *   - at registration, not simply the person's own name or email address
+ *   - at registration, not simply the person's email address, and not
+ *     containing their first or last name anywhere (see `namePieces`)
  *
  * No rule about capitals, digits or symbols: those produce "Password1!", and
  * length does more. The strength label below is guidance only; the checks are
@@ -63,25 +64,43 @@ export function isCommonPassword(password) {
   })
 }
 
-/** Exactly the person's email, its part before the @, or their name — nothing fuzzier. */
-function isIdentity(password, { email = '', fullName = '' } = {}) {
+/** Exactly the person's email or its part before the @ — an equality rule. */
+function isEmail(password, { email = '' } = {}) {
   const mine = lettersAndDigits(password)
   const address = email.trim().toLowerCase()
-  const identity = [
-    address,
-    lettersAndDigits(address),
-    lettersAndDigits(address.split('@')[0]),
-    lettersAndDigits(fullName),
-  ].filter(Boolean)
+  const identity = [address, lettersAndDigits(address), lettersAndDigits(address.split('@')[0])].filter(Boolean)
   return identity.includes(password.toLowerCase()) || (mine !== '' && identity.includes(mine))
+}
+
+/**
+ * The pieces of a person's name a password may not contain: each name split
+ * on anything that is not a letter, lower-cased, pieces of two letters or more.
+ * "Anne-Marie" gives "anne" and "marie"; "Dela Cruz" gives "dela" and "cruz".
+ * The same as `password_name_pieces()` in api/helpers.php.
+ */
+export function namePieces({ firstName = '', lastName = '' } = {}) {
+  const pieces = [firstName, lastName]
+    .flatMap((name) => name.toLowerCase().split(/[^\p{L}\p{M}]+/u))
+    .filter((piece) => [...piece].length >= 2)
+  return [...new Set(pieces)]
+}
+
+/**
+ * Does the password contain the first or last name anywhere, ignoring case?
+ * A substring rule by instructor requirement: for "Ja", "123jaabcdefghijk" is
+ * refused. Deterministic — no misspellings, no look-alikes.
+ */
+function containsName(password, identity) {
+  const lowered = password.toLowerCase()
+  return namePieces(identity).some((piece) => lowered.includes(piece))
 }
 
 /**
  * The requirements, each one met or not.
  *
- * @param {{ confirm?: boolean, identity?: { email: string, fullName: string } | null }} [options]
+ * @param {{ confirm?: boolean, identity?: { email: string, firstName: string, lastName: string } | null }} [options]
  *   `identity` only where the form knows who is choosing (registration); a
- *   reset link does not, and the server checks it there.
+ *   reset link does not, and the server checks it there against the account.
  */
 export function passwordChecks(password, confirmation, { confirm = true, identity = null } = {}) {
   const typed = password !== ''
@@ -96,13 +115,27 @@ export function passwordChecks(password, confirmation, { confirm = true, identit
   ]
 
   if (identity) {
-    checks.push({ id: 'identity', label: 'Not your name or email address', met: typed && !isIdentity(password, identity) })
+    checks.push({
+      id: 'name',
+      label: 'Does not contain your first or last name',
+      met: typed && !containsName(password, identity),
+    })
+    checks.push({ id: 'email', label: 'Not your email address', met: typed && !isEmail(password, identity) })
   }
   if (confirm) {
     checks.push({ id: 'match', label: 'Both entries match', met: typed && password === confirmation })
   }
 
   return checks
+}
+
+/**
+ * Every requirement met, apart from the confirmation matching. The point at
+ * which the Confirm password box may appear (instructor requirement), and the
+ * test for clearing it again if the password stops being acceptable.
+ */
+export function passwordRequirementsMet(password, { identity = null } = {}) {
+  return passwordChecks(password, '', { confirm: false, identity }).every((check) => check.met)
 }
 
 /**

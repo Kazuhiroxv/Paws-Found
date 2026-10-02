@@ -22,6 +22,19 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { formatCardDate } from '@/utils/date'
 import { cn } from '@/utils/cn'
 import { ModerationStatusBadge } from './AdminBadges'
+import { StatusStrip } from '@/components/MatchComparison'
+import { useRevealWhen } from '@/utils/reveal'
+
+/** What each decision did, said where the administrator is looking. */
+const OUTCOMES = {
+  dismiss: (title) => ['Flag dismissed', `“${title}” stays published. The case is under Dismissed.`],
+  warn: (title) => ['Report author warned', `About “${title}”. The case is under Actioned.`],
+  remove: (title) => ['Report removed', `“${title}” is no longer public. The case is under Actioned.`],
+  suspend: (title) => [
+    'Report removed and account suspended',
+    `“${title}” is no longer public and its author cannot sign in. The case is under Actioned.`,
+  ],
+}
 
 const TABS = [
   { id: 'open', label: 'Awaiting review' },
@@ -71,6 +84,11 @@ async function loadModeration() {
 export function AdminModerationPage() {
   const { data, error, isLoading, reload } = useAsync(loadModeration)
   const [tab, setTab] = useState('open')
+  // A decided case leaves "Awaiting review" when the list reloads, so its
+  // card simply vanishes. The outcome is said here instead, and brought into
+  // view with focus (see reveal.js).
+  const [outcome, setOutcome] = useState(null)
+  const outcomeRef = useRevealWhen(outcome)
 
   const header = (
     <PageHeader
@@ -144,6 +162,14 @@ export function AdminModerationPage() {
         })}
       </div>
 
+      {outcome && (
+        <div ref={outcomeRef} tabIndex={-1} role="status" className="scroll-mt-24 outline-none">
+          <StatusStrip tone="success" icon={ShieldCheck} title={outcome.title}>
+            {outcome.detail}
+          </StatusStrip>
+        </div>
+      )}
+
       <div id="moderation-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
         {visible.length === 0 ? (
           <EmptyState
@@ -171,7 +197,11 @@ export function AdminModerationPage() {
                   reporter={reporter}
                   reportedBy={reportedBy}
                   admin={admin}
-                  onDone={reload}
+                  onDone={async (action, title) => {
+                    await reload()
+                    const [heading, detail] = OUTCOMES[action](title)
+                    setOutcome({ title: heading, detail, at: Date.now() })
+                  }}
                 />
               </li>
             ))}
@@ -202,7 +232,7 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
         note,
       })
       setAsking(null)
-      onDone()
+      onDone(action, reportTitle)
     } catch (caught) {
       setActionError(caught instanceof Error ? caught : new Error(String(caught)))
       setAsking(null)

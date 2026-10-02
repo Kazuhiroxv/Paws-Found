@@ -1,11 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CircleCheck } from 'lucide-react'
 import { AuthShell } from '@/components/AuthShell'
 import { PageHeader } from '@/components/PageHeader'
 import { Button, Card, CardBody } from '@/components/ui'
-import { PasswordChecklist, PasswordField, PasswordStrength } from '@/components/PasswordField'
-import { passwordChecks } from '@/utils/passwordRules'
+import {
+  ConfirmPasswordField,
+  PasswordChecklist,
+  PasswordField,
+  PasswordStrength,
+} from '@/components/PasswordField'
+import { passwordChecks, passwordRequirementsMet } from '@/utils/passwordRules'
+import { reveal, useRevealWhen } from '@/utils/reveal'
 import { userService } from '@/services'
 
 /**
@@ -30,7 +36,27 @@ export function ResetPasswordPage() {
   const [passwordError, setPasswordError] = useState(null)
   const [done, setDone] = useState(false)
 
-  const ready = passwordChecks(password, confirmation).every((check) => check.met)
+  // The Confirm box appears once the password meets every requirement the form
+  // can check (instructor requirement). The name rule is the server's alone
+  // here — the link does not say whose account it is — so a refusal from it
+  // counts as unmet too, and hides the box until the password changes.
+  const requirementsMet = passwordRequirementsMet(password) && !passwordError
+  const ready = requirementsMet && passwordChecks(password, confirmation).every((check) => check.met)
+
+  // Whatever answers a submit is brought into view and focused (see reveal.js).
+  const formRef = useRef(null)
+  const [refusals, setRefusals] = useState(0)
+  useEffect(() => {
+    if (refusals) reveal(formRef.current?.querySelector('[aria-invalid="true"], [data-reveal="error"]'))
+  }, [refusals])
+  const doneRef = useRevealWhen(done)
+
+  const changePassword = (value) => {
+    setPassword(value)
+    setPasswordError(null)
+    // A confirmation is only kept for a password that is still acceptable.
+    if (!passwordRequirementsMet(value)) setConfirmation('')
+  }
 
   const submit = async (event) => {
     event.preventDefault()
@@ -43,9 +69,14 @@ export function ResetPasswordPage() {
       setDone(true)
     } catch (caught) {
       const failure = caught instanceof Error ? caught : new Error(String(caught))
-      if (failure.fields?.password) setPasswordError(failure.fields.password)
-      else setError(failure)
+      if (failure.fields?.password) {
+        setPasswordError(failure.fields.password)
+        setConfirmation('')
+      } else {
+        setError(failure)
+      }
       setIsSubmitting(false)
+      setRefusals((count) => count + 1)
     }
   }
 
@@ -71,7 +102,11 @@ export function ResetPasswordPage() {
     return (
       <AuthShell>
         <Card>
-          <CardBody className="flex flex-col items-center gap-4 text-center">
+          <CardBody
+            ref={doneRef}
+            tabIndex={-1}
+            className="flex scroll-mt-24 flex-col items-center gap-4 text-center outline-none"
+          >
             <CircleCheck size={40} className="text-success" aria-hidden="true" />
             <PageHeader
               title="Password changed"
@@ -93,11 +128,16 @@ export function ResetPasswordPage() {
     <AuthShell>
       <Card>
         <CardBody>
-          <form onSubmit={submit} className="flex flex-col gap-5">
+          <form ref={formRef} onSubmit={submit} className="flex flex-col gap-5">
             <PageHeader title="Set a new password" />
 
             {error && (
-              <p role="alert" className="text-sm text-danger">
+              <p
+                role="alert"
+                data-reveal="error"
+                tabIndex={-1}
+                className="scroll-mt-24 text-sm text-danger outline-none"
+              >
                 {error.message}
               </p>
             )}
@@ -105,27 +145,21 @@ export function ResetPasswordPage() {
             <PasswordField
               label="New password"
               value={password}
-              onChange={(event) => {
-                setPassword(event.target.value)
-                setPasswordError(null)
-              }}
+              onChange={(event) => changePassword(event.target.value)}
               error={passwordError}
-              autoComplete="new-password"
-              required
-            />
-
-            <PasswordField
-              label="Type it again"
-              value={confirmation}
-              onChange={(event) => setConfirmation(event.target.value)}
               autoComplete="new-password"
               required
             />
 
             {/* Not "not your name or email" here: the link does not say whose
                 account it is. The server checks it and says so on the field. */}
-            <PasswordChecklist password={password} confirmation={confirmation} />
+            <PasswordChecklist password={password} confirmation={confirmation} confirm={requirementsMet} />
             <PasswordStrength password={password} />
+            <ConfirmPasswordField
+              ready={requirementsMet}
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+            />
 
             <div className="flex flex-wrap items-center gap-3">
               <Button type="submit" isLoading={isSubmitting} disabled={!ready}>

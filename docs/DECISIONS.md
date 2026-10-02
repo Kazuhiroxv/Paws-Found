@@ -383,6 +383,83 @@ logo goes to the Overview. This is interface only: the API is unchanged, so the
 roles sheet marks the administrator's browsing and filing with †. Staff are
 unaffected.
 
+## Post-defense corrections (October 2026)
+
+After the demonstration on 2 October the instructor asked for corrections, and
+under `CLAUDE.md` §27 an instructor requirement outranks an earlier decision of
+ours. Where one of them reverses something recorded above, it is said here,
+with what it costs. The full list and where each item came from is
+`docs/feedback/post-defense-correction-register.md`.
+
+### First name and last name, with `full_name` generated (Correction 2)
+
+Registration and the profile ask for the two separately, and the password rule
+below needs them separately. The database stores `first_name` and `last_name`
+and generates `full_name` from them (migration `008`).
+
+Kept as a generated column rather than dropped, because some twenty queries and
+every screen read it, and none of them had to change. It also cannot drift:
+nothing writes it. Production's strict MySQL refuses a write to it outright;
+XAMPP's non-strict MariaDB ignores one with a warning — so locally a missed
+writer is silent, which is why the two writers (registration and the profile)
+were found by search, not trusted to fail.
+
+Existing names were split by rule: the last word is the last name, unless the
+word before it is a particle (Dela, De, Delos, San, …), which stays with it —
+"Jomar Dela Cruz" is *Jomar* / *Dela Cruz*. The migration carries a preview
+query for checking a database before running it.
+
+**It deploys together with the code.** Old code against the new schema writes
+`full_name` (refused); new code against the old schema writes columns that do
+not exist. Run `008` on Railway immediately before pushing.
+
+### A password may not contain the first or last name (Correction 2)
+
+*Supersedes* the earlier rule, which refused a password that **was** the name
+and allowed one that merely contained it. Now any piece of either name, two
+letters or more, refuses the password if it appears anywhere, ignoring case:
+for "Ja", `123jaabcdefghijk` is refused. Deterministic — no misspellings, no
+look-alikes.
+
+The cost is real and accepted: a two-letter name rules out every password
+containing those two letters. "Li" refuses "harbour **li**ghts at six". The
+checklist shows the rule live as the password is typed, so the person sees why
+rather than discovering it on submit. The email rule stays an equality rule.
+
+### Confirm password: hidden until the password qualifies, and retyped (Correction 2)
+
+*Supersedes* the earlier paste-friendly form. The second box appears only once
+every requirement is met; if the password stops qualifying it is emptied and
+hidden again, so a stale match never carries over. A paste or a drop into it is
+refused **with a reason** shown and announced — a box that silently ignores
+Ctrl+V looks broken.
+
+The cost: refusing paste on the confirmation is unfriendly to password
+managers, which is why it is only the confirmation — the password itself can
+still be pasted or generated. This is an explicit instructor requirement.
+
+### A result is brought into view (Correction 2)
+
+Seen at the defense: Ma'am submitted from the bottom of a page and the
+confirmation appeared above, out of sight. After a submit, whatever answers it
+— a success message, an error, the first wrong field — is scrolled to and
+focused (`src/utils/reveal.js`), with smooth scrolling only when reduced motion
+is not requested. Two places gave no confirmation at all and now do: a
+moderation decision (the case left "Awaiting review" silently) and reopening a
+pairing (its card moved tab silently).
+
+### The date filter sits under species and starts open (Correction 2)
+
+It existed and the API enforced it; it was the last group in the panel and
+closed. Below 1024px that was two clicks deep. Moved up and opened by default.
+The filter group toggles became 44px tall: at 20px they were the smallest
+controls on Explore, and on a touchscreen laptop they are what gets tapped.
+
+The interface looked different on Ma'am's touchscreen laptop because of **width,
+not touch** — nothing in the code detects touch. Windows scaling of 150–175% on
+a 1920px screen gives about 1100–1280 CSS pixels, where the navigation becomes a
+menu button.
+
 ## Features deliberately not built
 
 | Rejected | Why |

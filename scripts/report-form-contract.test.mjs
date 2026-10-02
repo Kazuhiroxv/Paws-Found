@@ -92,6 +92,8 @@ function apiRow({ showPhone, phoneOnAccount }) {
     location: { label: 'Near the covered court', city: 'Pasay City', province: 'Metro Manila' },
     reporter: {
       user_id: 1,
+      first_name: 'Maria',
+      last_name: 'Santos',
       full_name: 'Maria Santos',
       accepts_messages: true,
       // The API masks the value with the preference. An account with no number
@@ -308,16 +310,20 @@ test('obvious long passwords are refused, real passphrases are not', async () =>
   }
 })
 
-test('a password that is just your own name or address is refused, and only that', async () => {
+test('a password may not be your email address (equality), nor contain your name (anywhere)', async () => {
   const { passwordChecks } = await import('@/utils/passwordRules')
-  const identity = { email: 'kyle.austria.2026@example.com', fullName: 'Kyle Michael Austria' }
-  const met = (password) => passwordChecks(password, password, { identity }).find((c) => c.id === 'identity').met
+  const identity = { email: 'kyle.austria.2026@example.com', firstName: 'Kyle Michael', lastName: 'Austria' }
+  const met = (id, password) => passwordChecks(password, password, { identity }).find((c) => c.id === id).met
 
-  assert.equal(met('kyle.austria.2026@example.com'), false, 'the whole address')
-  assert.equal(met('kyle.austria.2026'), false, 'the part before the @')
-  assert.equal(met('kylemichaelaustria'), false, 'the name, run together')
-  assert.equal(met('Kyle Michael Austria'), false, 'the name as written')
-  assert.equal(met('kyle walks the dog at dawn'), true, 'containing a first name is fine')
+  assert.equal(met('email', 'kyle.austria.2026@example.com'), false, 'the whole address')
+  assert.equal(met('email', 'kyle.austria.2026'), false, 'the part before the @')
+  assert.equal(met('email', 'a-river-bend-at-dawn'), true, 'an unrelated passphrase')
+
+  // Since the post-defense corrections: a substring rule, not equality.
+  assert.equal(met('name', 'kyle walks the dog at dawn'), false, 'the first name anywhere')
+  assert.equal(met('name', 'the-michael-river-walk'), false, 'any piece of a two-word first name')
+  assert.equal(met('name', 'dawn-at-AUSTRIA-falls'), false, 'the last name, any case')
+  assert.equal(met('name', 'a-river-bend-at-dawn'), true, 'no piece of the name in it')
 })
 
 test('strength is guidance: Weak until the rules are met, then Fair or Strong', async () => {
@@ -331,18 +337,21 @@ test('strength is guidance: Weak until the rules are met, then Fair or Strong', 
   assert.equal(passwordStrength('Tide pool 7 at dusk'), 'strong', '16+ with three kinds of character')
 })
 
-test('names: real names of every shape pass, junk does not', async () => {
+test('names: first and last name each refuse junk and accept real names', async () => {
   const { nameProblem, cleanName } = await import('@/utils/nameRules')
 
-  for (const name of ['Jo Li', 'Maria Santos', 'Ma. Ana Cruz', 'Anne-Marie Cruz', "D'Angelo Reyes", 'O’Connor', 'José Santos', 'Nguyễn Văn An']) {
-    assert.equal(nameProblem(name), null, `${name} must be accepted`)
+  for (const name of ['Jo', 'Li', 'Ma.', 'Anne-Marie', "D'Angelo", 'O’Connor', 'José', 'Dela Cruz', 'Nguyễn Văn']) {
+    assert.equal(nameProblem(name, 'first'), null, `${name} must be accepted`)
   }
   for (const name of ['A', '1', '12345', '!!!!', '-']) {
-    assert.equal(nameProblem(name), 'Enter a real name with at least 2 letters.', `${name} must be refused`)
+    assert.equal(nameProblem(name, 'first'), 'Enter a real first name with at least 2 letters.', `${name} must be refused`)
   }
-  assert.equal(nameProblem(''), 'Enter your name.')
-  assert.equal(nameProblem('Jo2 Li'), 'Use letters, spaces, apostrophes, hyphens and periods only.')
-  assert.equal(cleanName('  Maria   Santos  '), 'Maria Santos')
+  assert.equal(nameProblem('A', 'last'), 'Enter a real last name with at least 2 letters.')
+  assert.equal(nameProblem('', 'first'), 'Enter your first name.')
+  assert.equal(nameProblem('', 'last'), 'Enter your last name.')
+  assert.equal(nameProblem('Jo2', 'first'), 'Use letters, spaces, apostrophes, hyphens and periods only.')
+  assert.equal(nameProblem('a'.repeat(61), 'last'), 'That last name is too long (60 characters maximum).')
+  assert.equal(cleanName('  Dela   Cruz  '), 'Dela Cruz')
 })
 
 test('the confirmation has to match, and an empty pair does not count as matching', async () => {

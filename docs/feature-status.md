@@ -145,8 +145,8 @@ is readable over the web, and whether any demo password reached the bundle.
 because localhost is plain HTTP.
 
 Last run in full on 30 September 2026 on the development laptop: audit
-382/382, auth lifecycle 100/100, multi-device 73/73, sign-out 24/24, UI 66/66,
-contract 32/32, calendar 8/8, city 11/11, matching log 6/6, axe clean on 31
+382/382, auth lifecycle 106/106, multi-device 73/73, sign-out 24/24, UI 66/66,
+contract 36/36, identity 41/41, form feedback 49/49, calendar 8/8, city 11/11, matching log 6/6, axe clean on 31
 pages, lint clean, build green; and against production, `verify:deploy` 25/25
 with 3 skipped (read-only). Details in `docs/TESTING.md` §3.
 

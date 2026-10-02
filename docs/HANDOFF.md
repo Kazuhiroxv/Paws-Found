@@ -456,10 +456,10 @@ All run on 27 September 2026 unless noted. Commands and prerequisites:
 | --- | --- | --- |
 | `npm run lint` | clean | — |
 | `npm run build` | green | — |
-| `npm run test:contract` | **32/32** | nothing running |
+| `npm run test:contract` | **36/36** | nothing running |
 | `npm run test:mail` | **15/15** | `php` on PATH; one check calls Brevo |
 | `npm run audit` | **382/382** | API + database |
-| `python scripts/auth_lifecycle.py` | **100/100** | API + database, local only |
+| `python scripts/auth_lifecycle.py` | **106/106** | API + database, local only |
 | `npm run multi-device` | **73/73** local | API + database |
 | `npm run test:city` | **11/11** | `php` on PATH |
 | `npm run test:calendar` | **8/8** | `php` on PATH, local database |

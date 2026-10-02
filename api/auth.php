@@ -312,10 +312,15 @@ function auth_register(): never
     // the bad fields at once instead of revealing them one submission at a time.
     $errors = [];
 
-    // The same rule the profile form uses (helpers.php).
-    [$fullName, $nameError] = validate_full_name((string) ($body['full_name'] ?? ''));
-    if ($nameError !== null) {
-        $errors['full_name'] = $nameError;
+    // First and last name separately (migration 008), each by the same rule
+    // the profile form uses (helpers.php).
+    [$firstName, $firstError] = validate_name_part((string) ($body['first_name'] ?? ''), 'first');
+    if ($firstError !== null) {
+        $errors['first_name'] = $firstError;
+    }
+    [$lastName, $lastError] = validate_name_part((string) ($body['last_name'] ?? ''), 'last');
+    if ($lastError !== null) {
+        $errors['last_name'] = $lastError;
     }
 
     if ($email === '') {
@@ -325,8 +330,8 @@ function auth_register(): never
     }
 
     // The same rule the password reset uses (helpers.php), checked against
-    // this person's own name and address.
-    $passwordError = password_policy_error($password, $email, $fullName);
+    // this person's own address and both parts of their name.
+    $passwordError = password_policy_error($password, $email, $firstName, $lastName);
     if ($passwordError !== null) {
         $errors['password'] = $passwordError;
     }
@@ -347,12 +352,16 @@ function auth_register(): never
         json_error('Please check the highlighted fields.', 422, ['fields' => $errors]);
     }
 
+    // For the greeting in the verification email. The same value the database
+    // generates into users.full_name from the two parts.
+    $fullName = $firstName . ' ' . $lastName;
+
     // The role is never read from the request body. A new account is always an
     // ordinary user; accepting a role here would let anyone register as an
     // administrator by adding one line to the request.
     $statement = db()->prepare(
-        "INSERT INTO users (full_name, email, password_hash, contact_number, role, account_status)
-              VALUES (:full_name, :email, :password_hash, :contact_number, 'user', 'active')"
+        "INSERT INTO users (first_name, last_name, email, password_hash, contact_number, role, account_status)
+              VALUES (:first_name, :last_name, :email, :password_hash, :contact_number, 'user', 'active')"
     );
 
     // The account and the record of what they agreed to are written together.
@@ -363,7 +372,8 @@ function auth_register(): never
 
     try {
         $statement->execute([
-            ':full_name' => $fullName,
+            ':first_name' => $firstName,
+            ':last_name' => $lastName,
             ':email' => $email,
             // Never the password itself. PASSWORD_DEFAULT is bcrypt here, the
             // same algorithm the seeded accounts were hashed with.
@@ -658,13 +668,13 @@ function auth_reset_password(): never
         ]);
     }
 
-    $account = db()->prepare('SELECT full_name, email, password_hash FROM users WHERE user_id = :id');
+    $account = db()->prepare('SELECT first_name, last_name, email, password_hash FROM users WHERE user_id = :id');
     $account->execute([':id' => $pending['user_id']]);
     $account = $account->fetch();
 
     // The same rule as registration (helpers.php), so a reset is never a way
     // round it, checked against the account's own name and address.
-    $policyError = password_policy_error($password, $account['email'], $account['full_name']);
+    $policyError = password_policy_error($password, $account['email'], $account['first_name'], $account['last_name']);
     if ($policyError !== null) {
         json_error($policyError, 422, ['fields' => ['password' => $policyError]]);
     }
@@ -767,6 +777,8 @@ function auth_me(): never
         'csrf_token' => csrf_token(),
         'user' => [
             'user_id' => (int) $user['user_id'],
+            'first_name' => $user['first_name'],
+            'last_name' => $user['last_name'],
             'full_name' => $user['full_name'],
             'email' => $user['email'],
             'contact_number' => $user['contact_number'],

@@ -20,6 +20,7 @@ import { useAsync } from '@/hooks/useAsync'
 import { matchService, notificationService, userService } from '@/services'
 import { formatDateTime } from '@/utils/date'
 import { hasCoordinates } from '@/utils/location'
+import { reveal } from '@/utils/reveal'
 import emptyQueueClear from '@/assets/empty-queue-clear.webp'
 
 async function loadVerificationQueue() {
@@ -108,9 +109,10 @@ export function StaffVerificationPage() {
   const decidedRef = useRef(null)
 
   // The decision is made at the bottom of a long card, and its outcome is
-  // shown at the top of the list, so bring it into view.
+  // shown at the top of the list, so bring it into view — and move focus
+  // there, so a keyboard or screen-reader user arrives at the result too.
   useEffect(() => {
-    if (decided.length) decidedRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    if (decided.length) reveal(decidedRef.current)
   }, [decided.length])
 
   useEffect(() => {
@@ -165,8 +167,9 @@ export function StaffVerificationPage() {
       {decided.length > 0 && (
         <section
           ref={decidedRef}
+          tabIndex={-1}
           aria-label="Decided just now"
-          className="flex scroll-mt-24 flex-col gap-3"
+          className="flex scroll-mt-24 flex-col gap-3 outline-none"
         >
           {decided.map(({ match, lostReport, foundReport, outcome }) => (
             <DecidedStrip key={match.id} lost={lostReport} found={foundReport} outcome={outcome} />

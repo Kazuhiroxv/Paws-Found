@@ -1,0 +1,26 @@
+{
+  "_about": "Shared cases for the name and password-identity rules. Read by scripts/identity_rules.php (the server's rules) and scripts/identity-rules.test.mjs (the browser's copy), so the two cannot drift: a case added here is checked on both sides.",
+  "names_accepted": [
+    ["Jo", "Li"], ["Ma.", "Cruz"], ["Anne-Marie", "Santos"], ["D'Angelo", "Reyes"],
+    ["José", "Santos"], ["O’Connor", "Lee"], ["Jomar", "Dela Cruz"], ["Maria Clara", "Santos"]
+  ],
+  "names_refused": ["A", "1", "!!!!", "-", "", "   ", "J4", "Jo2"],
+  "passwords": [
+    { "first": "Ja", "last": "Santos", "password": "123jaabcdefghijk", "accepted": false },
+    { "first": "Ja", "last": "Santos", "password": "abcdefghijklJAxyz", "accepted": false },
+    { "first": "Ja", "last": "Santos", "password": "somethingJAwhatever", "accepted": false },
+    { "first": "Ja", "last": "Santos", "password": "secure-ja-password", "accepted": false },
+    { "first": "Ja", "last": "Santos", "password": "JA123456789012345", "accepted": false },
+    { "first": "Ja", "last": "Lim", "password": "good-random-passphrase", "accepted": true },
+    { "first": "Maria", "last": "Santos", "password": "verylongSANTOSpassword", "accepted": false },
+    { "first": "Maylyn", "last": "Santos", "password": "maylyn-very-long-password", "accepted": false },
+    { "first": "Maylyn", "last": "Santos", "password": "MaylynSantos123456", "accepted": false },
+    { "first": "Maylyn", "last": "Santos", "password": "good-random-passphrase", "accepted": true },
+    { "first": "Anne-Marie", "last": "Lee", "password": "the-marie-celeste-ship", "accepted": false },
+    { "first": "Jomar", "last": "Dela Cruz", "password": "santa-cruz-island-walk", "accepted": false },
+    { "first": "José", "last": "Rizal", "password": "happy-JOSÉ-birthday-123", "accepted": false },
+    { "first": "Ma.", "last": "Ng", "password": "quiet-river-stone-path", "accepted": true },
+    { "first": "Maria", "last": "Santo", "password": "santoss-of-the-river", "accepted": false },
+    { "first": "Maria", "last": "Santos", "password": "sanntos-riverbank-path", "accepted": true }
+  ]
+}

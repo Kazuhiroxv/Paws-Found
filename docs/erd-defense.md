@@ -74,6 +74,17 @@ show on screen.
 `ENUM('active','suspended','locked')`. Both are constrained **by the database**,
 so a crafted request cannot invent a fourth role even if it gets past PHP.
 
+**First name and last name (migration 008, post-defense).** The instructor
+asked for them separately, and the password rule needs them separately. They
+are what the API writes; `full_name` is now a **generated** column,
+`CONCAT_WS(' ', first_name, last_name)`, kept so the queries that read it did
+not change, and impossible to write — so the three can never disagree. Say
+that if asked why there are three name columns: two are facts, one is a
+formula. Existing names were split by rule, with surname particles kept
+together ("Jomar Dela Cruz" → *Jomar* / *Dela Cruz*). The figure still shows
+`full_name`; it is redrawn in the final ERD pass, after the remaining schema
+corrections.
+
 **Three columns added in the hardening pass.** `email_verified_at` is NULL
 until the emailed link is clicked, and sign-in refuses an account that still
 has NULL there — so an address nobody can read cannot become a working account.

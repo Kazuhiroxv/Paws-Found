@@ -34,7 +34,7 @@ from audit import reseed, sql
 PW = audit.PW
 # The test account's own password. The seeded accounts keep PW (demo1234), which
 # still signs in: the 15-character rule applies only when a password is chosen.
-LIFECYCLE_PW = 'lifecycle river passphrase'
+LIFECYCLE_PW = 'quiet harbour passphrase'  # no piece of "Lifecycle Tester": the name rule is a substring rule
 CAPTURE_DIR = os.path.join(os.environ.get('TEMP', '/tmp'), 'pawsandfound-mail')
 LOCAL_CONFIG = os.path.join(audit.PROJECT, 'api', 'config.local.php')
 
@@ -113,7 +113,7 @@ try:
     started = time.time()
     caller = session()
     code, payload = caller.call('POST', '/auth/register', {
-        'full_name': 'Lifecycle Tester',
+        'first_name': 'Lifecycle', 'last_name': 'Tester',
         'email': NEW_EMAIL,
         'password': LIFECYCLE_PW,
         'privacy_consent': True,
@@ -291,7 +291,7 @@ try:
     owner.prime_csrf()
     started = time.time()
     code, payload = owner.call('PATCH', '/users/me', {
-        'full_name': 'Lifecycle Tester',
+        'first_name': 'Lifecycle', 'last_name': 'Tester',
         'email': MOVED_EMAIL,
     })
     check('G1', 'The request is accepted', 200, code)
@@ -323,7 +323,7 @@ try:
                          {'email': MOVED_EMAIL, 'password': 'password-after-lock'})[0])
     check('G11', 'A duplicate address is refused', 422,
           owner.call('PATCH', '/users/me',
-                     {'full_name': 'Lifecycle Tester',
+                     {'first_name': 'Lifecycle', 'last_name': 'Tester',
                       'email': audit.ACCOUNTS['admin']})[0])
 
     # =================================================== H. rate limiting
@@ -338,41 +338,58 @@ try:
     check('H3', 'And so is the fifth', 429, codes[4])
     check('H4', 'Registration has its own, separate allowance', True,
           session().call('POST', '/auth/register',
-                         {'full_name': 'Rate Check', 'email': 'rate.check@example.com',
+                         {'first_name': 'Rate', 'last_name': 'Check', 'email': 'rate.check@example.com',
                           'password': LIFECYCLE_PW, 'privacy_consent': True})[0] in (201, 422))
     check('H5', 'The three-attempt account lock is untouched by any of it', '0',
           sql("SELECT COUNT(*) FROM login_attempts WHERE failed_count >= 3"))
     sql("DELETE FROM users WHERE email='rate.check@example.com'")
 
     # =================================================== I. names and the password rule
-    # api/helpers.php: validate_full_name() for registration and the profile;
+    # api/helpers.php: validate_name_part() for registration and the profile;
     # password_policy_error() for registration and the reset. The registration
     # allowance is cleared before each attempt, so the rate limit (section H)
     # never stands in for the answer being tested.
     banner('I. Names and the password rule')
 
-    def register(tag, full_name='Policy Tester', password='harbour lights at six'):
+    def register(tag, first='Policy', last='Tester', password='harbour lights at six'):
         sql("DELETE FROM auth_rate_limits")
         code, body = session().call('POST', '/auth/register', {
-            'full_name': full_name, 'email': f'policy.{tag}@example.com',
+            'first_name': first, 'last_name': last, 'email': f'policy.{tag}@example.com',
             'password': password, 'privacy_consent': True})
         return code, (body.get('fields') or {})
 
+    # Names: first and last separately since the post-defense corrections
+    # (migration 008), each refusing junk and a single letter.
     for step, name in (('N1', 'A'), ('N2', '1'), ('N3', '!!!!')):
-        code, fields = register(step.lower(), full_name=name)
-        check(step, f'The name "{name}" is refused', (422, 'Enter a real name with at least 2 letters.'),
-              (code, fields.get('full_name')))
-    for step, name in (('N4', 'Jo Li'), ('N5', 'Ma. Ana Cruz'), ('N6', 'Anne-Marie Cruz'),
-                       ('N7', "D'Angelo Reyes"), ('N8', 'O’Connor'), ('N9', 'José Santos')):
-        check(step, f'The name "{name}" is accepted', 201, register(step.lower(), full_name=name)[0])
-    check('N10', 'Stored with the spaces tidied', 'Maria Santos',
-          (register('n10', full_name='  Maria   Santos ')[0],
-           sql("SELECT full_name FROM users WHERE email='policy.n10@example.com'"))[1])
-    code, payload = owner.call('PATCH', '/users/me', {'full_name': 'A', 'email': MOVED_EMAIL})
-    check('N11', 'The profile refuses "A" too, on the name field', (422, 'Enter a real name with at least 2 letters.'),
-          (code, (payload.get('fields') or {}).get('full_name')))
+        code, fields = register(step.lower(), first=name)
+        check(step, f'The first name "{name}" is refused', (422, 'Enter a real first name with at least 2 letters.'),
+              (code, fields.get('first_name')))
+    code, fields = register('n3b', last='A')
+    check('N3b', 'A one-letter last name is refused', (422, 'Enter a real last name with at least 2 letters.'),
+          (code, fields.get('last_name')))
+    # A password with no piece of any of these names in it. The default,
+    # "harbour lights at six", contains "li" — so the two-letter name "Li"
+    # refuses it, which is the substring rule doing what it was asked to.
+    for step, first, last in (('N4', 'Jo', 'Li'), ('N5', 'Ma.', 'Cruz'), ('N6', 'Anne-Marie', 'Cruz'),
+                              ('N7', "D'Angelo", 'Reyes'), ('N8', 'O’Connor', 'Lee'), ('N9', 'José', 'Santos')):
+        check(step, f'The name "{first} / {last}" is accepted', 201,
+              register(step.lower(), first=first, last=last, password='quiet harbour passphrase')[0])
+    check('N10', 'Stored with the spaces tidied, and full_name generated from the parts',
+          ('Jomar', 'Dela Cruz', 'Jomar Dela Cruz'),
+          (register('n10', first='  Jomar ', last=' Dela   Cruz ')[0],
+           tuple(sql("SELECT CONCAT_WS('|', first_name, last_name, full_name) FROM users "
+                     "WHERE email='policy.n10@example.com'").split('|')))[1])
+    code, payload = owner.call('PATCH', '/users/me', {'first_name': 'A', 'last_name': 'Tester', 'email': MOVED_EMAIL})
+    check('N11', 'The profile refuses "A" too, on the first-name field',
+          (422, 'Enter a real first name with at least 2 letters.'),
+          (code, (payload.get('fields') or {}).get('first_name')))
     check('N12', '...and the name was not changed', 'Lifecycle Tester',
           sql(f"SELECT full_name FROM users WHERE user_id={uid}"))
+    code, payload = owner.call('PATCH', '/users/me', {'first_name': 'Lifecycle', 'last_name': 'Tester-Reyes',
+                                                      'email': MOVED_EMAIL})
+    check('N13', 'The profile saves both parts, and full_name follows', (200, 'Lifecycle Tester-Reyes'),
+          (code, sql(f"SELECT full_name FROM users WHERE user_id={uid}")))
+    owner.call('PATCH', '/users/me', {'first_name': 'Lifecycle', 'last_name': 'Tester', 'email': MOVED_EMAIL})
 
     accented = 'añoranza señorío mañana piñata ñandú'
     too_many_bytes = accented + 'x' * (72 - len(accented.encode()) - 2) + 'yzé'
@@ -386,25 +403,36 @@ try:
     ):
         code, fields = register(step.lower(), password=password)
         check(step, f'Refused: {what}', (422, True), (code, expected in (fields.get('password') or '')))
-    identity = 'not based on your name or email'
+
+    email_rule = 'not your email address'
     code, fields = register('p7', password='policy.p7@example.com')
-    check('P7', 'Refused: the email address itself', (422, True), (code, identity in (fields.get('password') or '')))
+    check('P7', 'Refused: the email address itself', (422, True), (code, email_rule in (fields.get('password') or '')))
     sql("DELETE FROM auth_rate_limits")
     code, body = session().call('POST', '/auth/register', {
-        'full_name': 'Policy Tester', 'email': 'harbour.lights.at.six@example.com',
+        'first_name': 'Policy', 'last_name': 'Tester', 'email': 'harbour.lights.at.six@example.com',
         'password': 'harbour.lights.at.six', 'privacy_consent': True})
     check('P8', 'Refused: the part of the email before the @', (422, True),
-          (code, identity in ((body.get('fields') or {}).get('password') or '')))
-    code, fields = register('p9', full_name='Harbour Lighthouse Keeper', password='harbourlighthousekeeper')
-    check('P9', 'Refused: the name, run together', (422, True), (code, identity in (fields.get('password') or '')))
+          (code, email_rule in ((body.get('fields') or {}).get('password') or '')))
+
+    # The name rule is a substring rule now (instructor requirement): the
+    # password may not contain the first or last name anywhere, any case.
+    name_rule = 'does not contain your first or last name'
+    for step, what, first, last, password in (
+        ('P9', 'the first name "Ja" inside it', 'Ja', 'Lim', '123jaabcdefghijk'),
+        ('P9b', 'the first name, in capitals, mid-word', 'Ja', 'Lim', 'abcdefghijklJAxyz'),
+        ('P9c', 'the last name "Santos"', 'Maria', 'Santos', 'verylongSANTOSpassword'),
+        ('P12', 'a passphrase that merely contains the first name', 'Harbour', 'Keeper', 'harbour walks the dog at dawn'),
+    ):
+        code, fields = register(step.lower(), first=first, last=last, password=password)
+        check(step, f'Refused: {what}', (422, True), (code, name_rule in (fields.get('password') or '')))
     check('P2', 'Accepted: a 15+ character passphrase', 201, register('p2', password='river bend walks')[0])
     check('P10', 'Accepted: a Fair password (every rule met)', 201, register('p10', password='harbour lights ok')[0])
     check('P11', 'Accepted: a Strong one', 201, register('p11', password='correct horse battery staple')[0])
-    check('P12', 'Accepted: a passphrase that merely contains the first name', 201,
-          register('p12', full_name='Harbour Keeper', password='harbour walks the dog at dawn')[0])
+    check('P13', 'Accepted: "Ja" with a passphrase that has no "ja" in it', 201,
+          register('p13', first='Ja', last='Lim', password='good-random-passphrase')[0])
 
-    # The reset: the same rule, checked against the account's own name and
-    # address, and a refusal never spends the link.
+    # The reset: the same rule, checked against the account's own first and
+    # last name loaded from the database, and a refusal never spends the link.
     sql("DELETE FROM auth_rate_limits")
     started = time.time()
     session().call('POST', '/auth/forgot-password', {'email': MOVED_EMAIL})
@@ -415,9 +443,12 @@ try:
     check('R1', 'Reset to 14 characters: refused', 422, code)
     code, payload = reset('passwordpassword')
     check('R2', 'Reset to a common password: refused', 422, code)
-    code, payload = reset('lifecycletester')
-    check('R3', "Reset to the account's own name: refused", (422, True),
-          (code, identity in ((payload.get('fields') or {}).get('password') or '')))
+    code, payload = reset('my-lifecycle-passphrase')
+    check('R3', "Reset to a password containing the account's first name: refused", (422, True),
+          (code, name_rule in ((payload.get('fields') or {}).get('password') or '')))
+    code, payload = reset('a-long-TESTER-passphrase')
+    check('R3b', "Reset to one containing the last name, in capitals: refused", (422, True),
+          (code, name_rule in ((payload.get('fields') or {}).get('password') or '')))
     code, payload = reset('password-after-lock')
     check('R5', 'Reset to the current password: still refused, with its own reason', (422, True),
           (code, 'different from your current password' in ((payload.get('fields') or {}).get('password') or '')))
@@ -426,7 +457,7 @@ try:
     elsewhere = session()
     elsewhere.call('POST', '/auth/login', {'email': MOVED_EMAIL, 'password': 'password-after-lock'})
     elsewhere.prime_csrf()
-    check('R4', 'A valid new password is accepted', 200, reset('harbour lights at six')[0])
+    check('R4', 'A valid new password is accepted, with the same link', 200, reset('harbour lights at six')[0])
     check('R7', 'It signed the other session out, and the new password signs in', (401, 200),
           (elsewhere.call('GET', '/notifications')[0],
            session().call('POST', '/auth/login', {'email': MOVED_EMAIL, 'password': 'harbour lights at six'})[0]))

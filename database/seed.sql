@@ -43,17 +43,17 @@ INSERT IGNORE INTO pet_breeds (breed_id, category_id, breed_name) VALUES
   (14, 1, 'German Shepherd');
 
 -- 10 accounts: 7 community members, 2 coordinators, 1 administrator.
-INSERT INTO users (user_id, full_name, email, password_hash, contact_number, role, account_status, preferred_location, created_at, email_verified_at) VALUES
-  (1, 'Maria Santos', 'maria.santos@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0101', 'user', 'active', 'Makati City, Metro Manila', '2026-03-14 02:11:00', '2026-03-14 02:11:00'),
-  (2, 'Jomar Dela Cruz', 'jomar.delacruz@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0102', 'user', 'active', 'Quezon City, Metro Manila', '2026-04-02 07:45:00', '2026-04-02 07:45:00'),
-  (3, 'Liza Ocampo', 'liza.ocampo@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0103', 'user', 'active', 'Makati City, Metro Manila', '2026-05-19 11:02:00', '2026-05-19 11:02:00'),
-  (4, 'Aileen Reyes', 'aileen.reyes@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0104', 'user', 'active', 'Cebu City, Cebu', '2026-06-01 05:30:00', '2026-06-01 05:30:00'),
-  (5, 'Kenneth Villanueva', 'kenneth.villanueva@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0105', 'user', 'active', 'Davao City, Davao del Sur', '2026-06-22 09:18:00', '2026-06-22 09:18:00'),
-  (6, 'Noel Aguilar', 'noel.aguilar@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0106', 'user', 'active', 'Quezon City, Metro Manila', '2026-07-08 13:55:00', '2026-07-08 13:55:00'),
-  (7, 'Rico Panganiban', 'rico.panganiban@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0107', 'user', 'suspended', 'Manila, Metro Manila', '2026-07-30 16:04:00', '2026-07-30 16:04:00'),
-  (8, 'Patricia Lim', 'patricia.lim@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0201', 'staff', 'active', 'Metro Manila', '2026-02-10 01:00:00', '2026-02-10 01:00:00'),
-  (9, 'Rafael Mendoza', 'rafael.mendoza@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0202', 'staff', 'active', 'Cebu City, Cebu', '2026-02-10 01:05:00', '2026-02-10 01:05:00'),
-  (10, 'Grace Bautista', 'grace.bautista@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0301', 'admin', 'active', 'Metro Manila', '2026-01-05 00:30:00', '2026-01-05 00:30:00');
+INSERT INTO users (user_id, first_name, last_name, email, password_hash, contact_number, role, account_status, preferred_location, created_at, email_verified_at) VALUES
+  (1, 'Maria', 'Santos', 'maria.santos@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0101', 'user', 'active', 'Makati City, Metro Manila', '2026-03-14 02:11:00', '2026-03-14 02:11:00'),
+  (2, 'Jomar', 'Dela Cruz', 'jomar.delacruz@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0102', 'user', 'active', 'Quezon City, Metro Manila', '2026-04-02 07:45:00', '2026-04-02 07:45:00'),
+  (3, 'Liza', 'Ocampo', 'liza.ocampo@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0103', 'user', 'active', 'Makati City, Metro Manila', '2026-05-19 11:02:00', '2026-05-19 11:02:00'),
+  (4, 'Aileen', 'Reyes', 'aileen.reyes@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0104', 'user', 'active', 'Cebu City, Cebu', '2026-06-01 05:30:00', '2026-06-01 05:30:00'),
+  (5, 'Kenneth', 'Villanueva', 'kenneth.villanueva@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0105', 'user', 'active', 'Davao City, Davao del Sur', '2026-06-22 09:18:00', '2026-06-22 09:18:00'),
+  (6, 'Noel', 'Aguilar', 'noel.aguilar@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0106', 'user', 'active', 'Quezon City, Metro Manila', '2026-07-08 13:55:00', '2026-07-08 13:55:00'),
+  (7, 'Rico', 'Panganiban', 'rico.panganiban@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0107', 'user', 'suspended', 'Manila, Metro Manila', '2026-07-30 16:04:00', '2026-07-30 16:04:00'),
+  (8, 'Patricia', 'Lim', 'patricia.lim@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0201', 'staff', 'active', 'Metro Manila', '2026-02-10 01:00:00', '2026-02-10 01:00:00'),
+  (9, 'Rafael', 'Mendoza', 'rafael.mendoza@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0202', 'staff', 'active', 'Cebu City, Cebu', '2026-02-10 01:05:00', '2026-02-10 01:05:00'),
+  (10, 'Grace', 'Bautista', 'grace.bautista@example.com', '$2y$10$jW4GHCqaWjesiKL/qfEFjeIPiCrr/Iarc6zWgJlA8Z/qTwJgikWbK', '+63 917 010 0301', 'admin', 'active', 'Metro Manila', '2026-01-05 00:30:00', '2026-01-05 00:30:00');
 
 -- The privacy acknowledgement each demonstration account gave when it
 -- registered, dated to the account rather than to today.

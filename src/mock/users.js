@@ -15,6 +15,8 @@ import { ROLES } from '@/constants'
 export const users = [
   {
     id: 'user-001',
+    firstName: 'Maria',
+    lastName: 'Santos',
     fullName: 'Maria Santos',
     email: 'maria.santos@example.com',
     phone: '+63 917 010 0101',
@@ -31,6 +33,8 @@ export const users = [
   },
   {
     id: 'user-002',
+    firstName: 'Jomar',
+    lastName: 'Dela Cruz',
     fullName: 'Jomar Dela Cruz',
     email: 'jomar.delacruz@example.com',
     phone: '+63 917 010 0102',
@@ -47,6 +51,8 @@ export const users = [
   },
   {
     id: 'user-003',
+    firstName: 'Liza',
+    lastName: 'Ocampo',
     fullName: 'Liza Ocampo',
     email: 'liza.ocampo@example.com',
     phone: '+63 917 010 0103',
@@ -63,6 +69,8 @@ export const users = [
   },
   {
     id: 'user-004',
+    firstName: 'Aileen',
+    lastName: 'Reyes',
     fullName: 'Aileen Reyes',
     email: 'aileen.reyes@example.com',
     phone: '+63 917 010 0104',
@@ -79,6 +87,8 @@ export const users = [
   },
   {
     id: 'user-005',
+    firstName: 'Kenneth',
+    lastName: 'Villanueva',
     fullName: 'Kenneth Villanueva',
     email: 'kenneth.villanueva@example.com',
     phone: '+63 917 010 0105',
@@ -95,6 +105,8 @@ export const users = [
   },
   {
     id: 'user-006',
+    firstName: 'Noel',
+    lastName: 'Aguilar',
     fullName: 'Noel Aguilar',
     email: 'noel.aguilar@example.com',
     phone: '+63 917 010 0106',
@@ -111,6 +123,8 @@ export const users = [
   },
   {
     id: 'user-007',
+    firstName: 'Rico',
+    lastName: 'Panganiban',
     fullName: 'Rico Panganiban',
     email: 'rico.panganiban@example.com',
     phone: '+63 917 010 0107',
@@ -127,6 +141,8 @@ export const users = [
   },
   {
     id: 'staff-001',
+    firstName: 'Patricia',
+    lastName: 'Lim',
     fullName: 'Patricia Lim',
     email: 'patricia.lim@example.com',
     phone: '+63 917 010 0201',
@@ -143,6 +159,8 @@ export const users = [
   },
   {
     id: 'staff-002',
+    firstName: 'Rafael',
+    lastName: 'Mendoza',
     fullName: 'Rafael Mendoza',
     email: 'rafael.mendoza@example.com',
     phone: '+63 917 010 0202',
@@ -159,6 +177,8 @@ export const users = [
   },
   {
     id: 'admin-001',
+    firstName: 'Grace',
+    lastName: 'Bautista',
     fullName: 'Grace Bautista',
     email: 'grace.bautista@example.com',
     phone: '+63 917 010 0301',

@@ -110,6 +110,34 @@ export function FilterPanel({
         options={[{ value: ANY, label: 'Any species' }, ...speciesOptions]}
       />
 
+      {/* Date sits directly under species and starts open. At the defense it
+          was the last group and closed, so on a laptop it was one click away
+          and below 1024px two (behind the Filters button, then the group) —
+          and it was not found at all. "Lost dogs, but only recent ones" is
+          the second thing anyone asks, after the species. */}
+      <FilterGroup
+        icon={CalendarDays}
+        title="Date of incident"
+        activeCount={setCount('dateFrom', 'dateTo')}
+        defaultOpen
+      >
+        <Input
+          label="From"
+          type="date"
+          value={filters.dateFrom}
+          max={filters.dateTo || todayAsInputValue()}
+          onChange={(event) => onChange('dateFrom', event.target.value)}
+        />
+        <Input
+          label="To"
+          type="date"
+          value={filters.dateTo}
+          min={filters.dateFrom || undefined}
+          max={todayAsInputValue()}
+          onChange={(event) => onChange('dateTo', event.target.value)}
+        />
+      </FilterGroup>
+
       <FilterGroup
         icon={Ruler}
         title="Size and colour"
@@ -150,28 +178,6 @@ export function FilterPanel({
         />
       </FilterGroup>
 
-      <FilterGroup
-        icon={CalendarDays}
-        title="Date of incident"
-        activeCount={setCount('dateFrom', 'dateTo')}
-      >
-        <Input
-          label="From"
-          type="date"
-          value={filters.dateFrom}
-          max={filters.dateTo || todayAsInputValue()}
-          onChange={(event) => onChange('dateFrom', event.target.value)}
-        />
-        <Input
-          label="To"
-          type="date"
-          value={filters.dateTo}
-          min={filters.dateFrom || undefined}
-          max={todayAsInputValue()}
-          onChange={(event) => onChange('dateTo', event.target.value)}
-        />
-      </FilterGroup>
-
       <Button variant="secondary" onClick={onClear} disabled={!hasActiveFilters} fullWidth>
         Clear all filters
       </Button>
@@ -191,18 +197,22 @@ export function FilterPanel({
  * read aloud and being looked at by somebody who cannot pick the tint out
  * from the rail behind it.
  */
-function FilterGroup({ icon, title, activeCount, children }) {
+function FilterGroup({ icon, title, activeCount, defaultOpen = false, children }) {
   // Initial only. Once somebody has opened or closed a group, that is their
   // decision, and a filter changing underneath must not overrule it.
-  const [isOpen, setIsOpen] = useState(activeCount > 0)
+  const [isOpen, setIsOpen] = useState(defaultOpen || activeCount > 0)
 
   return (
-    <div className="border-t border-border pt-4">
+    <div className="border-t border-border pt-2">
+      {/* 44px tall: a touch target, not just a line of text. At 20px these
+          were the smallest controls on Explore at laptop widths, and on a
+          touchscreen laptop they are exactly what gets tapped. The padding
+          above is trimmed to match, so the panel barely grows. */}
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
         aria-expanded={isOpen}
-        className="flex w-full items-center justify-between gap-2 text-left"
+        className="flex min-h-11 w-full items-center justify-between gap-2 text-left"
       >
         <FilterLabel icon={icon}>{title}</FilterLabel>
 
