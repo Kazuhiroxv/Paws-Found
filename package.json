@@ -3,10 +3,11 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Paws&Found \u2014 Web-Based Community System for Lost and Found Pets",
+  "description": "Paws&Found — Web-Based Community System for Lost and Found Pets",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "check:bundle": "node scripts/bundle-check.mjs",
     "build:deploy": "node scripts/build-deploy.mjs",
     "preview": "vite preview",
     "lint": "eslint .",

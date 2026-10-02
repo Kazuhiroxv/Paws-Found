@@ -119,7 +119,7 @@ night before.
 | 1 — Proposal | Title, problem, users, features, roles, architecture, initial ERD, stack | Submitted |
 | 2 — Database + Backend | Database, tables, relationships, CRUD, authentication, basic backend | **Done** — 17 tables, 24 foreign keys, the REST API and real sessions |
 | 3 — Frontend + API | Responsive UI, JavaScript, API, AJAX/Fetch, validation, search/filter | **Done** — the UI calls the PHP API through `src/services/`; nothing is mock any more |
-| 4 — Security + Testing | Injection, auth, authorization, XSS, functional and usability testing | **Done** — 699 automated checks in nine suites, all passing (audit 382, account lifecycle 100, multi-device 73, sign-out 24, interface 66, contract 29, city 11, calendar 8, matching log 6); axe-core clean over 31 pages; production verifier 25/25 (read-only). Counts as of 30 September 2026, `docs/TESTING.md` §3 |
+| 4 — Security + Testing | Injection, auth, authorization, XSS, functional and usability testing | **Done** — 702 automated checks in nine suites, all passing (audit 382, account lifecycle 100, multi-device 73, sign-out 24, interface 66, contract 32, city 11, calendar 8, matching log 6); axe-core clean over 31 pages; no mock data in the production bundle; production verifier 25/25 (read-only). Counts as of 2 October 2026, `docs/TESTING.md` §3 |
 | 5 — Final Presentation | 15–20 minute demonstration, presented as if to a real client | Prepared — `docs/presentation-defense.md`; not yet delivered |
 
 ## Other graded items

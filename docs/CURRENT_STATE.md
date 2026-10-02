@@ -20,16 +20,19 @@ file says otherwise), [TESTING.md](TESTING.md), [DECISIONS.md](DECISIONS.md),
 ```bash
 cd C:\Projects\paws-and-found
 git status --short
-git branch --show-current          # team/current
+git branch --show-current          # post-defense/revisions
 git fetch portfolio
 git log --oneline -5
 git log --oneline portfolio/team/current..HEAD   # local commits not yet deployed
 curl.exe -s https://paws-found-production.up.railway.app/api/health
 ```
 
-Expected at the time of writing: on `team/current`, `HEAD` = `portfolio/team/current`
-= **`2947a43`**, health `{"status":"ok","database":"ok"}`, and the working tree
-holding the uncommitted changes listed in §4.
+Expected at the time of writing (2 October): on branch
+**`post-defense/revisions`**, two local commits ahead of
+`portfolio/team/current` = **`2947a43`** (what production runs) — the §4
+checkpoint and Correction 1, see §4a. Neither is pushed or deployed. Health
+`{"status":"ok","database":"ok"}`. Untracked: `docs/feedback/` (instructor
+transcripts, pending review) and `docs/dbeaver-defense-queries.pdf`.
 
 ---
 
@@ -82,10 +85,12 @@ The full list since the 27 September handoff is `git log --oneline e97116b..2947
 
 ---
 
-## 4. Uncommitted on the laptop (not in production)
+## 4. Finished, committed locally, not in production
 
-Kyle said **"don't commit this yet."** These are finished and tested locally,
-waiting for his word. Do not commit or push them without it.
+**Committed on 2 October** as the checkpoint `6abdb56` on branch
+`post-defense/revisions`, at Kyle's instruction, so the instructor's
+corrections could start from a clean tree. Not pushed, not deployed. The
+description below still applies; only its status changed.
 
 **A. Reopen also covers a reporter's "Not my pet".**
 A coordinator can reopen a pairing the owner or finder dismissed. A
@@ -141,6 +146,58 @@ by §8's production check.
 
 ---
 
+## 4a. Instructor corrections (from 2 October)
+
+After the demonstration, Ma'am gave a list of corrections. Kyle's written notes
+are the **master list** (nineteen items). They are being worked one at a time,
+each as its own commit on `post-defense/revisions`, in dependency order rather
+than the order written. Nothing is pushed until Kyle says so.
+
+**Recordings.** Two recordings of the session were transcribed locally with
+Whisper into `docs/feedback/` (untracked until Kyle has reviewed them):
+`recording-1-raw-transcript.txt`, `recording-2-raw-transcript.txt`, and
+`instructor-feedback-notes.md`, which is an interpretation kept separate from
+the raw text. **The recordings do not cover** the API/database item, the
+password-confirmation rule, activity logging, admin levels, Reset or drafts, so
+those still come from the written notes alone. They do add seven items the notes
+miss (contact number, photo guidance, submit feedback, PDF export of the list,
+an XL size, presentation flow, and a date filter that exists but was not found).
+
+| # | Correction | State |
+| --- | --- | --- |
+| 1 | API should connect to the database | **Done** — audit plus cleanup, see below |
+| 10 | Breed / colour / city / province: suggested values | **Recorded, not started** — see below |
+| others | | Not started |
+
+**Correction 1.** The audit found every workflow already goes through the PHP
+API to MySQL; nothing falls back to mock data. What remained was scaffolding
+from before the backend existed: three services imported `src/services/mockDb.js`
+for its `NotFoundError` class, which dragged the entire `src/mock/` dataset
+into the production bundle; the production login page loaded the mock users on
+every visit; and `createNotification()` was dead mock code. Fixed by moving
+`NotFoundError` to `src/services/errors.js`, deleting `mockDb.js` and
+`createNotification`, and loading the demo accounts only inside an
+`import.meta.env.DEV` branch. Guarded twice: `scripts/no-mock-in-production.test.mjs`
+(source rule, in `test:contract`) and `npm run check:bundle` (reads `dist/`).
+No API, schema or live behaviour changed.
+
+**Correction 10 — found during Correction 1, deliberately not fixed yet.**
+Breed, colour, city and province are free-text inputs, and
+`breed_id_for()` (`api/reports.php:1258`) **inserts every new spelling into
+`pet_breeds`**, so "Golden Retriever", "golden retriever" and "Golden Retriver"
+become three rows. The table is seeded but no endpoint lists it, so the form
+cannot suggest from it. This needs one design across the API, the form, the
+matching rules and probably the ERD, not a patch. Ma'am's own words on it are in
+`docs/feedback/instructor-feedback-notes.md` (colours with an "other" field).
+
+**Known intermittent issue — not fixed.** Sign-out checks `SO-I`/`SO-J` fail
+when the machine is heavily loaded and pass otherwise. Reproduced identically on
+`2947a43`, so it is in production, not caused by the corrections. Likely cause:
+`refresh()` in `src/hooks/useSession.js` returns early while a check is in
+flight, so a check that started just before a sign-out in another tab wins and
+the newer one is dropped; the tab then shows the old report until the next
+poll. Fix would be to run one more check after an in-flight one finishes.
+
 ## 5. Rules Kyle has set (they still apply)
 
 - **Commit and push only when Kyle asks.** Report first, then wait.
@@ -195,7 +252,7 @@ C:\xampp\mysql\bin\mysql.exe -uroot -P3307 -h127.0.0.1 --default-character-set=u
 ```bash
 npm run lint
 npm run build
-npm run test:contract                                         # 29
+npm run test:contract                                         # 32
 PAWS_PW=<seeded password> npm run audit                       # 382  (reseeds, restores)
 PAWS_PW=<seeded password> python scripts/auth_lifecycle.py    # 100
 PAWS_PW=<seeded password> npm run multi-device                # 73
@@ -207,8 +264,11 @@ C:\xampp\php\php.exe scripts/calendar_today.php               # 8
 C:\xampp\php\php.exe scripts/matching_log.php                 # 6
 ```
 
-**699 checks in total** with the uncommitted work (689 in production). Reseed
-after the browser suites; they change data.
+**702 checks in total** on `post-defense/revisions` (689 in production).
+Reseed after the browser suites; they change data.
+
+After `npm run build`, also run `npm run check:bundle`: it fails if any of the
+mock dataset reached `dist/` (Correction 1, §4a).
 
 When a count changes, `docs/TESTING.md` §3 is the source. Then update the same
 number in: README (`npm run audit` / `test:ui` rows), `docs/HANDOFF.md` §10,
@@ -268,7 +328,10 @@ Rolling back and operating the live site: [PRODUCTION_RUNBOOK.md](PRODUCTION_RUN
 
 ## 10. Still open
 
-- **Section 4 is waiting for Kyle.**
+- **Section 4 and Correction 1 are committed locally, not deployed.** Shipping
+  them is Kyle's call.
+- **Instructor corrections in progress** — see §4a.
+- **An intermittent sign-out race** — see §4a. Not fixed.
 - **The printed defense packet** from the morning of 30 September says 590
   checks; reprint from `docs/diagrams/` if a current copy is needed.
 - **The demonstration accounts share one weak password.** Fine for a demo; don't

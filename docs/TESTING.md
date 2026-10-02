@@ -35,7 +35,7 @@ from Docker when pointing at Railway.
 
 ESLint over everything; Vite production build. Touch nothing, need nothing.
 
-### `npm run test:contract` — 29 checks
+### `npm run test:contract` — 32 checks
 
 Node's built-in test runner. **No server, no database.** These exist because
 two real defects got through every other suite by being *agreements between two
@@ -43,6 +43,23 @@ files* rather than faults in either one: the collar answer (`"yes" | "no" |
 "unknown"` from the form through the API to MySQL and back) and the contact
 preferences. They assert the shape of what the form sends and what the API
 returns.
+
+`no-mock-in-production.test.mjs` adds three, and they guard an architectural
+rule rather than a behaviour: nothing that ships may depend on the mock dataset
+in `src/mock/`. Every workflow already went through the API to MySQL, but until
+2 October three services imported the old in-browser mock database for a small
+error class, which dragged fake users, pets and notifications into the
+production bundle. The tests check that `mockDb.js` is gone, that nothing in
+`src/` imports `@/mock` statically, and that the one place allowed to load it
+(the development-only role selector) does so inside an `import.meta.env.DEV`
+branch, which a production build removes.
+
+The other half of that guard is `npm run check:bundle`, run after a build. It
+reads what Vite actually emitted into `dist/` and fails if any of the mock
+dataset is in it. Its markers are taken from `src/mock/` itself — every mock
+record id and the opening of every mock description, 91 in all — so it
+follows the data rather than watching for one name. It was checked against the
+pre-fix build, where it fails, before being trusted on the fixed one.
 
 `sign-in-destination.test.mjs` adds two: after signing in, somebody is sent
 back to the page they were headed for only when their role can open it. Signing
@@ -520,13 +537,15 @@ everything passes.
 
 ## 3. Last verified results
 
-30 September 2026, on the development laptop unless stated; `test:mail` and
-the Docker lines are from 27 September (nothing they cover has changed).
+2 October 2026, on the development laptop unless stated, on branch
+`post-defense/revisions`. `test:mail` and the clean-build Docker line are from
+27 September (nothing they cover has changed).
 
 ```
 lint                                     clean
 build                                    green
-test:contract                            29/29
+test:contract                            32/32
+check:bundle                             0 of 91 mock markers in dist/
 test:calendar                             8/8
 test:mail                                15/15
 audit                                   382/382
@@ -540,6 +559,7 @@ a11y                                     31 pages, 0 violations
 docker build --pull --no-cache           clean, curl present, one MPM, Syntax OK
 verify:deploy vs production              25/25 + 3 skipped (read-only default)
 verify:deploy --upload vs local XAMPP    27/28   (7.1, correctly, on plain HTTP)
+verify:deploy vs local production image 24/25 + 3 skipped  (7.1, correctly, on plain HTTP)
 schema.sql vs migrated database          identical across all 17 tables
 schema.sql on MySQL 8.0.46 and 9.4.0     imports clean; 17 tables, 24 FKs
 ```

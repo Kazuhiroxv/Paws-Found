@@ -7,7 +7,7 @@
  */
 
 import { REPORT_STATUSES, REPORT_TYPES } from '@/constants'
-import { NotFoundError } from './mockDb'
+import { NotFoundError } from './errors'
 import { apiFetch, assetUrl, queryString } from './api'
 
 /**

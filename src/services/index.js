@@ -25,4 +25,4 @@ export {
   moderationService,
   categoryService,
 }
-export { NotFoundError, resetMockDb } from './mockDb'
+export { NotFoundError } from './errors'

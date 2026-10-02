@@ -9,7 +9,7 @@
  */
 
 import { ROLES } from '@/constants'
-import { NotFoundError, getTable } from './mockDb'
+import { NotFoundError } from './errors'
 import { apiFetch, queryString } from './api'
 
 /** An API account in the shape the interface already reads. */
@@ -233,15 +233,28 @@ export async function signInAsDemoAccount(email) {
   return getCurrentUser()
 }
 
+/**
+ * The accounts the development-only role selector offers.
+ *
+ * Development only, and enforced here rather than by the callers. The mock
+ * users are loaded with a dynamic import inside an `import.meta.env.DEV`
+ * branch, which Vite replaces with `false` in a production build — so the
+ * branch, and the mock dataset with it, is removed from the bundle entirely.
+ * A production sign-in page therefore never reads, or even ships, mock users.
+ */
 export async function getDemoAccounts() {
-  const rows = getTable('users')
-  const pick = (role) => rows.find((u) => u.role === role && u.accountStatus === 'active')
+  if (import.meta.env.DEV) {
+    const { users } = await import('@/mock')
+    const pick = (role) => users.find((u) => u.role === role && u.accountStatus === 'active')
 
-  return {
-    [ROLES.USER]: pick(ROLES.USER),
-    [ROLES.STAFF]: pick(ROLES.STAFF),
-    [ROLES.ADMIN]: pick(ROLES.ADMIN),
+    return {
+      [ROLES.USER]: pick(ROLES.USER),
+      [ROLES.STAFF]: pick(ROLES.STAFF),
+      [ROLES.ADMIN]: pick(ROLES.ADMIN),
+    }
   }
+
+  return {}
 }
 
 /**

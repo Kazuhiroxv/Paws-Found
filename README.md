@@ -53,7 +53,7 @@ are checked by what the file actually is; administrators add, rename, retire and
 delete pet categories. Nothing the app shows comes from mock data any more. See
 [`docs/feature-status.md`](docs/feature-status.md) for the item-by-item picture.
 
-**It is tested.** 699 automated checks in nine suites, all passing, and
+**It is tested.** 702 automated checks in nine suites, all passing, and
 axe-core over 31 pages — see [`docs/TESTING.md`](docs/TESTING.md) §3.
 
 ## Getting started
@@ -166,10 +166,11 @@ with the password itself. On a built site everyone signs in through the form.
 | --- | --- |
 | `npm run dev` | Start the dev server |
 | `npm run build` | Production build to `dist/` |
+| `npm run check:bundle` | After a build: proves none of the mock dataset reached `dist/` |
 | `npm run preview` | Serve the production build locally |
 | `npm run lint` | ESLint over the project |
 | `npm run audit` | 382 security, functional, privacy, access, editing, integrity and matching-lifecycle cases against the live API and database (**reseeds it**) |
-| `npm run test:contract` | 29 checks of the form/API contract, the sign-in destination, date handling, how a settled pairing is described, and the password and name rules (held to the PHP copy) — needs nothing running |
+| `npm run test:contract` | 32 checks of the form/API contract, that nothing shipped depends on mock data, the sign-in destination, date handling, how a settled pairing is described, and the password and name rules (held to the PHP copy) — needs nothing running |
 | `npm run test:mail` | 15 checks of the mail transports (needs `php` on PATH) |
 | `npm run multi-device` | 73 checks across independent sessions, including one session at a time for coordinators and administrators |
 | `npm run test:city` | 11 checks of how places compare without a map pin (needs `php` on PATH) |

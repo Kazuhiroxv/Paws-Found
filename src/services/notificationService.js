@@ -1,12 +1,13 @@
 /**
  * Notification data access.
  *
- * Mock data only. No email, SMS or push infrastructure is built until the
- * backend requirements are confirmed (CLAUDE.md §6.8).
+ * Every function here calls the PHP API, which reads and writes the
+ * `notifications` table. Nothing creates a notification from the browser: the
+ * API writes them itself, inside the same transaction as the decision that
+ * caused them, so a notification can never exist for something that did not
+ * happen.
  */
 
-import { createId } from '@/utils/id'
-import { getTable } from './mockDb'
 import { apiFetch } from './api'
 
 /** An API notification in the shape the notification centre already reads. */
@@ -45,27 +46,4 @@ export async function markAsRead(id) {
 export async function markAllAsRead(_userId) {
   const payload = await apiFetch('/notifications', { method: 'PATCH' })
   return payload.data.map(notificationFromApi)
-}
-
-/**
- * STILL MOCK-BACKED. The API writes notifications itself inside the decision
- * transaction, so nothing in the live path calls this — only `moderationService`
- * does, and that is the next service to move across.
- */
-export async function createNotification(input) {
-  const notification = {
-    id: createId('notif'),
-    userId: input.userId,
-    type: input.type,
-    title: input.title,
-    body: input.body ?? '',
-    reportId: input.reportId ?? null,
-    matchId: input.matchId ?? null,
-    isRead: false,
-    createdAt: new Date().toISOString(),
-  }
-
-  getTable('notifications').push(notification)
-
-  return notification
 }
