@@ -1,4 +1,4 @@
-import { Eye, EyeOff, Lock, MapPin } from 'lucide-react'
+import { Eye, EyeOff, Lock, MapPin, ScrollText } from 'lucide-react'
 import { Container } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { SectionHeading } from '@/components/SectionHeading'
@@ -13,7 +13,7 @@ import { PROJECT_CONTACT_EMAIL } from '@/constants'
  * together, or the record will say people agreed to a version that never
  * existed.
  */
-export const PRIVACY_NOTICE_VERSION = '2026-10-02'
+export const PRIVACY_NOTICE_VERSION = '2026-10-03'
 
 /**
  * The Privacy Notice.
@@ -74,6 +74,15 @@ export function PrivacyPage() {
               a one-way hash of it is, which nobody — including us — can read back.
             </span>
           </li>
+          <li className="flex gap-3">
+            <ScrollText size={18} className="mt-0.5 shrink-0 text-brand" aria-hidden="true" />
+            <span>
+              <strong className="font-medium text-fg">What you do while signed in is recorded</strong>{' '}
+              — your sign-ins, the network address and browser they came from, the pages you open
+              and the important things you do, with the time. It is for security and for
+              answering what happened to an account. Browsing without signing in is not recorded.
+            </span>
+          </li>
         </ul>
       </div>
 
@@ -105,8 +114,16 @@ export function PrivacyPage() {
           items={[
             'Which updates you want to be told about.',
             'A record of sign-ins, failed sign-ins, and changes made to your account — including the date, time and the network address the request came from. This is what lets us tell an account being locked after three wrong passwords from an account being broken into.',
+            'A record of each signed-in session: when it started, when it was last used and when it ended (and why — signed out, timed out, ended by a password change), the network (IP) address it came from, and the description your browser gives of itself — its "user agent", which names the browser and operating system. Nothing else about your device is collected.',
+            'While you are signed in: the address of each Paws&Found page you open, and the important things you do — saving a draft, submitting, editing or closing a report, review and matching decisions, flags and moderation, profile and account changes, reading notifications — each with the date, time and IP address.',
           ]}
         />
+        <p>
+          The activity record holds the page address and the name of the action, never what you
+          typed: not your password, not the links we email you, not your report&apos;s description
+          or photographs, and not your name or phone number again. Pages opened by somebody who is
+          not signed in are not recorded against anybody.
+        </p>
       </Section>
 
       <Section title="Why we collect it">
@@ -122,6 +139,7 @@ export function PrivacyPage() {
             'The pet details are what the matching compares. A report with nothing structured in it cannot be matched against anything.',
             'The location and date are what make a comparison plausible: a dog lost in Cebu last March is not the dog found in Makati yesterday.',
             'The sign-in records are there to protect your account, and for an administrator to be able to answer "what happened to this account, and when".',
+            'The session and activity records are for security and for investigating misuse — an account used from an unexpected address, somebody working through other people’s reports — and so that an administrator can answer what was done, by which account, from where and when.',
           ]}
         />
       </Section>
@@ -153,7 +171,7 @@ export function PrivacyPage() {
           items={[
             'You can see everything on your own account and your own reports.',
             'A Pet Coordinator can see the reports they are working on, and can look up the contact details of the people involved in a case in order to arrange a handover.',
-            'An administrator can see accounts, reports and moderation cases, and the record of account activity.',
+            'An administrator can see accounts, reports and moderation cases, and the session, activity and security records — including IP addresses and browser descriptions. Pet Coordinators cannot.',
             'Nobody can see your password, because it is not stored.',
             'Notes written during verification are never shown publicly.',
           ]}
@@ -195,6 +213,11 @@ export function PrivacyPage() {
           long as Paws&amp;Found is running. If you want your information removed, ask us and we
           will do it by hand; there is no self-service delete button, and we would rather say so
           than pretend otherwise.
+        </p>
+        <p>
+          The same is true of the session and activity records: nothing deletes them
+          automatically yet. A fixed retention period is something we intend to set, and this
+          notice will say so when it exists.
         </p>
       </Section>
 
@@ -268,9 +291,10 @@ export function PrivacyPage() {
         <p>
           Each agreement is recorded against the version of this notice that was showing at the
           time, so we can tell who agreed to which wording. If this notice changes in a way that
-          alters what you agreed to, the date at the top changes with it, and we ask the people
-          who agreed to the older version again rather than assuming the old answer still
-          stands.
+          alters what you agreed to, the date at the top changes with it. Paws&amp;Found does not
+          yet ask people who agreed to an older version to agree again when they next sign in —
+          that is not built — so the record shows plainly which version each person agreed to,
+          and nobody is recorded as having agreed to wording they never saw.
         </p>
       </Section>
     </Container>

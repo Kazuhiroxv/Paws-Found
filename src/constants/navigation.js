@@ -8,6 +8,7 @@ import {
   Heart,
   LayoutDashboard,
   ListChecks,
+  ScrollText,
   ShieldCheck,
   User,
   Users,
@@ -67,6 +68,8 @@ export const ADMIN_NAV = [
   { to: '/admin/reports', label: 'Reports', icon: ListChecks },
   { to: '/admin/categories', label: 'Pet Categories', icon: FolderTree },
   { to: '/admin/moderation', label: 'Moderation', icon: Flag },
+  // Correction 5: sessions, IP addresses, activity and security events.
+  { to: '/admin/logs', label: 'Logs', icon: ScrollText },
 ]
 
 /**

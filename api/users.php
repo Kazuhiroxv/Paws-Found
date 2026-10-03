@@ -264,6 +264,13 @@ function profile_update(): never
         }
     }
 
+    // Which kind of change, never the values: a name or a phone number in the
+    // activity log would be a second copy of personal data nobody needs.
+    activity_log($id, 'profile_updated', 'user', $id);
+    if ($pendingChange !== null) {
+        activity_log($id, 'email_change_requested', 'user', $id);
+    }
+
     user_detail($id, ['email_change_sent' => $emailSent]);
 }
 
@@ -342,6 +349,14 @@ function user_update(int $id): never
         if ($newRole !== null && $newRole !== $before['role'] && in_array($newRole, PRIVILEGED_ROLES, true)) {
             $pdo->prepare('UPDATE users SET session_version = session_version + 1 WHERE user_id = :id')
                 ->execute([':id' => $id]);
+            end_open_sessions($id, 'role_promoted');
+        }
+
+        // Suspended: every session the account has open ends, and its records
+        // say why. current_user() would refuse them on their next request
+        // anyway; this is what makes the Sessions log agree straight away.
+        if ($newStatus === 'suspended' && $before['account_status'] !== 'suspended') {
+            end_open_sessions($id, 'account_suspended');
         }
 
         // Reactivating a locked account is the unlock, so the counter that
@@ -375,6 +390,14 @@ function user_update(int $id): never
         $reason = blank_to_null($body['reason'] ?? null);
         audit_log($action, (int) $admin['user_id'], $admin['email'], 'user', $id, 'success',
             "{$before['account_status']} -> {$newStatus}" . ($reason === null ? '' : ": {$reason}"));
+        // The administrator's own trail: what they did, not why (the reason
+        // is in the audit row above, where it belongs).
+        activity_log((int) $admin['user_id'], 'account_status_changed', 'user', $id,
+            "{$before['account_status']} -> {$newStatus}");
+    }
+
+    if ($newRole !== null && $newRole !== $before['role']) {
+        activity_log((int) $admin['user_id'], 'role_changed', 'user', $id, "{$before['role']} -> {$newRole}");
     }
 
     user_detail($id);

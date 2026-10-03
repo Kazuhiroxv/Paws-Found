@@ -36,7 +36,7 @@ Topic: **Campus Lost-and-Found System** — assigned to this group as Paws&Found
 | 14 | Dashboard | **Done** | Customer, staff and admin dashboards |
 | 15 | Reports | **Done** | `GET /api/reports/stats` — three SQL `GROUP BY` queries behind charts on the staff and administrator dashboards |
 | 16 | Form validation | **Done** | Report wizard, per-step, with error messages |
-| 17 | Security implementation | **Done** | bcrypt, PDO prepared statements with emulation off, server-side validation, CSRF, audit log. 170 cases in `npm run audit`, plus 53 in `scripts/auth_lifecycle.py` |
+| 17 | Security implementation | **Done** | bcrypt, PDO prepared statements with emulation off, server-side validation, CSRF, audit log, session and activity logs with the visitor's IP (Correction 5). 170 cases in `npm run audit`, plus 53 in `scripts/auth_lifecycle.py` |
 | 18 | Error handling | **Done** | Loading, error and empty states on every async view; 401/403/404/409/422 from the API, with no SQL or paths in any response |
 | 19 | Deployment | **Ready; hosting pending** | Runs from Apache at `http://localhost/pawsandfound/`, one origin for site and API. Host-agnostic: `npm run build:deploy` + `api/config.local.php`. The eighteen-step runbook is `docs/deployment-plan.md` §3. **Not yet on a public URL.** |
 | 20 | Technical documentation | **Done** | `docs/` — ERD defence, database cheat sheet, role permissions, matching explanation, deployment plan, presentation defence, design system, feature status |
@@ -73,7 +73,11 @@ in front of her.
       the id regenerated on sign-in, idle and absolute timeouts enforced on the
       server, and `session_version` so a password reset or a suspension ends
       every other session at once. Proved in `multi-device` section K and
-      `auth_lifecycle` section E.
+      `auth_lifecycle` section E. Since Correction 5 every session is also a
+      `user_sessions` row (IP, browser, start, last seen, end and why), what a
+      signed-in person does is in `user_activity_logs`, the browser is told why
+      its session ended, and administrators read all of it on the Logs page
+      (`test:sessions`, `test:session-ui`, `test:client-ip`).
 
 ## Audit: what satisfies requirement 10
 
@@ -117,9 +121,9 @@ night before.
 | Phase | Contents | Status |
 | --- | --- | --- |
 | 1 — Proposal | Title, problem, users, features, roles, architecture, initial ERD, stack | Submitted |
-| 2 — Database + Backend | Database, tables, relationships, CRUD, authentication, basic backend | **Done** — 17 tables, 24 foreign keys, the REST API and real sessions |
+| 2 — Database + Backend | Database, tables, relationships, CRUD, authentication, basic backend | **Done** — 17 tables, 24 foreign keys at the time; 24 tables and 35 foreign keys after the post-defense corrections (migration 011). The REST API and real sessions |
 | 3 — Frontend + API | Responsive UI, JavaScript, API, AJAX/Fetch, validation, search/filter | **Done** — the UI calls the PHP API through `src/services/`; nothing is mock any more |
-| 4 — Security + Testing | Injection, auth, authorization, XSS, functional and usability testing | **Done** — 1,112 automated checks in eighteen suites, all passing (audit 384, account lifecycle 106, multi-device 73, publication workflow 71, API report controls 62, report rules 50, form feedback 49, report form in a browser 47, contract 45, review workflow in a browser 33, migration parity 25, sign-out 24, interface 66, identity rules 41, matching scores 11, city 11, calendar 8, matching log 6); axe-core clean over 34 pages; no mock data in the production bundle; production verifier 25/25 (read-only). Counts as of 3 October 2026 (Correction 4), `docs/TESTING.md` §3 |
+| 4 — Security + Testing | Injection, auth, authorization, XSS, functional and usability testing | **Done** — 1,238 automated checks in twenty-one suites, all passing (audit 384, account lifecycle 106, sessions and activity 80, multi-device 73, publication workflow 71, API report controls 62, report rules 50, form feedback 49, report form in a browser 47, contract 45, review workflow in a browser 33, migration parity 27, session messages and race in a browser 26, sign-out 24, interface 66, identity rules 41, client IP 18, matching scores 11, city 11, calendar 8, matching log 6); axe-core clean over 36 pages; no mock data in the production bundle; production verifier 25/25 (read-only). Counts as of 3 October 2026 (Correction 5), `docs/TESTING.md` §3 |
 | 5 — Final Presentation | 15–20 minute demonstration, presented as if to a real client | Prepared — `docs/presentation-defense.md`; not yet delivered |
 
 ## Other graded items

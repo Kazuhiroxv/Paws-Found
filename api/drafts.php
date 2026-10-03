@@ -116,6 +116,9 @@ function draft_save(array $user, ?int $id): never
         $status = 200;
     }
 
+    // The draft's number, never its contents.
+    activity_log((int) $user['user_id'], $status === 201 ? 'draft_saved' : 'draft_updated', 'draft', $id);
+
     json_response(['data' => draft_shape(draft_own_or_404($id, $user))], $status);
 }
 
@@ -124,6 +127,8 @@ function draft_delete(int $id, array $user): never
     draft_own_or_404($id, $user);
     db()->prepare('DELETE FROM report_drafts WHERE draft_id = :id AND user_id = :user')
         ->execute([':id' => $id, ':user' => (int) $user['user_id']]);
+
+    activity_log((int) $user['user_id'], 'draft_deleted', 'draft', $id);
 
     json_response(['data' => ['draft_id' => $id, 'deleted' => true]]);
 }

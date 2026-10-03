@@ -46,7 +46,9 @@ its own note, so the answer is on the page you are pointing at.
 | `notifications` | What each person still needs to be told |
 | `moderation_cases` | A flagged report and how it was resolved |
 | `login_attempts` | Failed sign-ins per **email address** |
-| `audit_logs` | Who did what, append-only |
+| `audit_logs` | Who did what, append-only — security and administrative events |
+| `user_sessions` | Each sign-in: account, IP, browser, start, last seen, end and why (011) |
+| `user_activity_logs` | Where a signed-in person went and what they did (011) |
 | `privacy_consents` | Who agreed to which version of the privacy notice |
 | `auth_tokens` | One-time links — verify an address, reset a password. Stored **hashed** |
 
@@ -109,7 +111,8 @@ and CASCADE so deleting an account takes its counter with it.
 ## Run these if you are asked to prove it
 
 ```sql
--- 17 tables, 24 foreign keys (15 of the 17 are on the ERD)
+-- 24 tables, 35 foreign keys after migration 011 (17 and 24 when this sheet
+-- was first written; 15 of the tables are on the ERD figure)
 SELECT COUNT(*) FROM information_schema.tables
  WHERE table_schema = 'pawsandfound';
 
@@ -137,6 +140,30 @@ DELETE FROM users WHERE user_id = 1;
 
 Note that (3) is the **database** refusing, not the application. There is no
 PHP in that transaction at all.
+
+**Sessions and activity, safe for a projector** (Correction 5). The Logs page
+in Administration is the authorised view and shows full IP addresses; a
+projector in a classroom is not, so in DBeaver show the demo accounts and
+leave the address out:
+
+```sql
+-- Each sign-in of the demo accounts: when, which browser, how it ended
+SELECT u.email, LEFT(s.session_reference, 8) AS session, s.started_at,
+       s.last_seen_at, s.ended_at, s.end_reason
+  FROM user_sessions s JOIN users u ON u.user_id = s.user_id
+ WHERE u.email LIKE '%@example.com'
+ ORDER BY s.started_at DESC LIMIT 10;
+
+-- What one session did, in order
+SELECT a.created_at, a.action, a.route, a.target_type, a.target_id
+  FROM user_activity_logs a
+  JOIN user_sessions s ON s.session_record_id = a.session_record_id
+ WHERE s.session_reference LIKE '8f31c2a4%'   -- the first 8 characters from above
+ ORDER BY a.activity_id;
+```
+
+If the IP itself has to be shown, show the demo laptop's own sign-in, not a
+classmate's.
 
 ---
 

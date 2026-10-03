@@ -102,6 +102,7 @@ behaviour, not the interface's.
 | `GET /reports/{id}` (unpublished) | **Their own** report waiting for review, not approved, or removed — with its publication history. Anybody else's: 404 | `report_detail()` |
 | `PATCH /reports/{id}/publication` `resubmit` | **Their own** report, only after a rejection | `PUBLICATION_ACTIONS` |
 | `GET`/`POST`/`PUT`/`DELETE /drafts` | **Their own** drafts only; anybody else's is 404 — coordinators and administrators included | `draft_own_or_404()` |
+| `POST /activity/page-view` | Report a page they opened — recorded against **their own** session; nothing in the body can name another account, an action or an address (Correction 5) | `activity_page_view()` |
 
 **The one to be able to quote:** `profile_update()` takes the account id **from
 the session, never from the request**, so it cannot be pointed at somebody
@@ -135,6 +136,7 @@ privileges"*):
 | Suspend, reinstate or unlock an account | `users.php:199` |
 | Manage pet categories | `categories.php:122, 179, 229` |
 | See or resolve the moderation queue | `moderation.php:58, 186` |
+| Read the activity, session or security logs (Correction 5) | `logs.php` `require_role('admin')` — 403 |
 
 ### Administrator — `admin`
 
@@ -147,11 +149,13 @@ Everything above, plus:
 | `POST`/`PATCH`/`DELETE /categories` | Manage the species list |
 | `GET /moderation`, `PATCH /moderation/{id}` | Review a flag: dismiss, warn, remove, suspend. Remove takes the report out of public view (`removed`); it no longer closes it |
 | `PATCH /reports/{id}/publication` `remove` | Remove a published report directly, with a reason (Correction 4) |
+| `GET /logs/activity`, `/logs/sessions`, `/logs/audit` | Read who signed in, from which IP and browser, where they went and what they did, and the security events (Correction 5). **Every** administrator for now; which administrator level holds this is Correction 6 |
 
-Every one of these writes an `audit_logs` row naming the administrator, the
-target and what changed. `role_changed`, `account_suspended`,
+Every change among these writes an `audit_logs` row naming the administrator,
+the target and what changed — `role_changed`, `account_suspended`,
 `account_reinstated`, `account_unlocked`, `category_changed`,
-`moderation_resolved`.
+`moderation_resolved` — and, since Correction 5, a `user_activity_logs` row on
+the administrator's own session. Reading the logs writes nothing.
 
 ---
 

@@ -30,14 +30,15 @@ curl.exe -s https://paws-found-production.up.railway.app/api/health
 Expected at the time of writing (2 October): on branch
 **`post-defense/revisions`**, local commits ahead of `portfolio/team/current`
 = **`2947a43`** (what production runs) — the §4 checkpoint, Correction 1, the
-instructor-feedback documents, Corrections 2, 3, 3A and 4; see §4a. None is
+instructor-feedback documents, Corrections 2, 3, 3A, 4 and 5; see §4a. None is
 pushed or deployed. Health `{"status":"ok","database":"ok"}`. Untracked:
 `docs/dbeaver-defense-queries.pdf`.
 
-**The local database has migrations `008`, `009` and `010` applied** (first
-and last name; the report reference data; reviewed publication and drafts).
-The production database has none of them, and must get all three, in order,
-immediately before the code is pushed — see §4a.
+**The local database has migrations `008`, `009`, `010` and `011` applied**
+(first and last name; the report reference data; reviewed publication and
+drafts; session records and the activity trail). The production database has
+none of them, and must get all four, in order, immediately before the code is
+pushed — see §4a.
 
 ---
 
@@ -51,7 +52,7 @@ immediately before the code is pushed — see §4a.
 | Team repository | remote **`origin`** → `Arkemic/paws-and-found`. **Its push URL is disabled on purpose** (`DISABLED-do-not-push-to-team-repo`). Do not re-enable it. |
 | Last deployed commit | **`2947a43`** "docs: reopening a decision; counts to 689" (bundle `assets/index-C9niofAT.js`) |
 | Local stack | XAMPP at `C:\xampp`: Apache + PHP 8.3, **MariaDB 10.4 on port 3307** (not 3306), database `pawsandfound`. Vite dev server on `:5173`. |
-| Stack | React 19 + Vite 8 + Tailwind 4 + React Router 7 + Leaflet; PHP REST API in `api/`; MySQL schema `database/schema.sql` (20 tables, 26 FKs) |
+| Stack | React 19 + Vite 8 + Tailwind 4 + React Router 7 + Leaflet; PHP REST API in `api/`; MySQL schema `database/schema.sql` (24 tables, 35 FKs, through migration 011) |
 
 ---
 
@@ -175,6 +176,7 @@ an XL size, presentation flow, and a date filter that exists but was not found).
 | 2 | Identity, password, form feedback, responsive follow-up | **Done** — see below |
 | 3 | Report data quality, PH places, contact safety, report-form quality | **Done** — see below |
 | 4 | Drafts, Pet Coordinator review before publication, Removed apart from Closed | **Done** (Cancel awaiting clarification) — see below |
+| 5 | Session and IP logging, page/action history, login/logout, "signed out" messages, the sign-out race | **Done** — see below |
 | 10 | Breed / colour / city / province: suggested values | **Done in Correction 3** |
 | others | | Not started — the register in `docs/feedback/` is the list (Reset: awaiting clarification) |
 
@@ -220,21 +222,49 @@ the publication state `removed`, never Closed. Drafts are saved to MySQL
 Before/after, the state machine and a demonstration sequence:
 `docs/feedback/correction-4-lifecycle.md`; reasons: `docs/DECISIONS.md`.
 **Cancel** (Ma'am's third decision) is not built: its meaning is unconfirmed.
+A saved draft keeps the text and structured report data; **photos must be
+added again when the draft is resumed** (the form says so on Save draft).
 
-**Deploying Corrections 2–4 — the database goes first, all three migrations,
+**Correction 5.** Every successful sign-in is a row in `user_sessions`
+(migration 011): account, IP address, browser user agent, start, last seen
+(written at most every 5 minutes), end and why — signed out, idle, time limit,
+password changed, signed in on another device (coordinator/admin), promoted,
+locked, suspended. It is known by a random `session_reference`, never the PHP
+session id. `user_activity_logs` records each page a signed-in person opens
+(the path only) and every meaningful action, written by the PHP endpoint that
+did it; the browser cannot name an action. The browser is told why its session
+ended (`session_ended` on `/auth/me` and on any 401) and says so in words. The
+cross-tab sign-out race (register D1) is fixed: a check asked for while one is
+running is queued, and an answer that started before a sign-in or sign-out in
+this tab is discarded. Administrators have **Logs** (Activity / Sessions /
+Security events), filtered and paged on the server. `client_ip()` now believes
+`X-Forwarded-For` only from Railway's proxy (100.0.0.0/8) — on Railway every
+visitor used to be logged as the proxy. Suspension and lock now end the PHP
+session for good (it used to revive on reinstatement). Privacy Notice
+2026-10-03. Design, before/after and limitations:
+`docs/security-activity-logging.md`.
+
+**Deploying Corrections 2–5 — the database goes first, all four migrations,
 in the same sitting.** New code reads `ph_cities`, `pet_colours`,
-`publication_status`, `publication_logs` and `report_drafts`, none of which
-exist before 009 and 010; and each migration assumes the one before. Use the
-official MySQL client with `--default-character-set=utf8mb4`:
+`publication_status`, `publication_logs`, `report_drafts`, `user_sessions`
+and `user_activity_logs`, none of which exist before 009–011; and each
+migration assumes the one before. Use the official MySQL client with
+`--default-character-set=utf8mb4`:
 
 1. back up the Railway database (`docs/PRODUCTION_RUNBOOK.md`)
 2. preview 008 (query at the top of `008_split_user_names.sql`), run 008
 3. preview 009 (queries at the top of `009_report_reference_data.sql`), run 009
 4. preview 010 (query at the top of `010_report_publication_workflow.sql` —
    it lists the reports that will become Removed), run 010
-5. push; check `/api/health`; run `npm run verify:deploy <url>`
+5. run 011 (two new, empty tables; nothing to preview)
+6. push; check `/api/health`; run `npm run verify:deploy <url>`
+7. **check the recorded IP** (`docs/security-activity-logging.md`, "IP
+   address"): sign in from two networks, the Sessions log must show two
+   public addresses, neither in 100.0.0.0/8. If they are Railway's, the edge
+   is not passing the visitor first and `client_ip()` needs the other end of
+   the header.
 
-All three were tested from the `2947a43` schema and seed on MySQL 9.4 (strict)
+All four were tested from the `2947a43` schema and seed on MySQL 9.4 (strict)
 and on MariaDB, the last run twice, and compared with a fresh install
 (`npm run test:migrations`): identical. Never run any against Railway without
 Kyle.
@@ -283,13 +313,12 @@ cannot suggest from it. This needs one design across the API, the form, the
 matching rules and probably the ERD, not a patch. Ma'am's own words on it are in
 `docs/feedback/instructor-feedback-notes.md` (colours with an "other" field).
 
-**Known intermittent issue — not fixed.** Sign-out checks `SO-I`/`SO-J` fail
-when the machine is heavily loaded and pass otherwise. Reproduced identically on
-`2947a43`, so it is in production, not caused by the corrections. Likely cause:
-`refresh()` in `src/hooks/useSession.js` returns early while a check is in
-flight, so a check that started just before a sign-out in another tab wins and
-the newer one is dropped; the tab then shows the old report until the next
-poll. Fix would be to run one more check after an in-flight one finishes.
+**The intermittent sign-out race — fixed in Correction 5.** `SO-I`/`SO-J`
+failed under heavy load because `refresh()` in `src/hooks/useSession.js`
+dropped a check asked for while another was in flight. Production (`2947a43`)
+still has it until Correction 5 is deployed. It is now reproduced on purpose,
+without load, by `npm run test:session-ui` (RACE-1…4): against the old hook
+RACE-1, RACE-3 and RACE-4 fail every time; with the fix all pass.
 
 ## 5. Rules Kyle has set (they still apply)
 
@@ -350,8 +379,10 @@ C:\xampp\php\php.exe scripts/identity_rules.php              # 41
 C:\xampp\php\php.exe scripts/report_rules.php                # 50
 C:\xampp\php\php.exe scripts/match_scores.php                # 11
 python scripts/report_controls.py                             # 62  (reseeds)
-python scripts/migration_parity.py                            # 25  (needs Docker; scratch databases only)
+python scripts/migration_parity.py                            # 27  (needs Docker; scratch databases only)
 python scripts/publication_workflow.py                        # 71  (reseeds)
+python scripts/session_activity.py                            # 80  (reseeds; writes config.local.php, restores it)
+C:\xampp\php\php.exe scripts/client_ip.php                   # 18
 python scripts/psgc_reference.py check                        # place data and SQL in step
 PAWS_PW=<seeded password> npm run audit                       # 384  (reseeds, restores)
 PAWS_PW=<seeded password> python scripts/auth_lifecycle.py    # 106
@@ -361,18 +392,28 @@ PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:signout  # 24
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:feedback # 49
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:report-ui # 47
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:workflow-ui # 33
-PAWS_BASE=http://localhost:5173 npm run a11y                      # 31 pages
+PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:session-ui  # 26 (reseeds)
+PAWS_BASE=http://localhost:5173 npm run a11y                      # 36 pages
 C:\xampp\php\php.exe scripts/city_fallback.php                # 11
 C:\xampp\php\php.exe scripts/calendar_today.php               # 8
 C:\xampp\php\php.exe scripts/matching_log.php                 # 6
 ```
 
-**1,112 checks in total, in eighteen suites** on `post-defense/revisions`
-(1,006 in sixteen after Correction 3A; 972 after 3; 802 after 2; 689 in
-production). a11y: 34 pages. Lint the project's own sources — four untracked
-`PawsAndFound_*` folders of built bundles now sit in the repository root, and
-a bare `eslint .` lints them too.
+**1,238 checks in total, in twenty-one suites** on `post-defense/revisions`
+(1,112 in eighteen after Correction 4; 1,006 in sixteen after 3A; 972 after 3;
+802 after 2; 689 in production). a11y: 36 pages. Plain `npm run lint` is the
+gate again: the four `PawsAndFound_*` folders that had appeared in the
+repository root were moved to `C:\Projects\_archives\paws-and-found\` on
+3 October (Kyle's decision; nothing deleted).
 Reseed after the browser suites; they change data.
+
+**Local MariaDB was unstable on 3 October.** It crashed twice (access
+violations, Windows Application log) and its Aria system tables needed
+`aria_chk --safe-recover`; the stale `aria_log.*` files and `ib_buffer_pool`
+were set aside. phpMyAdmin's own `phpmyadmin.pma__bookmark` has a corrupt
+page (not a Paws&Found table). Every `pawsandfound` table passes `CHECK TABLE`.
+Start it detached (the XAMPP Control Panel, or a process that outlives the
+terminal) — a `mysqld` started from a tool's shell dies with that shell.
 
 After `npm run build`, also run `npm run check:bundle`: it fails if any of the
 mock dataset reached `dist/` (Correction 1, §4a).
@@ -430,19 +471,25 @@ Rolling back and operating the live site: [PRODUCTION_RUNBOOK.md](PRODUCTION_RUN
 | Where sign-in lands | `destinationAfterSignIn()` in `src/constants/navigation.js` |
 | Workspace chrome | `src/layouts/WorkspaceShell.jsx` (staff/admin), `RootLayout.jsx` (public + customer) |
 | Audit log | `audit_log()` in `api/helpers.php`; table `audit_logs` |
+| Session records | `session_record_start()`, `touch_session_record()`, `end_open_sessions()`, `end_this_session()` in `api/helpers.php`; table `user_sessions` |
+| Why a session ended | `current_user()` + `session_end_notice()` (`api/helpers.php`); `SessionNotice.jsx` says it |
+| Activity trail | `activity_log()` + `ACTIVITY_ACTIONS` (`api/helpers.php`); page views `RootLayout.jsx` → `POST /api/activity/page-view` (`api/logs.php`) |
+| Log viewer | `GET /api/logs/{activity,sessions,audit}` (`api/logs.php`); `src/pages/admin/AdminLogsPage.jsx` |
+| Visitor IP | `client_ip()` (`api/helpers.php`), `TRUSTED_PROXY_CIDRS` (`api/config.php`) |
+| Session re-check | `useSession()` (`src/hooks/useSession.js`); `SESSION_CHECK_EVENT` in `src/services/api.js` |
 
 ---
 
 ## 10. Still open
 
-- **Section 4 and Corrections 1–4 are committed locally, not deployed.**
-  Shipping them is Kyle's call, and they need migrations `008`, `009` and
-  `010` on Railway first (§4a).
+- **Section 4 and Corrections 1–5 are committed locally, not deployed.**
+  Shipping them is Kyle's call, and they need migrations `008`, `009`, `010`
+  and `011` on Railway first (§4a), then the IP check.
 - **Cancel (register 16) — AWAITING INSTRUCTOR-INTENT CLARIFICATION.**
-- **Four untracked `PawsAndFound_*` folders** appeared in the repository root
-  on 3 October (backups, a course archive, Phase 3/4 submissions). Not
-  committed and not touched; they should live outside the repository or be
-  added to `.gitignore` and `eslint.config.js`'s ignores — Kyle's call.
+- **Administrator privilege levels — Correction 6.** The Logs page is
+  administrators-only until then.
+- **No automatic log retention, and no re-consent step** for members who
+  agreed to an older Privacy Notice (`docs/security-activity-logging.md`).
 - **The ERD figure still shows `full_name` and lacks the three 009 tables.**
   `docs/erd-defense.md` describes them in text; the figure is redrawn once, in
   the final ERD pass.
@@ -454,7 +501,6 @@ Rolling back and operating the live site: [PRODUCTION_RUNBOOK.md](PRODUCTION_RUN
   have meant: collected, required, shown publicly, or simply a clear way to
   reach the reporter. Do not present the current behaviour as her requirement.
 - **Instructor corrections in progress** — see §4a.
-- **An intermittent sign-out race** — see §4a. Not fixed.
 - **The printed defense packet** from the morning of 30 September says 590
   checks; reprint from `docs/diagrams/` if a current copy is needed.
 - **The demonstration accounts share one weak password.** Fine for a demo; don't

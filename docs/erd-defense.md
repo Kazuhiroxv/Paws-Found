@@ -23,9 +23,9 @@ Counted from `information_schema`, 27 September 2026:
 
 | | |
 | --- | --- |
-| Tables | **22** (15 on the ERD figure + `ph_areas`, `ph_cities`, `pet_colours` from 009 + `publication_logs`, `report_drafts` from 010 + `schema_migrations` + `auth_rate_limits`) |
-| Foreign keys | **32** — the 24 among the 15; `ph_cities → ph_areas` and `locations → ph_cities` (009); `publication_logs → pet_reports, users` and `report_drafts → users, pet_categories, ph_areas, ph_cities` (010); neither operational table has one |
-| Primary keys | 22, one per table |
+| Tables | **24** (15 on the ERD figure + `ph_areas`, `ph_cities`, `pet_colours` from 009 + `publication_logs`, `report_drafts` from 010 + `user_sessions`, `user_activity_logs` from 011 + `schema_migrations` + `auth_rate_limits`) |
+| Foreign keys | **35** — the 24 among the 15; `ph_cities → ph_areas` and `locations → ph_cities` (009); `publication_logs → pet_reports, users` and `report_drafts → users, pet_categories, ph_areas, ph_cities` (010); `user_sessions → users` and `user_activity_logs → users, user_sessions` (011); neither operational table has one |
+| Primary keys | 24, one per table |
 | Unique constraints | 9, over 14 columns |
 | CHECK constraints | 2 |
 | Engine | InnoDB throughout — MyISAM ignores foreign keys silently |
@@ -464,6 +464,58 @@ in the log when it may well have been somebody else entirely.
 a short sentence meant to be read by a person: `user -> admin`, `3 failed
 sign-in attempts`.
 
+## 14a. `user_sessions` — 0 rows at rest (011)
+
+One row per successful sign-in. **Added in Correction 5**, for "session tables
+… IP address … shown in logs".
+
+| | |
+| --- | --- |
+| **Primary key** | `session_record_id` |
+| **Foreign key** | `user_id` → users (CASCADE) |
+| **Unique** | `session_reference` |
+| **Columns worth naming** | `ip_address`, `user_agent`, `started_at`, `last_seen_at`, `ended_at`, `end_reason` |
+
+**The question to expect: is that the session id?** No. The PHP session id is
+what signs a browser in, and it is stored nowhere in MySQL. `session_reference`
+is a separate random value that only *names* the session in the logs; knowing
+it gives no access.
+
+**Why `end_reason` is an ENUM.** Eight things can end a session (signed out,
+idle, time limit, password changed, signed in elsewhere, promoted, locked,
+suspended), and each is written by one piece of code. A ninth cannot appear by
+typo. A session whose browser never came back has no end written; the viewer
+calls it expired, never "online".
+
+**Why CASCADE here and SET NULL on `audit_logs`.** A session row says nothing
+without its account; the security events that matter (sign-in, failure, lock)
+are in `audit_logs`, which keeps them after an account is gone.
+
+## 14b. `user_activity_logs` — 0 rows at rest (011)
+
+Where a signed-in person went and what they did. **Added in Correction 5.**
+
+| | |
+| --- | --- |
+| **Primary key** | `activity_id` |
+| **Foreign keys** | `user_id` → users (CASCADE); `session_record_id` → user_sessions (SET NULL) |
+| **Columns worth naming** | `action`, `route`, `target_type` + `target_id`, `ip_address` |
+
+**Why not put this in `audit_logs`.** Size and meaning. A page view is not a
+security event, and a busy afternoon of page views would bury the three failed
+sign-ins an administrator is looking for. `audit_logs` stays the short trail
+of things that matter for security; this is the long record of use.
+
+**Why `target_type` + `target_id` and not a foreign key.** The thing acted
+on can be a report, a draft, a match, a moderation case, a notification, a
+category or an account: seven tables. One FK cannot point at seven, and a draft
+is deleted when it is submitted — a log row must outlive what it describes.
+`audit_logs` made the same choice for the same reason.
+
+**What it never stores.** No request body, no description, no name or phone
+number, no query string (a reset link keeps its token there), no password or
+token of any kind. `detail` is a short note the server wrote itself.
+
 ---
 
 ## 15. `auth_tokens` — 0 rows at rest
@@ -584,6 +636,9 @@ an email, and its consequence is a 429 and a Retry-After header.
     ph_areas       0..1 ── N report_drafts       (SET NULL, 010)
     ph_cities      0..1 ── N report_drafts       (SET NULL, 010)
     ph_cities      0..1 ── N locations           (RESTRICT, 009 — NULL only for an old, unidentified place)
+    users            1 ── N  user_sessions       (CASCADE, 011)
+    users            1 ── N  user_activity_logs  (CASCADE, 011)
+    user_sessions  0..1 ── N user_activity_logs  (SET NULL, 011 — NULL for a session from before 011)
     pet_reports      1 ── N  report_images       (CASCADE)
     pet_reports      1 ── N  status_logs         (CASCADE)
     pet_reports      1 ── N  notifications       (CASCADE)
@@ -593,7 +648,7 @@ an email, and its consequence is a 429 and a Retry-After header.
     match_claims     1 ── N  match_signals       (CASCADE)
     match_claims     1 ── N  notifications       (CASCADE)
 
-32 foreign keys. Counted from `information_schema`, not from memory.
+35 foreign keys. Counted from `information_schema`, not from memory.
 `auth_rate_limits` and `schema_migrations` appear nowhere above, because
 they have no relationships to appear in; neither does `pet_colours`, on purpose
 (4b).

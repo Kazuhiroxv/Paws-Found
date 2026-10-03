@@ -44,6 +44,7 @@ import { AdminUsersPage } from '@/pages/admin/AdminUsersPage'
 import { AdminReportsPage } from '@/pages/admin/AdminReportsPage'
 import { AdminCategoriesPage } from '@/pages/admin/AdminCategoriesPage'
 import { AdminModerationPage } from '@/pages/admin/AdminModerationPage'
+import { AdminLogsPage } from '@/pages/admin/AdminLogsPage'
 
 import { NotFoundPage } from '@/pages/system/NotFoundPage'
 import { UnauthorizedPage } from '@/pages/system/UnauthorizedPage'
@@ -264,6 +265,7 @@ export default function App() {
             <Route path="reports" element={<AdminReportsPage />} />
             <Route path="categories" element={<AdminCategoriesPage />} />
             <Route path="moderation" element={<AdminModerationPage />} />
+            <Route path="logs" element={<AdminLogsPage />} />
           </Route>
 
           {/* System */}

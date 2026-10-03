@@ -157,6 +157,10 @@ function auth_login(): never
         db()->prepare('UPDATE users SET session_version = LAST_INSERT_ID(session_version + 1) WHERE user_id = :id')
             ->execute([':id' => $user['user_id']]);
         $sessionVersion = (int) db()->lastInsertId();
+
+        // The session records say so too, so the device that was replaced is
+        // told why, and the Sessions log shows which one ended and when.
+        end_open_sessions((int) $user['user_id'], 'new_privileged_login');
     }
 
     start_session();
@@ -165,14 +169,21 @@ function auth_login(): never
     // cannot be reused afterwards (session fixation).
     session_regenerate_id(true);
     session_started_now();
+    // Whatever ended this browser's last session is old news now.
+    unset($_SESSION['session_ended']);
     $_SESSION['user_id'] = (int) $user['user_id'];
     // The generation this session belongs to. A password reset bumps the
     // column and every session carrying an older number stops working, without
     // anybody having to find and delete session files on disk.
     $_SESSION['session_version'] = $sessionVersion;
 
+    // Its record: account, address, browser, start (Correction 5). Known in
+    // the logs by a random reference, never by the session id above.
+    session_record_start((int) $user['user_id'], $sessionVersion);
+
     audit_log('login', (int) $user['user_id'], $user['email'], 'user', (int) $user['user_id'], 'success',
         $privileged ? 'earlier sessions for this account ended' : null);
+    activity_log((int) $user['user_id'], 'login', 'user', (int) $user['user_id']);
 
     json_response([
         // The session id just changed, so the token paired with it changes too.
@@ -274,6 +285,11 @@ function login_failed(string $email, ?int $userId): never
             "UPDATE users SET account_status = 'locked' WHERE user_id = :id AND account_status = 'active'"
         );
         $update->execute([':id' => $userId]);
+
+        // Every session it has open ends here, on every device.
+        if ($update->rowCount() > 0) {
+            end_open_sessions($userId, 'account_locked');
+        }
 
         audit_log('account_locked', null, $email, 'user', $userId, 'success',
             MAX_LOGIN_ATTEMPTS . ' failed sign-in attempts');
@@ -716,6 +732,9 @@ function auth_reset_password(): never
             ':id' => $token['user_id'],
         ]);
 
+        // And every session record of the account says why it ended.
+        end_open_sessions((int) $token['user_id'], 'password_reset');
+
         $pdo->commit();
     } catch (Throwable $exception) {
         $pdo->rollBack();
@@ -739,6 +758,11 @@ function auth_logout(): never
 
     if ($user !== null) {
         audit_log('logout', (int) $user['user_id'], $user['email'], 'user', (int) $user['user_id']);
+        activity_log((int) $user['user_id'], 'logout', 'user', (int) $user['user_id']);
+
+        if (!empty($_SESSION['session_record_id'])) {
+            session_record_end((int) $_SESSION['session_record_id'], 'logout');
+        }
     }
 
     start_session();
@@ -769,8 +793,12 @@ function auth_me(): never
     // the time somebody presses a button the token is already in hand — even
     // when the answer is "nobody is signed in", because signing in is itself a
     // request that has to be verified.
+    //
+    // A browser whose session the server ended is also told why
+    // (`session_ended`), so the page can say "your session expired" rather
+    // than appearing at Sign in with no explanation.
     if ($user === null) {
-        json_response(['user' => null, 'csrf_token' => csrf_token()]);
+        json_response(['user' => null, 'csrf_token' => csrf_token()] + session_end_notice());
     }
 
     json_response([

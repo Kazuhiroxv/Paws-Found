@@ -67,28 +67,43 @@ export async function getUserById(id) {
 }
 
 export async function getCurrentUser() {
+  return (await checkSession()).user
+}
+
+/**
+ * Who is signed in, and — when the server ended this browser's session — why.
+ *
+ * `endedReason` is the server's own code (Correction 5): 'idle_timeout',
+ * 'absolute_timeout', 'new_privileged_login', 'password_reset',
+ * 'role_promoted', 'account_locked', 'account_suspended', or null. The page
+ * says the reason out loud rather than guessing it.
+ */
+export async function checkSession() {
   // The session is a server-side PHP session; the browser only carries the
   // cookie. Asking the API is the only way to know who is signed in.
   const payload = await apiFetch('/auth/me')
-  if (!payload.user) return null
+  const row = payload.user
 
   return {
-    id: payload.user.user_id,
-    firstName: payload.user.first_name ?? '',
-    lastName: payload.user.last_name ?? '',
-    fullName: payload.user.full_name,
-    email: payload.user.email,
-    phone: payload.user.contact_number ?? '',
-    role: payload.user.role,
-    accountStatus: 'active',
-    preferredLocation: payload.user.preferred_location ?? '',
-    // A new address asked for and not yet confirmed. /auth/me has always sent
-    // it; without this line the Profile page could never say so.
-    pendingEmail: payload.user.pending_email ?? null,
-    notificationPreferences: {
-      possibleMatches: payload.user.notify_matches ?? true,
-      statusUpdates: payload.user.notify_status ?? true,
-      staffMessages: payload.user.notify_staff ?? true,
+    endedReason: row ? null : (payload.session_ended ?? null),
+    user: row && {
+      id: row.user_id,
+      firstName: row.first_name ?? '',
+      lastName: row.last_name ?? '',
+      fullName: row.full_name,
+      email: row.email,
+      phone: row.contact_number ?? '',
+      role: row.role,
+      accountStatus: 'active',
+      preferredLocation: row.preferred_location ?? '',
+      // A new address asked for and not yet confirmed. /auth/me has always
+      // sent it; without this line the Profile page could never say so.
+      pendingEmail: row.pending_email ?? null,
+      notificationPreferences: {
+        possibleMatches: row.notify_matches ?? true,
+        statusUpdates: row.notify_status ?? true,
+        staffMessages: row.notify_staff ?? true,
+      },
     },
   }
 }

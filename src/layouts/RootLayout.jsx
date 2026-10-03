@@ -1,9 +1,10 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import { Navbar } from '@/components/Navbar'
 import { Footer } from '@/components/Footer'
 import { SessionNotice } from '@/components/SessionNotice'
 import { ROLES } from '@/constants'
+import { logService } from '@/services'
 import { cn } from '@/utils/cn'
 
 /**
@@ -22,6 +23,13 @@ function canvasFor(pathname) {
   if (pathname.startsWith('/dashboard')) return 'canvas-customer h-[58rem]'
   return 'canvas-public'
 }
+
+/**
+ * Steps in signing in, registering and recovering an account. Not pages a
+ * signed-in person visits: /login is on screen for a moment after signing in,
+ * before the redirect, and is not worth a line in the activity trail.
+ */
+const GUEST_FLOW_PAGES = ['/login', '/register', '/verify-email', '/forgot-password', '/reset-password']
 
 /**
  * The shell every page sits inside: navigation, the page itself, and the
@@ -75,6 +83,21 @@ export function RootLayout({
   useEffect(() => {
     onRouteChange?.()
   }, [pathname, onRouteChange])
+
+  // The activity trail's page views (Correction 5): one per page a signed-in
+  // person opens, from this one place rather than from every page. The key
+  // is the account and the path, so a re-render, a refocus or the ten-second
+  // re-check — each of which hands over a new `user` object — never counts
+  // as a second visit. The path only: never the query string or #fragment.
+  // Guests are not tracked. Best effort: a failure here never stops a page.
+  const lastPageView = useRef(null)
+  useEffect(() => {
+    if (!user || GUEST_FLOW_PAGES.includes(pathname)) return
+    const key = `${user.id}:${pathname}`
+    if (lastPageView.current === key) return
+    lastPageView.current = key
+    logService.logPageView(pathname)
+  }, [user, pathname])
 
   // Open every page at the top. A single-page app keeps the scroll position
   // when the route changes, so following a link from halfway down a long list

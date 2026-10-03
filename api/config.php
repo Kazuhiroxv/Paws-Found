@@ -230,7 +230,30 @@ defined('TURNSTILE_ENABLED') || define('TURNSTILE_ENABLED', filter_var(
 defined('SESSION_IDLE_TIMEOUT') || define('SESSION_IDLE_TIMEOUT', 3600);        // 1 hour
 defined('SESSION_ABSOLUTE_TIMEOUT') || define('SESSION_ABSOLUTE_TIMEOUT', 28800); // 8 hours
 
-defined('PRIVACY_NOTICE_VERSION') || define('PRIVACY_NOTICE_VERSION', '2026-10-02');
+// How often a session's "last seen" time is written (user_sessions), in
+// seconds. Not on every request: a page that polls every ten seconds would
+// otherwise be a database write every ten seconds per open tab.
+defined('SESSION_LAST_SEEN_INTERVAL') || define('SESSION_LAST_SEEN_INTERVAL', 300); // 5 minutes
+
+// -----------------------------------------------------------------------------
+// Which proxy's X-Forwarded-For header may be believed (api/helpers.php,
+// client_ip()). A comma-separated list of ranges.
+//
+// Nothing on a laptop: there is no proxy, and believing the header would let
+// anybody choose the address written into the logs. In production, Railway's
+// edge proxy, which connects from 100.0.0.0/8 (Railway's documented range).
+// Set TRUSTED_PROXY_CIDRS to override, or to an empty value to trust none.
+// -----------------------------------------------------------------------------
+defined('TRUSTED_PROXY_CIDRS') || define('TRUSTED_PROXY_CIDRS', array_values(array_filter(array_map(
+    'trim',
+    explode(',', (string) (getenv('TRUSTED_PROXY_CIDRS') !== false
+        ? getenv('TRUSTED_PROXY_CIDRS')
+        : (APP_ENV === 'production' ? '100.0.0.0/8' : '')))
+))));
+
+// Changed on 2026-10-03 (Correction 5): the notice now says what the session
+// and activity logs record. See src/pages/public/PrivacyPage.jsx.
+defined('PRIVACY_NOTICE_VERSION') || define('PRIVACY_NOTICE_VERSION', '2026-10-03');
 
 /**
  * The matching trace: one server-log line per filing with the candidates, their

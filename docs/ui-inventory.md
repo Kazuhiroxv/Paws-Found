@@ -53,6 +53,9 @@ raw Tailwind colours.
 | `NewReportForm` | `components/report-form/ReportForm.jsx` | The wizard for a new report; opens a saved draft from `?draft=`. `ReportForm` gained Save draft. |
 | `DraftCard` | `pages/dashboard/MyReportsPage.jsx` | A draft in My reports: Continue editing, Delete draft. |
 | `StaffReviewPage` | `pages/staff/StaffReviewPage.jsx` | The Pet Coordinator's review queue, oldest first. |
+| `AdminLogsPage` | `pages/admin/AdminLogsPage.jsx` | Correction 5: the administrators' Logs — Activity, Sessions and Security events tabs, a filter form (applied on submit, kept in the address), one server page at a time with `Pagination`, and every name, IP and session in the table a link that narrows to it. A plain table in an `overflow-x-auto` box, so a phone scrolls the table, not the page. Its table helpers (`Person`, `Ip`, `Reference`, `Target`) are local to it. |
+| `SessionNotice` | `components/SessionNotice.jsx` | (Changed in Correction 5.) Says why the session ended, from the server's reason — signed out, inactivity, time limit, another device, password changed, access changed, locked or suspended (with the administrator's contact) — or that the role changed. `role="alert"`, dismissed by a labelled button. |
+| `logService` | `services/logService.js` | Correction 5: `logPageView(pathname)` (best effort, never throws) and the three log lists for `AdminLogsPage`. |
 | `ActiveFilters` | `components/ActiveFilters.jsx` | Removable chips for every applied filter. |
 | `FlagReportDialog` | `components/FlagReportDialog.jsx` | "Report this listing" — creates a moderation case. Requires sign-in. |
 | `DemoRoleSelector` | `components/DemoRoleSelector.jsx` | **Development only.** Delete when real authentication lands. |

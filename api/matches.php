@@ -228,6 +228,8 @@ function match_decide(int $id): never
     // than one name with no history behind it.
     audit_log('match_decided', (int) $user['user_id'], $user['email'],
         'match', $id, 'success', "{$action}: {$match['match_status']} -> {$matchStatusAfter}");
+    activity_log((int) $user['user_id'], 'match_' . $action, 'match', $id,
+        "{$match['match_status']} -> {$matchStatusAfter}");
 
     match_detail($id);
 }

@@ -17,6 +17,8 @@
  *   GET    /api/reference/cities?area=…  a list the report form chooses from
  *   PATCH  /api/reports/12/publication  approve, reject, resubmit, remove
  *   GET    /api/drafts           your saved drafts
+ *   POST   /api/activity/page-view  the page a signed-in browser opened
+ *   GET    /api/logs/sessions    sign-ins, IPs, browsers (administrators)
  */
 
 declare(strict_types=1);
@@ -57,7 +59,7 @@ try {
         case '':
             json_response([
                 'name' => 'Paws&Found API',
-                'endpoints' => ['/health', '/config', '/auth', '/reports', '/matches', '/notifications', '/users', '/categories', '/reference', '/drafts', '/moderation'],
+                'endpoints' => ['/health', '/config', '/auth', '/reports', '/matches', '/notifications', '/users', '/categories', '/reference', '/drafts', '/moderation', '/activity', '/logs'],
             ]);
 
         // A platform health check, and the first thing to curl after a deploy.
@@ -127,6 +129,16 @@ try {
         case 'moderation':
             require __DIR__ . '/moderation.php';
             handle_moderation($method, $identifier);
+
+        // The page a signed-in browser opened, and the administrators' log
+        // viewer (Correction 5).
+        case 'activity':
+            require __DIR__ . '/logs.php';
+            handle_activity($method, $identifier);
+
+        case 'logs':
+            require __DIR__ . '/logs.php';
+            handle_logs($method, $identifier);
 
         default:
             json_error('No such endpoint.', 404);

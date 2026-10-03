@@ -38,10 +38,15 @@ pre-009 backup, run 009 — because the new file cannot be laid over the old.
                             and audit words; earlier moderation removals
                             converted from Closed to Removed, on evidence.
                             AFTER 009, WITH the code — see the file.
+    011_session_activity_logging.sql  user_sessions (one row per sign-in: IP,
+                            browser, start, last seen, end and why) and
+                            user_activity_logs (pages and actions). Both start
+                            empty: nothing is invented for the past.
+                            AFTER 010, WITH the code — see the file.
 
 `npm run test:migrations` builds the production path (2947a43 schema and seed
-→ 008 → 009 → 010 → 010) and a fresh install on MySQL 9.4 and MariaDB, and
-requires them to be identical.
+→ 008 → 009 → 010 → 011 → 011) and a fresh install on MySQL 9.4 and MariaDB,
+and requires them to be identical. After 011: 24 tables, 35 foreign keys.
 
 Deploying 008 and 009 (Correction 3), in one sitting: back up, preview 008
 (query in the file), run 008, preview 009 (queries in the file), run 009, push

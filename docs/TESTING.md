@@ -483,7 +483,7 @@ report; `SO-P`, `SO-S` and `SO-T` fail for the account switch and the zoom.
 from the environment so it is neither in the script nor in its output:
 `PAWS_BASE=http://localhost:5173 PAWS_PW=<password> npm run test:signout`.
 
-### `npm run a11y` — 31 pages
+### `npm run a11y` — 36 pages
 
 axe-core over every page in every role. Zero violations is the standard, not
 the aspiration. The report page is audited three ways: the guest sign-in gate,
@@ -688,12 +688,81 @@ it) unless `publish=False`, so the existing suites keep testing public
 reports; it signs in again if a suite ended the coordinator's session. The
 audit's table and key counts are 22 and 32.
 
+### Correction 5 suites
+
+**`npm run test:sessions` — 80 checks** (`scripts/session_activity.py`,
+local only, reseeds; writes `api/config.local.php` to turn the session clocks
+down to seconds and capture email, and puts back what was there). `SES-01`…`19`
+one record per sign-in (user, IP, user agent, start, a 32-hex reference, the
+PHP session id stored nowhere), and every end: sign-out, idle (dated when it
+expired), time limit, password reset (every device), a coordinator signing in
+elsewhere, a wrong password ending nothing, two customer devices coexisting,
+lock, suspension (reinstating does not revive it), promotion (demotion keeps
+the session), last seen moving on, and an unended three-day-old record shown
+as expired, never open. `ACT-01`…`23` page views (one per page; queries,
+fragments, outside URLs and control characters refused; nothing with a token
+stored), reads and the background check not logged, guests not tracked, a
+forged actor/action/IP ignored, an invented action stored nowhere, a flood cut
+at 60 a minute, and each meaningful action — report filed and approved, draft
+saved/updated/deleted, rejection, edit, a match decision, a flag and its
+moderation decision, profile update, sign-in and sign-out — in the trail with
+its target. `LOG-01`…`13` administrators read all three logs; coordinators and
+customers 403, guests 401; ten thousand rows page 50 at a time with no overlap
+in under 2 s, newest first; filters by Manila day, person, IP, action, session
+reference; malformed filters 422. `IP-01`…`02` a browser's own
+`X-Forwarded-For` is ignored. `SENS-01`…`09` sentinel values — a password, any
+bcrypt hash, every CSRF token and PHP session id handed out, the reset and
+verification tokens, a Turnstile token, a cookie header, the new password —
+appear in none of the three log tables.
+
+**`npm run test:session-ui` — 26 checks** (`scripts/session_ui.mjs`, reseeds,
+writes and restores `api/config.local.php`). `RACE-1`…`4`: the cross-tab
+sign-out race **made to happen**, with no CPU load. The Chrome DevTools Fetch
+domain pauses tab A's `/auth/me` *after the server has answered* "signed in";
+tab B signs out; tab A asks again (focus, or a route change); the stale answer
+is released. The app's ten-second poll is switched off inside these browsers,
+so only the code under test can correct the tab. Then: this tab signing out
+while its own stale check is in flight must never show the account again,
+even for a frame (a MutationObserver watches); ten focus events during one
+check make one extra check, not ten. **Against the old `useSession` RACE-1,
+RACE-3 and RACE-4 fail every time; RACE-2 passes against both** (the old code
+recovers that path another way), so it guards the behaviour without
+discriminating the bug. `MSG-01`…`07` the words for a sign-out, inactivity, the
+time limit, another device, a password change, suspension and lock, each
+announced (`role="alert"`, a labelled Dismiss). `PV-01`…`06` page views from a
+real browser: once per page, a link followed, none for re-renders, refocus or
+the poll, never a query or fragment, none for a reset link, none for a guest.
+`LOGUI-1`…`6` the Logs page: sign-ins with IP and session, why each session
+ended, failures-only, a filter in the address, no sideways scroll at 390 px, a
+coordinator turned away.
+
+**`npm run test:client-ip` — 18 checks** (`scripts/client_ip.php`, no
+database). `X-Forwarded-For` believed only from a trusted proxy (the setting
+read from the environment as a deployment sets it), the first entry taken,
+IPv6, junk ignored, a laptop not a proxy, null rather than an empty string,
+and the range test underneath.
+
+`npm run test:migrations` now runs 008 → 009 → 010 → 011 → 011 (27 checks):
+24 tables, 35 keys, migrations to 011, and both new tables empty — nothing
+invented. The audit's table and key counts are 24 and 35. `a11y` adds Logs
+(activity) and Logs (sessions): 36 pages.
+
 ## 3. Last verified results
 
-3 October 2026 (Correction 4), on the development laptop unless stated, on
-branch `post-defense/revisions`. Lint is run over the project's own sources
-(`git ls-files`): four untracked `PawsAndFound_*` folders of built bundles sit
-in the repository root, and a bare `eslint .` would lint them.
+3 October 2026 (Correction 5), on the development laptop unless stated, on
+branch `post-defense/revisions`. **1,238 checks in twenty-one suites, all
+passing; a11y 36 pages.** Plain `npm run lint` again: the `PawsAndFound_*`
+folders were moved out of the repository.
+
+**Two lessons from this gate.** (1) Do not edit any file in the repository
+while a browser suite runs: Tailwind 4 scans every tracked file for class
+names, so saving even a Markdown file makes Vite push an update into the open
+test pages, and some become full reloads mid-test. The first run of this gate
+lost feedback, report-ui, workflow-ui, signout, ui and session-ui that way;
+all passed when re-run on a quiet tree. (2) Reseed between the browser
+suites: `test:ui` relies on seeded pairings that `test:workflow-ui` changes
+(it failed WITHDRAWN-2 and HISTORY-1 straight after it, and passed 66/66 after
+a reseed).
 
 ```
 lint                                     clean
@@ -704,8 +773,11 @@ test:report-rules                        50/50
 test:scores                              11/11
 test:controls                            62/62
 test:report-ui                           47/47   (820 px, and 390 px with touch)
-test:migrations                          25/25   (MySQL 9.4 strict + MariaDB; 008→009→010 = fresh)
+test:migrations                          27/27   (MySQL 9.4 strict + MariaDB; 008→009→010→011→011 = fresh; 24 tables, 35 FKs)
 test:publication                         71/71
+test:sessions                            80/80   (session records, activity trail, log access, sentinel secrets)
+test:session-ui                          26/26   (race held at the network, session-end messages, page views, Logs page)
+test:client-ip                           18/18
 test:workflow-ui                         33/33   (drafts on two devices, review, rejection, removal)
 test:feedback                            49/49
 check:psgc                               ok vs PSA's 30 June 2026 workbook: 82 provinces + NCR + SGA, 1,642 places
@@ -719,13 +791,14 @@ test:signout                             24/24
 test:ui                                  66/66
 test:city                                11/11
 test:matching-log                         6/6
-a11y                                     34 pages, 0 violations (+ Report review, report 9 removed as coordinator and admin)
-docker build --pull --no-cache           clean, one MPM, Syntax OK  (3 October, Correction 4)
+a11y                                     36 pages, 0 violations (+ Logs, Logs: sessions)
+docker build --pull --no-cache           clean, one MPM, Syntax OK  (3 October, Correction 5)
+image on MySQL 9.4 strict, Correction 5  health ok; sign-in writes a session record (IP, UA, 32-hex ref); page view 201; filed = pending, guest refused, approved = public; admin reads all three logs, staff 403; sign-out recorded: 14/14
 verify:deploy vs production              25/25 + 3 skipped (read-only default; production untouched since)
-verify:deploy vs local production image 24/25 + 3 skipped  (7.1, correctly, on plain HTTP; image on MySQL 9.4, fresh schema + seed; 3 October)
+verify:deploy vs local production image 24/25 + 3 skipped  (7.1, correctly, on plain HTTP; image on MySQL 9.4, fresh schema + seed; 3 October, Correction 5)
 verify:deploy --upload, local only       24/27   (7.1 as above; 5.1-5.2 409 — the verifier picks report 1, which the seed has as Possible Match; register D2)
 2947a43 schema + seed -> 008 -> 009 -> 009, MySQL 9.4 strict and MariaDB   clean, idempotent
-migrated vs fresh schema.sql + seed.sql   identical structure (20 tables, 26 FKs) and reference data, on both engines
+migrated vs fresh schema.sql + seed.sql   identical structure (24 tables, 35 FKs) and reference data, on both engines
 migration 008 on MySQL 9.4 and MariaDB   from the 007 schema: all 10 names split, full_name unchanged
 ```
 

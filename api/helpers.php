@@ -235,28 +235,38 @@ function session_started_now(): void
 }
 
 /**
- * Has this session run out of time?
+ * Has this session run out of time, and on which clock?
  *
  * Two clocks, both checked on the server:
  *
  *   idle       time since the last authenticated request
  *   absolute   time since sign-in, refreshed by nothing
  *
+ * Returns null while the session is in time, or [reason, the moment it
+ * expired]. When both have run out, the one that ran out first is the reason:
+ * that is when the session actually ended.
+ *
  * A session that predates this check has no timestamps. It is adopted rather
  * than thrown away — signing everybody out to deploy a timeout is a worse
  * first impression than the timeout itself.
+ *
+ * @return array{0: string, 1: int}|null
  */
-function session_has_expired(): bool
+function session_expiry(): ?array
 {
-    $now = time();
-
     if (!isset($_SESSION['issued_at'], $_SESSION['last_activity'])) {
         session_started_now();
-        return false;
+        return null;
     }
 
-    return ($now - (int) $_SESSION['last_activity']) > SESSION_IDLE_TIMEOUT
-        || ($now - (int) $_SESSION['issued_at']) > SESSION_ABSOLUTE_TIMEOUT;
+    $idleEnds = (int) $_SESSION['last_activity'] + SESSION_IDLE_TIMEOUT;
+    $absoluteEnds = (int) $_SESSION['issued_at'] + SESSION_ABSOLUTE_TIMEOUT;
+
+    if (time() <= min($idleEnds, $absoluteEnds)) {
+        return null;
+    }
+
+    return $idleEnds <= $absoluteEnds ? ['idle_timeout', $idleEnds] : ['absolute_timeout', $absoluteEnds];
 }
 
 /** The signed-in user as a row from `users`, or null. */
@@ -268,13 +278,13 @@ function current_user(): ?array
         return null;
     }
 
-    // Before the database is asked anything. An expired session is not a
-    // suspended account or a deleted one — it is simply nobody, and it is
-    // reported the same way a signed-out visitor is, so /auth/me keeps
-    // answering "nobody" rather than growing a special case.
-    if (session_has_expired()) {
-        $_SESSION = [];
-        session_destroy();
+    // Before the database is asked anything. An expired session is simply
+    // nobody now — but the browser is told which clock ran out, so the page
+    // can say "your session expired" rather than appearing at Sign in with no
+    // explanation (Correction 5).
+    $expiry = session_expiry();
+    if ($expiry !== null) {
+        end_this_session($expiry[0], $expiry[1]);
         return null;
     }
 
@@ -292,6 +302,7 @@ function current_user(): ?array
 
     if (!$user) {
         // The account was deleted while the session lived on.
+        $_SESSION = [];
         session_destroy();
         return null;
     }
@@ -299,6 +310,9 @@ function current_user(): ?array
     // A password reset bumps users.session_version, and every session still
     // carrying the previous number stops working here — on every device at
     // once, without anybody trying to find and delete PHP's session files.
+    // So do a privileged sign-in elsewhere and a promotion (auth_login(),
+    // user_update()). Whichever it was wrote the reason on this session's
+    // record when it happened; that is what the browser is told.
     //
     // Sessions created before this column existed have no version recorded.
     // They are adopted at the account's current value rather than thrown away,
@@ -307,23 +321,276 @@ function current_user(): ?array
     if (!isset($_SESSION['session_version'])) {
         $_SESSION['session_version'] = (int) $user['session_version'];
     } elseif ((int) $_SESSION['session_version'] !== (int) $user['session_version']) {
-        $_SESSION = [];
-        session_destroy();
+        end_this_session(session_record_end_reason() ?? 'session_ended');
         return null;
     }
 
-    // A suspended or locked account keeps its session cookie but loses its
-    // access — on every device at once, because this runs on every request and
-    // reads the account as it is now rather than as it was at sign-in.
+    // A suspended or locked account loses its access on every device at once,
+    // because this runs on every request and reads the account as it is now
+    // rather than as it was at sign-in. The session ends for good: before
+    // Correction 5 it lingered and came back to life if the account was
+    // reinstated, which the session record could not have said truthfully.
     //
     // Written as "not active" rather than as a list of the two bad states, so
     // that a future state added to the ENUM is refused by default instead of
     // quietly allowed.
     if ($user['account_status'] !== 'active') {
+        end_this_session(match ($user['account_status']) {
+            'locked' => 'account_locked',
+            'suspended' => 'account_suspended',
+            default => 'session_ended',
+        });
         return null;
     }
 
+    touch_session_record();
+
     return $user;
+}
+
+/**
+ * Why this browser's signed-in session ended, for the response that answers
+ * it: ['session_ended' => 'idle_timeout'], or nothing.
+ *
+ * Kept in the (now anonymous) session rather than sent once and forgotten,
+ * because several requests from one page can arrive together and only one of
+ * them is the one that found out. Cleared by the next sign-in. It says
+ * nothing about any other device, and only this browser can read it.
+ */
+function session_end_notice(): array
+{
+    $reason = $_SESSION['session_ended'] ?? null;
+
+    return is_string($reason) ? ['session_ended' => $reason] : [];
+}
+
+// -----------------------------------------------------------------------------
+// Session records (Correction 5)
+//
+// One user_sessions row per successful sign-in: who, from which address and
+// browser, when it started, when it was last used, when and why it ended.
+// The row is found again through $_SESSION['session_record_id']. What it is
+// known by in the logs is `session_reference`, a random value of its own —
+// never the PHP session id, which is the thing that signs a browser in.
+// -----------------------------------------------------------------------------
+
+/** Why a session ended: user_sessions.end_reason, and what the browser is told. */
+const SESSION_END_REASONS = [
+    'logout', 'idle_timeout', 'absolute_timeout', 'password_reset',
+    'new_privileged_login', 'role_promoted', 'account_locked', 'account_suspended',
+];
+
+/** Open a record for the session auth_login() has just started. */
+function session_record_start(int $userId, int $sessionVersion): void
+{
+    $reference = bin2hex(random_bytes(16));
+
+    try {
+        db()->prepare(
+            'INSERT INTO user_sessions (session_reference, user_id, session_version, ip_address, user_agent)
+                  VALUES (:reference, :user_id, :version, :ip, :agent)'
+        )->execute([
+            ':reference' => $reference,
+            ':user_id' => $userId,
+            ':version' => $sessionVersion,
+            ':ip' => client_ip(),
+            ':agent' => client_user_agent(),
+        ]);
+
+        $_SESSION['session_record_id'] = (int) db()->lastInsertId();
+        $_SESSION['session_reference'] = $reference;
+        $_SESSION['last_seen_written'] = time();
+    } catch (PDOException $exception) {
+        // Like audit_log(): failing to record a sign-in must not refuse it.
+        error_log('[pawsandfound] session record failed: ' . $exception->getMessage());
+    }
+}
+
+/**
+ * Write "last seen" — at most once every SESSION_LAST_SEEN_INTERVAL seconds,
+ * so ordinary browsing is not a database write per request. It is the time of
+ * the last authenticated request, the background re-check included: it says
+ * a page was open, not that a person was typing.
+ */
+function touch_session_record(): void
+{
+    if (empty($_SESSION['session_record_id'])) {
+        return;
+    }
+
+    $now = time();
+    if ($now - (int) ($_SESSION['last_seen_written'] ?? 0) < SESSION_LAST_SEEN_INTERVAL) {
+        return;
+    }
+
+    try {
+        db()->prepare('UPDATE user_sessions SET last_seen_at = NOW()
+                        WHERE session_record_id = :id AND ended_at IS NULL')
+            ->execute([':id' => (int) $_SESSION['session_record_id']]);
+        $_SESSION['last_seen_written'] = $now;
+    } catch (PDOException $exception) {
+        error_log('[pawsandfound] last-seen update failed: ' . $exception->getMessage());
+    }
+}
+
+/**
+ * Close one record. Only an open one: the first reason written is the true
+ * one, and a later request discovering the same end must not overwrite it.
+ *
+ * @param int|null $endedAt  When it ended, if that was earlier than now — an
+ *                           idle session ended an hour after its last request,
+ *                           not at the moment somebody came back to find it.
+ */
+function session_record_end(int $recordId, string $reason, ?int $endedAt = null): void
+{
+    try {
+        $statement = db()->prepare(
+            'UPDATE user_sessions
+                SET ended_at = ' . ($endedAt === null ? 'NOW()' : 'FROM_UNIXTIME(:at)') . ', end_reason = :reason
+              WHERE session_record_id = :id AND ended_at IS NULL'
+        );
+        $params = [':reason' => $reason, ':id' => $recordId];
+        if ($endedAt !== null) {
+            $params[':at'] = $endedAt;
+        }
+        $statement->execute($params);
+    } catch (PDOException $exception) {
+        error_log('[pawsandfound] session end failed: ' . $exception->getMessage());
+    }
+}
+
+/**
+ * Close every open record of an account, for the events that end all of its
+ * sessions at once: a password reset, a lock, a suspension, a promotion, and
+ * a privileged sign-in (which ends the earlier one). Called on the same
+ * connection as the change itself, so inside its transaction when it has one.
+ */
+function end_open_sessions(int $userId, string $reason): void
+{
+    try {
+        db()->prepare(
+            'UPDATE user_sessions SET ended_at = NOW(), end_reason = :reason
+              WHERE user_id = :id AND ended_at IS NULL'
+        )->execute([':reason' => $reason, ':id' => $userId]);
+    } catch (PDOException $exception) {
+        error_log('[pawsandfound] ending sessions failed: ' . $exception->getMessage());
+    }
+}
+
+/** Why this browser's session record was closed by somebody else, if it was. */
+function session_record_end_reason(): ?string
+{
+    if (empty($_SESSION['session_record_id'])) {
+        return null;
+    }
+
+    $statement = db()->prepare('SELECT end_reason FROM user_sessions WHERE session_record_id = :id');
+    $statement->execute([':id' => (int) $_SESSION['session_record_id']]);
+    $reason = $statement->fetchColumn();
+
+    return is_string($reason) ? $reason : null;
+}
+
+/**
+ * End the signed-in session this request belongs to, and remember why.
+ *
+ * The identity is removed; the reason stays (session_end_notice()). Nothing
+ * is destroyed, so the reason survives until the next sign-in, which starts a
+ * new session id anyway.
+ */
+function end_this_session(string $reason, ?int $endedAt = null): void
+{
+    if (!empty($_SESSION['session_record_id']) && in_array($reason, SESSION_END_REASONS, true)) {
+        session_record_end((int) $_SESSION['session_record_id'], $reason, $endedAt);
+    }
+
+    $_SESSION = ['session_ended' => $reason];
+}
+
+/** The browser's own description of itself, trimmed to the column. Never parsed. */
+function client_user_agent(): ?string
+{
+    $agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    $agent = is_string($agent) ? trim((string) preg_replace('/[\x00-\x1F\x7F]+/', ' ', $agent)) : '';
+
+    return $agent === '' ? null : mb_substr($agent, 0, 255);
+}
+
+// -----------------------------------------------------------------------------
+// The activity trail (Correction 5)
+//
+// Where a signed-in person went and what they did, in user_activity_logs.
+// Every action below is written by the PHP endpoint that did it, after it
+// succeeded; the browser can report a page it opened (api/logs.php) and
+// nothing else. Who, which session, the address and the time are always the
+// server's.
+//
+// Not the audit trail. audit_logs keeps the security and administrative
+// events (sign-ins, failures, locks, role changes); this keeps the ordinary
+// record of use, and is far larger.
+// -----------------------------------------------------------------------------
+
+/** Every action the trail may record. Anything else is refused, not stored. */
+const ACTIVITY_ACTIONS = [
+    'page_view',
+    // Account
+    'login', 'logout', 'profile_updated', 'email_change_requested',
+    // Reports and drafts
+    'draft_saved', 'draft_updated', 'draft_deleted',
+    'report_submitted', 'report_edited', 'report_photos_added', 'report_photos_changed',
+    'report_status_changed',
+    // Publication review (Correction 4)
+    'report_approved', 'report_rejected', 'report_resubmitted', 'report_removed',
+    // Matching
+    'match_request_verification', 'match_dismiss', 'match_reject', 'match_request_information',
+    'match_provide_information', 'match_confirm', 'match_reopen',
+    // Moderation
+    'report_flagged', 'moderation_decided',
+    // Notifications
+    'notification_read', 'notifications_all_read',
+    // Administration
+    'account_status_changed', 'role_changed', 'category_changed',
+];
+
+/**
+ * Record one thing a signed-in person did.
+ *
+ * Best effort, like audit_log(): the action has already happened, and a log
+ * that could not be written must not undo it or fail the response. Never a
+ * request body, a description, a password or a token — the action's name, what
+ * it was done to, and at most a short note the server wrote itself.
+ */
+function activity_log(
+    int $userId,
+    string $action,
+    ?string $targetType = null,
+    ?int $targetId = null,
+    ?string $detail = null,
+    ?string $route = null,
+): void {
+    if (!in_array($action, ACTIVITY_ACTIONS, true)) {
+        error_log('[pawsandfound] refused to log an unknown activity: ' . substr($action, 0, 40));
+        return;
+    }
+
+    try {
+        db()->prepare(
+            'INSERT INTO user_activity_logs
+                    (user_id, session_record_id, action, route, target_type, target_id, detail, ip_address)
+             VALUES (:user_id, :session, :action, :route, :target_type, :target_id, :detail, :ip)'
+        )->execute([
+            ':user_id' => $userId,
+            ':session' => empty($_SESSION['session_record_id']) ? null : (int) $_SESSION['session_record_id'],
+            ':action' => $action,
+            ':route' => $route,
+            ':target_type' => $targetType,
+            ':target_id' => $targetId,
+            ':detail' => $detail === null ? null : mb_substr($detail, 0, 120),
+            ':ip' => client_ip(),
+        ]);
+    } catch (PDOException $exception) {
+        error_log('[pawsandfound] activity log failed: ' . $exception->getMessage());
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -673,26 +940,90 @@ function audit_log(
 }
 
 /**
- * The caller's address, for the audit log.
+ * The caller's address, for the logs, the sessions and the rate limits.
  *
- * REMOTE_ADDR only. A proxy header such as X-Forwarded-For is set by whoever
- * sent the request, so trusting it would let an attacker write any address
- * they liked into our own audit trail.
+ * REMOTE_ADDR is whoever opened the connection to this server. On a laptop
+ * that is the browser. On Railway it is Railway's own edge proxy, the same
+ * kind of address for every visitor — so on its own it would log one address
+ * for everybody, and the rate limits would count everyone as one person.
+ *
+ * So X-Forwarded-For is read, but ONLY when the connection itself came from a
+ * proxy this deployment trusts (TRUSTED_PROXY_CIDRS in config.php; nothing on
+ * a laptop). Anybody else may send any X-Forwarded-For they like and it is
+ * ignored, so a visitor cannot write a made-up address into our logs. Behind
+ * the trusted proxy the FIRST address is the visitor: Railway's edge replaces
+ * what a client sent and puts the connecting address first. That is
+ * Railway's behaviour, not ours, and docs/security-activity-logging.md says
+ * how to confirm it after a deploy.
  */
 function client_ip(): ?string
 {
-    $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+    $remote = $_SERVER['REMOTE_ADDR'] ?? null;
+    if (!is_string($remote) || filter_var($remote, FILTER_VALIDATE_IP) === false) {
+        return null;
+    }
 
-    return is_string($ip) && $ip !== '' ? substr($ip, 0, 45) : null;
+    if (ip_is_trusted_proxy($remote)) {
+        $first = trim(explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''))[0]);
+        if ($first !== '' && filter_var($first, FILTER_VALIDATE_IP) !== false) {
+            return $first;
+        }
+    }
+
+    return $remote;
 }
 
-/** Stop unless somebody is signed in. Returns the user so callers can use it. */
+/** Whether a connection from this address is the deployment's own proxy. */
+function ip_is_trusted_proxy(string $ip): bool
+{
+    foreach (TRUSTED_PROXY_CIDRS as $range) {
+        if (ip_in_range($ip, $range)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/** Is `$ip` inside `$range` ("100.0.0.0/8", "fd00::/8", or one address)? IPv4 and IPv6. */
+function ip_in_range(string $ip, string $range): bool
+{
+    [$network, $bits] = array_pad(explode('/', trim($range), 2), 2, null);
+    $address = @inet_pton($ip);
+    $base = @inet_pton((string) $network);
+
+    if ($address === false || $base === false || strlen($address) !== strlen($base)) {
+        return false;
+    }
+
+    $bits = $bits === null ? strlen($address) * 8 : (int) $bits;
+    $whole = intdiv($bits, 8);
+    if (substr($address, 0, $whole) !== substr($base, 0, $whole)) {
+        return false;
+    }
+
+    $rest = $bits % 8;
+    if ($rest === 0) {
+        return true;
+    }
+
+    $mask = (0xFF << (8 - $rest)) & 0xFF;
+
+    return (ord($address[$whole]) & $mask) === (ord($base[$whole]) & $mask);
+}
+
+/**
+ * Stop unless somebody is signed in. Returns the user so callers can use it.
+ *
+ * The refusal carries `session_ended` when this browser was signed in until
+ * the server ended it, so whichever request finds out can say why.
+ */
 function require_login(): array
 {
     $user = current_user();
 
     if ($user === null) {
-        json_error('You need to be signed in to do that.', 401);
+        json_error('You need to be signed in to do that.', 401, session_end_notice());
     }
 
     return $user;

@@ -263,6 +263,9 @@ function report_create(): never
     // nothing and nothing is compared with it: matching starts when a
     // coordinator publishes it (report_publication()).
 
+    activity_log((int) $user['user_id'], 'report_submitted', 'report', $reportId,
+        $draftId !== null ? "from draft {$draftId}" : null);
+
     report_detail($reportId);
 }
 
@@ -397,6 +400,12 @@ function report_publication(int $id): never
     if ($action === 'remove') {
         audit_log('report_removed', (int) $user['user_id'], $user['email'], 'report', $id, 'success', 'removed by an administrator');
     }
+    activity_log((int) $user['user_id'], [
+        'approve' => 'report_approved',
+        'reject' => 'report_rejected',
+        'resubmit' => 'report_resubmitted',
+        'remove' => 'report_removed',
+    ][$action], 'report', $id);
 
     // Matching starts at publication — after the commit and in its own try,
     // as filing always did: the report is published, and a fault in the
@@ -617,6 +626,8 @@ function report_update(int $id): never
         }
     }
 
+    activity_log((int) $user['user_id'], 'report_edited', 'report', $id);
+
     report_detail($id);
 }
 
@@ -761,6 +772,7 @@ function report_set_status(int $id): never
     // than one that is not.
     audit_log('report_status_changed', (int) $user['user_id'], $user['email'],
         'report', $id, 'success', "{$report['status']} -> {$status}");
+    activity_log((int) $user['user_id'], 'report_status_changed', 'report', $id, "{$report['status']} -> {$status}");
 
     report_detail($id);
 }
@@ -1071,6 +1083,8 @@ function report_add_photos(int $id): never
         throw $exception;
     }
 
+    activity_log((int) $user['user_id'], 'report_photos_added', 'report', $id, count($written) . ' photo(s)');
+
     json_response(['data' => report_photo_list($id)], 201);
 }
 
@@ -1229,6 +1243,8 @@ function report_edit_photos(int $id): never
             }
         }
     }
+
+    activity_log((int) $user['user_id'], 'report_photos_changed', 'report', $id);
 
     json_response(['data' => report_photo_list($id)]);
 }

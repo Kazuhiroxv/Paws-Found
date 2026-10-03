@@ -54,6 +54,8 @@ const PAGES = [
   ['grace.bautista@example.com', '/admin/reports', 'Records'],
   ['grace.bautista@example.com', '/admin/categories', 'Pet categories'],
   ['grace.bautista@example.com', '/admin/moderation', 'Moderation'],
+  ['grace.bautista@example.com', '/admin/logs', 'Logs'],
+  ['grace.bautista@example.com', '/admin/logs?tab=sessions', 'Logs: sessions'],
 ]
 
 const browser = await puppeteer.launch({

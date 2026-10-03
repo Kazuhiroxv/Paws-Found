@@ -114,21 +114,23 @@ def sql_injection():
           sql('SELECT COUNT(*) FROM pet_reports;') == '32')
     # 22 physical: the 15 on the ERD, the three reference lists migration 009
     # added (ph_areas, ph_cities, pet_colours), publication_logs and
-    # report_drafts from 010, plus schema_migrations and
+    # report_drafts from 010, user_sessions and user_activity_logs from 011,
+    # plus schema_migrations and
     # auth_rate_limits, which are infrastructure rather than domain tables
     # (database/migrations/README.md).
-    check(C, 'SQL-12', 'Schema intact afterwards', '22 tables',
+    check(C, 'SQL-12', 'Schema intact afterwards', '24 tables',
           sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='pawsandfound';") + ' tables',
-          sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='pawsandfound';") == '22')
+          sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='pawsandfound';") == '24')
     # 26 after migration 009 (ph_cities -> ph_areas, locations -> ph_cities);
     # 32 after 010 (publication_logs -> pet_reports, users; report_drafts ->
-    # users, pet_categories, ph_areas, ph_cities).
-    # docs/erd-defense.md lists 32 (the figure is redrawn in the final ERD
+    # users, pet_categories, ph_areas, ph_cities); 35 after 011 (user_sessions
+    # -> users; user_activity_logs -> users, user_sessions).
+    # docs/erd-defense.md lists 35 (the figure is redrawn in the final ERD
     # pass). A diagram cannot be wrong quietly if the suite counts
     # the same thing the diagram is drawing.
     fks = sql("SELECT COUNT(*) FROM information_schema.table_constraints "
               "WHERE table_schema='pawsandfound' AND constraint_type='FOREIGN KEY';")
-    check(C, 'SQL-14', 'Foreign keys match the ERD', '32 keys', fks + ' keys', fks == '32')
+    check(C, 'SQL-14', 'Foreign keys match the ERD', '35 keys', fks + ' keys', fks == '35')
     roles = sql('SELECT GROUP_CONCAT(role ORDER BY user_id) FROM users WHERE user_id<=3;')
     check(C, 'SQL-13', 'No account was promoted', 'user,user,user', roles, roles == 'user,user,user')
 

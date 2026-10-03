@@ -175,7 +175,12 @@ function moderation_create(): never
         ':details' => $details,
     ]);
 
-    json_response(['data' => ['case_id' => (int) db()->lastInsertId()]], 201);
+    $caseId = (int) db()->lastInsertId();
+
+    // The reason category only; what they wrote stays on the case.
+    activity_log((int) $user['user_id'], 'report_flagged', 'report', $reportId, $reason);
+
+    json_response(['data' => ['case_id' => $caseId]], 201);
 }
 
 /**
@@ -264,6 +269,8 @@ function moderation_decide(int $id): never
                 "UPDATE users SET account_status = 'suspended' WHERE user_id = :id"
             );
             $suspend->execute([':id' => (int) $case['owner_id']]);
+            // Its open sessions end with it, and their records say why.
+            end_open_sessions((int) $case['owner_id'], 'account_suspended');
 
             moderation_notify_owner(
                 $case,
@@ -300,6 +307,8 @@ function moderation_decide(int $id): never
     // acted on.
     audit_log('moderation_resolved', (int) $admin['user_id'], $admin['email'],
         'moderation_case', $id, 'success', "{$action} on report {$case['report_id']}");
+    activity_log((int) $admin['user_id'], 'moderation_decided', 'moderation_case', $id,
+        "{$action} on report {$case['report_id']}");
 
     json_response(['data' => ['case_id' => $id, 'action' => $action]]);
 }

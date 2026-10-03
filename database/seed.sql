@@ -22,6 +22,8 @@ USE pawsandfound;
 -- accounts it describes — so reseeding would otherwise leave every
 -- previous run's sign-ins behind. Resetting the demonstration should
 -- produce the same database every time, including an empty log.
+DELETE FROM user_activity_logs;
+DELETE FROM user_sessions;
 DELETE FROM report_drafts;
 DELETE FROM publication_logs;
 DELETE FROM audit_logs;

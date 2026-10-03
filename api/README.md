@@ -17,6 +17,7 @@ in a sitting, because every member has to be able to explain the whole system.
 | `categories.php` | `GET /categories`. |
 | `reference.php` | `GET /reference/{colours,breeds,provinces,cities}` — the lists the report form and Explore choose from (Correction 3). |
 | `moderation.php` | `GET /moderation`, `POST /moderation`, `PATCH /moderation/{id}`. |
+| `logs.php` | `POST /activity/page-view`; `GET /logs/{activity,sessions,audit}` — the activity trail and the administrators' log viewer (Correction 5). |
 
 ## Local setup
 
@@ -88,7 +89,31 @@ GET    /api/moderation           the flag queue, with the report and both
                                  people attached          (administrators)
 POST   /api/moderation           flag a report            (signed in)
 PATCH  /api/moderation/{id}      decide a case            (administrators)
+
+POST   /api/activity/page-view   { path } — the page a signed-in browser opened  (Correction 5)
+GET    /api/logs/activity        pages and actions        (administrators)
+GET    /api/logs/sessions        sign-ins: IP, browser, start, last seen, end and why
+GET    /api/logs/audit           security and administrative events
 ```
+
+**Sessions and the activity trail (Correction 5).** `GET /api/auth/me`
+answers `{ user: null, session_ended: "<reason>" }` when the server ended this
+browser's session, and every 401 from a protected endpoint carries the same
+`session_ended`: `idle_timeout`, `absolute_timeout`, `password_reset`,
+`new_privileged_login`, `role_promoted`, `account_locked`,
+`account_suspended`, or `session_ended` when no reason is known. It is kept
+until the next sign-in and concerns only this browser's own session.
+`POST /activity/page-view` takes a path (`/pet/43`) and nothing else: 422 for
+a query string, `#`, `//`, a control character or more than 200 characters;
+the same path again within 3 s is `{ logged: false }`; more than 60 a minute
+from one session is 429. Every other action is written by the endpoint that
+did it (`ACTIVITY_ACTIONS` in `helpers.php`). The three log lists take `user`
+(name or email), `ip`, `from`/`to` (YYYY-MM-DD, Philippine days), `page`,
+`per_page` (≤ 100); activity also `action` (one action, or `actions` for
+everything but page views), `route` (a prefix) and `session` (a reference
+prefix, 4+ hex); sessions `state` (`open` | `ended` | `expired`) and
+`session`; audit `action` and `outcome`. Newest first, with the same `meta`
+as `/reports`. Details: `docs/security-activity-logging.md`.
 
 `GET /api/moderation` accepts `status` (`open` | `actioned` | `dismissed`) and
 `reason`. `PATCH` takes an `action` — `dismiss`, `warn`, `remove` or `suspend` —
@@ -150,7 +175,12 @@ and `contact_preferences.show_phone` always false.
 - **Authorisation** — `require_login()` and `require_role()` check on the
   server. The React route guard only keeps the interface coherent; it is not a
   security boundary and must never be treated as one.
-- **Account suspension** — a suspended user is refused even with a valid session.
+- **Account suspension** — a suspended or locked user is refused even with a
+  valid session, and that session ends for good (Correction 5).
+- **Session records** — each sign-in is a `user_sessions` row known by a random
+  reference; the PHP session id is never stored. The visitor's IP comes from
+  `X-Forwarded-For` only when the connection is from the trusted proxy range
+  (`TRUSTED_PROXY_CIDRS`), so a forged header cannot choose the logged address.
 - **Privacy** — a reporter's phone and email are filtered out in PHP unless that
   report chose to publish them, so unshared details never reach the browser.
 - **Error messages** — database errors are logged server-side; the client gets a
@@ -169,6 +199,8 @@ and `contact_preferences.show_phone` always false.
 | `PATCH /matches/{id}` — `request_verification`, `dismiss` | either reporter on the pairing, or staff |
 | `PATCH /matches/{id}` — `confirm`, `reject`, `request_information` | staff and administrators only |
 | `GET`/`PATCH /notifications` | your own only — the account comes from the session, never the URL |
+| `POST /activity/page-view` | any signed-in account, about itself only; guests 401 |
+| `GET /logs/*` | administrators (Correction 6 decides which administrator level); staff and customers 403, guests 401 |
 
 ### Deciding a pairing
 

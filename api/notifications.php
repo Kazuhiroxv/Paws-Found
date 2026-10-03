@@ -90,6 +90,8 @@ function notification_mark_read(array $user, int $id): never
         json_error('That notification does not exist.', 404);
     }
 
+    activity_log((int) $user['user_id'], 'notification_read', 'notification', $id);
+
     notifications_list($user);
 }
 
@@ -99,6 +101,11 @@ function notifications_mark_all_read(array $user): never
         'UPDATE notifications SET is_read = TRUE WHERE user_id = :user_id AND is_read = FALSE'
     );
     $statement->execute([':user_id' => $user['user_id']]);
+
+    // Only when something was unread: pressing it on an empty list did nothing.
+    if ($statement->rowCount() > 0) {
+        activity_log((int) $user['user_id'], 'notifications_all_read', null, null, $statement->rowCount() . ' marked read');
+    }
 
     notifications_list($user);
 }

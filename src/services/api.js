@@ -44,6 +44,14 @@ const API_BASE = `${import.meta.env.BASE_URL}api`
  */
 let csrfToken = null
 
+/**
+ * Announced when a request is refused because nobody is signed in any more.
+ * useSession listens and re-checks at once, so a page whose session ended
+ * stops showing private information on the request that found out rather than
+ * at the next ten-second poll (Correction 5).
+ */
+export const SESSION_CHECK_EVENT = 'paws:session-check'
+
 /** Ask for the token when there is none yet, or when the one we had was refused. */
 async function primeCsrf() {
   const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
@@ -119,6 +127,11 @@ export async function apiFetch(path, options = {}) {
     // than a sentence — a failed sign-in reports how many attempts remain and
     // whether the account is now locked, and the form draws that.
     error.payload = payload
+
+    // The sign-in form's own refusals are 401s too, and are not news.
+    if (response.status === 401 && !path.startsWith('/auth/') && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event(SESSION_CHECK_EVENT))
+    }
 
     throw error
   }

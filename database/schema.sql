@@ -51,6 +51,8 @@ CREATE DATABASE IF NOT EXISTS pawsandfound
 USE pawsandfound;
 
 -- Dropped in reverse dependency order so the file can be re-run while we build.
+DROP TABLE IF EXISTS user_activity_logs;
+DROP TABLE IF EXISTS user_sessions;
 DROP TABLE IF EXISTS report_drafts;
 DROP TABLE IF EXISTS publication_logs;
 DROP TABLE IF EXISTS auth_rate_limits;
@@ -814,6 +816,74 @@ CREATE TABLE privacy_consents (
 
 
 -- -----------------------------------------------------------------------------
+-- user_sessions — one row (011) per successful sign-in
+--
+-- Written at sign-in (api/auth.php), touched at most every five minutes while
+-- the session is used (last_seen_at), and closed with a reason when the server
+-- ends it. A session whose browser simply never came back has no end written:
+-- it is shown as "expired" once the session lifetime has passed, never as open.
+-- -----------------------------------------------------------------------------
+CREATE TABLE user_sessions (
+  session_record_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  session_reference CHAR(32)     NOT NULL,   -- random; NOT the PHP session id
+  user_id           INT UNSIGNED NOT NULL,
+  session_version   INT UNSIGNED NOT NULL,   -- users.session_version it was issued under
+  ip_address        VARCHAR(45)      NULL,   -- 45 characters, because IPv6
+  user_agent        VARCHAR(255)     NULL,   -- the browser's own description of itself
+  started_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_seen_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  ended_at          TIMESTAMP        NULL,
+  end_reason        ENUM('logout','idle_timeout','absolute_timeout','password_reset',
+                         'new_privileged_login','role_promoted',
+                         'account_locked','account_suspended') NULL,
+
+  PRIMARY KEY (session_record_id),
+  UNIQUE KEY uq_user_sessions_reference (session_reference),
+  KEY idx_user_sessions_user (user_id, started_at),
+  KEY idx_user_sessions_started (started_at),
+  KEY idx_user_sessions_ip (ip_address, started_at),
+  CONSTRAINT fk_user_sessions_user
+    FOREIGN KEY (user_id) REFERENCES users (user_id)
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- user_activity_logs (011) — where a signed-in person went and what they did
+--
+-- 'page_view' rows come from the browser (the path only; the server adds who,
+-- which session, the IP and the time). Every other action is written by the
+-- PHP endpoint that did it, from a fixed list (ACTIVITY_ACTIONS in
+-- api/helpers.php) — the browser cannot name an action.
+-- -----------------------------------------------------------------------------
+CREATE TABLE user_activity_logs (
+  activity_id       INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id           INT UNSIGNED NOT NULL,
+  session_record_id INT UNSIGNED     NULL,   -- NULL for a session from before 011
+  action            VARCHAR(40)  NOT NULL,   -- 'page_view', 'report_submitted', ...
+  route             VARCHAR(200)     NULL,   -- page views: '/pet/43', never a query string
+  target_type       ENUM('user','report','draft','match','moderation_case',
+                         'notification','category') NULL,
+  target_id         INT UNSIGNED     NULL,
+  detail            VARCHAR(120)     NULL,   -- a short server-written note, e.g. 'approved'
+  ip_address        VARCHAR(45)      NULL,
+  created_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (activity_id),
+  KEY idx_activity_created (created_at),
+  KEY idx_activity_user (user_id, created_at),
+  KEY idx_activity_session (session_record_id),
+  KEY idx_activity_action (action, created_at),
+  KEY idx_activity_ip (ip_address, created_at),
+  CONSTRAINT fk_activity_user
+    FOREIGN KEY (user_id) REFERENCES users (user_id)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_activity_session
+    FOREIGN KEY (session_record_id) REFERENCES user_sessions (session_record_id)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- -----------------------------------------------------------------------------
 -- Infrastructure, not a domain table, and not on the ERD.
 --
 -- A database built from this file already contains everything the migrations
@@ -828,14 +898,14 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- A fresh import of this file already contains everything migrations 001 to
--- 010 do, so it records all ten as applied. Otherwise somebody running the
+-- 011 do, so it records all eleven as applied. Otherwise somebody running the
 -- migrations afterwards would re-apply changes that are already here.
 --
 -- 004 and 005 were missing from this list: the baseline had their schema
 -- changes but claimed only three migrations had run. Harmless until somebody
 -- trusted the list.
 INSERT INTO schema_migrations (version)
-VALUES ('001'), ('002'), ('003'), ('004'), ('005'), ('006'), ('007'), ('008'), ('009'), ('010')
+VALUES ('001'), ('002'), ('003'), ('004'), ('005'), ('006'), ('007'), ('008'), ('009'), ('010'), ('011')
   ON DUPLICATE KEY UPDATE version = version;
 
 

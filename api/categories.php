@@ -158,6 +158,7 @@ function category_create(): never
     $newId = (int) db()->lastInsertId();
     audit_log('category_changed', (int) $admin['user_id'], $admin['email'],
         'category', $newId, 'success', "created: {$label}");
+    activity_log((int) $admin['user_id'], 'category_changed', 'category', $newId, 'created');
 
     json_response(['data' => [
         'category_id' => $newId,
@@ -212,6 +213,7 @@ function category_update(string $code): never
     audit_log('category_changed', (int) $admin['user_id'], $admin['email'],
         'category', (int) $category['category_id'], 'success',
         "{$category['category_name']}: " . implode(', ', $what));
+    activity_log((int) $admin['user_id'], 'category_changed', 'category', (int) $category['category_id'], 'updated');
 
     json_response(['data' => category_row($code)]);
 }
@@ -248,6 +250,7 @@ function category_delete(string $code): never
     audit_log('category_changed', (int) $admin['user_id'], $admin['email'],
         'category', (int) $category['category_id'], 'success',
         "deleted: {$category['category_name']}");
+    activity_log((int) $admin['user_id'], 'category_changed', 'category', (int) $category['category_id'], 'deleted');
 
     // 200 with a small body rather than 204: json_response() always writes
     // one, and a 204 carrying content is not a 204.

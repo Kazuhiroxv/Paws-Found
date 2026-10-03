@@ -7,15 +7,16 @@ For each engine — MySQL 9.4 in strict mode (Docker, as Railway runs) and
 XAMPP's MariaDB (scratch databases, never `pawsandfound`) — it builds two
 databases:
 
-    upgrade   production's schema and seed at 2947a43, then 008, 009, 010,
-              then 010 again (a migration must survive being run twice)
+    upgrade   production's schema and seed at 2947a43, then 008, 009, 010, 011,
+              then 011 again (a migration must survive being run twice)
     fresh     today's schema.sql + seed.sql
 
 and requires them to agree: identical table structure, identical reference
 rows (areas, cities, colours, listed breeds), the same counts, every seeded
 location coded, and "Las Piñas" stored as UTF-8.
 
-Correction 3A (PSGC9). Never touches Railway; needs Docker for the MySQL half.
+Correction 3A (PSGC9); 010 since Correction 4, 011 since Correction 5. Never
+touches Railway; needs Docker for the MySQL half.
 """
 import os
 import re
@@ -49,7 +50,9 @@ FACTS = """SELECT CONCAT_WS(' | ',
   (SELECT GROUP_CONCAT(CONCAT_WS(':', report_id, actor_user_id, IFNULL(previous_state, '-'), new_state)
                        ORDER BY report_id, log_id) FROM publication_logs),
   (SELECT COUNT(*) FROM status_logs WHERE report_id = 9 AND new_status = 'closed'),
-  (SELECT COUNT(*) FROM match_claims))"""
+  (SELECT COUNT(*) FROM match_claims),
+  (SELECT COUNT(*) FROM user_sessions),
+  (SELECT COUNT(*) FROM user_activity_logs))"""
 REFERENCE = """SELECT CONCAT_WS('|', area_code, area_name, area_type) FROM ph_areas ORDER BY 1;
 SELECT CONCAT_WS('|', city_code, area_code, city_name, is_city) FROM ph_cities ORDER BY 1;
 SELECT CONCAT_WS('|', colour_code, colour_name, sort_order) FROM pet_colours ORDER BY 1;
@@ -84,7 +87,8 @@ def files(folder):
                save('b-seed.sql', show('database/seed.sql')),
                save('c-008.sql', current('database/migrations/008_split_user_names.sql')),
                save('d-009.sql', current('database/migrations/009_report_reference_data.sql')),
-               save('g-010.sql', current('database/migrations/010_report_publication_workflow.sql'))]
+               save('g-010.sql', current('database/migrations/010_report_publication_workflow.sql')),
+               save('h-011.sql', current('database/migrations/011_session_activity_logging.sql'))]
     upgrade.append(upgrade[-1])
     fresh = [save('e-schema.sql', current('database/schema.sql')),
              save('f-seed.sql', current('database/seed.sql'))]
@@ -167,13 +171,14 @@ def compare(engine, run, dump, upgrade, fresh):
     # area_type is an ENUM, so GROUP_CONCAT orders it by its declared order.
     # Report 9 was removed by moderation: 010 makes it removed/active with its
     # removal in publication_logs, and no 'closed' case entry left for it.
-    expected = ('22 | 32 | 001,002,003,004,005,006,007,008,009,010 | province=82,ncr=1,special_area=1'
+    expected = ('24 | 35 | 001,002,003,004,005,006,007,008,009,010,011 | province=82,ncr=1,special_area=1'
                 ' | 1642 | 17 | 32 | 0 | 43697479206F66204C6173205069C3B16173'
                 ' | published/active=19,published/possible_match=6,published/returned=4,'
-                'published/closed=2,removed/active=1 | 9:10:published:removed | 0 | 4')
+                'published/closed=2,removed/active=1 | 9:10:published:removed | 0 | 4 | 0 | 0')
     check(f'{engine}: and they are the expected ones', facts['c3p_upgrade'] == expected,
           'tables | FKs | migrations | areas | cities | colours | listed breeds | uncoded places | Las Piñas'
-          ' | publication/case | publication log | report 9 closed entries | pairings')
+          ' | publication/case | publication log | report 9 closed entries | pairings'
+          ' | session records | activity rows (none invented)')
     structure = {db: normalise(dump(db)) for db in ('c3p_upgrade', 'c3p_fresh')}
     check(f'{engine}: the table structure is identical', structure['c3p_upgrade'] == structure['c3p_fresh']
           and 'CREATE TABLE' in structure['c3p_fresh'])

@@ -61,7 +61,7 @@ in `api/reports.php`).
 
 | What | After |
 | --- | --- |
-| Drafts | `report_drafts`, MySQL. Saved by Save draft (no auto-save). Private to the author — not coordinators, not administrators. Loose validation (types, lengths, real values); the final rules apply on Submit. Photos are not kept with a draft. Deleting one deletes it. |
+| Drafts | `report_drafts`, MySQL. Saved by Save draft (no auto-save). Private to the author — not coordinators, not administrators. Loose validation (types, lengths, real values); the final rules apply on Submit. Text and structured report data are saved; photos must be added again when the draft is resumed. Deleting one deletes it. |
 | Matching | Only published reports, both as subject and candidate (`matching_generate()` refuses otherwise, whoever calls it). Runs on approval and on an edit to a published Active report. |
 | Who sees an unpublished report | Its reporter, coordinators, administrators. Anybody else: 404, exactly as a missing report — by URL, in lists, in search, and when flagging. |
 | Lists | `GET /reports` returns published reports unless `publication=` is asked for and allowed: a coordinator or administrator any state; a member their own (`reporter_id` = them). |

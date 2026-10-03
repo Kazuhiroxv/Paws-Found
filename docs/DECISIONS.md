@@ -607,7 +607,9 @@ coordinator's, not an administrator's — and deleting one deletes it: it was
 never published, so there is nothing to keep. Save draft is manual; auto-save
 was not added, because manual saving meets the requirement with less to go
 wrong. Photographs are not kept with a draft: they are uploaded with the
-report, and the confirmation says so.
+report, and the confirmation says so. Described accurately, a saved draft is
+not "the whole form": **text and structured report data are saved; photos
+must be added again when the draft is resumed.**
 
 ### Removed is not Closed (Correction 4)
 
@@ -634,6 +636,76 @@ Hour, minutes and AM or PM as three choices, because a native time box shows
 AM/PM only in some locales. The API and the TIME column stay 24-hour, which is
 unambiguous; the browser converts (12:00 AM is 00:00, 12:00 PM is 12:00). Half
 a time is refused rather than guessed.
+
+### Five logs, not one (Correction 5)
+
+`user_sessions` (which session, from where), `user_activity_logs` (where a
+person went, what they did), `audit_logs` (security and administrative
+events), `status_logs` (a case), `publication_logs` (a review). They differ in
+who writes them, how fast they grow and who may read them; one table would be
+mostly empty columns and would bury the security events under page views.
+`audit_logs` keeps its job and its rows; nothing was migrated into it.
+
+### A session reference, not the session id (Correction 5)
+
+The PHP session id signs a browser in; storing it would turn the log into a
+list of keys. Each session gets its own random 32-hex `session_reference`,
+which only names it. Considered: a hash of the session id — rejected because
+`session_regenerate_id()` changes the id, and the reference must stay one
+value for the life of the session.
+
+### The server writes the actions; the browser only reports pages (Correction 5)
+
+An action is recorded by the endpoint that did it, after it succeeded, from a
+fixed list (`ACTIVITY_ACTIONS`). The browser has no way to name an action, so
+it cannot forge one. Page views are the one thing only the browser knows (it
+is a single-page app); for those it sends the path and nothing else, and the
+server adds who, which session, the IP and the time. Reads are not logged:
+"where they went" is the page view, and logging every API read behind a page
+would multiply each visit by its requests.
+
+### Last seen every five minutes, not every request (Correction 5)
+
+The page re-checks the session every ten seconds; a write per request would be
+a database write every ten seconds per open tab, for a value nobody reads to
+the second. Five minutes is precise enough to say "last used around …".
+
+### Trust X-Forwarded-For only from the proxy (Correction 5)
+
+On Railway, `REMOTE_ADDR` is Railway's edge for every visitor. The forwarded
+header is believed only when the connection comes from 100.0.0.0/8
+(`TRUSTED_PROXY_CIDRS`); on a laptop, from nobody. Which end of the header is
+the visitor is Railway's behaviour; it is checked after the deploy, not
+assumed (docs/security-activity-logging.md).
+
+### Suspension and lock end the session (Correction 5)
+
+Before, a suspended account's session was refused but kept, and worked again
+when the account was reinstated. The session record says it ended; so now it
+has. Reinstated or unlocked people sign in again — one more step, and the log
+tells the truth.
+
+### The sign-out race: queue the check, discard the stale answer (Correction 5)
+
+Considered: polling every second (rejected: load, and it only narrows the
+window), a lock that waits (rejected: a stale answer still lands). Chosen: a
+check asked for during another runs right after it (at most one extra), and a
+check that began before this tab signed in or out cannot apply its answer.
+Tested by holding the server's answer at the network, not by loading the CPU.
+
+### No forced re-consent (Correction 5)
+
+Consent is recorded per notice version at registration. Asking existing
+members to agree again at their next sign-in is not built; the notice no
+longer promises it, and the record shows which version each person agreed to.
+**Decision for the team:** build a "please review the updated notice" step, or
+accept the current position.
+
+### No automatic retention (Correction 5)
+
+Nothing deletes old sessions or activity. A scheduled purge needs a scheduler
+this deployment does not have, and the period is the team's (and the course's)
+decision. Suggested: activity 90 days, sessions one year, audit indefinitely.
 
 ## Features deliberately not built
 

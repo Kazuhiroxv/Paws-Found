@@ -124,6 +124,8 @@ L.push('-- audit_logs is ON DELETE SET NULL — the trail deliberately outlives 
 L.push('-- accounts it describes — so reseeding would otherwise leave every')
 L.push('-- previous run\'s sign-ins behind. Resetting the demonstration should')
 L.push('-- produce the same database every time, including an empty log.')
+L.push('DELETE FROM user_activity_logs;')
+L.push('DELETE FROM user_sessions;')
 L.push('DELETE FROM report_drafts;')
 L.push('DELETE FROM publication_logs;')
 L.push('DELETE FROM audit_logs;')

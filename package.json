@@ -30,6 +30,9 @@
     "test:migrations": "python scripts/migration_parity.py",
     "test:publication": "python scripts/publication_workflow.py",
     "test:workflow-ui": "node scripts/workflow_ui.mjs",
+    "test:sessions": "python scripts/session_activity.py",
+    "test:session-ui": "node scripts/session_ui.mjs",
+    "test:client-ip": "php scripts/client_ip.php",
     "verify:deploy": "python scripts/verify_deployment.py",
     "test:contract": "node --import ./scripts/alias-hook.mjs --test scripts/*.test.mjs"
   },
