@@ -72,7 +72,7 @@ export function createEmptyValues(reportType) {
     locationLabel: '',
     // Chosen from the PSGC lists by code; the names are kept beside them for
     // the review step (Correction 3).
-    provinceCode: '',
+    areaCode: '',
     province: '',
     cityCode: '',
     city: '',
@@ -116,8 +116,8 @@ export function valuesFromReport(report) {
     locationLabel: report.location.label,
     // A report filed before the place lists has no codes, so its place has
     // to be chosen again before it can be saved.
-    provinceCode: report.location.provinceCode ?? '',
-    province: report.location.provinceCode ? report.location.province : '',
+    areaCode: report.location.areaCode ?? '',
+    province: report.location.areaCode ? report.location.province : '',
     cityCode: report.location.cityCode ?? '',
     city: report.location.cityCode ? report.location.city : '',
     lat: report.location.lat,
@@ -244,7 +244,7 @@ export function validateStep(stepId, values) {
         ? 'Describe where you found the pet.'
         : 'Describe where your pet was last seen.'
     }
-    if (required(values.provinceCode)) errors.province = 'Choose the province.'
+    if (required(values.areaCode)) errors.province = 'Choose the province, or Metro Manila.'
     if (required(values.cityCode)) errors.city = 'Choose the city or municipality.'
 
     const problem = descriptionProblem(values.description)
@@ -292,7 +292,7 @@ export function toReportInput(values, reporterId) {
     incidentTime: values.incidentTime,
     location: {
       label: values.locationLabel.trim(),
-      provinceCode: values.provinceCode,
+      areaCode: values.areaCode,
       cityCode: values.cityCode,
       city: values.city,
       province: values.province,

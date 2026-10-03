@@ -277,7 +277,7 @@ calling the PHP API with `fetch`. Connecting the real backend must not require
 rewriting the UI — that is the whole reason this boundary exists.
 
 The database is built: `database/schema.sql` — **20 tables**, the 15 on the
-ERD, the three reference lists migration 009 added (`ph_provinces`,
+ERD, the three reference lists migration 009 added (`ph_areas`,
 `ph_cities`, `pet_colours`), plus `schema_migrations` and `auth_rate_limits`,
 with 26 foreign keys.
 Counted from

@@ -261,7 +261,7 @@ function report_update(int $id): never
                 r.has_collar, r.pet_condition AS `condition`,
                 r.incident_date, r.incident_time,
                 l.label AS location_label, l.city, l.province,
-                l.city_code, pc.province_code,
+                l.city_code, pc.area_code,
                 l.latitude AS lat, l.longitude AS lng,
                 r.allow_platform_contact, r.show_phone, r.show_email
            FROM pet_reports r
@@ -279,14 +279,14 @@ function report_update(int $id): never
     // Every field the edit form offers, and nothing else: anything else in the
     // body is ignored. Absent means "leave it as it is".
     //
-    // The place is chosen by code; the city and province names are written
+    // The place is chosen by code (area, then city); the names are written
     // from ph_cities, never taken from the request. show_phone is not here:
     // a phone number is never published (Correction 3), so there is nothing
     // to edit.
     $editable = [
         'pet_name', 'species', 'breed', 'size', 'sex', 'primary_color', 'secondary_color',
         'distinct_features', 'description', 'has_collar', 'condition',
-        'incident_date', 'incident_time', 'location_label', 'province_code', 'city_code',
+        'incident_date', 'incident_time', 'location_label', 'area_code', 'city_code',
         'lat', 'lng', 'allow_platform_contact', 'show_email',
     ];
     $sent = array_values(array_filter($editable, fn ($key) => array_key_exists($key, $body)));
@@ -336,7 +336,7 @@ function report_update(int $id): never
         }
     }
     // A new place is the code and both names, together.
-    if (in_array('province_code', $sent, true) || in_array('city_code', $sent, true)) {
+    if (in_array('area_code', $sent, true) || in_array('city_code', $sent, true)) {
         foreach (['city_code', 'city', 'province'] as $column) {
             $location[$column] = $v[$column];
         }
@@ -1186,12 +1186,12 @@ function report_validated(array $v, string $type, ?array $sent = null): array
         $errors['location_label'] = 'Describe the area.';
     }
 
-    // The place, chosen from ph_provinces and ph_cities by code. The names
+    // The place, chosen from ph_areas and ph_cities by code. The names
     // stored with the report are written from the reference rows, never taken
     // from the request.
     $place = ['city_code' => null, 'city' => $text('city'), 'province' => $text('province')];
-    if ($checking('province_code') || $checking('city_code')) {
-        $found = place_for($text('province_code'), $text('city_code'));
+    if ($checking('area_code') || $checking('city_code')) {
+        $found = place_for($text('area_code'), $text('city_code'));
         if (is_string($found['error'] ?? null)) {
             $errors[$found['field']] = $found['error'];
         } else {
@@ -1315,26 +1315,27 @@ function colour_name_for(string $value): ?string
 }
 
 /**
- * A city or municipality and its province, by PSGC code.
+ * A city or municipality and its area, by PSGC code. The area is a province,
+ * or Metro Manila (NCR), or BARMM's Special Geographic Area (ph_areas).
  *
  * Returns the code and both names, or ['field' => ..., 'error' => ...]. The
- * city must belong to the province: the form clears the city when the
- * province changes, and a request that pairs them wrongly is refused rather
+ * city must belong to the area: the form clears the city when the area
+ * changes, and a request that pairs them wrongly is refused rather
  * than corrected, because either half could be the mistake.
  */
-function place_for(string $provinceCode, string $cityCode): array
+function place_for(string $areaCode, string $cityCode): array
 {
-    if ($provinceCode === '') {
-        return ['field' => 'province_code', 'error' => 'Choose the province.'];
+    if ($areaCode === '') {
+        return ['field' => 'area_code', 'error' => 'Choose the province, or Metro Manila.'];
     }
     if ($cityCode === '') {
         return ['field' => 'city_code', 'error' => 'Choose the city or municipality.'];
     }
 
     $statement = db()->prepare(
-        'SELECT c.city_code, c.city_name, p.province_code, p.province_name
+        'SELECT c.city_code, c.city_name, p.area_code, p.area_name
            FROM ph_cities c
-           JOIN ph_provinces p ON p.province_code = c.province_code
+           JOIN ph_areas p ON p.area_code = c.area_code
           WHERE c.city_code = :city'
     );
     $statement->execute([':city' => $cityCode]);
@@ -1343,14 +1344,14 @@ function place_for(string $provinceCode, string $cityCode): array
     if (!$row) {
         return ['field' => 'city_code', 'error' => 'Choose a city or municipality from the list.'];
     }
-    if ($row['province_code'] !== $provinceCode) {
-        return ['field' => 'city_code', 'error' => 'That city or municipality is not in the province you chose.'];
+    if ($row['area_code'] !== $areaCode) {
+        return ['field' => 'city_code', 'error' => 'That city or municipality is not in the province or area you chose.'];
     }
 
     return [
         'city_code' => $row['city_code'],
         'city' => $row['city_name'],
-        'province' => $row['province_name'],
+        'province' => $row['area_name'],
     ];
 }
 
@@ -1498,9 +1499,9 @@ function reports_list(): never
 
     // The place lists on Explore (Correction 3): by PSGC code, so "City of
     // Makati" and a report that says "Makati City" are the same place.
-    if (($provinceCode = query_string_param('province_code')) !== null) {
-        $where[] = 'pc.province_code = :province_code';
-        $params[':province_code'] = $provinceCode;
+    if (($areaCode = query_string_param('area_code')) !== null) {
+        $where[] = 'pc.area_code = :area_code';
+        $params[':area_code'] = $areaCode;
     }
 
     if (($cityCode = query_string_param('city_code')) !== null) {
@@ -1609,7 +1610,7 @@ function reports_list(): never
                    c.category_code AS species, c.category_name AS species_label,
                    b.breed_name AS breed,
                    l.label AS location_label, l.city, l.province, l.latitude, l.longitude,
-                   l.city_code, pc.province_code,
+                   l.city_code, pc.area_code,
                    (SELECT i.image_path FROM report_images i
                      WHERE i.report_id = r.report_id
                      ORDER BY i.is_primary_photo DESC, i.image_id ASC
@@ -1655,7 +1656,7 @@ function report_detail(int $id): never
         'SELECT r.*, c.category_code AS species, c.category_name AS species_label,
                 b.breed_name AS breed,
                 l.label AS location_label, l.city, l.province,
-                l.city_code, pc.province_code,
+                l.city_code, pc.area_code,
                 l.latitude, l.longitude, l.`precision` AS location_precision,
                 u.user_id AS reporter_id, u.full_name AS reporter_name,
                 u.email AS reporter_email
@@ -1869,7 +1870,7 @@ function shape_report_row(array $row): array
             // The PSGC codes the form chose (migration 009). Null for a report
             // filed before then whose place could not be identified.
             'city_code' => $row['city_code'] ?? null,
-            'province_code' => $row['province_code'] ?? null,
+            'area_code' => $row['area_code'] ?? null,
             // Approximate for everybody. report_detail() puts the stored pin
             // back for the reporter and staff, who already know it.
             'lat' => public_coordinate($row['latitude']),

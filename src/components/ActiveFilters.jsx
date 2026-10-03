@@ -18,7 +18,9 @@ const DESCRIBERS = {
   species: (value) => `Species: ${speciesLabel(value)}`,
   size: (value) => `Size: ${PET_SIZE_LABELS[value]}`,
   color: (value) => `Colour: ${value}`,
-  provinceCode: (value, name) => `Province: ${name ?? '…'}`,
+  // The wording arrives with the name ("Province: Cebu", or just "Metro
+  // Manila"), because Metro Manila is not a province.
+  areaCode: (value, name) => name ?? '…',
   cityCode: (value, name) => `City: ${name ?? '…'}`,
   city: (value) => `City: ${value}`,
   status: (value) => `Status: ${REPORT_STATUS_LABELS[value]}`,
@@ -36,7 +38,7 @@ const DESCRIBERS = {
  * @param {Object} props
  * @param {Object} props.filters
  * @param {Record<string, string|undefined>} [props.names]  The names behind
- *   filters held as codes (province and city), for the chip to say.
+ *   filters held as codes (area and city), for the chip to say.
  * @param {(field: string) => void} props.onRemove
  */
 export function ActiveFilters({ filters, names = {}, onRemove }) {

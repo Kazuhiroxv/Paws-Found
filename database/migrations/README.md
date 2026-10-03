@@ -19,9 +19,23 @@ column, and it never drops the data that is already there.
     007_match_fk_mysql8.sql   let match_claims import on MySQL 8, not only MariaDB
     008_split_user_names.sql  first and last name; full_name becomes generated.
                             Ships WITH the code that uses it — see the file.
-    009_report_reference_data.sql  provinces and cities (PSA PSGC), the colour
-                            list, listed breeds, locations.city_code, size XL.
+    009_report_reference_data.sql  areas and cities (PSA PSGC, as of 30 June
+                            2026), the colour list, listed breeds,
+                            locations.city_code, size XL.
                             AFTER 008, WITH the code — see the file.
+
+**009 was revised once before it was ever deployed (Correction 3A).** The
+version in commit `31bbcab` used PSA's July 2025 file and a `ph_provinces`
+table that wrongly held Metro Manila. It was never pushed and never run on
+Railway; only this laptop's database and throwaway test containers had it.
+Revising it, rather than adding a 010, keeps the production deploy to one
+migration with current data. A database that ran the superseded version must
+be rebuilt — drop `ph_cities`, `ph_provinces` and `pet_colours`, restore the
+pre-009 backup, run 009 — because the new file cannot be laid over the old.
+
+`npm run test:migrations` builds the production path (2947a43 schema and seed
+→ 008 → 009 → 009) and a fresh install on MySQL 9.4 and MariaDB, and requires
+them to be identical.
 
 Deploying 008 and 009 (Correction 3), in one sitting: back up, preview 008
 (query in the file), run 008, preview 009 (queries in the file), run 009, push

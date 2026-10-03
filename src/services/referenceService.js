@@ -43,15 +43,19 @@ export function getBreeds(species) {
   }))
 }
 
-/** Every province, plus Metro Manila, as `{ code, name }`. */
-export function getProvinces() {
-  return once('/reference/provinces', (row) => ({ code: row.code, name: row.name }))
+/**
+ * The 84 areas the form's first list offers, as `{ code, name, type }`:
+ * PSA's 82 provinces (`type: 'province'`), Metro Manila (`'ncr'` — a region,
+ * not a province) and BARMM's Special Geographic Area (`'special_area'`).
+ */
+export function getAreas() {
+  return once('/reference/areas', (row) => ({ code: row.code, name: row.name, type: row.type }))
 }
 
-/** The cities and municipalities of one province, as `{ code, name, isCity }`. */
-export function getCities(provinceCode) {
-  if (!provinceCode) return Promise.resolve([])
-  return once(`/reference/cities?province=${encodeURIComponent(provinceCode)}`, (row) => ({
+/** The cities and municipalities of one area, as `{ code, name, isCity }`. */
+export function getCities(areaCode) {
+  if (!areaCode) return Promise.resolve([])
+  return once(`/reference/cities?area=${encodeURIComponent(areaCode)}`, (row) => ({
     code: row.code,
     name: row.name,
     isCity: row.is_city,

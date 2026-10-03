@@ -23,7 +23,7 @@ const EMPTY_FILTERS = {
   size: '',
   color: '',
   // The place lists (Correction 3), by PSGC code.
-  provinceCode: '',
+  areaCode: '',
   cityCode: '',
   // A city named in a link (?city=Makati); there is no box for it any more.
   city: '',
@@ -44,7 +44,17 @@ const MAP_RESULT_LIMIT = 50
 
 const loadActiveCategories = () => categoryService.getActiveCategories()
 const loadColours = () => referenceService.getColours()
-const loadProvinces = () => referenceService.getProvinces()
+const loadAreas = () => referenceService.getAreas()
+
+/**
+ * What the place chip says: "Province: Cebu" for one of PSA's provinces, and
+ * the name alone for Metro Manila or the Special Geographic Area, which are
+ * not provinces (Correction 3A).
+ */
+function chipForArea(area) {
+  if (!area) return undefined
+  return area.type === 'province' ? `Province: ${area.name}` : area.name
+}
 
 /**
  * The search placeholder, sized to the field. Below 640px (`sm`) the input sits
@@ -152,20 +162,20 @@ export function ExplorePage({ role }) {
 
   // The colour and place lists come from the database, like the report form's.
   const { data: colours } = useAsync(loadColours)
-  const { data: provinces } = useAsync(loadProvinces)
+  const { data: areas } = useAsync(loadAreas)
   const loadCities = useCallback(
-    () => referenceService.getCities(filters.provinceCode),
-    [filters.provinceCode],
+    () => referenceService.getCities(filters.areaCode),
+    [filters.areaCode],
   )
   const { data: cities } = useAsync(loadCities)
   const listOptions = {
     colourOptions: (colours ?? []).map((colour) => ({ value: colour.name, label: colour.name })),
-    provinceOptions: (provinces ?? []).map((province) => ({ value: province.code, label: province.name })),
+    areaOptions: (areas ?? []).map((area) => ({ value: area.code, label: area.name })),
     cityOptions: (cities ?? []).map((city) => ({ value: city.code, label: city.name })),
   }
   // What the place chips say: a name, never a code.
   const placeNames = {
-    provinceCode: provinces?.find((province) => province.code === filters.provinceCode)?.name,
+    areaCode: chipForArea(areas?.find((area) => area.code === filters.areaCode)),
     cityCode: cities?.find((city) => city.code === filters.cityCode)?.name,
   }
 
@@ -176,10 +186,10 @@ export function ExplorePage({ role }) {
   const hasActiveFilters = activeFilterCount > 0
 
   const changeFilter = (field, value) => {
-    // A city belongs to one province, so a new (or no) province clears it.
+    // A city belongs to one area, so a new (or no) area clears it.
     setFilters((current) =>
-      field === 'provinceCode'
-        ? { ...current, provinceCode: value, cityCode: '' }
+      field === 'areaCode'
+        ? { ...current, areaCode: value, cityCode: '' }
         : { ...current, [field]: value },
     )
     setPage(1) // A new filter means a new result set: start again.

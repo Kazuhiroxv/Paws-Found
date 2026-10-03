@@ -71,8 +71,10 @@ GET    /api/categories           active species
 
 GET    /api/reference/colours                   the colour list, {code, name}
 GET    /api/reference/breeds?species=dog        that species' listed breeds
-GET    /api/reference/provinces                 84: PSGC provinces + Metro Manila
-GET    /api/reference/cities?province=<code>    that province's cities and municipalities
+GET    /api/reference/areas                     84 areas {code, name, type}: 82 PSA provinces
+                                                (type province), Metro Manila (ncr),
+                                                BARMM's Special Geographic Area (special_area)
+GET    /api/reference/cities?area=<code>        that area's cities and municipalities
 
 GET    /api/moderation           the flag queue, with the report and both
                                  people attached          (administrators)
@@ -89,17 +91,18 @@ filed it; `suspend` additionally sets `account_status`. All of it runs in one
 transaction, and a case that has already been decided answers `409`.
 
 `GET /api/reports` accepts `q`, `type`, `status`, `species`, `size`, `city`,
-`province_code`, `city_code`, `colour`, `date_from`, `date_to`, `sort`
+`area_code`, `city_code`, `colour`, `date_from`, `date_to`, `sort`
 (`newest` | `oldest` | `updated`), `page` and `per_page`. It answers with
 `data` and a `meta` block carrying `page`, `per_page`, `total` and
 `total_pages`. `size` includes `xl`. A `colour` that is on the list matches
 exactly; anything else is the old substring search. Each row's `location`
-carries `city_code` and `province_code` (null for an old report whose place
-could not be identified).
+carries `city_code` and `area_code` (null for an old report whose place
+could not be identified). `location.province` is the column's old name: it
+holds the area's name, which for NCR is "Metro Manila" — not a province.
 
 **Filing and editing a report (Correction 3).** The place is sent as
-`province_code` and `city_code` (PSGC); the server checks the city is in the
-province and writes `city` and `province` itself — text sent under those names
+`area_code` and `city_code` (PSGC); the server checks the city is in the
+area and writes `city` and `province` itself — text sent under those names
 is ignored. `primary_color` / `secondary_color` must be listed colours (code or
 name, any case). `pet_name` on a lost report needs two letters or digits;
 `description` thirty characters; `lat`/`lng` must be inside the Philippines.

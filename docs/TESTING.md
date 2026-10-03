@@ -588,10 +588,10 @@ breed" and "Other" never count as agreement; XL matches XL; two reports
 without pins compare the city code when both have one. **If a demonstration
 score moves, stop and explain — do not edit the number.**
 
-**`npm run test:controls` — 53 checks** (`scripts/report_controls.py`, local
+**`npm run test:controls` — 62 checks** (`scripts/report_controls.py`, local
 only, reseeds). Through the API: `BR` breeds (listed per species; a typed
 breed stored but unlisted; another case reuses the listed row), `CO` colours,
-`PH` provinces and cities (dependent; a city outside its province refused;
+`PH` areas and cities (dependent; a city outside its area refused;
 names written by the server; Explore filters), `RS` XL, `RN/RD/RT-API`,
 `CONTACT` (a crafted `show_phone` is ignored; no report detail carries the
 number, even with `show_phone = 1` in the database; coordinators still see the
@@ -600,7 +600,7 @@ refused; Kalayaan, Batanes, Tawi-Tawi, the Turtle Islands, Mangsee and
 Sitangkai accepted), `MG` (009 recorded, 84/1642/17 rows, every seeded place
 coded, ñ stored as UTF-8).
 
-**`npm run test:report-ui` — 45 checks** (`scripts/report_ui.mjs`). The form
+**`npm run test:report-ui` — 47 checks** (`scripts/report_ui.mjs`). The form
 in Chrome at 820 px and as an iPhone 13 at 390 px with touch: the map opens on
 Batanes-to-Tawi-Tawi, a tap places a pin without touching province or city, a
 point outside is refused in words; photo rules stated, "2 of 5 photos added",
@@ -610,8 +610,32 @@ ten seeded report pages; Explore's XL, colour and place filters. Files one
 report; reseed afterwards.
 
 **`npm run check:psgc`.** The place CSVs and the two generated SQL blocks
-(`schema.sql`, `009`) are in step, and the counts are PSA's (84 entries, 149
-cities, 1,493 municipalities).
+(`schema.sql`, `009`) are in step, and the counts are PSA's: 82 areas of type
+province, plus Metro Manila (`ncr`) and the Special Geographic Area
+(`special_area`); 149 cities; 1,493 municipalities. Given PSA's workbook too
+(`python scripts/psgc_reference.py check <xlsx>`), it re-extracts it and
+requires the CSVs to be exactly what it gives.
+
+**Correction 3A — `PSGC1`–`PSGC10`.** In `test:controls`: `PSGC1` 82 areas are
+provinces; `PSGC2` 149 cities; `PSGC3` 1,493 municipalities; `PSGC4` the area
+list is 82 + Metro Manila + the SGA = 84, each typed; `PSGC5` NCR is typed
+`ncr` in the database and the API (and in `test:report-ui`, `PSGC5-UI`: the
+form's label is "Province or Metro Manila", and `EX-2`: Explore's chip says
+"Metro Manila", never "Province: Metro Manila"); `PSGC6` all 1,642 places are
+reachable through their area, once each; `PSGC7` the 32 seeded reports resolve
+to a city and an area; `PSGC8` "City of Las Piñas" is UTF-8 in MySQL and
+through the API; `PSGC10` the 30 June 2026 names (Sawata, Don Victoriano,
+Sanchez Mira, Tagoloan II). `PSGC9` is its own suite:
+
+**`npm run test:migrations` — 23 checks** (`scripts/migration_parity.py`).
+On MySQL 9.4 in strict mode (Docker) and on XAMPP's MariaDB (scratch databases,
+never `pawsandfound`), it builds production's path — the `2947a43` schema and
+seed, then 008, then 009, then 009 again — and a fresh `schema.sql` +
+`seed.sql`, and requires them to match: every file imports without an error,
+the counts (20 tables, 26 keys, migrations 001–009, 82/1/1 areas, 1,642
+places, 17 colours, 32 listed breeds, no uncoded place, ñ as UTF-8), the table
+structure and every reference row. The two engines must also hold the same
+rows. Never touches Railway.
 
 The existing suites changed with the rules they test: `audit` 382 → 384
 (`XSS-00`: markup in a pet name is now refused, so the stored-and-escaped
@@ -625,9 +649,8 @@ other report is.
 
 ## 3. Last verified results
 
-2 October 2026, on the development laptop unless stated, on branch
-`post-defense/revisions`. `test:mail` and the clean-build Docker line are from
-27 September (nothing they cover has changed).
+3 October 2026 (Correction 3A), on the development laptop unless stated, on
+branch `post-defense/revisions`.
 
 ```
 lint                                     clean
@@ -636,10 +659,11 @@ test:contract                            45/45
 test:identity                            41/41
 test:report-rules                        50/50
 test:scores                              11/11
-test:controls                            53/53
-test:report-ui                           45/45   (820 px, and 390 px with touch)
+test:controls                            62/62
+test:report-ui                           47/47   (820 px, and 390 px with touch)
+test:migrations                          23/23   (MySQL 9.4 strict + MariaDB; upgrade = fresh)
 test:feedback                            49/49
-check:psgc                               ok, 84 / 1,642, SQL in step
+check:psgc                               ok vs PSA's 30 June 2026 workbook: 82 provinces + NCR + SGA, 1,642 places
 check:bundle                             0 of 91 mock markers in dist/
 test:calendar                             8/8
 test:mail                                15/15
@@ -651,9 +675,9 @@ test:ui                                  66/66
 test:city                                11/11
 test:matching-log                         6/6
 a11y                                     31 pages, 0 violations
-docker build --pull --no-cache           clean, one MPM, Syntax OK  (2 October, Correction 3)
+docker build --pull --no-cache           clean, one MPM, Syntax OK  (3 October, Correction 3A)
 verify:deploy vs production              25/25 + 3 skipped (read-only default; production untouched since)
-verify:deploy vs local production image 24/25 + 3 skipped  (7.1, correctly, on plain HTTP; image on MySQL 9.4, fresh schema + seed)
+verify:deploy vs local production image 24/25 + 3 skipped  (7.1, correctly, on plain HTTP; image on MySQL 9.4, fresh schema + seed; 3 October)
 verify:deploy --upload, local only       24/27   (7.1 as above; 5.1-5.2 409 — the verifier picks report 1, which the seed has as Possible Match; register D2)
 2947a43 schema + seed -> 008 -> 009 -> 009, MySQL 9.4 strict and MariaDB   clean, idempotent
 migrated vs fresh schema.sql + seed.sql   identical structure (20 tables, 26 FKs) and reference data, on both engines

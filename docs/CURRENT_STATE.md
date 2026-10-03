@@ -176,8 +176,10 @@ an XL size, presentation flow, and a date filter that exists but was not found).
 | 10 | Breed / colour / city / province: suggested values | **Done in Correction 3** |
 | others | | Not started — the register in `docs/feedback/` is the list (Reset: awaiting clarification) |
 
-**Correction 3.** Province and city are chosen from PSA's PSGC (84 / 1,642,
-in `ph_provinces` / `ph_cities`), the city list depending on the province;
+**Correction 3.** The place is chosen from PSA's PSGC — an *area* (one of
+PSA's 82 provinces, or Metro Manila, or BARMM's Special Geographic Area: 84 in
+`ph_areas`, each typed), then a city or municipality (1,642 in `ph_cities`)
+depending on it;
 `locations.city_code` records which place, and the names the report shows are
 written by the server. Breed is chosen from the species' listed breeds
 (`pet_breeds.is_listed`; a typed breed is kept, never suggested), colour from
@@ -189,8 +191,20 @@ A phone number is never published (the API ignores `show_phone`); coordinators
 still see it. Photo rules are stated and counted. Matching weights and the
 four demonstration scores are unchanged. Field-by-field before/after:
 `docs/feedback/correction-3-field-audit.md`; reasons: `docs/DECISIONS.md`;
-the place data's provenance and **what is still unverified**:
-`database/reference/README.md`.
+the place data's provenance: `database/reference/README.md`.
+
+**Correction 3A** (before anything was deployed). Correction 3 called its 84
+place entries "provinces" and used PSA's July 2025 file from a public copy.
+PSA has **82** provinces and NCR has none: the 84 are 82 provinces plus two
+application groupings. Now the table is `ph_areas` with `area_type`
+(`province` 82 / `ncr` 1 / `special_area` 1), the API is `/reference/areas`
+and takes `area_code`, the form says "Province or Metro Manila", and the data
+is PSA's own **30 June 2026** file, downloaded by Kyle (4 municipality names
+changed; San Isidro, Davao del Norte is now Sawata). Migration 009 was revised
+in place — it had never left this laptop — and `npm run test:migrations` now
+proves upgrade = fresh install on MySQL 9.4 and MariaDB. **The contact-number
+item (register N1) is IMPLEMENTED, AWAITING INSTRUCTOR-INTENT CONFIRMATION:**
+the current behaviour is not a confirmed requirement.
 
 **Deploying Corrections 2 and 3 — the database goes first, both migrations,
 in the same sitting.** New code reads `ph_cities` and `pet_colours` and writes
@@ -316,7 +330,8 @@ npm run test:contract                                         # 45
 C:\xampp\php\php.exe scripts/identity_rules.php              # 41
 C:\xampp\php\php.exe scripts/report_rules.php                # 50
 C:\xampp\php\php.exe scripts/match_scores.php                # 11
-python scripts/report_controls.py                             # 53  (reseeds)
+python scripts/report_controls.py                             # 62  (reseeds)
+python scripts/migration_parity.py                            # 23  (needs Docker; scratch databases only)
 python scripts/psgc_reference.py check                        # place data and SQL in step
 PAWS_PW=<seeded password> npm run audit                       # 384  (reseeds, restores)
 PAWS_PW=<seeded password> python scripts/auth_lifecycle.py    # 106
@@ -324,15 +339,16 @@ PAWS_PW=<seeded password> npm run multi-device                # 73
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:ui       # 66
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:signout  # 24
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:feedback # 49
-PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:report-ui # 45
+PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:report-ui # 47
 PAWS_BASE=http://localhost:5173 npm run a11y                      # 31 pages
 C:\xampp\php\php.exe scripts/city_fallback.php                # 11
 C:\xampp\php\php.exe scripts/calendar_today.php               # 8
 C:\xampp\php\php.exe scripts/matching_log.php                 # 6
 ```
 
-**972 checks in total, in fifteen suites** on `post-defense/revisions` (802
-in eleven after Correction 2; 689 in production).
+**1,006 checks in total, in sixteen suites** on `post-defense/revisions` (972
+in fifteen after Correction 3; 802 in eleven after Correction 2; 689 in
+production).
 Reseed after the browser suites; they change data.
 
 After `npm run build`, also run `npm run check:bundle`: it fails if any of the
@@ -402,10 +418,13 @@ Rolling back and operating the live site: [PRODUCTION_RUNBOOK.md](PRODUCTION_RUN
 - **The ERD figure still shows `full_name` and lacks the three 009 tables.**
   `docs/erd-defense.md` describes them in text; the figure is redrawn once, in
   the final ERD pass.
-- **The PSGC file is not yet compared with PSA's own download**, and newer
-  quarterly publications could not be reached — `database/reference/README.md`.
-- **Contact number (register N1) — meaning to confirm with Ma'am.** Built as
-  "never published"; the transcript may mean a number should be collected.
+- **The place data is PSA's 30 June 2026 file.** PSA publishes quarterly;
+  re-check before the final submission whether a newer release exists
+  (`database/reference/README.md` says how to refresh it).
+- **Contact number (register N1) — IMPLEMENTED, AWAITING INSTRUCTOR-INTENT
+  CONFIRMATION.** Built as "never published, coordinators see it". Ma'am may
+  have meant: collected, required, shown publicly, or simply a clear way to
+  reach the reporter. Do not present the current behaviour as her requirement.
 - **Instructor corrections in progress** — see §4a.
 - **An intermittent sign-out race** — see §4a. Not fixed.
 - **The printed defense packet** from the morning of 30 September says 590

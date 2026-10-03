@@ -1,8 +1,9 @@
-# Reference data: Philippine provinces and cities
+# Reference data: Philippine places
 
-`ph-provinces.csv` and `ph-cities.csv` are the place lists the report form and
-Explore choose from (Correction 3). Migration `009` and `schema.sql` load them;
-`scripts/psgc_reference.py` made them and keeps the two SQL copies in step.
+`ph-areas.csv` and `ph-cities.csv` are the place lists the report form and
+Explore choose from. Migration `009` and `schema.sql` load them;
+`scripts/psgc_reference.py` made them from PSA's file and keeps the two SQL
+copies in step (`npm run check:psgc`).
 
 ## Source
 
@@ -10,68 +11,88 @@ Explore choose from (Correction 3). Migration `009` and `schema.sql` load them;
 | --- | --- |
 | Publisher | Philippine Statistics Authority (PSA) |
 | Dataset | Philippine Standard Geographic Code (PSGC), *Publication Datafile* (Excel) |
-| Publication date | **31 July 2025** (the file's own Metadata sheet) |
-| File used | `Publication-Datafile.xlsx`, SHA-256 `47864f8be595fdeae44f81fa481403b785488861ba2fe81e91ac8d15b3e6f30e` |
-| Obtained from | a copy in the public GitHub repository `jeffreybernadas/psgc-api`, `src/data/july-2025/` (committed 1 October 2025) |
-| Retrieved | 2 October 2026 |
+| Edition | **as of 30 June 2026** — the Second Quarter 2026 release, published 13 July 2026 |
+| File | `PSGC-2Q-2026-Publication-Datafile.xlsx`, SHA-256 `31892bc2bdde3ea0682562d9412b5bab4d45a0be5e5a5b4f6c9d7714b94bca5d` |
+| Obtained | downloaded from psa.gov.ph by Kyle in a browser, 2 October 2026 |
 
-### Why a copy, and what was checked
+PSA's site puts automated requests behind a human check, which was not
+bypassed; the file was downloaded by a person. It is PSA's own workbook: its
+Metadata sheet names PSA as originator and "30 June 2026" as the publication
+date, and it was last saved by PSA on 13 July 2026.
 
-**PSA's own download page could not be reached by a script.** `psa.gov.ph` sits
-behind a Cloudflare "verify you are human" check, which returns 403 to a
-program and a challenge page to a browser. It was **not** bypassed. So the file
-was taken from a public copy, and its integrity was checked in the ways that
-did not need PSA's site:
+To check that these CSVs are exactly what that file gives:
 
-- **It is PSA's file, not a re-export.** It has PSA's six sheets (Metadata,
-  National Summary, Prov Sum, PSGC, Notes, Coding Structure), PSA's metadata
-  ("Originator: Philippine Statistics Authority (PSA)", "Publication date: 31
-  July 2025") and PSA's notes.
-- **It agrees with itself.** Its National Summary states 82 provinces, 149
-  cities, 1,493 municipalities and 42,011 barangays; counting the PSGC sheet
-  row by row gives exactly those numbers.
-- **It agrees with a second, independent derivation.** The npm package
-  `@jobuntux/psgc` (2025-2Q data, built by another person from PSA's file)
-  gives the same 82 / 149 / 1,493 / 42,011.
+    python scripts/psgc_reference.py check <path to PSGC-2Q-2026-Publication-Datafile.xlsx>
 
-### What is NOT verified — for Kyle
+*(Correction 3 first used the July 2025 file, from a public GitHub copy. It was
+replaced by this one in Correction 3A, before anything was deployed.)*
 
-1. **The file has not been compared with PSA's own download.** Download the
-   July 2025 Publication Datafile from psa.gov.ph by hand (a person passes the
-   check), then compare its SHA-256 with the one above. If it differs, run
-   `python scripts/psgc_reference.py extract <file>` and `... sql`, then
-   `npm run check:psgc`, and review the diff.
-2. **It may not be the latest publication.** PSA updates the PSGC every
-   quarter; publications after July 2025 could not be reached. Any province,
-   city or municipality created, renamed or converted since then is **not** in
-   these lists. Updating is the same two commands with the newer file, shipped
-   as a new migration (never by editing `009`).
+## Official PSA facts — as of 30 June 2026
+
+From the file's National Summary, and matched row by row against its PSGC
+sheet:
+
+| | |
+| --- | ---: |
+| Regions | 18 |
+| **Provinces** | **82** |
+| Cities | 149 |
+| Municipalities | 1,493 |
+| Cities + municipalities | 1,642 |
+| Barangays | 42,010 |
+| National Capital Region | **0 provinces**, 16 cities, 1 municipality (Pateros) |
+
+These rows keep every one of those facts: the 82 provinces, 149 cities and
+1,493 municipalities are PSA's, with PSA's codes and names.
+
+### What changed since the July 2025 file (relevant to the form)
+
+Four municipality names; no code, province, city or class changed:
+
+| PSGC code | July 2025 | 30 June 2026 |
+| --- | --- | --- |
+| `1102324000` | San Isidro (Davao del Norte) | **Sawata** — renamed |
+| `1004217000` | Don Victoriano Chiongbian | Don Victoriano — corrected |
+| `0201522000` | Sanchez-Mira | Sanchez Mira — corrected |
+| `1903638000` | Tagoloan Ii | Tagoloan II — corrected |
+
+The other changes in the period were to barangays (one merged in Calaca,
+Batangas; several names corrected). Barangays are not stored.
+
+## Application-specific grouping — not a PSA fact
+
+The form's first list needs something to put every city and municipality
+under. 25 of them have no province: NCR's 16 cities and Pateros, and the 8
+municipalities of BARMM's Special Geographic Area. So the first list is of
+**areas**, and each says what it is:
+
+| `area_type` | Rows | What it is |
+| --- | ---: | --- |
+| `province` | 82 | PSA's provinces, as PSA names and codes them |
+| `ncr` | 1 | **Metro Manila** — the National Capital Region, a *region*, under PSA's region code `1300000000` |
+| `special_area` | 1 | **Special Geographic Area (BARMM)**, under PSA's code `1999900000` |
+
+**84 areas — never "84 provinces."** The table is `ph_areas`, the API is
+`/api/reference/areas`, and the form calls the list "Province or Metro Manila"
+and explains the Special Geographic Area beside it.
+
+Two placements are the application's, documented in
+`scripts/psgc_reference.py`:
+
+- a **highly urbanized city** (Cebu City, Davao City, Baguio, …), which PSA codes
+  as independent of any province, is listed under the province it is inside,
+  read from PSA's Correspondence Code ("City of Cebu" 072217000 → Cebu);
+- the **City of Isabela** is listed under Basilan, per PSA's note 2.
 
 ## What was done to PSA's rows
 
-Recorded in full at the top of `scripts/psgc_reference.py`; in short:
+- Kept: Geographic Level `Prov`, `City`, `Mun`. Left out: regions, barangays,
+  and Manila's 14 sub-municipalities (districts of the City of Manila, PSA's
+  note 1).
+- Names: PSA's, with surrounding and repeated spaces removed. Nothing else.
+- Codes: PSA's 10-digit PSGC, unchanged.
+- `ph-cities.csv` has a `rule` column naming how each place got its area
+  (`code` 1,599 · `correspondence` 17 · `ncr` 17 · `sga` 8 · `psa-note-isabela` 1).
 
-- Kept: rows at Geographic Level `Prov`, `City`, `Mun`. Left out: regions,
-  42,011 barangays (a barangay is not asked for; the reporter's own words
-  describe the spot), and Manila's 14 sub-municipalities (Binondo, Tondo, …),
-  which PSA's note 1 says are districts of the City of Manila, not
-  municipalities.
-- Names: PSA's, with surrounding and repeated spaces removed. Nothing else is
-  changed — "City of Cebu", "City of Cagayan De Oro" and "Pasay City" are
-  written as PSA writes them.
-- Codes: PSA's 10-digit PSGC, unchanged. They are the stable identifiers.
-- Each city or municipality is filed under one province (the `rule` column):
-
-| Rule | Rows | Meaning |
-| --- | ---: | --- |
-| `code` | 1,599 | its own code names its province |
-| `correspondence` | 17 | a highly urbanized city, which PSA codes as independent of any province; filed under the province it is in, read from PSA's Correspondence Code (the pre-2023 9-digit code, whose first four digits name that province). "City of Cebu" 072217000 → Cebu |
-| `ncr` | 17 | the 16 cities and Pateros of the National Capital Region, a region with no provinces; filed under one entry, **Metro Manila**, with PSA's NCR code `1300000000` |
-| `sga` | 8 | the municipalities of the Special Geographic Area of BARMM, under one entry with PSA's own code for it, `1999900000` |
-| `psa-note-isabela` | 1 | the City of Isabela, under Basilan, per PSA's note 2 ("geographically located within the island province of Basilan") |
-
-That makes 84 entries in the province list (82 provinces, Metro Manila, and the
-Special Geographic Area) and 1,642 cities and municipalities.
-
-The `#` first line of each CSV repeats the publication date and SHA-256, so
-the provenance travels with the data.
+The `#` first line of each CSV repeats the edition and SHA-256, so the
+provenance travels with the data.

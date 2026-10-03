@@ -40,7 +40,7 @@ function foundValues(overrides = {}) {
     incidentDate: '2026-09-20',
     incidentTime: '14:30',
     locationLabel: 'Near the covered court',
-    provinceCode: '1300000000',
+    areaCode: '1300000000',
     province: 'Metro Manila',
     cityCode: '1381100000',
     city: 'Pasay City',
@@ -68,7 +68,7 @@ function reportFromApi(hasCollar) {
     hasCollar,
     location: {
       label: 'Near the covered court', city: 'Pasay City', province: 'Metro Manila',
-      cityCode: '1381100000', provinceCode: '1300000000', lat: null, lng: null,
+      cityCode: '1381100000', areaCode: '1300000000', lat: null, lng: null,
     },
     photos: [],
     contactPreferences: { allowPlatformContact: true, showEmail: false },
@@ -246,14 +246,14 @@ test('no phone preference exists to send or to reopen (Correction 3)', () => {
 
 test('the place is sent by PSGC code and survives an edit untouched (Correction 3)', () => {
   const input = toReportInput(foundValues(), '1')
-  assert.equal(input.location.provinceCode, '1300000000')
+  assert.equal(input.location.areaCode, '1300000000')
   assert.equal(input.location.cityCode, '1381100000')
 
   const reopened = valuesFromReport(reportFromApi('yes'))
-  assert.equal(reopened.provinceCode, '1300000000')
+  assert.equal(reopened.areaCode, '1300000000')
   assert.equal(reopened.cityCode, '1381100000')
   const resaved = toReportInput(reopened, '1')
-  assert.deepEqual([resaved.location.provinceCode, resaved.location.cityCode], ['1300000000', '1381100000'])
+  assert.deepEqual([resaved.location.areaCode, resaved.location.cityCode], ['1300000000', '1381100000'])
 })
 
 test('a report filed before the place lists reopens with the place to be chosen', () => {
@@ -261,7 +261,7 @@ test('a report filed before the place lists reopens with the place to be chosen'
   const legacy = reportFromApi('yes')
   legacy.location = { label: 'x', city: 'Makati City', province: 'Metro Manila', lat: null, lng: null }
   const reopened = valuesFromReport(legacy)
-  assert.deepEqual([reopened.provinceCode, reopened.cityCode, reopened.city], ['', '', ''])
+  assert.deepEqual([reopened.areaCode, reopened.cityCode, reopened.city], ['', '', ''])
 })
 
 test('the email preference is read the same way, not inferred either', () => {

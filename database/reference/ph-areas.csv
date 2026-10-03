@@ -1,0 +1,86 @@
+# PSA PSGC Publication Datafile, as of 30 June 2026; sha256 31892bc2bdde3ea0682562d9412b5bab4d45a0be5e5a5b4f6c9d7714b94bca5d
+area_code,area_name,area_type
+1400100000,Abra,province
+1600200000,Agusan del Norte,province
+1600300000,Agusan del Sur,province
+0600400000,Aklan,province
+0500500000,Albay,province
+0600600000,Antique,province
+1408100000,Apayao,province
+0307700000,Aurora,province
+1900700000,Basilan,province
+0300800000,Bataan,province
+0200900000,Batanes,province
+0401000000,Batangas,province
+1401100000,Benguet,province
+0807800000,Biliran,province
+0701200000,Bohol,province
+1001300000,Bukidnon,province
+0301400000,Bulacan,province
+0201500000,Cagayan,province
+0501600000,Camarines Norte,province
+0501700000,Camarines Sur,province
+1001800000,Camiguin,province
+0601900000,Capiz,province
+0502000000,Catanduanes,province
+0402100000,Cavite,province
+0702200000,Cebu,province
+1204700000,Cotabato,province
+1108600000,Davao Occidental,province
+1102500000,Davao Oriental,province
+1108200000,Davao de Oro,province
+1102300000,Davao del Norte,province
+1102400000,Davao del Sur,province
+1608500000,Dinagat Islands,province
+0802600000,Eastern Samar,province
+0607900000,Guimaras,province
+1402700000,Ifugao,province
+0102800000,Ilocos Norte,province
+0102900000,Ilocos Sur,province
+0603000000,Iloilo,province
+0203100000,Isabela,province
+1403200000,Kalinga,province
+0103300000,La Union,province
+0403400000,Laguna,province
+1003500000,Lanao del Norte,province
+1903600000,Lanao del Sur,province
+0803700000,Leyte,province
+1908700000,Maguindanao del Norte,province
+1908800000,Maguindanao del Sur,province
+1704000000,Marinduque,province
+0504100000,Masbate,province
+1300000000,Metro Manila,ncr
+1004200000,Misamis Occidental,province
+1004300000,Misamis Oriental,province
+1404400000,Mountain Province,province
+1804500000,Negros Occidental,province
+1804600000,Negros Oriental,province
+0804800000,Northern Samar,province
+0304900000,Nueva Ecija,province
+0205000000,Nueva Vizcaya,province
+1705100000,Occidental Mindoro,province
+1705200000,Oriental Mindoro,province
+1705300000,Palawan,province
+0305400000,Pampanga,province
+0105500000,Pangasinan,province
+0405600000,Quezon,province
+0205700000,Quirino,province
+0405800000,Rizal,province
+1705900000,Romblon,province
+0806000000,Samar,province
+1208000000,Sarangani,province
+1806100000,Siquijor,province
+0506200000,Sorsogon,province
+1206300000,South Cotabato,province
+0806400000,Southern Leyte,province
+1999900000,Special Geographic Area (BARMM),special_area
+1206500000,Sultan Kudarat,province
+0906600000,Sulu,province
+1606700000,Surigao del Norte,province
+1606800000,Surigao del Sur,province
+0306900000,Tarlac,province
+1907000000,Tawi-Tawi,province
+0307100000,Zambales,province
+0908300000,Zamboanga Sibugay,province
+0907200000,Zamboanga del Norte,province
+0907300000,Zamboanga del Sur,province

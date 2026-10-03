@@ -1,14 +1,14 @@
 import { useCallback, useState } from 'react'
 import { Checkbox, Input, Select, Textarea } from '@/components/ui'
 import { LocationPicker } from '@/components/LazyMaps'
-import { REPORT_TYPES } from '@/constants'
+import { AREA_HINT, AREA_LABEL, REPORT_TYPES } from '@/constants'
 import { referenceService } from '@/services'
 import { useAsync } from '@/hooks/useAsync'
 import { timeFrom12Hour, timeTo12Hour, todayAsInputValue } from '@/utils/date'
 import { cn } from '@/utils/cn'
 import { DESCRIPTION_MIN, LIMITS, descriptionLength } from './reportFormModel'
 
-const loadProvinces = () => referenceService.getProvinces()
+const loadAreas = () => referenceService.getAreas()
 
 const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1))
 const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
@@ -118,37 +118,41 @@ export function LocationDateStep({ values, errors, onChange }) {
 }
 
 /**
- * Province, then the cities and municipalities of that province.
+ * A province (or Metro Manila), then the cities and municipalities in it.
  *
- * Changing the province empties the city, because a city belongs to exactly
- * one province: keeping it would let "Quezon City" sit under Cebu. Nothing
- * else moves — not the written location, and not the pin.
+ * The first list is of AREAS (Correction 3A): PSA's 82 provinces, plus Metro
+ * Manila and BARMM's Special Geographic Area, which PSA files under no
+ * province. Changing it empties the city, because a city belongs to exactly
+ * one area: keeping it would let "Quezon City" sit under Cebu. Nothing else
+ * moves — not the written location, and not the pin.
  */
 function PlaceFields({ values, errors, onChange }) {
-  const { data: provinces, error: provincesError } = useAsync(loadProvinces)
-  const loadCities = useCallback(() => referenceService.getCities(values.provinceCode), [values.provinceCode])
+  const { data: areas, error: areasError } = useAsync(loadAreas)
+  const loadCities = useCallback(() => referenceService.getCities(values.areaCode), [values.areaCode])
   const { data: cities, error: citiesError, isLoading: citiesLoading } = useAsync(loadCities)
-  const listFailed = provincesError || citiesError
+  const listFailed = areasError || citiesError
 
   return (
     <div className="flex flex-col gap-2">
       <div className="grid gap-5 sm:grid-cols-2">
         <Select
-          label="Province"
+          label={AREA_LABEL}
           required
-          value={values.provinceCode}
+          value={values.areaCode}
           onChange={(event) => {
             const code = event.target.value
-            const province = (provinces ?? []).find((item) => item.code === code)
-            onChange('provinceCode', code)
-            onChange('province', province?.name ?? '')
+            const area = (areas ?? []).find((item) => item.code === code)
+            onChange('areaCode', code)
+            // `province` is the stored column's old name: it holds the
+            // area's name, "Metro Manila" included.
+            onChange('province', area?.name ?? '')
             onChange('cityCode', '')
             onChange('city', '')
           }}
           error={errors.province}
-          placeholder={provinces ? 'Choose one' : 'Loading…'}
-          options={(provinces ?? []).map((province) => ({ value: province.code, label: province.name }))}
-          hint="Metro Manila is listed as one entry."
+          placeholder={areas ? 'Choose one' : 'Loading…'}
+          options={(areas ?? []).map((area) => ({ value: area.code, label: area.name }))}
+          hint={AREA_HINT}
         />
 
         <Select
@@ -162,9 +166,9 @@ function PlaceFields({ values, errors, onChange }) {
             onChange('city', city?.name ?? '')
           }}
           error={errors.city}
-          disabled={!values.provinceCode}
+          disabled={!values.areaCode}
           placeholder={
-            !values.provinceCode ? 'Choose the province first' : citiesLoading ? 'Loading…' : 'Choose one'
+            !values.areaCode ? 'Choose the province or Metro Manila first' : citiesLoading ? 'Loading…' : 'Choose one'
           }
           options={(cities ?? []).map((city) => ({ value: city.code, label: city.name }))}
         />

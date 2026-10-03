@@ -6,7 +6,8 @@ hand-built request can and cannot get past them.
 
   BR   breeds: the suggested list per species, typed breeds kept but unlisted
   CO   colours: the list, codes or names in, the listed name stored
-  PH   provinces and cities: PSGC, dependent, the names written by the server
+  PH   areas and cities: PSGC, dependent, the names written by the server
+  PSGC PSA's official counts kept apart from the 84-entry area list (3A)
   RS   size: Extra Large (XL)
   RN, RD, RT   the name, description and time rules, enforced by the API
   CONTACT      a phone number is never published, whatever is sent
@@ -88,35 +89,89 @@ def colours():
 
 
 def places():
-    C = 'PH. Provinces and cities'
-    code, provinces = data('guest', '/reference/provinces')
-    names = {p['name'] for p in provinces or []}
-    check(C, 'PH-1', '84 provinces from PSGC, Metro Manila among them', '84',
-          len(provinces or []), code == 200 and len(provinces) == 84 and 'Metro Manila' in names)
-    _, metro = data('guest', f'/reference/cities?province={NCR}')
-    _, cebu = data('guest', f'/reference/cities?province={CEBU}')
-    check(C, 'PH-2', 'Cities depend on the province: 17 in Metro Manila; City of Cebu under Cebu', '17, yes',
+    C = 'PH. Areas and cities'
+    code, areas = data('guest', '/reference/areas')
+    names = {a['name'] for a in areas or []}
+    check(C, 'PH-1', 'The area list: 84 entries, Metro Manila among them, each with a type', '84, typed',
+          len(areas or []), code == 200 and len(areas) == 84 and 'Metro Manila' in names
+          and all(a.get('type') in ('province', 'ncr', 'special_area') for a in areas))
+    _, metro = data('guest', f'/reference/cities?area={NCR}')
+    _, cebu = data('guest', f'/reference/cities?area={CEBU}')
+    check(C, 'PH-2', 'Cities depend on the area: 17 in Metro Manila; City of Cebu under Cebu', '17, yes',
           f'{len(metro or [])}, {"yes" if any(c["code"] == CEBU_CITY for c in cebu or []) else "no"}',
           len(metro or []) == 17 and any(c['code'] == CEBU_CITY for c in cebu or []))
-    _, code = file_report('customer', province_code=CEBU, city_code=MAKATI)
-    check(C, 'PH-3', 'A city outside the chosen province is refused', 422, code, code == 422)
-    _, code = file_report('customer', province_code=NCR, city_code='9999999999')
-    _, blank = file_report('customer', province_code='', city_code='')
+    _, code = file_report('customer', area_code=CEBU, city_code=MAKATI)
+    check(C, 'PH-3', 'A city outside the chosen area is refused', 422, code, code == 422)
+    _, code = file_report('customer', area_code=NCR, city_code='9999999999')
+    _, blank = file_report('customer', area_code='', city_code='')
     check(C, 'PH-4', 'An unknown city code, or none, is refused', '422, 422', f'{code}, {blank}',
           code == 422 and blank == 422)
-    rid, _ = file_report('customer', province_code=NCR, city_code=MAKATI,
-                         city='Somewhere Typed', province='Typed Province')
+    # Sent by hand, so the typed names really are in the request.
+    body = {'report_type': 'lost', 'species': 'dog', 'pet_name': 'Audit Dog', 'breed': 'Beagle',
+            'size': 'medium', 'sex': 'male', 'primary_color': 'Brown', 'incident_date': '2026-09-09',
+            'area_code': NCR, 'city_code': MAKATI, 'city': 'Somewhere Typed', 'province': 'Typed Province',
+            'allow_platform_contact': True, 'location_label': 'Near the barangay hall',
+            'description': 'Filed by the automated audit, to check the API end to end.'}
+    _, payload = session('customer').call('POST', '/reports', body)
+    rid = (payload.get('data') or {}).get('report_id')
     stored = sql('SELECT CONCAT_WS("|", l.city, l.province, l.city_code) FROM pet_reports r '
                  f'JOIN locations l ON l.location_id = r.location_id WHERE r.report_id = {rid};')
     check(C, 'PH-5', 'The names stored are written from the list, never taken from the request',
           'City of Makati|Metro Manila|' + MAKATI, stored, stored == f'City of Makati|Metro Manila|{MAKATI}')
-    _, rows = data('guest', f'/reports?province_code={CEBU}&per_page=50')
+    _, rows = data('guest', f'/reports?area_code={CEBU}&per_page=50')
     _, city_rows = data('guest', f'/reports?city_code={MAKATI}&per_page=50')
-    check(C, 'PH-6', 'Explore filters by province and by city code',
+    check(C, 'PH-6', 'Explore filters by area and by city code',
           'Cebu only; Makati only',
           f'{len(rows or [])} / {len(city_rows or [])}',
-          bool(rows) and all(r['location']['province_code'] == CEBU for r in rows)
+          bool(rows) and all(r['location']['area_code'] == CEBU for r in rows)
           and bool(city_rows) and all(r['location']['city_code'] == MAKATI for r in city_rows))
+
+
+def psgc():
+    """Correction 3A: PSA's facts kept apart from the application's grouping."""
+    C = 'PSGC. Official facts vs the area list'
+    _, areas = data('guest', '/reference/areas')
+    areas = areas or []
+    kinds = {k: [a for a in areas if a['type'] == k] for k in ('province', 'ncr', 'special_area')}
+    check(C, 'PSGC1', "PSA's provinces: exactly 82 areas are of type province", 82,
+          len(kinds['province']), len(kinds['province']) == 82)
+    cities = sql('SELECT COUNT(*) FROM ph_cities WHERE is_city = TRUE;')
+    municipalities = sql('SELECT COUNT(*) FROM ph_cities WHERE is_city = FALSE;')
+    check(C, 'PSGC2', "PSA's cities: 149", 149, cities, cities == '149')
+    check(C, 'PSGC3', "PSA's municipalities: 1,493", 1493, municipalities, municipalities == '1493')
+    check(C, 'PSGC4', 'The area list is 82 provinces + Metro Manila (ncr) + the SGA (special_area) = 84',
+          '82+1+1', f"{len(kinds['province'])}+{len(kinds['ncr'])}+{len(kinds['special_area'])}",
+          len(areas) == 84 and len(kinds['ncr']) == 1 and len(kinds['special_area']) == 1
+          and kinds['ncr'][0]['code'] == NCR and kinds['special_area'][0]['code'] == '1999900000')
+    in_db = sql(f"SELECT area_type FROM ph_areas WHERE area_code = '{NCR}';")
+    check(C, 'PSGC5', 'NCR is never typed a province: ncr in the database and in the API', 'ncr, ncr',
+          f"{in_db}, {kinds['ncr'][0]['type'] if kinds['ncr'] else '-'}",
+          in_db == 'ncr' and bool(kinds['ncr']) and kinds['ncr'][0]['name'] == 'Metro Manila')
+    seen = {}
+    for area in areas:
+        _, rows = data('guest', f"/reference/cities?area={area['code']}")
+        for row in rows or []:
+            seen[row['code']] = row
+    total = sql('SELECT COUNT(*) FROM ph_cities;')
+    check(C, 'PSGC6', 'All 1,642 cities and municipalities are reachable through their area, once each',
+          '1642 of 1642', f'{len(seen)} of {total}', len(seen) == 1642 and total == '1642')
+    # The 32 seeded reports (ids 1-32); the checks above have filed more.
+    resolved = sql('SELECT COUNT(*) FROM pet_reports r JOIN locations l ON l.location_id = r.location_id '
+                   'JOIN ph_cities c ON c.city_code = l.city_code JOIN ph_areas a ON a.area_code = c.area_code '
+                   'WHERE r.report_id <= 32;')
+    count = sql('SELECT COUNT(*) FROM pet_reports WHERE report_id <= 32;')
+    check(C, 'PSGC7', 'Every seeded report location resolves to a city and an area', '32 of 32',
+          f'{resolved} of {count}', resolved == '32' and count == '32')
+    hexed = sql("SELECT HEX(city_name) FROM ph_cities WHERE city_code = '1380200000';")
+    via_api = seen.get('1380200000', {}).get('name')
+    check(C, 'PSGC8', '"City of Las Piñas" is UTF-8 in MySQL and comes back intact from the API',
+          'C3B1, City of Las Piñas', f'{"C3B1" if hexed and "C3B1" in hexed else hexed}, {via_api}',
+          bool(hexed) and 'C3B1' in hexed and via_api == 'City of Las Piñas')
+    renamed = {'1102324000': 'Sawata', '1004217000': 'Don Victoriano',
+               '0201522000': 'Sanchez Mira', '1903638000': 'Tagoloan II'}
+    got = {code: seen.get(code, {}).get('name') for code in renamed}
+    check(C, 'PSGC10', 'The 30 June 2026 names: San Isidro is Sawata; three spellings corrected', 'all four',
+          ', '.join(str(v) for v in got.values()), got == renamed)
 
 
 def sizes():
@@ -236,9 +291,9 @@ def migration_state():
     check(C, 'MG-1', 'Migration 009 is recorded', '009',
           sql("SELECT version FROM schema_migrations WHERE version = '009';"),
           sql("SELECT version FROM schema_migrations WHERE version = '009';") == '009')
-    counts = sql('SELECT CONCAT((SELECT COUNT(*) FROM ph_provinces), "/", (SELECT COUNT(*) FROM ph_cities), "/", '
+    counts = sql('SELECT CONCAT((SELECT COUNT(*) FROM ph_areas), "/", (SELECT COUNT(*) FROM ph_cities), "/", '
                  '(SELECT COUNT(*) FROM pet_colours));')
-    check(C, 'MG-2', 'Provinces, cities and colours are all there', '84/1642/17', counts, counts == '84/1642/17')
+    check(C, 'MG-2', 'Areas, cities and colours are all there', '84/1642/17', counts, counts == '84/1642/17')
     check(C, 'MG-3', 'Every seeded location has its PSGC code', '0 without',
           sql('SELECT COUNT(*) FROM locations WHERE city_code IS NULL;'),
           sql('SELECT COUNT(*) FROM locations WHERE city_code IS NULL;') == '0')
@@ -256,6 +311,7 @@ if __name__ == '__main__':
     breeds()
     colours()
     places()
+    psgc()
     sizes()
     text_rules()
     contact()

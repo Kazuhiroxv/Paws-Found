@@ -113,13 +113,13 @@ def sql_injection():
           sql('SELECT COUNT(*) FROM pet_reports;') + ' rows',
           sql('SELECT COUNT(*) FROM pet_reports;') == '32')
     # 20 physical: the 15 on the ERD, the three reference lists migration 009
-    # added (ph_provinces, ph_cities, pet_colours), plus schema_migrations and
+    # added (ph_areas, ph_cities, pet_colours), plus schema_migrations and
     # auth_rate_limits, which are infrastructure rather than domain tables
     # (database/migrations/README.md).
     check(C, 'SQL-12', 'Schema intact afterwards', '20 tables',
           sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='pawsandfound';") + ' tables',
           sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='pawsandfound';") == '20')
-    # 26 since migration 009: ph_cities -> ph_provinces and locations -> ph_cities.
+    # 26 since migration 009: ph_cities -> ph_areas and locations -> ph_cities.
     # docs/erd-defense.md lists 26 (the figure is redrawn in the final ERD
     # pass). A diagram cannot be wrong quietly if the suite counts
     # the same thing the diagram is drawing.
@@ -828,9 +828,9 @@ def access_control():
           'extra: ' + ','.join(sorted(keys - summary)) if keys - summary else 'summary keys',
           bool(rows) and keys == summary)
     loc_keys = set().union(*(r['location'].keys() for r in rows)) if rows else set()
-    check(C, 'RA-02', 'Its location has no place label', 'city,city_code,lat,lng,province,province_code',
+    check(C, 'RA-02', 'Its location has no place label', 'city,city_code,lat,lng,province,area_code',
           ','.join(sorted(loc_keys)),
-          loc_keys == {'city', 'province', 'city_code', 'province_code', 'lat', 'lng'})
+          loc_keys == {'city', 'province', 'city_code', 'area_code', 'lat', 'lng'})
     code, body = session('guest').call('GET', '/reports/1')
     check(C, 'RA-03', 'A guest opening a real report: 401 auth_required', '401 auth_required',
           f'{code} {body.get("code")}', code == 401 and body.get('code') == 'auth_required')
@@ -1039,7 +1039,7 @@ def report_editing():
         # again after an edit, and a pairing would freeze it for the photo
         # checks below. This section is about edits persisting, not matching.
         'location_label': 'Behind the public market',
-        'province_code': '0200900000', 'city_code': '0200901000',   # Basco, Batanes
+        'area_code': '0200900000', 'city_code': '0200901000',   # Basco, Batanes
         'lat': 20.4487, 'lng': 121.9702,
         'allow_platform_contact': False, 'show_phone': True, 'show_email': True,
     })
@@ -1175,7 +1175,7 @@ def final_integrity():
         ('FI-01', 'pet_name', '', "A lost pet's name"), ('FI-02', 'species', '', 'Species'),
         ('FI-03', 'size', '', 'Size'), ('FI-04', 'primary_color', '', 'Main colour'),
         ('FI-05', 'incident_date', '', 'Date'), ('FI-06', 'location_label', '', 'Where it happened'),
-        ('FI-07', 'city_code', '', 'City'), ('FI-08', 'province_code', '', 'Province'),
+        ('FI-07', 'city_code', '', 'City'), ('FI-08', 'area_code', '', 'Province'),
         ('FI-09', 'description', '', 'Description'), ('FI-10', 'sex', None, 'Sex (B4)'),
     ]:
         _, code = file_report('customer', **{field: value})

@@ -187,12 +187,12 @@ const readCsv = (file) => {
   const header = lines.shift().split(',')
   return lines.map((line) => Object.fromEntries(line.split(',').map((v, i) => [header[i], v])))
 }
-const provinceCode = new Map(readCsv('ph-provinces.csv').map((p) => [p.province_name.toLowerCase(), p.province_code]))
+const areaCode = new Map(readCsv('ph-areas.csv').map((p) => [p.area_name.toLowerCase(), p.area_code]))
 const placeKey = (name) => name.trim().toLowerCase().replace(/^city of /, '').replace(/ city$/, '')
 const psgcCities = readCsv('ph-cities.csv')
 function cityCodeOf(location) {
-  const province = provinceCode.get(location.province.trim().toLowerCase())
-  const inProvince = psgcCities.filter((c) => c.province_code === province)
+  const province = areaCode.get(location.province.trim().toLowerCase())
+  const inProvince = psgcCities.filter((c) => c.area_code === province)
   const exact = inProvince.filter((c) => c.city_name.toLowerCase() === location.city.trim().toLowerCase())
   const keyed = inProvince.filter((c) => placeKey(c.city_name) === placeKey(location.city))
   const found = exact.length === 1 ? exact : keyed

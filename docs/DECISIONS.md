@@ -460,22 +460,27 @@ not touch** — nothing in the code detects touch. Windows scaling of 150–175%
 a 1920px screen gives about 1100–1280 CSS pixels, where the navigation becomes a
 menu button.
 
-### The place lists are PSA's PSGC, loaded into MySQL (Correction 3)
+### The place lists are PSA's PSGC, loaded into MySQL (Correction 3, 3A)
 
-Province and city are chosen, not typed: 84 entries (82 provinces, Metro
-Manila, the Special Geographic Area of BARMM) and 1,642 cities and
-municipalities, from PSA's PSGC Publication Datafile of 31 July 2025, keyed by
-PSA's own 10-digit codes. They live in `ph_provinces` and `ph_cities` and reach
-the browser through `/api/reference` — no geography is typed into JSX.
+The place is chosen, not typed, from PSA's PSGC Publication Datafile **as of 30
+June 2026** (the 2Q 2026 release), downloaded from psa.gov.ph by Kyle — PSA's
+site blocks automated requests, and that check was not bypassed. Its codes are
+the keys. The rows live in `ph_areas` and `ph_cities` and reach the browser
+through `/api/reference` — no geography is typed into JSX.
 
-PSA's site sits behind a Cloudflare human check, which was not bypassed; the
-file came from a public copy and was checked against itself and against an
-independent derivation, but **not** against PSA's own download, and newer
-quarterly publications could not be reached. `database/reference/README.md`
-says exactly what Kyle should still verify.
+**Official fact and application grouping are kept apart (3A).** PSA has 82
+provinces, 149 cities and 1,493 municipalities, and NCR has no provinces; the
+data keeps all of that exactly. The form's first list, though, has 84 entries,
+because 25 places have no province to sit under. So it is a list of **areas**,
+each typed: 82 `province`, Metro Manila `ncr`, and BARMM's Special Geographic
+Area `special_area`. Correction 3 first called all 84 "provinces" — table, API
+and label — which made Metro Manila a province it is not. The table became
+`ph_areas`, the API `/reference/areas` with each area's type, and the label
+"Province or Metro Manila". The stored text column keeps its old name,
+`locations.province`; it holds the area's name.
 
 Two placements are choices, not facts in the file. **Metro Manila** is one
-entry, because the National Capital Region has no provinces and a person in
+area, because the National Capital Region has no provinces and a person in
 Makati looks for "Metro Manila", not for a district. A **highly urbanized
 city** (Cebu City, Davao City, Baguio, …) is listed under the province it is
 inside, read from PSA's Correspondence Code, because nobody looks for Cebu City
@@ -526,7 +531,7 @@ size 10, date 10, features 5), and the four demonstration pairings still score
 reports without pins compare the city **code** when both have one, so "Makati
 City" and "City of Makati" are one place.
 
-### A phone number is never published (Correction 3)
+### A phone number is never published (Correction 3) — awaiting confirmation
 
 The "show my phone number" option is gone from the form, and the server
 enforces it whatever is sent: `show_phone` is written as 0, reported as false,
@@ -536,8 +541,11 @@ when handling a case, so a reporter remains reachable. Email is unchanged:
 opt-in per report, visible only to signed-in members. The privacy notice was
 revised and its version moved to 2026-10-02.
 
-The instructor's words here are ambiguous (register N1): this is what the team
-specified, and the item to revisit if she meant a number should be shown.
+**This is the current implementation, not a confirmed requirement.** The
+recording (register N1) could mean that a contact number should be collected,
+required, publicly shown, or only that there should be a clear way to reach the
+reporter. Until Ma'am confirms which, the secure behaviour stays and the
+privacy notice is not changed again for this item.
 
 ### The map is the Philippines (Correction 3)
 
@@ -546,7 +554,9 @@ it, and a point outside it places no pin — in the browser and in the API,
 which refuses one whatever is sent. "Outside" is a box (Kalayaan to Pusan
 Point, Saluag to Y'Ami) minus three rectangles of other countries' land:
 Sabah's north-west and east coasts and Miangas. A sketch, not a coastline:
-the open sea inside it is accepted. The place lists, not the pin, are what a
+the open sea inside it is accepted. It is a **practical input guard** — it
+stops a pin dropped in Tokyo or Kota Kinabalu — and must not be described as a
+territorial-boundary validator; it is not one, and does not need to be. The place lists, not the pin, are what a
 report is found and matched by. Moving the map to the chosen city was not
 done: PSGC has no coordinates, and inventing centre points would be
 fabricated data.

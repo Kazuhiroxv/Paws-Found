@@ -1,5 +1,5 @@
 import photoPlaceholder from '@/assets/pet-photo-placeholder.png'
-import { PET_SEX_LABELS, PET_SIZE_LABELS, REPORT_TYPES, speciesLabel } from '@/constants'
+import { AREA_LABEL, PET_SEX_LABELS, PET_SIZE_LABELS, REPORT_TYPES, speciesLabel } from '@/constants'
 import { formatDate, formatTime12Hour } from '@/utils/date'
 import { ReportTypeBadge } from '@/components/ReportTypeBadge'
 
@@ -29,7 +29,7 @@ export function ReviewStep({ values, onEditStep }) {
   const incidentRows = [
     [isFound ? 'Date found' : 'Date last seen', formatDate(values.incidentDate)],
     ['Approximate time', formatTime12Hour(values.incidentTime)],
-    ['Province', values.province],
+    [AREA_LABEL, values.province],
     ['City or municipality', values.city],
     ['Where', values.locationLabel],
     ['Map pin', values.lat != null ? 'Placed (shown as an approximate area)' : 'None'],

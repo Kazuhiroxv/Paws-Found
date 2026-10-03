@@ -173,9 +173,15 @@ for (const { tag, width, device } of [
   await setField(page, 'Province', '0702200000')
   await pause(900)
   const cebu = await fieldInfo(page, 'City or municipality')
-  check(`PH-UI-${tag}`, `${tag}px: city waits for the province, follows it, and empties when it changes`,
+  check(`PH-UI-${tag}`, `${tag}px: city waits for the area, follows it, and empties when it changes`,
     cityLocked.disabled && metro.options.includes('City of Makati') && cebu.value === ''
       && cebu.options.includes('City of Cebu') && !cebu.options.includes('City of Makati'))
+  // Correction 3A: the list is labelled for what it holds. Metro Manila is
+  // not a province, so the label names it rather than calling it one.
+  const labels = await page.evaluate(() => [...document.querySelectorAll('label')].map((l) => l.textContent.trim()))
+  check(`PSGC5-UI-${tag}`, `${tag}px: the first place list is "Province or Metro Manila", never a bare "Province"`,
+    labels.some((l) => l.startsWith('Province or Metro Manila')) && !labels.some((l) => /^Province\s*\*?(\(required\))?$/.test(l)),
+    labels.filter((l) => l.startsWith('Province')).join(' | '))
   await setField(page, 'Province', '1300000000')
   await pause(900)
   await setField(page, 'City or municipality', '1380300000')
@@ -323,8 +329,10 @@ for (const { tag, width, device } of [
   await setField(page, 'Province', '1300000000')
   await pause(1200)
   const cityAfter = await fieldInfo(page, 'City or municipality')
-  const chip = (await text(page)).includes('Province: Metro Manila')
-  check('EX-2', 'Explore: the city filter waits for a province, then lists its cities; the chip names it',
+  // The chip names the area without calling Metro Manila a province (3A).
+  const pageText = await text(page)
+  const chip = /(^|\n)Metro Manila\s*(\n|$)/.test(pageText) && !pageText.includes('Province: Metro Manila')
+  check('EX-2', 'Explore: the city filter waits for an area, then lists its cities; the chip says "Metro Manila", not "Province: Metro Manila"',
     cityBefore.disabled && !cityAfter.disabled && cityAfter.options.includes('City of Makati') && chip)
   await setField(page, 'City or municipality', '1380300000')
   await pause(1500)

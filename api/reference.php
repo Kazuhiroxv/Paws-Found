@@ -4,15 +4,18 @@
  *
  *   GET /api/reference/colours                     the colour list
  *   GET /api/reference/breeds?species=dog          the suggested breeds of one species
- *   GET /api/reference/provinces                   every province, plus Metro Manila
- *   GET /api/reference/cities?province=0722000000  the cities and municipalities of one
+ *   GET /api/reference/areas                       the 84 areas: 82 provinces, Metro Manila, the SGA
+ *   GET /api/reference/cities?area=0702200000      the cities and municipalities of one
  *
  * All public and read only: the lists are needed before anyone signs in, and
  * nothing in them is about a person. They come from the database, never from
  * the browser's code, so changing a list is a change to MySQL, not a redeploy.
  *
- * The places are PSA's Philippine Standard Geographic Code; how they were
- * loaded is in scripts/psgc_reference.py and migration 009.
+ * The places are PSA's Philippine Standard Geographic Code (as of 30 June
+ * 2026); how they were loaded is in scripts/psgc_reference.py and migration
+ * 009. An AREA is a province, or one of the two places PSA files under no
+ * province: Metro Manila (NCR) and BARMM's Special Geographic Area. Each
+ * comes with its type, so nothing presents Metro Manila as a province.
  */
 
 declare(strict_types=1);
@@ -25,7 +28,7 @@ function handle_reference(string $method, ?string $identifier): never
         match ($identifier) {
             'colours' => reference_colours(),
             'breeds' => reference_breeds(),
-            'provinces' => reference_provinces(),
+            'areas' => reference_areas(),
             'cities' => reference_cities(),
             default => null,
         };
@@ -70,39 +73,41 @@ function reference_breeds(): never
     ], $statement->fetchAll())]);
 }
 
-function reference_provinces(): never
+/** The 84 areas, by name, each with its type: 'province', 'ncr' or 'special_area'. */
+function reference_areas(): never
 {
-    $rows = db()->query('SELECT province_code, province_name FROM ph_provinces ORDER BY province_name')->fetchAll();
+    $rows = db()->query('SELECT area_code, area_name, area_type FROM ph_areas ORDER BY area_name')->fetchAll();
 
     json_response(['data' => array_map(fn ($row) => [
-        'code' => $row['province_code'],
-        'name' => $row['province_name'],
+        'code' => $row['area_code'],
+        'name' => $row['area_name'],
+        'type' => $row['area_type'],
     ], $rows)]);
 }
 
 /**
- * The cities and municipalities of one province. Sorted as people look for
+ * The cities and municipalities of one area. Sorted as people look for
  * them: "City of Makati" under M, not among every other "City of".
  */
 function reference_cities(): never
 {
-    $province = query_string_param('province');
-    if ($province === null || preg_match('/^\d{10}$/', $province) !== 1) {
-        json_error("Say which province: 'province' must be a 10-digit PSGC code.", 422);
+    $area = query_string_param('area');
+    if ($area === null || preg_match('/^\d{10}$/', $area) !== 1) {
+        json_error("Say which area: 'area' must be a 10-digit PSGC code.", 422);
     }
 
     $statement = db()->prepare(
         "SELECT city_code, city_name, is_city
            FROM ph_cities
-          WHERE province_code = :province
+          WHERE area_code = :area
           ORDER BY CASE WHEN city_name LIKE 'City of %' THEN SUBSTRING(city_name, 9) ELSE city_name END,
                    city_name"
     );
-    $statement->execute([':province' => $province]);
+    $statement->execute([':area' => $area]);
     $rows = $statement->fetchAll();
 
     if ($rows === []) {
-        json_error('No such province.', 404);
+        json_error('No such area.', 404);
     }
 
     json_response(['data' => array_map(fn ($row) => [

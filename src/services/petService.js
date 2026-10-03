@@ -44,7 +44,7 @@ function fromApi(row) {
       // The PSGC codes the place was chosen by (Correction 3). Empty for a
       // report filed before the place lists whose place was not identified.
       cityCode: row.location?.city_code ?? '',
-      provinceCode: row.location?.province_code ?? '',
+      areaCode: row.location?.area_code ?? '',
       lat: row.location?.lat ?? null,
       lng: row.location?.lng ?? null,
       precision: 'approximate',
@@ -116,7 +116,7 @@ function fromApi(row) {
  *   species     one of SPECIES
  *   size        one of PET_SIZES
  *   color       a listed colour (exact), matched against either colour field
- *   provinceCode  PSGC code of a province (or Metro Manila)
+ *   areaCode  PSGC code of a province (or Metro Manila)
  *   cityCode    PSGC code of a city or municipality
  *   city        substring of the city's name, for links that name one
  *   dateFrom    incident on or after this ISO date
@@ -135,7 +135,7 @@ export async function getReportsPage(query = {}) {
     species: query.species,
     size: query.size,
     city: query.city,
-    province_code: query.provinceCode,
+    area_code: query.areaCode,
     city_code: query.cityCode,
     colour: query.color,
     date_from: query.dateFrom,
@@ -226,7 +226,7 @@ export async function createReport(input) {
       incident_time: input.incidentTime,
       location_label: input.location?.label,
       // The place by PSGC code; the server writes the names from its list.
-      province_code: input.location?.provinceCode,
+      area_code: input.location?.areaCode,
       city_code: input.location?.cityCode,
       lat: input.location?.lat,
       lng: input.location?.lng,
@@ -291,7 +291,7 @@ export async function updateReport(id, input) {
       incident_time: input.incidentTime,
       location_label: input.location?.label,
       // The place by PSGC code; the server writes the names from its list.
-      province_code: input.location?.provinceCode,
+      area_code: input.location?.areaCode,
       city_code: input.location?.cityCode,
       lat: input.location?.lat,
       lng: input.location?.lng,

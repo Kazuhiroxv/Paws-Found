@@ -189,7 +189,7 @@ _PLACES = None
 
 
 def place_codes(city, province=None):
-    """(province_code, city_code) for a place named the way these cases always
+    """(area_code, city_code) for a place named the way these cases always
     named it, now that the API takes the place by PSGC code (Correction 3).
 
     A real place is found by name, the way migration 009 finds one: "Iloilo
@@ -204,8 +204,8 @@ def place_codes(city, province=None):
     import re
     import zlib
     if _PLACES is None:
-        rows = sql('SELECT c.city_code, c.province_code, c.city_name, p.province_name, c.is_city '
-                   'FROM ph_cities c JOIN ph_provinces p ON p.province_code = c.province_code '
+        rows = sql('SELECT c.city_code, c.area_code, c.city_name, p.area_name, c.is_city '
+                   'FROM ph_cities c JOIN ph_areas p ON p.area_code = c.area_code '
                    'ORDER BY c.city_code;') or ''
         _PLACES = [line.split('	') for line in rows.splitlines() if line.strip()]
 
@@ -230,7 +230,7 @@ def file_report(role, **overrides):
         'incident_date': '2026-09-09',
         # Pasay City, Metro Manila, by PSGC code: the place is chosen from a
         # list now, and the server writes the names (Correction 3).
-        'province_code': '1300000000', 'city_code': '1381100000',
+        'area_code': '1300000000', 'city_code': '1381100000',
         # As the form sends them: a report must be reachable some way, and a
         # found report must answer the collar question (not sure is an answer).
         'allow_platform_contact': True, 'has_collar': 'unknown',
@@ -241,9 +241,9 @@ def file_report(role, **overrides):
     # Cases written before the place lists name a city (and sometimes a
     # province) in words; they become codes here, so each keeps its meaning.
     if 'city' in overrides or 'province' in overrides:
-        province_code, city_code = place_codes(overrides.pop('city', 'Pasay City'),
+        area_code, city_code = place_codes(overrides.pop('city', 'Pasay City'),
                                                overrides.pop('province', None))
-        body['province_code'], body['city_code'] = province_code, city_code
+        body['area_code'], body['city_code'] = area_code, city_code
     body.update(overrides)
     code, payload = session(role).call('POST', '/reports', body)
     return payload.get('data', {}).get('report_id'), code

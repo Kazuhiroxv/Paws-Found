@@ -23,8 +23,8 @@ Counted from `information_schema`, 27 September 2026:
 
 | | |
 | --- | --- |
-| Tables | **20** (15 on the ERD figure + `ph_provinces`, `ph_cities`, `pet_colours` from 009 + `schema_migrations` + `auth_rate_limits`) |
-| Foreign keys | **26** — the 24 among the 15, plus `ph_cities → ph_provinces` and `locations → ph_cities` (009); neither operational table has one |
+| Tables | **20** (15 on the ERD figure + `ph_areas`, `ph_cities`, `pet_colours` from 009 + `schema_migrations` + `auth_rate_limits`) |
+| Foreign keys | **26** — the 24 among the 15, plus `ph_cities → ph_areas` and `locations → ph_cities` (009); neither operational table has one |
 | Primary keys | 20, one per table |
 | Unique constraints | 9, over 14 columns |
 | CHECK constraints | 2 |
@@ -174,22 +174,29 @@ whose typed place did not name one place without doubt.
 
 ---
 
-## 4a. `ph_provinces` — 84 rows · `ph_cities` — 1,642 rows (009)
+## 4a. `ph_areas` — 84 rows · `ph_cities` — 1,642 rows (009)
 
-PSA's Philippine Standard Geographic Code, July 2025 publication.
+PSA's Philippine Standard Geographic Code, **as of 30 June 2026**.
 
 | | |
 | --- | --- |
-| **Primary keys** | `province_code`, `city_code` — PSA's 10-digit codes, not AUTO_INCREMENT: the code *is* the identity |
-| **Foreign keys** | `ph_cities.province_code` → `ph_provinces` (RESTRICT) |
-| **Unique** | `province_name` |
+| **Primary keys** | `area_code`, `city_code` — PSA's 10-digit codes, not AUTO_INCREMENT: the code *is* the identity |
+| **Foreign keys** | `ph_cities.area_code` → `ph_areas` (RESTRICT) |
+| **Unique** | `area_name` |
+| **ENUM** | `area_type`: `province` (82), `ncr` (1), `special_area` (1) |
 | **Referenced by** | `locations.city_code` (RESTRICT) |
+
+**"How many provinces does the Philippines have?" — 82, and so does this
+table.** The other two rows are not provinces: Metro Manila is the National
+Capital Region, which PSA says has *no* provinces, and the Special Geographic
+Area belongs to BARMM directly. They are rows only so every city and
+municipality has something to be chosen under, and `area_type` says so. That
+is why the table is called *areas*.
 
 **Why the code is the key.** It is stable, published and checkable: anybody can
 look `1380300000` up and find the City of Makati. A surrogate number would be a
-second identifier for the same thing. Metro Manila is one entry (NCR has no
-provinces); a highly urbanized city sits under the province it is in.
-Provenance and what is still unverified: `database/reference/README.md`.
+second identifier for the same thing. A highly urbanized city sits under the
+province it is inside. Provenance: `database/reference/README.md`.
 
 ## 4b. `pet_colours` — 17 rows (009)
 
@@ -537,7 +544,7 @@ an email, and its consequence is a 429 and a Retry-After header.
     pet_categories   1 ── N  pet_reports         (RESTRICT)
     pet_breeds     0..1 ── N pet_reports         (SET NULL — breed is optional)
     locations        1 ── N  pet_reports         (RESTRICT)
-    ph_provinces     1 ── N  ph_cities           (RESTRICT, 009)
+    ph_areas         1 ── N  ph_cities           (RESTRICT, 009)
     ph_cities      0..1 ── N locations           (RESTRICT, 009 — NULL only for an old, unidentified place)
     pet_reports      1 ── N  report_images       (CASCADE)
     pet_reports      1 ── N  status_logs         (CASCADE)

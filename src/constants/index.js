@@ -125,6 +125,15 @@ export function speciesLabel(value) {
   return value.charAt(0).toUpperCase() + value.slice(1).replace(/-/g, ' ')
 }
 
+/**
+ * What the first place list is called (Correction 3A). It offers PSA's 82
+ * provinces plus Metro Manila (NCR, a region with no provinces) and BARMM's
+ * Special Geographic Area, so it is not "Province": Metro Manila is not one.
+ */
+export const AREA_LABEL = 'Province or Metro Manila'
+export const AREA_HINT =
+  'Metro Manila has no provinces, so it is listed as one area; so is BARMM’s Special Geographic Area.'
+
 /** 'xl' added after the defense (Correction 3): a very large dog had no size. */
 export const PET_SIZES = {
   SMALL: 'small',

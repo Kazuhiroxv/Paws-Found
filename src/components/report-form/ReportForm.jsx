@@ -39,7 +39,7 @@ const CONTACT_FIELDS = ['allowPlatformContact', 'showEmail']
  * three parts share one message.
  */
 const ERROR_KEY_OF = {
-  provinceCode: 'province',
+  areaCode: 'province',
   cityCode: 'city',
   incidentTimeIncomplete: 'incidentTime',
 }

@@ -11,6 +11,7 @@ import {
 import { Button, Input, Select } from '@/components/ui'
 import { cn } from '@/utils/cn'
 import {
+  AREA_LABEL,
   PET_SIZE_LABELS,
   REPORT_STATUS_LABELS,
   REPORT_STATUS_ORDER,
@@ -47,9 +48,10 @@ const ANY = ''
  *   `categoryService` — administrators manage the list.
  * @param {{value: string, label: string}[]} props.colourOptions  The colour
  *   list, from `referenceService`, the same one the report form uses.
- * @param {{value: string, label: string}[]} props.provinceOptions
+ * @param {{value: string, label: string}[]} props.areaOptions  The 82
+ *   provinces, Metro Manila and the Special Geographic Area.
  * @param {{value: string, label: string}[]} props.cityOptions  The cities of
- *   the chosen province; empty until one is chosen.
+ *   the chosen area; empty until one is chosen.
  */
 export function FilterPanel({
   filters,
@@ -58,7 +60,7 @@ export function FilterPanel({
   hasActiveFilters,
   speciesOptions = [],
   colourOptions = [],
-  provinceOptions = [],
+  areaOptions = [],
   cityOptions = [],
 }) {
   const setCount = (...fields) => fields.filter((field) => filters[field]).length
@@ -169,21 +171,21 @@ export function FilterPanel({
       <FilterGroup
         icon={MapPin}
         title="Place"
-        activeCount={setCount('provinceCode', 'cityCode', 'city')}
+        activeCount={setCount('areaCode', 'cityCode', 'city')}
       >
         <Select
-          label="Province"
-          value={filters.provinceCode}
-          onChange={(event) => onChange('provinceCode', event.target.value)}
-          options={[{ value: ANY, label: 'Any province' }, ...provinceOptions]}
+          label={AREA_LABEL}
+          value={filters.areaCode}
+          onChange={(event) => onChange('areaCode', event.target.value)}
+          options={[{ value: ANY, label: 'Anywhere' }, ...areaOptions]}
         />
         <Select
           label="City or municipality"
           value={filters.cityCode}
           onChange={(event) => onChange('cityCode', event.target.value)}
-          disabled={!filters.provinceCode}
+          disabled={!filters.areaCode}
           options={[
-            { value: ANY, label: filters.provinceCode ? 'Any in this province' : 'Choose a province first' },
+            { value: ANY, label: filters.areaCode ? 'Any city or municipality' : 'Choose the area first' },
             ...cityOptions,
           ]}
         />

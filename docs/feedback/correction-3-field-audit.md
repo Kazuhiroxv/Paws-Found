@@ -46,8 +46,8 @@ descriptions 84–204 characters; no lost pet name under 3 characters.
 | Main / other colour | **selects** from `pet_colours` (17, "Other" last) | main required, other optional, both listed; code or name in, listed name stored | `primary_color`, `secondary_color` | unchanged VARCHAR, listed names | equality; "Other" never counts | **select, exact** | yes |
 | Description | textarea + live "18 / 30 minimum" | ≥ 30 characters, runs of spaces counted once | `description` | unchanged | — | search | no |
 | Time | **Hour / Minutes / AM or PM** selects | all three or none; converted to 24-hour | `incident_time` (24-hour) | TIME, unchanged | — | — | no |
-| Province | **select** of 84 (PSGC) | required, must exist | `province_code` | name written to `locations.province` | — | **select** | name + code |
-| City | **select** dependent on the province, emptied when it changes | required, must be in the province | `city_code` | `locations.city_code` FK → `ph_cities`; name written to `locations.city` | **code equality when both have one**, else the old name rule | **select** | name + code |
+| Province or Metro Manila | **select** of 84 areas: PSA's 82 provinces (`province`), Metro Manila (`ncr`), the Special Geographic Area (`special_area`) — 3A | required, must exist | `area_code` | name written to `locations.province` (old column name) | — | **select** | name + code |
+| City | **select** dependent on the area, emptied when it changes | required, must be in the area | `city_code` | `locations.city_code` FK → `ph_cities`; name written to `locations.city` | **code equality when both have one**, else the old name rule | **select** | name + code |
 | Where | text, 120 | required | `location_label` | unchanged | — | search | no |
 | Map pin | opens on the whole country; can't be dragged far off it; a click outside places nothing | inside the Philippines box minus Sabah and Miangas | `lat`, `lng` | unchanged | unchanged | unchanged | unchanged |
 | Photos | unchanged storage; rules stated before choosing, "N of 5 photos added", "Main photo" in words | unchanged (no minimum) | — | — | — | — | — |
