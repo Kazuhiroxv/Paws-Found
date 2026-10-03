@@ -178,9 +178,10 @@ and `contact_preferences.show_phone` always false.
 - **Account suspension** — a suspended or locked user is refused even with a
   valid session, and that session ends for good (Correction 5).
 - **Session records** — each sign-in is a `user_sessions` row known by a random
-  reference; the PHP session id is never stored. The visitor's IP comes from
-  `X-Forwarded-For` only when the connection is from the trusted proxy range
-  (`TRUSTED_PROXY_CIDRS`), so a forged header cannot choose the logged address.
+  reference; the PHP session id is never stored. The visitor's IP is Railway's
+  `X-Real-IP` only when the deployment is Railway (`BEHIND_RAILWAY_EDGE`,
+  decided from the environment, never the request); anywhere else
+  `REMOTE_ADDR`, so a forged header cannot choose the logged address.
 - **Privacy** — a reporter's phone and email are filtered out in PHP unless that
   report chose to publish them, so unshared details never reach the browser.
 - **Error messages** — database errors are logged server-side; the client gets a

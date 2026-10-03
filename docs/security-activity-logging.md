@@ -165,34 +165,50 @@ never get an end. The viewer never calls them "open": past the idle window
 (plus the last-seen interval) or the absolute lifetime they are shown as
 **Expired — no sign-out recorded**. Nothing claims anybody is "online".
 
-## IP address (`client_ip()`)
+## IP address (`client_ip()`) — revised in Correction 5A
 
-* `REMOTE_ADDR` is whoever opened the connection. On a laptop: the browser
-  (`::1` / `127.0.0.1`). On Railway: Railway's edge proxy, in 100.0.0.0/8, the
-  same for everybody.
-* `X-Forwarded-For` is believed **only** when the connection came from a
-  trusted proxy: `TRUSTED_PROXY_CIDRS`, empty on a laptop, `100.0.0.0/8` in
-  production (override with the variable; an empty value trusts nothing). A
-  visitor connecting directly can send any header and it is ignored.
-* Behind the trusted proxy the **first** address is taken: Railway's edge
-  replaces what the client sent and puts the connecting address first (Railway
-  staff guidance, 2026). Anything that is not a valid IPv4/IPv6 address falls
-  back to `REMOTE_ADDR`.
-* One function for every use, so `audit_logs`, `privacy_consents`, the rate
-  limits, Turnstile, the sessions and the trail all agree. A side effect worth
-  knowing: the registration and reset **rate limits were counting every
-  Railway visitor as one address**; they now count per visitor.
+**The decision is made from the deployment, not from the request.**
+`BEHIND_RAILWAY_EDGE` (`api/config.php`) is true only in production *and*
+when `RAILWAY_ENVIRONMENT_ID` is set — a variable Railway sets on the
+deployments it runs, which no visitor can influence. A local Docker run of
+the production image has `APP_ENV=production` but no such variable; XAMPP is
+development. `config.local.php` may define it to simulate Railway in a test.
 
-**Limitation, honestly.** Which header Railway's edge controls is Railway's
-behaviour, not ours, and Railway's own forum has said different things over
-time (rightmost entry in 2024; leftmost in 2026, with a period when
-`X-Real-IP` carried a CDN address). It cannot be confirmed from a laptop.
-**After deploying, check:** sign in on production from a phone on mobile data
-and from the laptop; the Sessions tab must show two different public
-addresses, neither in 100.0.0.0/8. Then
-`curl -H "X-Forwarded-For: 203.0.113.9" https://…/api/health` must not make
-203.0.113.9 appear anywhere. If it does, the edge appends rather than replaces,
-and `client_ip()` must take the last entry instead.
+| Where | Address used | Headers |
+| --- | --- | --- |
+| XAMPP, local Docker | `REMOTE_ADDR` | `X-Real-IP`, `X-Forwarded-For` and the rest are **ignored** — whoever connects could have written them |
+| Railway | `X-Real-IP`, if it is exactly one valid IPv4 or IPv6 address | `X-Forwarded-For`, `CF-Connecting-IP`, `Fastly-Client-IP` never read |
+| Railway, `X-Real-IP` missing or malformed | `REMOTE_ADDR` (the edge), and a line in the server log saying so — without the header's value | |
+
+Why `X-Real-IP`: Railway's *Public Networking → Specs & Limits* page documents
+it as identifying the client's remote IP, and Railway staff (May 2026) state
+that the edge always sets it, always overwrites a client-supplied value, and
+that an app behind the HTTP proxy cannot be reached directly; they recommend
+it over parsing `X-Forwarded-For`.
+
+**What is no longer assumed.** Correction 5 believed `X-Forwarded-For` when
+`REMOTE_ADDR` was inside 100.0.0.0/8. Railway publishes no stable range for
+its proxies; 100.x is what their edge happens to connect from today, an
+observed implementation detail, not a contract. Nothing now depends on the
+peer address: on Railway it can be anything, off Railway it is the answer.
+
+One function for every use, so an `audit_logs` row, a `privacy_consents` row,
+a session record, an activity row, Turnstile's `remoteip` and the
+registration / resend / reset rate-limit buckets made by one request all
+carry the same address (tested end to end: IP-09…12). The three-attempt
+sign-in lock is keyed by email, not by address, and is unaffected. On Railway
+the rate limits now count per visitor; before Correction 5 every visitor
+shared the edge's address.
+
+**Limitation, honestly.** This relies on Railway keeping its documented
+`X-Real-IP` contract, which a laptop cannot prove. **After deploying:** sign in
+from two networks (home Wi-Fi, then mobile data); Logs → Sessions must show
+two different public addresses. If they are both an internal address, or the
+server log shows "X-Real-IP missing" lines, the contract is not holding: stop
+relying on the IP for per-client rate limiting (the email-keyed limits and the
+lock still work) until it is resolved. Diagnose with a temporary log line of
+`REMOTE_ADDR` and *whether* `X-Real-IP` / `X-Forwarded-For` are present —
+never their values persisted anywhere.
 
 ## User agent
 
@@ -350,7 +366,7 @@ enforced, not claimed.
 
 ## Known limitations
 
-* The IP is only as good as Railway's edge (above); verify after deploy.
+* The IP is only as good as Railway's `X-Real-IP` contract (above); verify after deploy.
 * "Last seen" and the idle clock count the background check, so an open tab
   is a live session.
 * Page views are reported by the browser: a person who edits the JavaScript

@@ -237,9 +237,11 @@ ended (`session_ended` on `/auth/me` and on any 401) and says so in words. The
 cross-tab sign-out race (register D1) is fixed: a check asked for while one is
 running is queued, and an answer that started before a sign-in or sign-out in
 this tab is discarded. Administrators have **Logs** (Activity / Sessions /
-Security events), filtered and paged on the server. `client_ip()` now believes
-`X-Forwarded-For` only from Railway's proxy (100.0.0.0/8) — on Railway every
-visitor used to be logged as the proxy. Suspension and lock now end the PHP
+Security events), filtered and paged on the server. `client_ip()` uses
+Railway's `X-Real-IP` only when the deployment itself is Railway (Correction
+5A: production + `RAILWAY_ENVIRONMENT_ID`; no proxy address range is
+trusted), and `REMOTE_ADDR` everywhere else — on Railway every visitor used to
+be logged as the proxy. Suspension and lock now end the PHP
 session for good (it used to revive on reinstatement). Privacy Notice
 2026-10-03. Design, before/after and limitations:
 `docs/security-activity-logging.md`.
@@ -259,10 +261,14 @@ migration assumes the one before. Use the official MySQL client with
 5. run 011 (two new, empty tables; nothing to preview)
 6. push; check `/api/health`; run `npm run verify:deploy <url>`
 7. **check the recorded IP** (`docs/security-activity-logging.md`, "IP
-   address"): sign in from two networks, the Sessions log must show two
-   public addresses, neither in 100.0.0.0/8. If they are Railway's, the edge
-   is not passing the visitor first and `client_ip()` needs the other end of
-   the header.
+   address"): (a) sign in from network A, e.g. home Wi-Fi; (b) sign in from
+   network B, e.g. mobile data; (c) Admin → Logs → Sessions must show **two
+   different real public addresses**. If both are an internal address, or the
+   Railway log has "X-Real-IP missing" lines, Railway is not keeping its
+   documented `X-Real-IP` contract: diagnose with a temporary log line of
+   `REMOTE_ADDR` and *whether* `X-Real-IP` / `X-Forwarded-For` are present
+   (never their values, never persisted), and stop relying on the IP for
+   per-client rate limiting until it is resolved.
 
 All four were tested from the `2947a43` schema and seed on MySQL 9.4 (strict)
 and on MariaDB, the last run twice, and compared with a fresh install
@@ -381,7 +387,7 @@ C:\xampp\php\php.exe scripts/match_scores.php                # 11
 python scripts/report_controls.py                             # 62  (reseeds)
 python scripts/migration_parity.py                            # 27  (needs Docker; scratch databases only)
 python scripts/publication_workflow.py                        # 71  (reseeds)
-python scripts/session_activity.py                            # 80  (reseeds; writes config.local.php, restores it)
+python scripts/session_activity.py                            # 88  (reseeds; writes config.local.php, restores it)
 C:\xampp\php\php.exe scripts/client_ip.php                   # 18
 python scripts/psgc_reference.py check                        # place data and SQL in step
 PAWS_PW=<seeded password> npm run audit                       # 384  (reseeds, restores)
@@ -399,8 +405,8 @@ C:\xampp\php\php.exe scripts/calendar_today.php               # 8
 C:\xampp\php\php.exe scripts/matching_log.php                 # 6
 ```
 
-**1,238 checks in total, in twenty-one suites** on `post-defense/revisions`
-(1,112 in eighteen after Correction 4; 1,006 in sixteen after 3A; 972 after 3;
+**1,246 checks in total, in twenty-one suites** on `post-defense/revisions`
+(1,238 after Correction 5; 1,112 in eighteen after Correction 4; 1,006 in sixteen after 3A; 972 after 3;
 802 after 2; 689 in production). a11y: 36 pages. Plain `npm run lint` is the
 gate again: the four `PawsAndFound_*` folders that had appeared in the
 repository root were moved to `C:\Projects\_archives\paws-and-found\` on
@@ -475,7 +481,7 @@ Rolling back and operating the live site: [PRODUCTION_RUNBOOK.md](PRODUCTION_RUN
 | Why a session ended | `current_user()` + `session_end_notice()` (`api/helpers.php`); `SessionNotice.jsx` says it |
 | Activity trail | `activity_log()` + `ACTIVITY_ACTIONS` (`api/helpers.php`); page views `RootLayout.jsx` → `POST /api/activity/page-view` (`api/logs.php`) |
 | Log viewer | `GET /api/logs/{activity,sessions,audit}` (`api/logs.php`); `src/pages/admin/AdminLogsPage.jsx` |
-| Visitor IP | `client_ip()` (`api/helpers.php`), `TRUSTED_PROXY_CIDRS` (`api/config.php`) |
+| Visitor IP | `client_ip()` (`api/helpers.php`), `BEHIND_RAILWAY_EDGE` (`api/config.php`) |
 | Session re-check | `useSession()` (`src/hooks/useSession.js`); `SESSION_CHECK_EVENT` in `src/services/api.js` |
 
 ---

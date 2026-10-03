@@ -150,12 +150,16 @@ def token_from(message):
 
 
 def raw_call(s, method, path, body, headers):
-    """A request with extra headers (audit.Session.call cannot add any)."""
+    """A request with extra headers (audit.Session.call cannot add any).
+    Keeps the session's CSRF token up to date, as the browser would."""
     data = json.dumps(body).encode()
     request = urllib.request.Request(audit.API + path, data=data, method=method, headers={
         'Content-Type': 'application/json', 'X-CSRF-Token': s.csrf or '', **headers})
     try:
         with s.opener.open(request, timeout=25) as response:
+            payload = json.loads(response.read() or b'{}')
+            if isinstance(payload, dict) and payload.get('csrf_token'):
+                s.csrf = payload['csrf_token']
             return response.status
     except urllib.error.HTTPError as error:
         return error.code
@@ -494,13 +498,65 @@ try:
           [admin.call('GET', '/logs/activity?session=zz')[0], admin.call('GET', '/logs/sessions?ip=999.1.1.1')[0]])
 
     # =================================================================== IP
-    banner('IP. A forwarded address is not believed from just anyone')
-    spoofer, _, _ = device(CUSTOMER)
-    raw_call(spoofer, 'POST', '/activity/page-view', {'path': '/help'}, {'X-Forwarded-For': '203.0.113.9'})
-    check('IP-01', 'X-Forwarded-For from a browser is ignored on this server', '0',
-          sql("SELECT COUNT(*) FROM user_activity_logs WHERE ip_address = '203.0.113.9'"))
-    check('IP-02', 'The session records hold no forged address either', '0',
-          sql("SELECT COUNT(*) FROM user_sessions WHERE ip_address = '203.0.113.9'"))
+    banner('IP. Which address is recorded, off Railway and behind its edge (Correction 5A)')
+    # Off Railway (this laptop): headers a client sends are not believed.
+    spoofer = audit.Session()
+    spoofer.prime_csrf()
+    raw_call(spoofer, 'POST', '/auth/login', {'email': CUSTOMER, 'password': PW},
+             {'X-Real-IP': '203.0.113.9', 'X-Forwarded-For': '203.0.113.9'})
+    raw_call(spoofer, 'POST', '/activity/page-view', {'path': '/help'},
+             {'X-Real-IP': '203.0.113.9', 'X-Forwarded-For': '203.0.113.9'})
+    spoof_ip = sql(f'SELECT ip_address FROM user_sessions WHERE session_record_id = {newest_record(CUSTOMER)[0]}')
+    check('IP-01', 'Local: a spoofed X-Real-IP is not recorded anywhere', ('0', '0', '0'),
+          (sql("SELECT COUNT(*) FROM user_sessions WHERE ip_address = '203.0.113.9'"),
+           sql("SELECT COUNT(*) FROM user_activity_logs WHERE ip_address = '203.0.113.9'"),
+           sql("SELECT COUNT(*) FROM audit_logs WHERE ip_address = '203.0.113.9'")))
+    check('IP-02', 'Local: a spoofed X-Forwarded-For is not recorded either (same requests)', True,
+          spoof_ip not in ('203.0.113.9', None, ''))
+    check('IP-03', 'Local: the connecting address is what is recorded', True, spoof_ip in ('::1', '127.0.0.1'))
+
+    # Behind Railway's edge, simulated: the edge sets X-Real-IP on every request.
+    write_config(BEHIND_RAILWAY_EDGE='true')
+    edge = {'X-Real-IP': '198.51.100.77'}
+    visitor = audit.Session()
+    visitor.prime_csrf()
+    check('IP-04', 'Railway (simulated): signing in with the edge header', 200,
+          raw_call(visitor, 'POST', '/auth/login', {'email': CUSTOMER2, 'password': PW}, edge))
+    raw_call(visitor, 'POST', '/activity/page-view', {'path': '/dashboard'}, edge)
+    rid = newest_record(CUSTOMER2)[0]
+    check('IP-10', 'Railway: the session record has the visitor address', '198.51.100.77',
+          sql(f'SELECT ip_address FROM user_sessions WHERE session_record_id = {rid}'))
+    check('IP-11', 'Railway: its activity rows (sign-in, page view) have the same address', '198.51.100.77',
+          sql(f'SELECT GROUP_CONCAT(DISTINCT ip_address) FROM user_activity_logs WHERE session_record_id = {rid}'))
+    check('IP-12', 'Railway: the audit row of that sign-in has the same address', '198.51.100.77',
+          sql(f"SELECT ip_address FROM audit_logs WHERE action = 'login' AND actor_user_id = {uid(CUSTOMER2)} "
+              'ORDER BY audit_id DESC LIMIT 1'))
+    raw_call(visitor, 'POST', '/activity/page-view', {'path': '/explore'},
+             {'X-Real-IP': '198.51.100.77', 'X-Forwarded-For': '203.0.113.66'})
+    check('IP-08b', 'Railway: X-Forwarded-For is still never read', '0',
+          sql("SELECT COUNT(*) FROM user_activity_logs WHERE ip_address = '203.0.113.66'"))
+    malformed = audit.Session()
+    malformed.prime_csrf()
+    raw_call(malformed, 'POST', '/auth/login', {'email': CUSTOMER, 'password': PW}, {'X-Real-IP': 'not-an-ip'})
+    check('IP-07', 'Railway: a malformed X-Real-IP falls back to the connecting address', True,
+          sql(f'SELECT ip_address FROM user_sessions WHERE session_record_id = {newest_record(CUSTOMER)[0]}')
+          in ('::1', '127.0.0.1'))
+
+    # The reset-link limit is 3 an hour per address: two visitors, two buckets.
+    sql('DELETE FROM auth_rate_limits')
+    one, two = audit.Session(), audit.Session()
+    one.prime_csrf()
+    two.prime_csrf()
+    first_three = [raw_call(one, 'POST', '/auth/forgot-password', {'email': f'nobody{n}@example.com'},
+                            {'X-Real-IP': '198.51.100.81'}) for n in range(3)]
+    fourth = raw_call(one, 'POST', '/auth/forgot-password', {'email': 'nobody4@example.com'},
+                      {'X-Real-IP': '198.51.100.81'})
+    other = raw_call(two, 'POST', '/auth/forgot-password', {'email': 'nobody5@example.com'},
+                     {'X-Real-IP': '198.51.100.82'})
+    check('IP-09', 'Railway: the rate limit counts each visitor address separately',
+          ([200, 200, 200], 429, 200), (first_three, fourth, other))
+    sql('DELETE FROM auth_rate_limits')
+    write_config()
 
     # ================================================================== SENS
     banner('SENS. Sentinel secrets never reach a log table')

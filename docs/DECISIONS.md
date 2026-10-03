@@ -670,13 +670,22 @@ The page re-checks the session every ten seconds; a write per request would be
 a database write every ten seconds per open tab, for a value nobody reads to
 the second. Five minutes is precise enough to say "last used around …".
 
-### Trust X-Forwarded-For only from the proxy (Correction 5)
+### The visitor's IP: X-Real-IP, only when the deployment is Railway (Correction 5A)
 
-On Railway, `REMOTE_ADDR` is Railway's edge for every visitor. The forwarded
-header is believed only when the connection comes from 100.0.0.0/8
-(`TRUSTED_PROXY_CIDRS`); on a laptop, from nobody. Which end of the header is
-the visitor is Railway's behaviour; it is checked after the deploy, not
-assumed (docs/security-activity-logging.md).
+On Railway, `REMOTE_ADDR` is Railway's edge for every visitor. Correction 5
+believed `X-Forwarded-For` when the connection came from 100.0.0.0/8; Railway
+publishes no stable proxy range, so that tied a security decision to an
+implementation detail. Now the deployment decides: production with
+`RAILWAY_ENVIRONMENT_ID` set (a variable Railway sets, nothing a visitor can
+send) uses `X-Real-IP`, which Railway documents as the client's address and
+overwrites on every request; everything else uses `REMOTE_ADDR` and ignores
+all forwarding headers. A missing or malformed `X-Real-IP` falls back to
+`REMOTE_ADDR` and is logged. `X-Forwarded-For` is not used: Railway itself
+recommends `X-Real-IP` over parsing it, and its forum gave conflicting answers
+about which end of `X-Forwarded-For` is the client. Considered and rejected:
+keeping the CIDR as a second condition (it would fail silently the day Railway
+moves its proxies). Checked after deploy, not assumed
+(docs/security-activity-logging.md).
 
 ### Suspension and lock end the session (Correction 5)
 

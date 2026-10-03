@@ -56,7 +56,7 @@ are checked by what the file actually is; administrators add, rename, retire and
 delete pet categories. Nothing the app shows comes from mock data any more. See
 [`docs/feature-status.md`](docs/feature-status.md) for the item-by-item picture.
 
-**It is tested.** 1,238 automated checks in twenty-one suites, all passing, and
+**It is tested.** 1,246 automated checks in twenty-one suites, all passing, and
 axe-core over 36 pages — see [`docs/TESTING.md`](docs/TESTING.md) §3.
 
 ## Getting started
@@ -181,9 +181,9 @@ with the password itself. On a built site everyone signs in through the form.
 | `npm run test:matching-log` | 6 checks of what matching logs, with `MATCH_DEBUG` off and on (needs `php` on PATH) |
 | `npm run test:ui` | 66 browser checks: moderation (the report link, raising and deciding a flag, who is told), registration's field feedback, the phone workspace menu, My Reports card actions, no Edit while a match is open, withdrawn wording, sticky table headers, the historical label on ruled-out pairings, the password requirements and strength label, reopening a decision (including a reporter's "Not my pet", never a withdrawal), the administrator kept in Administration, and Confirm / Not the same pet asking first (same `PAWS_BASE`, `PAWS_PW`) |
 | `npm run test:signout` | 24 browser privacy checks: signing out, switching accounts, the guest map, in a real Chrome (`PAWS_BASE=http://localhost:5173`, `PAWS_PW` set to the password above) |
-| `npm run test:sessions` | 80 checks of the session records, the activity trail, who may read the logs, and secrets that must never be logged (**reseeds**) |
+| `npm run test:sessions` | 88 checks of the session records, the activity trail, who may read the logs, and secrets that must never be logged (**reseeds**) |
 | `npm run test:session-ui` | 26 browser checks: the cross-tab sign-out race reproduced on purpose, every session-end message, page views, the Logs page |
-| `npm run test:client-ip` | 18 checks of which address is logged and when a forwarded one is believed (needs `php` on PATH) |
+| `npm run test:client-ip` | 18 checks of which address is logged: `REMOTE_ADDR`, or Railway's `X-Real-IP` only when the deployment is Railway (needs `php` on PATH) |
 | `npm run a11y` | axe-core over all 36 pages in every role (`PAWS_BASE=http://localhost:5173` for the dev build) |
 | `npm run verify:deploy <url>` | 28 checks that only fail on a real host |
 

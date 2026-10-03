@@ -942,74 +942,42 @@ function audit_log(
 /**
  * The caller's address, for the logs, the sessions and the rate limits.
  *
- * REMOTE_ADDR is whoever opened the connection to this server. On a laptop
- * that is the browser. On Railway it is Railway's own edge proxy, the same
- * kind of address for every visitor — so on its own it would log one address
- * for everybody, and the rate limits would count everyone as one person.
+ * One answer for every use, so an audit row, a session record, an activity
+ * row and a rate-limit bucket made by the same request always agree.
  *
- * So X-Forwarded-For is read, but ONLY when the connection itself came from a
- * proxy this deployment trusts (TRUSTED_PROXY_CIDRS in config.php; nothing on
- * a laptop). Anybody else may send any X-Forwarded-For they like and it is
- * ignored, so a visitor cannot write a made-up address into our logs. Behind
- * the trusted proxy the FIRST address is the visitor: Railway's edge replaces
- * what a client sent and puts the connecting address first. That is
- * Railway's behaviour, not ours, and docs/security-activity-logging.md says
- * how to confirm it after a deploy.
+ * Off Railway (XAMPP, a local Docker run): REMOTE_ADDR, the address that
+ * opened the connection. Any X-Real-IP or X-Forwarded-For is ignored — the
+ * person connecting could have written it.
+ *
+ * On Railway (BEHIND_RAILWAY_EDGE, decided from the deployment in
+ * config.php, never from the request): REMOTE_ADDR is Railway's own edge for
+ * every visitor, so the visitor is X-Real-IP, which Railway documents as the
+ * client's address, sets on every request and overwrites if a client sent
+ * one. It must be exactly one valid IPv4 or IPv6 address. If it is missing or
+ * malformed the edge did not keep its contract: REMOTE_ADDR is used instead,
+ * and the server log says so (without the header's value), because every
+ * visitor would then share one rate-limit bucket. X-Forwarded-For is never
+ * read; Railway recommends X-Real-IP over parsing it.
  */
 function client_ip(): ?string
 {
     $remote = $_SERVER['REMOTE_ADDR'] ?? null;
-    if (!is_string($remote) || filter_var($remote, FILTER_VALIDATE_IP) === false) {
-        return null;
+    $remote = is_string($remote) && filter_var($remote, FILTER_VALIDATE_IP) !== false ? $remote : null;
+
+    if (!BEHIND_RAILWAY_EDGE) {
+        return $remote;
     }
 
-    if (ip_is_trusted_proxy($remote)) {
-        $first = trim(explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''))[0]);
-        if ($first !== '' && filter_var($first, FILTER_VALIDATE_IP) !== false) {
-            return $first;
-        }
+    $real = $_SERVER['HTTP_X_REAL_IP'] ?? '';
+    $real = is_string($real) ? trim($real) : '';
+    if ($real !== '' && filter_var($real, FILTER_VALIDATE_IP) !== false) {
+        return $real;
     }
+
+    error_log('[pawsandfound] X-Real-IP ' . ($real === '' ? 'missing' : 'not a single IP address')
+        . ' behind the Railway edge; using REMOTE_ADDR');
 
     return $remote;
-}
-
-/** Whether a connection from this address is the deployment's own proxy. */
-function ip_is_trusted_proxy(string $ip): bool
-{
-    foreach (TRUSTED_PROXY_CIDRS as $range) {
-        if (ip_in_range($ip, $range)) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-/** Is `$ip` inside `$range` ("100.0.0.0/8", "fd00::/8", or one address)? IPv4 and IPv6. */
-function ip_in_range(string $ip, string $range): bool
-{
-    [$network, $bits] = array_pad(explode('/', trim($range), 2), 2, null);
-    $address = @inet_pton($ip);
-    $base = @inet_pton((string) $network);
-
-    if ($address === false || $base === false || strlen($address) !== strlen($base)) {
-        return false;
-    }
-
-    $bits = $bits === null ? strlen($address) * 8 : (int) $bits;
-    $whole = intdiv($bits, 8);
-    if (substr($address, 0, $whole) !== substr($base, 0, $whole)) {
-        return false;
-    }
-
-    $rest = $bits % 8;
-    if ($rest === 0) {
-        return true;
-    }
-
-    $mask = (0xFF << (8 - $rest)) & 0xFF;
-
-    return (ord($address[$whole]) & $mask) === (ord($base[$whole]) & $mask);
 }
 
 /**

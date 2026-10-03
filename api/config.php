@@ -236,20 +236,26 @@ defined('SESSION_ABSOLUTE_TIMEOUT') || define('SESSION_ABSOLUTE_TIMEOUT', 28800)
 defined('SESSION_LAST_SEEN_INTERVAL') || define('SESSION_LAST_SEEN_INTERVAL', 300); // 5 minutes
 
 // -----------------------------------------------------------------------------
-// Which proxy's X-Forwarded-For header may be believed (api/helpers.php,
-// client_ip()). A comma-separated list of ranges.
+// Is this server behind Railway's public HTTP edge? (api/helpers.php,
+// client_ip(), Correction 5A)
 //
-// Nothing on a laptop: there is no proxy, and believing the header would let
-// anybody choose the address written into the logs. In production, Railway's
-// edge proxy, which connects from 100.0.0.0/8 (Railway's documented range).
-// Set TRUSTED_PROXY_CIDRS to override, or to an empty value to trust none.
+// Only then is the X-Real-IP header the visitor's address: Railway's edge
+// sets it on every request, overwrites any value a client sent, and an app
+// behind it cannot be reached any other way (Railway, Public Networking →
+// Specs & Limits; Railway staff, May 2026). Anywhere else — XAMPP, a local
+// Docker run — whoever connects could write the header themselves, so it is
+// ignored and REMOTE_ADDR is used.
+//
+// Decided from the deployment itself, never from the request: production,
+// and a variable Railway sets on every deployment it runs. Railway publishes
+// no stable range for its proxies (100.0.0.0/8 is what they happen to use
+// today), so the source address is not part of the decision.
+// config.local.php may define it to simulate Railway in a test.
 // -----------------------------------------------------------------------------
-defined('TRUSTED_PROXY_CIDRS') || define('TRUSTED_PROXY_CIDRS', array_values(array_filter(array_map(
-    'trim',
-    explode(',', (string) (getenv('TRUSTED_PROXY_CIDRS') !== false
-        ? getenv('TRUSTED_PROXY_CIDRS')
-        : (APP_ENV === 'production' ? '100.0.0.0/8' : '')))
-))));
+defined('BEHIND_RAILWAY_EDGE') || define(
+    'BEHIND_RAILWAY_EDGE',
+    APP_ENV === 'production' && (string) getenv('RAILWAY_ENVIRONMENT_ID') !== ''
+);
 
 // Changed on 2026-10-03 (Correction 5): the notice now says what the session
 // and activity logs record. See src/pages/public/PrivacyPage.jsx.

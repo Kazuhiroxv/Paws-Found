@@ -690,7 +690,7 @@ audit's table and key counts are 22 and 32.
 
 ### Correction 5 suites
 
-**`npm run test:sessions` — 80 checks** (`scripts/session_activity.py`,
+**`npm run test:sessions` — 88 checks** (`scripts/session_activity.py`,
 local only, reseeds; writes `api/config.local.php` to turn the session clocks
 down to seconds and capture email, and puts back what was there). `SES-01`…`19`
 one record per sign-in (user, IP, user agent, start, a 32-hex reference, the
@@ -709,8 +709,13 @@ moderation decision, profile update, sign-in and sign-out — in the trail with
 its target. `LOG-01`…`13` administrators read all three logs; coordinators and
 customers 403, guests 401; ten thousand rows page 50 at a time with no overlap
 in under 2 s, newest first; filters by Manila day, person, IP, action, session
-reference; malformed filters 422. `IP-01`…`02` a browser's own
-`X-Forwarded-For` is ignored. `SENS-01`…`09` sentinel values — a password, any
+reference; malformed filters 422. `IP-01`…`12` through the real Apache: off
+Railway a spoofed `X-Real-IP` or `X-Forwarded-For` reaches no session, activity
+or audit row and the connecting address is recorded; with Railway simulated
+(`BEHIND_RAILWAY_EDGE` in `config.local.php`) the edge's `X-Real-IP` is on the
+session record, its activity rows and its audit row alike, `X-Forwarded-For`
+is still ignored, a malformed `X-Real-IP` falls back, and the reset-link rate
+limit keeps a separate bucket per visitor address (Correction 5A). `SENS-01`…`09` sentinel values — a password, any
 bcrypt hash, every CSRF token and PHP session id handed out, the reset and
 verification tokens, a Turnstile token, a cookie header, the new password —
 appear in none of the three log tables.
@@ -737,10 +742,13 @@ ended, failures-only, a filter in the address, no sideways scroll at 390 px, a
 coordinator turned away.
 
 **`npm run test:client-ip` — 18 checks** (`scripts/client_ip.php`, no
-database). `X-Forwarded-For` believed only from a trusted proxy (the setting
-read from the environment as a deployment sets it), the first entry taken,
-IPv6, junk ignored, a laptop not a proxy, null rather than an empty string,
-and the range test underneath.
+database; rewritten in Correction 5A). Each situation in a PHP process of its
+own, because the decision is a constant: `DET` production + Railway's variable
+is Railway, the production image without it is not, development never is;
+`IP-01`…`03` locally every header is ignored, a 100.x peer is not special;
+`IP-04`…`08` behind the edge `X-Real-IP` is taken (IPv4, IPv6), a malformed or
+missing one falls back to `REMOTE_ADDR` and is logged without its value, and
+`X-Forwarded-For` / `CF-Connecting-IP` are never read.
 
 `npm run test:migrations` now runs 008 → 009 → 010 → 011 → 011 (27 checks):
 24 tables, 35 keys, migrations to 011, and both new tables empty — nothing
@@ -750,8 +758,8 @@ invented. The audit's table and key counts are 24 and 35. `a11y` adds Logs
 ## 3. Last verified results
 
 3 October 2026 (Correction 5), on the development laptop unless stated, on
-branch `post-defense/revisions`. **1,238 checks in twenty-one suites, all
-passing; a11y 36 pages.** Plain `npm run lint` again: the `PawsAndFound_*`
+branch `post-defense/revisions`. **1,246 checks in twenty-one suites, all
+passing; a11y 36 pages** (Correction 5A; 1,238 at Correction 5). Plain `npm run lint` again: the `PawsAndFound_*`
 folders were moved out of the repository.
 
 **Two lessons from this gate.** (1) Do not edit any file in the repository
@@ -775,9 +783,9 @@ test:controls                            62/62
 test:report-ui                           47/47   (820 px, and 390 px with touch)
 test:migrations                          27/27   (MySQL 9.4 strict + MariaDB; 008→009→010→011→011 = fresh; 24 tables, 35 FKs)
 test:publication                         71/71
-test:sessions                            80/80   (session records, activity trail, log access, sentinel secrets)
+test:sessions                            88/88   (session records, activity trail, log access, client IP end to end, sentinel secrets)
 test:session-ui                          26/26   (race held at the network, session-end messages, page views, Logs page)
-test:client-ip                           18/18
+test:client-ip                           18/18   (Railway detection, X-Real-IP policy)
 test:workflow-ui                         33/33   (drafts on two devices, review, rejection, removal)
 test:feedback                            49/49
 check:psgc                               ok vs PSA's 30 June 2026 workbook: 82 provinces + NCR + SGA, 1,642 places
