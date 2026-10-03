@@ -820,6 +820,13 @@ function auth_me(): never
             // an address change is already done.
             'email_verified_at' => $user['email_verified_at'],
             'pending_email' => $user['pending_email'],
-        ],
+        ] + ($user['role'] === 'admin' ? [
+            // Correction 6. The capabilities are what the interface reads to
+            // decide what to show; they are derived here from the level, so
+            // the browser never reconstructs the rules from a label. Every
+            // endpoint still checks for itself.
+            'admin_level' => $user['admin_level'],
+            'capabilities' => admin_capabilities($user),
+        ] : []),
     ]);
 }

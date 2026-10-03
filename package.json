@@ -33,6 +33,8 @@
     "test:sessions": "python scripts/session_activity.py",
     "test:session-ui": "node scripts/session_ui.mjs",
     "test:client-ip": "php scripts/client_ip.php",
+    "test:admin-levels": "python scripts/admin_levels.py",
+    "test:admin-levels-ui": "node scripts/admin_levels_ui.mjs",
     "verify:deploy": "python scripts/verify_deployment.py",
     "test:contract": "node --import ./scripts/alias-hook.mjs --test scripts/*.test.mjs"
   },

@@ -19,6 +19,44 @@ export const ROLE_LABELS = {
   [ROLES.ADMIN]: 'Administrator',
 }
 
+/**
+ * Administrator levels (Correction 6). A refinement of the Administrator role,
+ * not a role of its own: users.admin_level, set only when role is 'admin'.
+ * The values are the API's (ADMIN_LEVELS in api/helpers.php), exactly.
+ */
+export const ADMIN_LEVELS = {
+  MODERATOR: 'moderator',
+  MANAGER: 'manager',
+  SUPER_ADMIN: 'super_admin',
+}
+
+export const ADMIN_LEVEL_LABELS = {
+  [ADMIN_LEVELS.MODERATOR]: 'Administrator — Moderator',
+  [ADMIN_LEVELS.MANAGER]: 'Administrator — Manager',
+  [ADMIN_LEVELS.SUPER_ADMIN]: 'Super Administrator',
+}
+
+/**
+ * What an administrator may do. The server derives these from the level and
+ * sends them with the account (/auth/me); the interface only asks `can()`
+ * (src/utils/permissions.js). Every endpoint checks again for itself.
+ */
+export const CAPABILITIES = {
+  MODERATE_REPORTS: 'moderate_reports',
+  MANAGE_ACCOUNTS: 'manage_accounts',
+  MANAGE_REFERENCE_DATA: 'manage_reference_data',
+  MANAGE_ADMINS: 'manage_admins',
+  VIEW_SECURITY_LOGS: 'view_security_logs',
+}
+
+/** How an account's role reads, with the administrator level when there is one. */
+export function roleLabel(user) {
+  if (user?.role === ROLES.ADMIN && ADMIN_LEVEL_LABELS[user.adminLevel]) {
+    return ADMIN_LEVEL_LABELS[user.adminLevel]
+  }
+  return ROLE_LABELS[user?.role] ?? user?.role ?? ''
+}
+
 /** The two kinds of report a community member can file. */
 export const REPORT_TYPES = {
   LOST: 'lost',

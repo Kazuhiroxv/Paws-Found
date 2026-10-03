@@ -6,9 +6,9 @@ import { WorkspaceLayout } from '@/layouts/WorkspaceLayout'
 import { loadDashboardCounts } from '@/pages/dashboard/dashboardSummary'
 import { loadAdminCounts } from '@/pages/admin/adminCounts'
 import { loadStaffCounts } from '@/pages/staff/staffCounts'
-import { AdminStaysInWorkspace, RequireAccess } from '@/components/RequireAccess'
+import { AdminStaysInWorkspace, RequireAccess, RequireCapability } from '@/components/RequireAccess'
 import { useSession } from '@/hooks/useSession'
-import { ROLES } from '@/constants'
+import { CAPABILITIES, ROLES } from '@/constants'
 import { ADMIN_NAV, STAFF_NAV, USER_NAV } from '@/constants/navigation'
 import { userService } from '@/services'
 
@@ -102,7 +102,7 @@ export default function App() {
   // for the next. Without it a report opened while signed in, which is a
   // public route with no guard to bounce it, kept its description, markings
   // and case history after Sign out until the page was reloaded.
-  const sessionKey = user ? `${user.id}:${user.role}` : 'guest'
+  const sessionKey = user ? `${user.id}:${user.role}:${user.adminLevel ?? ''}` : 'guest'
 
   // Until the session check finishes, a guarded route must not decide that
   // nobody is signed in — that would bounce a signed-in user to /login on
@@ -261,11 +261,48 @@ export default function App() {
             }
           >
             <Route index element={<AdminOverviewPage />} />
-            <Route path="users" element={<AdminUsersPage />} />
-            <Route path="reports" element={<AdminReportsPage />} />
-            <Route path="categories" element={<AdminCategoriesPage />} />
-            <Route path="moderation" element={<AdminModerationPage />} />
-            <Route path="logs" element={<AdminLogsPage />} />
+            {/* Each section needs a capability of the administrator's level
+                (Correction 6); without it the page says so instead. */}
+            <Route
+              path="users"
+              element={
+                <RequireCapability user={user} capability={CAPABILITIES.MANAGE_ACCOUNTS}>
+                  <AdminUsersPage />
+                </RequireCapability>
+              }
+            />
+            <Route
+              path="reports"
+              element={
+                <RequireCapability user={user} capability={CAPABILITIES.MODERATE_REPORTS}>
+                  <AdminReportsPage />
+                </RequireCapability>
+              }
+            />
+            <Route
+              path="categories"
+              element={
+                <RequireCapability user={user} capability={CAPABILITIES.MANAGE_REFERENCE_DATA}>
+                  <AdminCategoriesPage />
+                </RequireCapability>
+              }
+            />
+            <Route
+              path="moderation"
+              element={
+                <RequireCapability user={user} capability={CAPABILITIES.MODERATE_REPORTS}>
+                  <AdminModerationPage />
+                </RequireCapability>
+              }
+            />
+            <Route
+              path="logs"
+              element={
+                <RequireCapability user={user} capability={CAPABILITIES.VIEW_SECURITY_LOGS}>
+                  <AdminLogsPage />
+                </RequireCapability>
+              }
+            />
           </Route>
 
           {/* System */}

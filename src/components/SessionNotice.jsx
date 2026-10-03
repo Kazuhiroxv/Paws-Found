@@ -29,6 +29,10 @@ const SIGNED_OUT = {
     "Your session ended because this account's access level changed. Please sign in again.",
     null,
   ],
+  privilege_changed: [
+    "Your session ended because this account's administrator privileges changed. Please sign in again.",
+    'A Super Administrator changed what this account may do in Administration. Signing in again shows the pages it now has.',
+  ],
   account_locked: [
     'Your account is locked.',
     'It was locked after repeated failed sign-in attempts. An administrator must unlock it before you can sign in again.',

@@ -101,6 +101,12 @@ requests, maintain case notes.
 ### 4.3 Administrator
 Responsible for system management, not everyday case processing.
 
+Since Correction 6 the role has three levels (`users.admin_level`):
+Moderator, Manager, Super Administrator — the team's design for the
+instructor's "different admin levels". Endpoints check capabilities
+(`ADMIN_CAPABILITIES` in `api/helpers.php`); the matrix is
+`docs/role-permissions.md` §0.
+
 Can: manage users and roles, manage pet categories, review lost/found records,
 review reported posts and users, moderate false/misleading/fraudulent content,
 remove reports where authorized, review system activity, use the admin dashboard.
@@ -280,7 +286,8 @@ The database is built: `database/schema.sql` — **24 tables**, the 15 on the
 ERD, the three reference lists migration 009 added (`ph_areas`,
 `ph_cities`, `pet_colours`), `publication_logs` and `report_drafts` from 010,
 `user_sessions` and `user_activity_logs` from 011, plus `schema_migrations`
-and `auth_rate_limits`, with 35 foreign keys.
+and `auth_rate_limits`, with 35 foreign keys (012 adds `users.admin_level`
+and a CHECK, no table).
 Counted from
 `information_schema` on MariaDB 10.4.32 via XAMPP, not from the file. **This XAMPP runs MySQL on port 3307**, not 3306, because a
 separate MySQL 8.0 Windows service holds 3306.

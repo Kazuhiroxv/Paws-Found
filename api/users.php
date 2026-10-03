@@ -43,9 +43,15 @@ function handle_users(string $method, ?string $identifier): never
     json_error('No such endpoint.', 404);
 }
 
+/**
+ * Every account. Any administrator: the Overview and Records pages name the
+ * people behind reports and flags. Contact details only with manage_accounts
+ * (Manager and above) — a Moderator needs to know who, not how to reach them.
+ */
 function users_list(): never
 {
-    require_role('admin');
+    $viewer = require_role('admin');
+    $withContact = user_can($viewer, 'manage_accounts');
 
     $where = [];
     $params = [];
@@ -73,15 +79,18 @@ function users_list(): never
     $clause = $where === [] ? '' : ' WHERE ' . implode(' AND ', $where);
 
     $statement = db()->prepare(
-        "SELECT user_id, first_name, last_name, full_name, email, contact_number, role, account_status,
-                preferred_location, created_at
+        "SELECT user_id, first_name, last_name, full_name, email, contact_number, role, admin_level,
+                account_status, preferred_location, created_at
            FROM users
            {$clause}
            ORDER BY full_name"
     );
     $statement->execute($params);
 
-    json_response(['data' => array_map('shape_user', $statement->fetchAll())]);
+    json_response(['data' => array_map(
+        fn ($row) => shape_user($row, $withContact, true),
+        $statement->fetchAll()
+    )]);
 }
 
 /**
@@ -101,8 +110,8 @@ function user_detail(int $id, array $extra = []): never
     $viewer = require_login();
 
     $statement = db()->prepare(
-        'SELECT user_id, first_name, last_name, full_name, email, contact_number, role, account_status,
-                preferred_location, created_at, email_verified_at, pending_email
+        'SELECT user_id, first_name, last_name, full_name, email, contact_number, role, admin_level,
+                account_status, preferred_location, created_at, email_verified_at, pending_email
            FROM users
           WHERE user_id = :id'
     );
@@ -113,10 +122,13 @@ function user_detail(int $id, array $extra = []): never
         json_error('That account does not exist.', 404);
     }
 
-    $privileged = in_array($viewer['role'], ['staff', 'admin'], true)
+    // Coordinators arrange handovers; Managers and above manage accounts. A
+    // Moderator is an administrator without either job (Correction 6).
+    $privileged = $viewer['role'] === 'staff'
+        || user_can($viewer, 'manage_accounts')
         || (int) $viewer['user_id'] === $id;
 
-    json_response(['data' => shape_user($user, $privileged)] + $extra);
+    json_response(['data' => shape_user($user, $privileged, $viewer['role'] === 'admin')] + $extra);
 }
 
 /**
@@ -274,7 +286,31 @@ function profile_update(): never
     user_detail($id, ['email_change_sent' => $emailSent]);
 }
 
-/** Change a role or suspend an account. Administrators only. */
+/**
+ * Change a role, an administrator level, or an account's status.
+ *
+ * Who may do what (Correction 6; ADMIN_CAPABILITIES in helpers.php):
+ *
+ *   suspend, reinstate, unlock a customer or coordinator   manage_accounts  (Manager+)
+ *   change any role, set an administrator level             manage_admins    (Super Administrator)
+ *   anything at all to another administrator's account     manage_admins    (Super Administrator)
+ *   anything to your own account                            nobody
+ *
+ * A role and its level are one change: an administrator always has a level
+ * and nobody else has one (chk_users_admin_level). Promoting to administrator
+ * needs a level chosen on purpose — nobody becomes a Super Administrator by
+ * default — and demoting from administrator clears it.
+ *
+ * THE LAST SUPER ADMINISTRATOR. The system must never be left without an
+ * active one. Nobody may change their own account, and only a Super
+ * Administrator may change an administrator, so the one danger left is two
+ * Super Administrators demoting each other at the same moment: each sees the
+ * other still there, and both succeed. So the decision is taken inside a
+ * transaction that first locks every active Super Administrator's row, the
+ * acting one's and the target's, in one order (FOR UPDATE). A second request
+ * waits for the first to commit, then re-reads the actor — who may no longer
+ * be a Super Administrator — and the count, from the rows as they now are.
+ */
 function user_update(int $id): never
 {
     $admin = require_role('admin');
@@ -283,31 +319,30 @@ function user_update(int $id): never
     // An administrator must not be able to lock themselves out, which is what
     // demoting or suspending your own account would do.
     if ((int) $admin['user_id'] === $id) {
-        json_error('You cannot change your own role or suspend your own account.', 422);
+        json_error('You cannot change your own role, administrator level or account status.', 422);
     }
 
-    // The current values, so the audit entries below can say what changed
-    // rather than only what it changed to.
-    $exists = db()->prepare('SELECT user_id, email, role, account_status FROM users WHERE user_id = :id');
-    $exists->execute([':id' => $id]);
-    $before = $exists->fetch();
+    $changesRole = array_key_exists('role', $body);
+    $changesLevel = array_key_exists('admin_level', $body);
+    $changesStatus = array_key_exists('account_status', $body);
 
-    if (!$before) {
-        json_error('That account does not exist.', 404);
+    if (!$changesRole && !$changesLevel && !$changesStatus) {
+        json_error('Nothing to change.', 422);
     }
 
-    $sets = [];
-    $params = [':id' => $id];
-    $newRole = null;
+    $requestedRole = $changesRole
+        ? require_one_of(trim((string) $body['role']), ['user', 'staff', 'admin'], 'role')
+        : null;
+
+    // null is allowed only to clear it (a demotion); any string must be a level.
+    $requestedLevel = null;
+    if ($changesLevel && $body['admin_level'] !== null) {
+        $requestedLevel = require_one_of(is_string($body['admin_level']) ? $body['admin_level'] : '',
+            ADMIN_LEVELS, 'admin_level');
+    }
+
     $newStatus = null;
-
-    if (array_key_exists('role', $body)) {
-        $newRole = require_one_of(trim((string) $body['role']), ['user', 'staff', 'admin'], 'role');
-        $sets[] = 'role = :role';
-        $params[':role'] = $newRole;
-    }
-
-    if (array_key_exists('account_status', $body)) {
+    if ($changesStatus) {
         // 'locked' is missing from this list on purpose. Nobody chooses it: an
         // account arrives there by failing to sign in three times, and the only
         // way out is an administrator setting it back to active. Offering it
@@ -326,30 +361,113 @@ function user_update(int $id): never
                 'fields' => ['reason' => 'It goes in the audit log, next to your name.'],
             ]);
         }
-        $sets[] = 'account_status = :status';
-        $params[':status'] = $newStatus;
     }
 
-    if ($sets === []) {
-        json_error('Nothing to change.', 422);
+    // Before anything is read: roles and levels are a Super Administrator's,
+    // status a Manager's. Checked again below against the locked rows.
+    if (($changesRole || $changesLevel) && !user_can($admin, 'manage_admins')) {
+        json_error('Only a Super Administrator can change roles or administrator levels.', 403, ['code' => 'admin_level']);
+    }
+    if ($changesStatus && !user_can($admin, 'manage_accounts')) {
+        json_error('Your administrator level does not include managing accounts.', 403, ['code' => 'admin_level']);
     }
 
     $pdo = db();
     $pdo->beginTransaction();
 
     try {
-        $statement = $pdo->prepare('UPDATE users SET ' . implode(', ', $sets) . ' WHERE user_id = :id');
-        $statement->execute($params);
+        // Every active Super Administrator, then the actor and the target, all
+        // locked in user_id order so two requests cannot lock them crosswise.
+        $pdo->query("SELECT user_id FROM users
+                      WHERE role = 'admin' AND admin_level = 'super_admin' AND account_status = 'active'
+                      ORDER BY user_id FOR UPDATE")->fetchAll();
+        $lock = $pdo->prepare('SELECT user_id, email, role, admin_level, account_status
+                                 FROM users WHERE user_id IN (:actor, :target) ORDER BY user_id FOR UPDATE');
+        $lock->execute([':actor' => (int) $admin['user_id'], ':target' => $id]);
+        $rows = [];
+        foreach ($lock->fetchAll() as $row) {
+            $rows[(int) $row['user_id']] = $row;
+        }
 
-        // Promoted into a privileged role: every session the account has open
-        // ends, because a privileged account keeps one session at a time
-        // (auth_login()) and the ones already open would otherwise all become
-        // privileged together. A step down is left alone: those sessions carry
-        // on as a customer's, which may be on any number of devices.
-        if ($newRole !== null && $newRole !== $before['role'] && in_array($newRole, PRIVILEGED_ROLES, true)) {
+        $before = $rows[$id] ?? null;
+        if ($before === null) {
+            json_error('That account does not exist.', 404);
+        }
+
+        // The actor as they are now, under the lock — not as they were when
+        // this request began. A Super Administrator demoted a moment ago by
+        // somebody else is not one any more.
+        $actor = $rows[(int) $admin['user_id']] ?? null;
+        $actorNow = $actor === null || $actor['account_status'] !== 'active' ? [] : $actor;
+        if (($changesRole || $changesLevel || $before['role'] === 'admin') && !user_can($actorNow, 'manage_admins')) {
+            json_error($before['role'] === 'admin' && !$changesRole && !$changesLevel
+                ? "Only a Super Administrator can manage another administrator's account."
+                : 'Only a Super Administrator can change roles or administrator levels.',
+                403, ['code' => 'admin_level']);
+        }
+        if ($changesStatus && !user_can($actorNow, 'manage_accounts')) {
+            json_error('Your administrator level does not include managing accounts.', 403, ['code' => 'admin_level']);
+        }
+
+        // The role and level this account will have.
+        $newRole = $requestedRole ?? $before['role'];
+        if ($newRole === 'admin') {
+            $newLevel = $changesLevel ? $requestedLevel : ($before['role'] === 'admin' ? $before['admin_level'] : null);
+            if ($newLevel === null) {
+                json_error('Choose the administrator level: moderator, manager or super administrator.', 422, [
+                    'fields' => ['admin_level' => 'An administrator needs a level.'],
+                ]);
+            }
+        } else {
+            if ($requestedLevel !== null) {
+                json_error('Only an administrator has an administrator level.', 422, [
+                    'fields' => ['admin_level' => 'Leave it empty unless the role is Administrator.'],
+                ]);
+            }
+            $newLevel = null;
+        }
+        $statusAfter = $newStatus ?? $before['account_status'];
+
+        // Never no active Super Administrator. Counted from the locked rows.
+        $wasActiveSuper = $before['role'] === 'admin' && $before['admin_level'] === 'super_admin'
+            && $before['account_status'] === 'active';
+        $staysActiveSuper = $newRole === 'admin' && $newLevel === 'super_admin' && $statusAfter === 'active';
+        if ($wasActiveSuper && !$staysActiveSuper) {
+            $others = $pdo->prepare("SELECT COUNT(*) FROM users
+                                      WHERE role = 'admin' AND admin_level = 'super_admin'
+                                        AND account_status = 'active' AND user_id <> :id");
+            $others->execute([':id' => $id]);
+            if ((int) $others->fetchColumn() === 0) {
+                json_error('This is the last active Super Administrator. Make another account a Super Administrator first.',
+                    409, ['code' => 'last_super_admin']);
+            }
+        }
+
+        $roleChanged = $newRole !== $before['role'];
+        $levelChanged = $newLevel !== $before['admin_level'];
+
+        // One statement, so the CHECK never sees a role without its level.
+        $pdo->prepare('UPDATE users SET role = :role, admin_level = :level, account_status = :status WHERE user_id = :id')
+            ->execute([':role' => $newRole, ':level' => $newLevel, ':status' => $statusAfter, ':id' => $id]);
+
+        // Which sessions end, and why.
+        //   into a privileged role (customer -> coordinator, anyone -> admin):
+        //     role_promoted — the open sessions would otherwise all become
+        //     privileged together, and a privileged account keeps one.
+        //   an administrator's level changes, or the administrator role is
+        //     removed: privilege_changed — a browser must not keep a screen
+        //     built for powers it no longer has (or has newly).
+        //   a coordinator stepped down to customer: nothing, as before.
+        $endReason = null;
+        if ($roleChanged && $newRole !== 'user' && ($before['role'] === 'user' || $newRole === 'admin')) {
+            $endReason = 'role_promoted';
+        } elseif ($before['role'] === 'admin' && ($roleChanged || $levelChanged)) {
+            $endReason = 'privilege_changed';
+        }
+        if ($endReason !== null) {
             $pdo->prepare('UPDATE users SET session_version = session_version + 1 WHERE user_id = :id')
                 ->execute([':id' => $id]);
-            end_open_sessions($id, 'role_promoted');
+            end_open_sessions($id, $endReason);
         }
 
         // Suspended: every session the account has open ends, and its records
@@ -369,15 +487,23 @@ function user_update(int $id): never
 
         $pdo->commit();
     } catch (Throwable $exception) {
-        $pdo->rollBack();
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         throw $exception;
     }
 
     // Logged after the change is committed, so the trail records what happened
-    // rather than what was attempted.
-    if ($newRole !== null && $newRole !== $before['role']) {
-        audit_log('role_changed', (int) $admin['user_id'], $admin['email'], 'user', $id, 'success',
-            "{$before['role']} -> {$newRole}");
+    // rather than what was attempted. A level travels with its role.
+    $describe = fn (string $role, ?string $level) => $role . ($level === null ? '' : " ({$level})");
+    if ($roleChanged) {
+        $detail = $describe($before['role'], $before['admin_level']) . ' -> ' . $describe($newRole, $newLevel);
+        audit_log('role_changed', (int) $admin['user_id'], $admin['email'], 'user', $id, 'success', $detail);
+        activity_log((int) $admin['user_id'], 'role_changed', 'user', $id, $detail);
+    } elseif ($levelChanged) {
+        $detail = "{$before['admin_level']} -> {$newLevel}";
+        audit_log('admin_level_changed', (int) $admin['user_id'], $admin['email'], 'user', $id, 'success', $detail);
+        activity_log((int) $admin['user_id'], 'admin_level_changed', 'user', $id, $detail);
     }
 
     if ($newStatus !== null && $newStatus !== $before['account_status']) {
@@ -396,15 +522,14 @@ function user_update(int $id): never
             "{$before['account_status']} -> {$newStatus}");
     }
 
-    if ($newRole !== null && $newRole !== $before['role']) {
-        activity_log((int) $admin['user_id'], 'role_changed', 'user', $id, "{$before['role']} -> {$newRole}");
-    }
-
     user_detail($id);
 }
 
-/** A user row as JSON. Contact details only when the viewer should see them. */
-function shape_user(array $row, bool $includeContact = true): array
+/**
+ * A user row as JSON. Contact details only when the viewer should see them;
+ * an administrator's level only to another administrator.
+ */
+function shape_user(array $row, bool $includeContact = true, bool $includeAdminLevel = false): array
 {
     $user = [
         'user_id' => (int) $row['user_id'],
@@ -416,6 +541,10 @@ function shape_user(array $row, bool $includeContact = true): array
         'preferred_location' => $row['preferred_location'],
         'created_at' => $row['created_at'],
     ];
+
+    if ($includeAdminLevel) {
+        $user['admin_level'] = $row['admin_level'] ?? null;
+    }
 
     if ($includeContact) {
         $user['email'] = $row['email'];

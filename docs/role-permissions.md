@@ -1,12 +1,107 @@
 # Who is allowed to do what
 
 **ITS122P–AM5 · Group 3** · read out of `api/` on 25 September 2026; the public
-table, the edit rule, §3a and §5 re-read on 30 September 2026
+table, the edit rule, §3a and §5 re-read on 30 September 2026; the administrator
+levels (§0, §0a, §3) added on 3 October 2026 (Correction 6)
 
-Three roles. The question this document answers is not "what does the interface
-show" — it is **"what does the server allow"**, which is the only version that
-matters, because a request built by hand is not limited to what the interface
-offers.
+Three roles — Customer, Pet Coordinator, Administrator — and, inside
+Administrator, three levels. The question this document answers is not "what
+does the interface show" — it is **"what does the server allow"**, which is the
+only version that matters, because a request built by hand is not limited to
+what the interface offers.
+
+---
+
+## 0. Six kinds of account, at a glance
+
+```
+ROLE (users.role)
+├── user    Customer
+├── staff   Pet Coordinator
+└── admin   Administrator
+      ├── moderator     (users.admin_level)
+      ├── manager
+      └── super_admin
+```
+
+The three levels are **one role**. A Moderator, a Manager and a Super
+Administrator are all Administrators; the level says how much of
+Administration they get. A Pet Coordinator is not in the hierarchy at all.
+
+**Where the levels came from.** Ma'am asked for *"different admin levels of
+privileges"* (written defense notes). She did not say how many, what they are
+called, or what each may do. **The three levels and the matrix below are the
+team's design**, chosen as the smallest hierarchy that still separates three
+real jobs: deciding about content, looking after accounts, and looking after
+the administrators and the security record.
+
+| | Guest | Customer | Pet Coordinator | Admin — Moderator | Admin — Manager | Super Administrator |
+| --- | --- | --- | --- | --- | --- | --- |
+| Browse, search, map (public summary) | yes | yes | yes | report pages only¹ | report pages only¹ | report pages only¹ |
+| Read a full report | — | yes | yes | yes | yes | yes |
+| File a report; drafts | — | own | own | — ¹ | — ¹ | — ¹ |
+| Review new reports (approve / not approved) | — | — | yes, never their own | from a report's page² | from a report's page² | from a report's page² |
+| Decide pairings, verification | — | own pairings: claim / "not my pet" | yes | — ³ | — ³ | — ³ |
+| Moderation queue; remove a published report | — | flag only | — | **yes** | **yes** | **yes** |
+| Suspend / reinstate / unlock customers and coordinators | — | — | — | — | **yes** | **yes** |
+| See account contact details in Administration | — | own | for a handover | — | **yes** | **yes** |
+| Pet categories (add, rename, retire, delete) | — | — | — | — (read) | **yes** | **yes** |
+| Change roles; set administrator levels | — | — | — | — | — | **yes** |
+| Manage another administrator's account | — | — | — | — | — | **yes** |
+| Logs: sessions, IPs, activity, security events | — | — | — | — | — | **yes** |
+| Change their own role, level or status | — | — | — | — | — | — |
+
+¹ The administrator stays in Administration: the community pages send them to
+`/admin`; a report's own page stays open (it is linked from Administration).
+² Unchanged since Correction 4: the server lets any administrator approve or
+reject from a report's page; the review queue is the Pet Coordinator's. ³ The
+server accepts an administrator for these (§3a); the Administration workspace
+does not offer them.
+
+**Why the logs are the Super Administrator's alone.** Correction 5 made them
+hold IP addresses, browsers, session history and every page each person
+opened. A content moderator needs none of that to decide about a flagged
+report, and an account manager needs none of it to unlock an account. The
+most sensitive data in the system goes to the fewest people.
+
+## 0a. Limitations and scope, by role
+
+What each kind of account **cannot** do — the part a panel asks about.
+
+**Guest.** Cannot read a report's description, markings, exact place or
+time (a summary and a snapped map point only); cannot file, flag, claim or
+draft anything; is not tracked.
+
+**Customer.** Cannot approve, reject or publish any report, their own
+included; cannot see another person's unpublished report, draft or contact
+details; cannot decide a pairing (only claim it or say "not my pet"); cannot
+moderate, manage accounts or categories, or open any log; cannot change their
+own role or status.
+
+**Pet Coordinator.** Cannot review their own report; cannot moderate flags,
+manage accounts, roles or categories; cannot open any log; cannot edit a
+reporter's words (only move a case's status); is not an administrator of any
+level.
+
+**Administrator — Moderator.** Cannot suspend, reinstate or unlock any account
+(a moderation case can remove the report but not suspend its author); cannot
+see account contact details; cannot change categories, roles or levels;
+cannot open the logs; cannot touch another administrator.
+
+**Administrator — Manager.** Cannot change anybody's role or anybody's level
+(not even make a customer a coordinator); cannot suspend, reinstate or unlock
+another administrator; cannot open the logs.
+
+**Super Administrator.** The highest level, and still not a bypass. Cannot
+change their own role, level or status; cannot leave the system with no active
+Super Administrator; cannot edit a reporter's report as if it were theirs,
+resubmit it for them, or answer a coordinator's question as one of the
+reporters; cannot publish a report without the review step; cannot write,
+edit or delete an audit, session or activity record — no endpoint does.
+
+Business rules are separate from the hierarchy. Ownership, the review step,
+the case transitions and the open-pairing freeze apply to every level the
+same way; a level only decides which administrative sections someone has.
 
 If the code and this page ever disagree, the code is right and this page is
 wrong. Every claim below carries a `file:line`.
@@ -63,6 +158,22 @@ The two guards everything else is built from:
 | --- | --- | --- |
 | `require_login()` | Session must name a real, **active** account | `401` |
 | `require_role('staff', 'admin')` | That, and the role must be in the list | `403` |
+| `require_capability('manage_accounts')` | That, the role `admin`, and a level whose capabilities include it (Correction 6) | `403`, `code: admin_level` |
+
+The capabilities are one table, `ADMIN_CAPABILITIES` in `api/helpers.php`:
+
+| Capability | Moderator | Manager | Super Administrator |
+| --- | --- | --- | --- |
+| `moderate_reports` | yes | yes | yes |
+| `manage_accounts` | — | yes | yes |
+| `manage_reference_data` | — | yes | yes |
+| `manage_admins` | — | — | yes |
+| `view_security_logs` | — | — | yes |
+
+Endpoints ask for a capability, never a level, so a level can change what it
+includes without touching an endpoint. `/auth/me` sends an administrator their
+`admin_level` and `capabilities`; the interface asks `can(user, …)`
+(`src/utils/permissions.js`) and never works the rules out from a label.
 
 `api/helpers.php:382`. `require_role()` calls `require_login()` first, so an
 anonymous request to an administrator endpoint is a 401, not a 403 — it is not
@@ -131,31 +242,65 @@ privileges"*):
 
 | | Refused by |
 | --- | --- |
-| List or manage accounts | `users.php:44` `require_role('admin')` |
-| Change anybody's role | `users.php:199` |
-| Suspend, reinstate or unlock an account | `users.php:199` |
-| Manage pet categories | `categories.php:122, 179, 229` |
-| See or resolve the moderation queue | `moderation.php:58, 186` |
-| Read the activity, session or security logs (Correction 5) | `logs.php` `require_role('admin')` — 403 |
+| List or manage accounts | `users_list()` `require_role('admin')`; `user_update()` |
+| Change anybody's role | `user_update()` — `manage_admins` |
+| Suspend, reinstate or unlock an account | `user_update()` — `manage_accounts` |
+| Manage pet categories | `categories.php` — `manage_reference_data` |
+| See or resolve the moderation queue | `moderation.php` — `moderate_reports` |
+| Read the activity, session or security logs (Correction 5) | `logs.php` — `view_security_logs`, 403 |
 
-### Administrator — `admin`
+### Administrator — `admin`, by level (Correction 6)
 
-Everything above, plus:
+Every level: the coordinator endpoints above that the server lets an
+administrator use (§3a), plus `GET /users` (names only below Manager) and
+`GET /categories?all=1` (read only).
 
-| Endpoint | Allowed to |
-| --- | --- |
-| `GET /users` | List and filter accounts |
-| `PATCH /users/{id}` | Change a role; suspend, reinstate, **unlock** |
-| `POST`/`PATCH`/`DELETE /categories` | Manage the species list |
-| `GET /moderation`, `PATCH /moderation/{id}` | Review a flag: dismiss, warn, remove, suspend. Remove takes the report out of public view (`removed`); it no longer closes it |
-| `PATCH /reports/{id}/publication` `remove` | Remove a published report directly, with a reason (Correction 4) |
-| `GET /logs/activity`, `/logs/sessions`, `/logs/audit` | Read who signed in, from which IP and browser, where they went and what they did, and the security events (Correction 5). **Every** administrator for now; which administrator level holds this is Correction 6 |
+| Endpoint | Moderator | Manager | Super Administrator |
+| --- | --- | --- | --- |
+| `GET /moderation`, `PATCH /moderation/{id}` dismiss / warn / remove | yes | yes | yes |
+| `PATCH /moderation/{id}` **suspend** (removes the report and suspends its author) | — | yes, never an administrator | yes, never an administrator (use Users) |
+| `PATCH /reports/{id}/publication` `remove` | yes | yes | yes |
+| `PATCH /users/{id}` status: suspend (reason required), reinstate, **unlock** — customers and coordinators | — | yes | yes |
+| `PATCH /users/{id}` status of **another administrator** | — | — | yes |
+| `PATCH /users/{id}` `role`, `admin_level` | — | — | yes |
+| `POST`/`PATCH`/`DELETE /categories` | — | yes | yes |
+| `GET /logs/activity`, `/logs/sessions`, `/logs/audit` | — | — | yes |
+
+**The rules on roles and levels** (`user_update()` in `api/users.php`):
+
+* Nobody changes their own role, level or status (422).
+* Promoting to Administrator needs a level chosen on purpose
+  (`moderator`, `manager` or `super_admin`); without one, 422 — nobody
+  becomes a Super Administrator by default. Any other value (`god`, `root`,
+  `""`) is 422. A level for somebody who is not an administrator is 422.
+* Demoting an administrator clears the level in the same statement; the
+  database's `chk_users_admin_level` refuses a role without its level or a
+  level without the role, however the change is written.
+* **There is always an active Super Administrator.** Only a Super
+  Administrator can change an administrator, and nobody can change
+  themselves, so one Super Administrator alone cannot be demoted, stripped of
+  the role or suspended. The remaining danger — two Super Administrators
+  demoting each other at the same moment — is closed by a transaction that
+  locks every active Super Administrator's row (`SELECT … FOR UPDATE`, in
+  user_id order) and re-reads the acting administrator before deciding: the
+  second request waits, then finds its actor no longer a Super Administrator
+  and is refused. Tested ten times in a row with two simultaneous requests
+  (SA-08). A last-Super-Administrator count is checked as well (409
+  `last_super_admin`) in case the self rule is ever relaxed.
+* A level change, or removing the Administrator role, ends every session of
+  that account (`privilege_changed`): a browser must not keep a screen built
+  for powers it no longer has. Promotion into a privileged role ends them as
+  before (`role_promoted`). The acting administrator's own session is
+  untouched.
 
 Every change among these writes an `audit_logs` row naming the administrator,
-the target and what changed — `role_changed`, `account_suspended`,
-`account_reinstated`, `account_unlocked`, `category_changed`,
-`moderation_resolved` — and, since Correction 5, a `user_activity_logs` row on
-the administrator's own session. Reading the logs writes nothing.
+the target and what changed — `role_changed` (with the levels: `user ->
+admin (manager)`), `admin_level_changed` (`moderator -> manager`),
+`account_suspended`, `account_reinstated`, `account_unlocked`,
+`category_changed`, `moderation_resolved` (with the actor's level) — and,
+since Correction 5, a `user_activity_logs` row on the administrator's own
+session. Reading the logs writes nothing. The audit log is the record of
+privilege changes; there is no separate history table.
 
 ---
 
@@ -201,6 +346,17 @@ signed in is not enough; you have to be *in the case*.
 ---
 
 ## 5. How this was tested, and what the tests found
+
+**Administrator levels (Correction 6).** `npm run test:admin-levels` — 78
+direct API calls: each level asking for each thing it may and may not do,
+coordinators, customers and guests asking for all of it, invalid levels and
+inconsistent role/level pairs, the self rule, ten rounds of two simultaneous
+Super Administrator demotions, sessions ending on a level change, and the
+audit trail. `npm run test:admin-levels-ui` — 27 checks in a browser: the
+navigation each level sees, the permission-denied page for a typed address,
+no hidden link left for the keyboard, a Manager suspending with a reason, a
+Super Administrator promoting only once a level is chosen, and the person on
+the other end told why their session ended.
 
 `npm run audit` — **382 cases**, of which **31 are category D, Authorization**.
 Each one is a request made by the wrong person to a real endpoint, with the

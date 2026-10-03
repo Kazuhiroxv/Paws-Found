@@ -55,6 +55,9 @@ raw Tailwind colours.
 | `StaffReviewPage` | `pages/staff/StaffReviewPage.jsx` | The Pet Coordinator's review queue, oldest first. |
 | `AdminLogsPage` | `pages/admin/AdminLogsPage.jsx` | Correction 5: the administrators' Logs — Activity, Sessions and Security events tabs, a filter form (applied on submit, kept in the address), one server page at a time with `Pagination`, and every name, IP and session in the table a link that narrows to it. A plain table in an `overflow-x-auto` box, so a phone scrolls the table, not the page. Its table helpers (`Person`, `Ip`, `Reference`, `Target`) are local to it. |
 | `SessionNotice` | `components/SessionNotice.jsx` | (Changed in Correction 5.) Says why the session ended, from the server's reason — signed out, inactivity, time limit, another device, password changed, access changed, locked or suspended (with the administrator's contact) — or that the role changed. `role="alert"`, dismissed by a labelled button. |
+| `RequireCapability` | `components/RequireAccess.jsx` | Correction 6: an Administration section this administrator's level does not include says "You don't have permission to access this page." in place, and renders nothing of the page. |
+| `can()` | `utils/permissions.js` | Correction 6: whether the account's server-sent capabilities include one. The one place the interface asks; never a level label. |
+| `useWorkspaceUser()` | `hooks/useWorkspaceUser.js` | Correction 6: the signed-in account inside a workspace page, from the router's outlet context. |
 | `logService` | `services/logService.js` | Correction 5: `logPageView(pathname)` (best effort, never throws) and the three log lists for `AdminLogsPage`. |
 | `ActiveFilters` | `components/ActiveFilters.jsx` | Removable chips for every applied filter. |
 | `FlagReportDialog` | `components/FlagReportDialog.jsx` | "Report this listing" — creates a moderation case. Requires sign-in. |

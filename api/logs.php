@@ -13,8 +13,9 @@
  * sessions list; action and outcome on the audit list. Newest first, one page
  * at a time, filtered in SQL, never by sending everything to the browser.
  *
- * Administrators only, for now. Which kind of administrator may read them is
- * Correction 6 (administrator privilege levels).
+ * Super Administrators only (view_security_logs, Correction 6): IP addresses,
+ * browsers and browsing history are more sensitive than anything moderation
+ * or account management needs.
  */
 
 declare(strict_types=1);
@@ -136,7 +137,7 @@ function page_target(string $path): array
 
 function logs_activity(): never
 {
-    require_role('admin');
+    require_capability('view_security_logs');
 
     $where = [];
     $params = [];
@@ -195,7 +196,7 @@ function logs_activity(): never
 
 function logs_sessions(): never
 {
-    require_role('admin');
+    require_capability('view_security_logs');
 
     $where = [];
     $params = [];
@@ -252,7 +253,7 @@ function logs_sessions(): never
 
 function logs_audit(): never
 {
-    require_role('admin');
+    require_capability('view_security_logs');
 
     $where = [];
     $params = [];

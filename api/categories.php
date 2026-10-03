@@ -62,6 +62,8 @@ function categories_list(): never
         ], $statement->fetchAll())]);
     }
 
+    // Every administrator may read it (the Overview counts categories);
+    // changing the list needs manage_reference_data (Correction 6).
     require_role('admin');
 
     // One query rather than one per category: counting in a loop would issue a
@@ -119,7 +121,7 @@ function validated_category_label(mixed $value): string
 
 function category_create(): never
 {
-    $admin = require_role('admin');
+    $admin = require_capability('manage_reference_data');
 
     $body = request_body();
     $label = validated_category_label($body['label'] ?? '');
@@ -177,7 +179,7 @@ function category_create(): never
  */
 function category_update(string $code): never
 {
-    $admin = require_role('admin');
+    $admin = require_capability('manage_reference_data');
 
     $body = request_body();
     $category = find_category_or_404($code);
@@ -228,7 +230,7 @@ function category_update(string $code): never
  */
 function category_delete(string $code): never
 {
-    $admin = require_role('admin');
+    $admin = require_capability('manage_reference_data');
 
     $category = find_category_or_404($code);
 

@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Search, ShieldAlert, UserCog, UserRound, Users } from 'lucide-react'
-import { Button, EmptyState, LoadingSkeleton, Select, SidePanel } from '@/components/ui'
+import { Button, EmptyState, LoadingSkeleton, Select, SidePanel, Textarea } from '@/components/ui'
 import { Avatar } from '@/components/Avatar'
 import { StatTile } from '@/components/StatTile'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PageHeader } from '@/components/PageHeader'
-import { ROLES, ROLE_LABELS } from '@/constants'
+import { ADMIN_LEVELS, ADMIN_LEVEL_LABELS, CAPABILITIES, ROLES, ROLE_LABELS, roleLabel } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
+import { useWorkspaceUser } from '@/hooks/useWorkspaceUser'
 import { userService } from '@/services'
+import { can } from '@/utils/permissions'
 import { optionsFromLabels } from '@/utils/options'
 import { AccountStatusBadge } from './AdminBadges'
 import { parseDateTime } from '@/utils/date'
@@ -23,11 +25,7 @@ const joinedOn = (value) =>
     : ''
 
 async function loadUsers() {
-  const [users, currentUser] = await Promise.all([
-    userService.getUsers(),
-    userService.getCurrentUser(),
-  ])
-  return { users, currentUser }
+  return { users: await userService.getUsers() }
 }
 
 /** What each role can do, so a role change is made with its meaning in view. */
@@ -35,7 +33,16 @@ const ROLE_DESCRIPTIONS = {
   [ROLES.USER]: 'Files and manages their own reports. No access to either workspace.',
   [ROLES.STAFF]:
     'Reviews reports and possible matches, decides verifications, and sees both reporters’ contact details.',
-  [ROLES.ADMIN]: 'Manages accounts, categories and moderation, including suspending accounts.',
+  [ROLES.ADMIN]: 'Works in Administration, to the level chosen below.',
+}
+
+/** What each administrator level adds (ADMIN_CAPABILITIES in api/helpers.php). */
+const LEVEL_DESCRIPTIONS = {
+  [ADMIN_LEVELS.MODERATOR]: 'Moderation and removing published reports. No accounts, categories or logs.',
+  [ADMIN_LEVELS.MANAGER]:
+    'Everything a Moderator does, plus suspending, reinstating and unlocking customers and coordinators, and pet categories.',
+  [ADMIN_LEVELS.SUPER_ADMIN]:
+    'Everything, including roles, administrator levels, other administrators’ accounts and the security logs.',
 }
 
 /**
@@ -51,13 +58,17 @@ const ROLE_DESCRIPTIONS = {
  */
 export function AdminUsersPage() {
   const { data, error, isLoading, reload } = useAsync(loadUsers)
+  // Who is looking, and what their administrator level lets them change
+  // (Correction 6). The server checks every request again.
+  const currentUser = useWorkspaceUser()
+  const mayManageAdmins = can(currentUser, CAPABILITIES.MANAGE_ADMINS)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
   // The Overview's "Manage" link arrives as ?status=suspended.
   const [params, setParams] = useSearchParams()
   const statusFilter = params.get('status') ?? ''
   const setStatusFilter = (value) => setParams(value ? { status: value } : {}, { replace: true })
-  const [asking, setAsking] = useState(null) // { user, kind: 'role'|'status'|'unlock', role? }
+  const [asking, setAsking] = useState(null) // { user, kind: 'role'|'status'|'unlock', role?, level?, reason? }
   const [isBusy, setIsBusy] = useState(false)
   const [actionError, setActionError] = useState(null)
   // The account being read. The table shows what fits a row; this is where
@@ -94,7 +105,7 @@ export function AdminUsersPage() {
     )
   }
 
-  const { users, currentUser } = data
+  const { users } = data
   const needle = search.trim().toLowerCase()
   const isFiltering = Boolean(needle || roleFilter || statusFilter)
 
@@ -118,13 +129,14 @@ export function AdminUsersPage() {
     setActionError(null)
     try {
       if (asking.kind === 'role') {
-        await userService.setUserRole(asking.user.id, asking.role)
+        await userService.setUserRole(asking.user.id, asking.role, asking.level)
       } else if (asking.kind === 'unlock') {
         await userService.unlockAccount(asking.user.id)
       } else {
         await userService.setAccountStatus(
           asking.user.id,
           asking.user.accountStatus === 'suspended' ? 'active' : 'suspended',
+          asking.reason,
         )
       }
       setAsking(null)
@@ -251,6 +263,7 @@ export function AdminUsersPage() {
                 key={user.id}
                 user={user}
                 isSelf={user.id === currentUser?.id}
+                mayManageAdmins={mayManageAdmins}
                 onAsk={setAsking}
               />
             ))}
@@ -307,7 +320,7 @@ export function AdminUsersPage() {
                         </div>
                       </td>
 
-                      <td className="px-2 py-3 text-fg">{ROLE_LABELS[user.role]}</td>
+                      <td className="px-2 py-3 text-fg">{roleLabel(user)}</td>
 
                       <td className="px-2 py-3">
                         <AccountStatusBadge status={user.accountStatus} />
@@ -319,7 +332,12 @@ export function AdminUsersPage() {
 
                       <td className="px-4 py-3">
                         <div className="flex justify-end">
-                          <RowActions user={user} isSelf={isSelf} onAsk={setAsking} />
+                          <RowActions
+                            user={user}
+                            isSelf={isSelf}
+                            mayManageAdmins={mayManageAdmins}
+                            onAsk={setAsking}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -333,15 +351,20 @@ export function AdminUsersPage() {
       )}
 
       <p className="text-sm text-fg-muted">
-        You cannot change your own role or suspend your own account — that is how an
-        administrator locks themselves out.
+        You cannot change your own role, level or account — that is how an administrator locks
+        themselves out.
+        {mayManageAdmins
+          ? ' Roles, administrator levels and other administrators’ accounts are yours to manage; the last active Super Administrator cannot be removed.'
+          : ' Roles, administrator levels and administrators’ accounts are managed by a Super Administrator.'}
       </p>
 
       {asking?.kind === 'role' && (
         <RoleDialog
           user={asking.user}
           role={asking.role}
+          level={asking.level}
           onPick={(role) => setAsking((current) => ({ ...current, role }))}
+          onPickLevel={(level) => setAsking((current) => ({ ...current, level }))}
           onCancel={cancel}
           onConfirm={commit}
           isBusy={isBusy}
@@ -352,6 +375,8 @@ export function AdminUsersPage() {
       {asking?.kind === 'status' && (
         <StatusDialog
           user={asking.user}
+          reason={asking.reason ?? ''}
+          onReason={(reason) => setAsking((current) => ({ ...current, reason }))}
           onCancel={cancel}
           onConfirm={commit}
           isBusy={isBusy}
@@ -382,6 +407,7 @@ export function AdminUsersPage() {
           <AccountPanel
             user={viewing}
             isSelf={viewing.id === currentUser?.id}
+            mayManageAdmins={mayManageAdmins}
             onAsk={setAsking}
           />
         )}
@@ -397,7 +423,7 @@ export function AdminUsersPage() {
  * usually are — plus the same three actions the row offers, with the sentence
  * of explanation a button in a table cell cannot carry.
  */
-function AccountPanel({ user, isSelf, onAsk }) {
+function AccountPanel({ user, isSelf, mayManageAdmins, onAsk }) {
   const isSuspended = user.accountStatus === 'suspended'
   const isLocked = user.accountStatus === 'locked'
 
@@ -406,7 +432,7 @@ function AccountPanel({ user, isSelf, onAsk }) {
       <div className="flex items-start gap-3">
         <Avatar name={user.fullName} />
         <div className="min-w-0 flex-1">
-          <p className="text-sm text-fg-muted">{ROLE_LABELS[user.role]}</p>
+          <p className="text-sm text-fg-muted">{roleLabel(user)}</p>
           <AccountStatusBadge status={user.accountStatus} className="mt-1.5" />
         </div>
       </div>
@@ -439,6 +465,10 @@ function AccountPanel({ user, isSelf, onAsk }) {
           This is your own account. An administrator cannot change their own role or suspend
           themselves — that is how the last administrator locks everyone out.
         </p>
+      ) : user.role === ROLES.ADMIN && !mayManageAdmins ? (
+        <p className="rounded-control border border-border bg-sunken px-3 py-2.5 text-sm text-fg-muted">
+          An administrator’s account is managed by a Super Administrator.
+        </p>
       ) : (
         <div className="flex flex-col gap-2 border-t border-border pt-4">
           {isLocked && (
@@ -452,13 +482,15 @@ function AccountPanel({ user, isSelf, onAsk }) {
             </>
           )}
 
-          <Button
-            variant="secondary"
-            fullWidth
-            onClick={() => onAsk({ user, kind: 'role', role: user.role })}
-          >
-            Change role
-          </Button>
+          {mayManageAdmins && (
+            <Button
+              variant="secondary"
+              fullWidth
+              onClick={() => onAsk({ user, kind: 'role', role: user.role, level: user.adminLevel })}
+            >
+              Change role or level
+            </Button>
+          )}
 
           <Button variant="ghost" fullWidth onClick={() => onAsk({ user, kind: 'status' })}>
             {isSuspended ? 'Reinstate this account' : 'Suspend this account'}
@@ -484,9 +516,14 @@ function AccountPanel({ user, isSelf, onAsk }) {
  * cn() only joins classes, and the button's own text-fg otherwise won, which
  * left a red border around dark text.
  */
-function RowActions({ user, isSelf, onAsk }) {
+function RowActions({ user, isSelf, mayManageAdmins, onAsk }) {
   if (isSelf) {
     return <span className="text-fg-muted">This is your account</span>
+  }
+
+  // Correction 6: another administrator is a Super Administrator's to manage.
+  if (user.role === ROLES.ADMIN && !mayManageAdmins) {
+    return <span className="text-fg-muted">Managed by a Super Administrator</span>
   }
 
   const isSuspended = user.accountStatus === 'suspended'
@@ -503,14 +540,16 @@ function RowActions({ user, isSelf, onAsk }) {
           <span className="sr-only"> {user.fullName}’s account</span>
         </Button>
       )}
-      <Button
-        size="sm"
-        variant="secondary"
-        onClick={() => onAsk({ user, kind: 'role', role: user.role })}
-      >
-        Change role
-        <span className="sr-only"> for {user.fullName}</span>
-      </Button>
+      {mayManageAdmins && (
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => onAsk({ user, kind: 'role', role: user.role, level: user.adminLevel })}
+        >
+          Change role
+          <span className="sr-only"> for {user.fullName}</span>
+        </Button>
+      )}
       <Button
         size="sm"
         variant="secondary"
@@ -525,7 +564,7 @@ function RowActions({ user, isSelf, onAsk }) {
 }
 
 /** One account as a card, for narrower screens. */
-function UserCard({ user, isSelf, onAsk }) {
+function UserCard({ user, isSelf, mayManageAdmins, onAsk }) {
   return (
     <li className="flex flex-col gap-3 rounded-card border border-border bg-panel p-4 shadow-card">
       <div className="flex items-start gap-3">
@@ -542,7 +581,7 @@ function UserCard({ user, isSelf, onAsk }) {
       <dl className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <div className="flex items-center gap-1.5">
           <dt className="text-fg-muted">Role:</dt>
-          <dd className="text-fg">{ROLE_LABELS[user.role]}</dd>
+          <dd className="text-fg">{roleLabel(user)}</dd>
         </div>
         <div className="flex items-center gap-1.5">
           <dt className="sr-only">Status</dt>
@@ -556,31 +595,36 @@ function UserCard({ user, isSelf, onAsk }) {
         </div>
       </dl>
 
-      <RowActions user={user} isSelf={isSelf} onAsk={onAsk} />
+      <RowActions user={user} isSelf={isSelf} mayManageAdmins={mayManageAdmins} onAsk={onAsk} />
     </li>
   )
 }
 
-function RoleDialog({ user, role, onPick, onCancel, onConfirm, isBusy, error }) {
-  const changed = role !== user.role
+function RoleDialog({ user, role, level, onPick, onPickLevel, onCancel, onConfirm, isBusy, error }) {
+  const isAdmin = role === ROLES.ADMIN
+  // An administrator needs a level chosen on purpose: nobody becomes a Super
+  // Administrator by default (the server refuses one without a level too).
+  const changed = role !== user.role || (isAdmin && level !== user.adminLevel)
+  const ready = changed && (!isAdmin || Boolean(level))
+  const target = isAdmin ? (ADMIN_LEVEL_LABELS[level] ?? ROLE_LABELS[role]) : ROLE_LABELS[role]
 
   return (
     <ConfirmDialog
       isOpen
       title={`Change ${user.fullName}’s role?`}
-      confirmLabel={changed ? `Make ${ROLE_LABELS[role]}` : 'Change role'}
+      confirmLabel={ready ? `Make ${target}` : 'Change role'}
       tone="primary"
-      confirmDisabled={!changed || isBusy}
+      confirmDisabled={!ready || isBusy}
       isBusy={isBusy}
       error={error}
       onCancel={onCancel}
       onConfirm={onConfirm}
     >
       <p className="text-fg-muted">
-        {user.fullName} is currently {ROLE_LABELS[user.role]}. A role decides what someone can
-        reach, and the change takes effect on their very next request — on every device they are
-        signed in on, without them signing out and in again. Their screens catch up within a few
-        seconds, and they are told the role changed.
+        {user.fullName} is currently {roleLabel(user)}. A role decides what someone can reach, and
+        the change takes effect on their very next request. Becoming a coordinator or an
+        administrator, or any change to an administrator’s level, signs them out everywhere so
+        they start again with the right pages; they are told why.
       </p>
 
       <fieldset className="flex flex-col gap-2">
@@ -608,6 +652,36 @@ function RoleDialog({ user, role, onPick, onCancel, onConfirm, isBusy, error }) 
           </label>
         ))}
       </fieldset>
+
+      {isAdmin && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-medium text-fg">Administrator level (required)</legend>
+          {Object.values(ADMIN_LEVELS).map((value) => (
+            <label
+              key={value}
+              className="flex cursor-pointer gap-3 rounded-control border border-border p-3 has-checked:border-brand has-checked:bg-brand-soft"
+            >
+              <input
+                type="radio"
+                name={`level-${user.id}`}
+                value={value}
+                checked={level === value}
+                onChange={() => onPickLevel(value)}
+                className="mt-1 size-4 shrink-0 accent-brand"
+              />
+              <span className="flex flex-col gap-0.5">
+                <span className="font-medium text-fg">
+                  {ADMIN_LEVEL_LABELS[value]}
+                  {user.role === ROLES.ADMIN && value === user.adminLevel && (
+                    <span className="text-fg-muted"> · current</span>
+                  )}
+                </span>
+                <span className="text-fg-muted">{LEVEL_DESCRIPTIONS[value]}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      )}
     </ConfirmDialog>
   )
 }
@@ -633,7 +707,7 @@ function UnlockDialog({ user, onCancel, onConfirm, isBusy, error }) {
       onConfirm={onConfirm}
     >
       <p className="text-fg-muted">
-        {user.fullName} · {ROLE_LABELS[user.role]} · {user.email}
+        {user.fullName} · {roleLabel(user)} · {user.email}
       </p>
       <p>
         This account locked itself after three failed sign-in attempts. Unlocking sets it back to
@@ -647,8 +721,12 @@ function UnlockDialog({ user, onCancel, onConfirm, isBusy, error }) {
   )
 }
 
-function StatusDialog({ user, onCancel, onConfirm, isBusy, error }) {
+function StatusDialog({ user, reason, onReason, onCancel, onConfirm, isBusy, error }) {
   const isSuspended = user.accountStatus === 'suspended'
+  // The server refuses a suspension without a reason: it goes in the audit
+  // log beside the administrator's name. (Missing here before Correction 6,
+  // so Suspend on this page always failed.)
+  const needsReason = !isSuspended && reason.trim() === ''
 
   return (
     <ConfirmDialog
@@ -656,19 +734,30 @@ function StatusDialog({ user, onCancel, onConfirm, isBusy, error }) {
       title={isSuspended ? `Reinstate ${user.fullName}?` : `Suspend ${user.fullName}?`}
       confirmLabel={isSuspended ? 'Reinstate account' : 'Suspend account'}
       tone={isSuspended ? 'primary' : 'danger'}
+      confirmDisabled={needsReason || isBusy}
       isBusy={isBusy}
       error={error}
       onCancel={onCancel}
       onConfirm={onConfirm}
     >
       <p className="text-fg-muted">
-        {user.fullName} · {ROLE_LABELS[user.role]} · {user.email}
+        {user.fullName} · {roleLabel(user)} · {user.email}
       </p>
       <p>
         {isSuspended
           ? 'They will be able to sign in again and use their account as before. Their reports are untouched either way.'
           : 'They will not be able to sign in until an administrator reinstates them. Reports they have already filed stay in the system and stay visible.'}
       </p>
+      {!isSuspended && (
+        <Textarea
+          label="Reason"
+          required
+          rows={3}
+          value={reason}
+          onChange={(event) => onReason(event.target.value)}
+          hint="Kept in the audit log, next to your name."
+        />
+      )}
     </ConfirmDialog>
   )
 }

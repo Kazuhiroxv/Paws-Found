@@ -329,10 +329,12 @@ Newest first, 25 a page, filtered and paged in SQL — ten thousand rows page in
 well under a second (LOG-07). Filters live in the address, and every name, IP
 and session in the table is a link that narrows the list to it.
 
-**Who may read it, for now:** administrators. Pet Coordinators get 403,
-customers 403, guests 401 (LOG-04…06). Correction 6 decides which
-administrator level holds this permission; nothing here pretends to have
-levels yet.
+**Who may read it: Super Administrators only** (Correction 6,
+`view_security_logs`). Moderators and Managers get 403 from the API and a
+"You don't have permission" page at `/admin/logs`; the Logs link is not in
+their navigation. Pet Coordinators and customers 403, guests 401. A content
+moderator has no business browsing everyone's IP address history; the most
+sensitive data goes to the fewest people (`docs/role-permissions.md` §0).
 
 **IP addresses on screen.** The Logs page is the authorised operational view
 and shows full addresses. A projector is not: when demonstrating, filter to the

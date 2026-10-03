@@ -10,7 +10,7 @@
 --   24 foreign keys    all 24 on the 15; neither infrastructure table has one
 --   17 primary keys    one per table
 --    9 unique constraints  over 14 columns (8 over 12 on the 15 ERD tables)
---    2 CHECK constraints
+--    2 CHECK constraints (3 since migration 012: chk_users_admin_level)
 --
 -- Recounted 30 September 2026; the 25 September figures for primary and
 -- unique keys were taken before migrations 005 and 006.
@@ -124,6 +124,10 @@ CREATE TABLE users (
   password_hash   VARCHAR(255)  NOT NULL,
   contact_number  VARCHAR(30)       NULL,
   role            ENUM('user','staff','admin') NOT NULL DEFAULT 'user',
+  -- What an administrator may do (migration 012, Correction 6): a refinement
+  -- of role = 'admin', not a fourth role. NULL for everybody else; the CHECK
+  -- below holds the two together. ADMIN_CAPABILITIES in api/helpers.php.
+  admin_level     ENUM('moderator','manager','super_admin') NULL DEFAULT NULL,
   account_status  ENUM('active','suspended','locked') NOT NULL DEFAULT 'active',
 
   -- Bumped when every existing session for this account must stop working.
@@ -147,7 +151,9 @@ CREATE TABLE users (
   -- 190 characters so the unique index fits within InnoDB's key limit on
   -- utf8mb4 in older MySQL versions.
   UNIQUE KEY uq_users_email (email),
-  KEY idx_users_role (role)
+  KEY idx_users_role (role),
+  CONSTRAINT chk_users_admin_level CHECK ((role = 'admin' AND admin_level IS NOT NULL)
+                                       OR (role <> 'admin' AND admin_level IS NULL))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -756,7 +762,9 @@ CREATE TABLE audit_logs (
                      'email_verified','email_change_completed',
                      'password_reset',
                      -- migration 010
-                     'report_reviewed','report_removed') NOT NULL,
+                     'report_reviewed','report_removed',
+                     -- migration 012
+                     'admin_level_changed') NOT NULL,
 
   target_type   ENUM('user','report','match','category','moderation_case') NULL,
   target_id     INT UNSIGNED     NULL,
@@ -835,7 +843,8 @@ CREATE TABLE user_sessions (
   ended_at          TIMESTAMP        NULL,
   end_reason        ENUM('logout','idle_timeout','absolute_timeout','password_reset',
                          'new_privileged_login','role_promoted',
-                         'account_locked','account_suspended') NULL,
+                         'account_locked','account_suspended',
+                         'privilege_changed') NULL,             -- 012
 
   PRIMARY KEY (session_record_id),
   UNIQUE KEY uq_user_sessions_reference (session_reference),
@@ -898,14 +907,14 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- A fresh import of this file already contains everything migrations 001 to
--- 011 do, so it records all eleven as applied. Otherwise somebody running the
+-- 012 do, so it records all twelve as applied. Otherwise somebody running the
 -- migrations afterwards would re-apply changes that are already here.
 --
 -- 004 and 005 were missing from this list: the baseline had their schema
 -- changes but claimed only three migrations had run. Harmless until somebody
 -- trusted the list.
 INSERT INTO schema_migrations (version)
-VALUES ('001'), ('002'), ('003'), ('004'), ('005'), ('006'), ('007'), ('008'), ('009'), ('010'), ('011')
+VALUES ('001'), ('002'), ('003'), ('004'), ('005'), ('006'), ('007'), ('008'), ('009'), ('010'), ('011'), ('012')
   ON DUPLICATE KEY UPDATE version = version;
 
 

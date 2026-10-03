@@ -43,10 +43,17 @@ pre-009 backup, run 009 — because the new file cannot be laid over the old.
                             user_activity_logs (pages and actions). Both start
                             empty: nothing is invented for the past.
                             AFTER 010, WITH the code — see the file.
+    012_admin_privilege_levels.sql  users.admin_level (moderator, manager,
+                            super_admin) and the CHECK that ties it to
+                            role = 'admin'; existing administrators become
+                            Super Administrators; + privilege_changed,
+                            admin_level_changed. No new table.
+                            AFTER 011, WITH the code — see the file.
 
 `npm run test:migrations` builds the production path (2947a43 schema and seed
-→ 008 → 009 → 010 → 011 → 011) and a fresh install on MySQL 9.4 and MariaDB,
-and requires them to be identical. After 011: 24 tables, 35 foreign keys.
+→ 008 → 009 → 010 → 011 → 012 → 012) and a fresh install on MySQL 9.4 and
+MariaDB, and requires them to be identical. After 012: 24 tables, 35 foreign
+keys, 3 CHECK constraints.
 
 Deploying 008 and 009 (Correction 3), in one sitting: back up, preview 008
 (query in the file), run 008, preview 009 (queries in the file), run 009, push

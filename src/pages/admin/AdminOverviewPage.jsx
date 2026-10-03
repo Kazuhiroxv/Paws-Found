@@ -10,6 +10,7 @@ import { ReportTypeBadge } from '@/components/ReportTypeBadge'
 import { BreakdownBars } from '@/components/BreakdownBars'
 import { MonthlyReportsChart } from '@/components/MonthlyReportsChart'
 import {
+  CAPABILITIES,
   MODERATION_REASON_LABELS,
   REPORT_STATUSES,
   REPORT_STATUS_BARS,
@@ -19,7 +20,9 @@ import {
   speciesLabel,
 } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
+import { useWorkspaceUser } from '@/hooks/useWorkspaceUser'
 import { categoryService, moderationService, petService, userService } from '@/services'
+import { can } from '@/utils/permissions'
 import { formatCardDate } from '@/utils/date'
 import { AccountStatusBadge } from './AdminBadges'
 
@@ -49,6 +52,11 @@ async function loadAdminOverview() {
  */
 export function AdminOverviewPage() {
   const { data, error, isLoading } = useAsync(loadAdminOverview)
+  // Correction 6: account and category figures link to pages a Moderator
+  // cannot open, so they are shown only to a level that can.
+  const user = useWorkspaceUser()
+  const mayManageAccounts = can(user, CAPABILITIES.MANAGE_ACCOUNTS)
+  const mayManageCategories = can(user, CAPABILITIES.MANAGE_REFERENCE_DATA)
 
   const header = (
     <PageHeader
@@ -117,7 +125,7 @@ export function AdminOverviewPage() {
           to="/admin/moderation"
           emphasis={openCases.length > 0}
         />
-        <StatTile icon={Users} label="Accounts" value={users.length} to="/admin/users" />
+        {mayManageAccounts && <StatTile icon={Users} label="Accounts" value={users.length} to="/admin/users" />}
         <StatTile icon={ListChecks} label="Active reports" value={stats.totals.active} to="/admin/reports" />
         {/* Correction 4: reports filed but not yet published. Coordinators
             review them; the administrator sees how many are waiting. */}
@@ -133,7 +141,9 @@ export function AdminOverviewPage() {
           value={reports.filter((report) => report.status === REPORT_STATUSES.RETURNED).length}
           to="/admin/reports"
         />
-        <StatTile icon={FolderTree} label="Pet categories" value={categories.length} to="/admin/categories" />
+        {mayManageCategories && (
+          <StatTile icon={FolderTree} label="Pet categories" value={categories.length} to="/admin/categories" />
+        )}
       </div>
 
       <section aria-labelledby="attention-heading" className="flex flex-col gap-4">
@@ -141,9 +151,9 @@ export function AdminOverviewPage() {
           Needs your attention
         </h2>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className={mayManageAccounts ? 'grid gap-6 lg:grid-cols-2' : 'grid gap-6'}>
           <FlagsCard openCases={openCases} />
-          <SuspendedCard suspended={suspended} />
+          {mayManageAccounts && <SuspendedCard suspended={suspended} />}
         </div>
       </section>
 

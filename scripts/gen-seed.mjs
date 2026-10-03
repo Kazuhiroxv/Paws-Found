@@ -155,9 +155,11 @@ if (extraBreeds.length) {
 L.push('-- 10 accounts: 7 community members, 2 coordinators, 1 administrator.')
 // first_name and last_name, not full_name: since migration 008 full_name is a
 // column the database generates from the two, and cannot be written.
-L.push('INSERT INTO users (user_id, first_name, last_name, email, password_hash, contact_number, role, account_status, preferred_location, created_at, email_verified_at) VALUES')
+// admin_level since migration 012: the one administrator is a Super
+// Administrator (chk_users_admin_level requires a level for role = admin).
+L.push('INSERT INTO users (user_id, first_name, last_name, email, password_hash, contact_number, role, admin_level, account_status, preferred_location, created_at, email_verified_at) VALUES')
 L.push(users.map((u, i) =>
-  `  (${i + 1}, ${q(u.firstName)}, ${q(u.lastName)}, ${q(u.email)}, ${q(hash)}, ${q(u.phone)}, ${q(u.role)}, ` +
+  `  (${i + 1}, ${q(u.firstName)}, ${q(u.lastName)}, ${q(u.email)}, ${q(hash)}, ${q(u.phone)}, ${q(u.role)}, ${u.role === 'admin' ? "'super_admin'" : 'NULL'}, ` +
     // email_verified_at repeats created_at. Since migration 005 an unverified
     // address cannot sign in, and this file is re-imported on every audit run:
     // leaving it NULL would lock every demonstration account out, administrators

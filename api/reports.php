@@ -330,7 +330,7 @@ function report_publication(int $id): never
     // nothing in the request can name somebody else.
     $allowed = match ($rule['by']) {
         'staff' => in_array($role, ['staff', 'admin'], true),
-        'admin' => $role === 'admin',
+        'admin' => user_can($user, 'moderate_reports'),
         'owner' => $isOwner,
     };
     if (!$allowed) {
@@ -398,7 +398,8 @@ function report_publication(int $id): never
         audit_log('report_reviewed', (int) $user['user_id'], $user['email'], 'report', $id, 'success', $action);
     }
     if ($action === 'remove') {
-        audit_log('report_removed', (int) $user['user_id'], $user['email'], 'report', $id, 'success', 'removed by an administrator');
+        audit_log('report_removed', (int) $user['user_id'], $user['email'], 'report', $id, 'success',
+            'removed by an administrator (' . ($user['admin_level'] ?? 'admin') . ')');
     }
     activity_log((int) $user['user_id'], [
         'approve' => 'report_approved',

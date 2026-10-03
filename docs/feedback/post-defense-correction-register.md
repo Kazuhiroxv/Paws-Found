@@ -26,7 +26,7 @@ States: **done** (committed on `post-defense/revisions`), **in progress**,
 | 3 | Confirm Password cannot be pasted; it must be retyped | NOTES | **done (Correction 2)** — paste and drop refused with a stated reason; the password box itself still accepts a paste | Correction 2 |
 | 4 | IP address and session in logs, to spot malicious activity | NOTES | **done (Correction 5)** — every sign-in is a `user_sessions` row: account, IP, browser user agent, start, last seen, end and why; known by a random reference, never the PHP session id. The IP is the visitor's even behind Railway's proxy (Railway's `X-Real-IP`, used only when the deployment is Railway — Correction 5A), and a forged header is ignored everywhere else. Shown to administrators on Logs → Sessions | Correction 5 |
 | 5 | Log every page, action and time, and every sign-in and sign-out | NOTES | **done (Correction 5)** — `user_activity_logs`: each page a signed-in person opens (the path only), every meaningful action written by the endpoint that did it, sign-in and sign-out, each with time, IP and session. Logs → Activity, filtered and paged | Correction 5 |
-| 6 | Different levels of administrator privilege | NOTES | open — **Correction 6**; the Logs page is administrators-only until then | |
+| 6 | Different levels of administrator privilege | NOTES | **done (Correction 6)** — Ma'am asked for *different admin levels*; she did not specify how many or which. **Team design:** three levels of the one Administrator role (`users.admin_level`): Moderator (moderation), Manager (+ accounts, categories), Super Administrator (+ roles, levels, administrators, Logs). Enforced on the server by capability; matrix and each role's limits in `docs/role-permissions.md` | Correction 6 |
 | 7 | The site does not say you have been signed out | NOTES | **done (Correction 5)** — the server says why a session ended (`session_ended`) and the page says it in words: signed out, inactivity, time limit, signed in on another device, password changed, access changed, locked, suspended | Correction 5 |
 | 8 | Disclaimer: no money involved, not affiliated, not responsible for false information | NOTES | open | |
 | 9 | Pet name accepts one character | NOTES | **done (Correction 3)** — a lost pet's name needs 2 letters or digits ("Bo", "CJ", "R2"); letters, digits, spaces, `'` `.` `-` only; same rule in the form and the API | Correction 3 |
@@ -89,6 +89,7 @@ fixed deliberately rather than remembered.
 | D4 | **"84 provinces."** Correction 3 called its 84-entry place list provinces — the table (`ph_provinces`), the API (`/reference/provinces`), the form label and the report. PSA has **82** provinces; NCR has none. The 84 were 82 provinces plus two groupings the application added (Metro Manila, the Special Geographic Area). It also used PSA's July 2025 file, a year behind. | Kyle's review of Correction 3 | **fixed (Correction 3A)** — `ph_areas` with `area_type` (82 province / 1 ncr / 1 special_area), `/reference/areas`, label "Province or Metro Manila"; data from PSA's own 30 June 2026 file (4 municipality names changed). 009 revised before any deploy |
 | D5 | **The visitor's IP was Railway's.** `client_ip()` read `REMOTE_ADDR` only; behind Railway's edge that is the proxy, the same for every visitor, so the audit log recorded one address for everybody and the registration and reset rate limits counted all visitors as one. | Correction 5 audit | **fixed (Correction 5, hardened in 5A)** — Correction 5 believed `X-Forwarded-For` from 100.0.0.0/8, a range Railway does not guarantee; 5A uses Railway's documented `X-Real-IP` only when the deployment is Railway (`BEHIND_RAILWAY_EDGE`), `REMOTE_ADDR` elsewhere, no address range trusted. Confirm on production after deploy (`docs/security-activity-logging.md`) |
 | D6 | **A suspended or locked account's session came back on reinstatement.** `current_user()` refused it but kept it. | Correction 5 audit | **fixed (Correction 5)** — the session ends; the person signs in again |
+| D7 | **Suspend on the Users page always failed.** The dialog never sent a reason, and the server has required one for a suspension since the hardening pass; the page showed the 422. | Correction 6 audit | **fixed (Correction 6)** — the dialog asks for the reason and waits for one (admin-levels UI MAN-UI-5/6) |
 
 ---
 
@@ -106,7 +107,9 @@ The checklist shows the rule live as the password is typed.
 
 The recordings do not cover these, so they rest on the written notes alone:
 
-- **Admin levels (6)** — how many, and what each may do.
+- **Admin levels (6)** — built (Correction 6) as the team's design: three
+  levels. If Ma'am meant something different, the levels are one table
+  (`ADMIN_CAPABILITIES`) and one ENUM to change.
 - **Reset (11)** — AWAITING CLARIFICATION — exact Reset behavior not
   established. Reset what: the report form, a filter, a password?
 - **Contact number (N1)** — AWAITING INSTRUCTOR-INTENT CONFIRMATION. Which of

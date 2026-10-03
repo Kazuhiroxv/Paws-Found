@@ -55,7 +55,7 @@ function handle_moderation(string $method, ?string $identifier): never
  */
 function moderation_queue(): never
 {
-    require_role('admin');
+    require_capability('moderate_reports');
 
     $where = [];
     $params = [];
@@ -192,7 +192,7 @@ function moderation_create(): never
  */
 function moderation_decide(int $id): never
 {
-    $admin = require_role('admin');
+    $admin = require_capability('moderate_reports');
     $body = request_body();
 
     $action = require_one_of(trim((string) ($body['action'] ?? '')), MODERATION_ACTIONS, 'action');
@@ -226,6 +226,23 @@ function moderation_decide(int $id): never
     // Removing someone's report, and suspending them, needs a reason: the
     // same rule as suspending from the Users page. It is what the reporter is
     // told and what the audit trail says; a stock sentence explains nothing.
+    // Suspending is account management, not moderation (Correction 6): a
+    // Moderator removes the report and leaves the account to a Manager. And an
+    // administrator's account is never suspended from a moderation case — only
+    // a Super Administrator manages another administrator, from Users.
+    if ($action === 'suspend') {
+        if (!user_can($admin, 'manage_accounts')) {
+            json_error('Suspending an account needs an Administrator — Manager or above. Remove the report instead.',
+                403, ['code' => 'admin_level']);
+        }
+        $ownerRole = db()->prepare('SELECT role FROM users WHERE user_id = :id');
+        $ownerRole->execute([':id' => (int) $case['owner_id']]);
+        if ($ownerRole->fetchColumn() === 'admin') {
+            json_error("An administrator's account is managed from Users, by a Super Administrator.", 403,
+                ['code' => 'admin_level']);
+        }
+    }
+
     if (in_array($action, ['remove', 'suspend'], true) && $note === null) {
         json_error('Write why this report is being removed.', 422, [
             'fields' => ['note' => 'The reporter is told this, and it is kept in the audit log.'],
@@ -306,7 +323,7 @@ function moderation_decide(int $id): never
     // the target here is the case, and a case is the thing an administrator
     // acted on.
     audit_log('moderation_resolved', (int) $admin['user_id'], $admin['email'],
-        'moderation_case', $id, 'success', "{$action} on report {$case['report_id']}");
+        'moderation_case', $id, 'success', "{$action} on report {$case['report_id']} (by {$admin['admin_level']})");
     activity_log((int) $admin['user_id'], 'moderation_decided', 'moderation_case', $id,
         "{$action} on report {$case['report_id']}");
 

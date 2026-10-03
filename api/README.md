@@ -201,7 +201,19 @@ and `contact_preferences.show_phone` always false.
 | `PATCH /matches/{id}` — `confirm`, `reject`, `request_information` | staff and administrators only |
 | `GET`/`PATCH /notifications` | your own only — the account comes from the session, never the URL |
 | `POST /activity/page-view` | any signed-in account, about itself only; guests 401 |
-| `GET /logs/*` | administrators (Correction 6 decides which administrator level); staff and customers 403, guests 401 |
+| `GET /logs/*` | Super Administrators (`view_security_logs`); other administrators, staff and customers 403, guests 401 |
+| `PATCH /users/{id}` status | Managers and Super Administrators (`manage_accounts`); another administrator's status: Super Administrators only |
+| `PATCH /users/{id}` `role`, `admin_level` | Super Administrators (`manage_admins`); never your own account |
+| `POST`/`PATCH`/`DELETE /categories` | Managers and Super Administrators (`manage_reference_data`) |
+| `GET /moderation`, `PATCH /moderation/{id}` | every administrator (`moderate_reports`); the `suspend` decision needs `manage_accounts` and never touches an administrator |
+
+Administrator levels (Correction 6) are capabilities, not roles: see
+`docs/role-permissions.md` §0 for the matrix. `PATCH /users/{id}` takes
+`admin_level` (`moderator` | `manager` | `super_admin`) with `role: "admin"`;
+promoting without one is 422, a level for a non-administrator is 422, your own
+account is 422, and leaving no active Super Administrator is 409
+`last_super_admin`. `/auth/me` adds `admin_level` and `capabilities` for an
+administrator.
 
 ### Deciding a pairing
 

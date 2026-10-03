@@ -291,7 +291,7 @@ function current_user(): ?array
     $_SESSION['last_activity'] = time();
 
     $statement = db()->prepare(
-        'SELECT user_id, first_name, last_name, full_name, email, contact_number, role, account_status,
+        'SELECT user_id, first_name, last_name, full_name, email, contact_number, role, admin_level, account_status,
                 preferred_location, notify_matches, notify_status, notify_staff,
                 created_at, email_verified_at, pending_email, session_version
            FROM users
@@ -378,6 +378,8 @@ function session_end_notice(): array
 const SESSION_END_REASONS = [
     'logout', 'idle_timeout', 'absolute_timeout', 'password_reset',
     'new_privileged_login', 'role_promoted', 'account_locked', 'account_suspended',
+    // Correction 6: an administrator's level changed, or the role was taken away.
+    'privilege_changed',
 ];
 
 /** Open a record for the session auth_login() has just started. */
@@ -549,7 +551,7 @@ const ACTIVITY_ACTIONS = [
     // Notifications
     'notification_read', 'notifications_all_read',
     // Administration
-    'account_status_changed', 'role_changed', 'category_changed',
+    'account_status_changed', 'role_changed', 'admin_level_changed', 'category_changed',
 ];
 
 /**
@@ -1010,6 +1012,71 @@ function require_role(string ...$roles): array
 
     if (!in_array($user['role'], $roles, true)) {
         json_error('Your account does not have access to that.', 403);
+    }
+
+    return $user;
+}
+
+// -----------------------------------------------------------------------------
+// Administrator levels (Correction 6)
+//
+// Ma'am asked for "different admin levels of privileges" without saying which.
+// The three below are the team's design. Every administrator is still
+// role = 'admin'; users.admin_level says how much of Administration they get.
+// Pet Coordinators (role = 'staff') are outside this hierarchy entirely.
+//
+// Endpoints ask for a CAPABILITY, never for a level: "may this person manage
+// accounts", not "is this person a manager". So the rules live here, once,
+// and a level can change what it includes without touching an endpoint.
+// -----------------------------------------------------------------------------
+
+/** users.admin_level, lowest first. */
+const ADMIN_LEVELS = ['moderator', 'manager', 'super_admin'];
+
+/**
+ * What each level may do. A higher level includes everything below it.
+ *
+ *   moderate_reports       the moderation queue, removing published reports
+ *   manage_accounts        suspend, reinstate and unlock customers and coordinators;
+ *                          see their contact details in the account list
+ *   manage_reference_data  add, rename, retire and delete pet categories
+ *   manage_admins          change any role, set administrator levels, and manage
+ *                          another administrator's account
+ *   view_security_logs     Logs: sessions, IP addresses, activity, security events
+ */
+const ADMIN_CAPABILITIES = [
+    'moderator' => ['moderate_reports'],
+    'manager' => ['moderate_reports', 'manage_accounts', 'manage_reference_data'],
+    'super_admin' => ['moderate_reports', 'manage_accounts', 'manage_reference_data',
+                      'manage_admins', 'view_security_logs'],
+];
+
+/** The capabilities this account has now: none unless it is an administrator. */
+function admin_capabilities(array $user): array
+{
+    if (($user['role'] ?? null) !== 'admin') {
+        return [];
+    }
+
+    return ADMIN_CAPABILITIES[$user['admin_level'] ?? ''] ?? [];
+}
+
+function user_can(array $user, string $capability): bool
+{
+    return in_array($capability, admin_capabilities($user), true);
+}
+
+/**
+ * Stop unless the signed-in account is an administrator whose level includes
+ * this capability. Read from the database on this request, like the role
+ * itself, so a level changed a moment ago already applies.
+ */
+function require_capability(string $capability): array
+{
+    $user = require_role('admin');
+
+    if (!user_can($user, $capability)) {
+        json_error('Your administrator level does not include that.', 403, ['code' => 'admin_level']);
     }
 
     return $user;

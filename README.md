@@ -38,7 +38,10 @@ each report's timeline, and notifies both people — in one database transaction
 **Both staff workspaces are live.** Pet Coordinators get verification requests,
 a report queue, a match queue and a side-by-side comparison view.
 Administrators get accounts and roles, record oversight, pet category
-management, and a moderation queue with the four approved decisions.
+management, and a moderation queue with the four approved decisions — at three
+levels: a Moderator moderates, a Manager also looks after accounts and
+categories, and a Super Administrator also manages roles, other administrators
+and the security logs (see [`docs/role-permissions.md`](docs/role-permissions.md)).
 
 **Maps work.** Explore has a list/map toggle, each report shows its approximate
 area, and reporters can drop a pin when filing. Leaflet + OpenStreetMap.
@@ -56,8 +59,8 @@ are checked by what the file actually is; administrators add, rename, retire and
 delete pet categories. Nothing the app shows comes from mock data any more. See
 [`docs/feature-status.md`](docs/feature-status.md) for the item-by-item picture.
 
-**It is tested.** 1,246 automated checks in twenty-one suites, all passing, and
-axe-core over 36 pages — see [`docs/TESTING.md`](docs/TESTING.md) §3.
+**It is tested.** 1,353 automated checks in twenty-three suites, all passing, and
+axe-core over 40 pages — see [`docs/TESTING.md`](docs/TESTING.md) §3.
 
 ## Getting started
 
@@ -184,7 +187,9 @@ with the password itself. On a built site everyone signs in through the form.
 | `npm run test:sessions` | 88 checks of the session records, the activity trail, who may read the logs, and secrets that must never be logged (**reseeds**) |
 | `npm run test:session-ui` | 26 browser checks: the cross-tab sign-out race reproduced on purpose, every session-end message, page views, the Logs page |
 | `npm run test:client-ip` | 18 checks of which address is logged: `REMOTE_ADDR`, or Railway's `X-Real-IP` only when the deployment is Railway (needs `php` on PATH) |
-| `npm run a11y` | axe-core over all 36 pages in every role (`PAWS_BASE=http://localhost:5173` for the dev build) |
+| `npm run test:admin-levels` | 78 checks of the administrator levels by direct API call, including two Super Administrators demoting each other at once (**reseeds**) |
+| `npm run test:admin-levels-ui` | 27 browser checks of what each administrator level sees and can do (**reseeds**) |
+| `npm run a11y` | axe-core over all 40 pages in every role (`PAWS_BASE=http://localhost:5173` for the dev build) |
 | `npm run verify:deploy <url>` | 28 checks that only fail on a real host |
 
 See [`docs/TESTING.md`](docs/TESTING.md) for prerequisites and what each one

@@ -13,7 +13,7 @@ import {
   User,
   Users,
 } from 'lucide-react'
-import { ROLES } from '@/constants'
+import { CAPABILITIES, ROLES } from '@/constants'
 
 /**
  * Navigation link lists.
@@ -64,12 +64,15 @@ export const STAFF_NAV = [
 /** Sidebar links for an Administrator. */
 export const ADMIN_NAV = [
   { to: '/admin', label: 'Overview', icon: Gauge, end: true },
-  { to: '/admin/users', label: 'Users', icon: Users },
-  { to: '/admin/reports', label: 'Reports', icon: ListChecks },
-  { to: '/admin/categories', label: 'Pet Categories', icon: FolderTree },
-  { to: '/admin/moderation', label: 'Moderation', icon: Flag },
-  // Correction 5: sessions, IP addresses, activity and security events.
-  { to: '/admin/logs', label: 'Logs', icon: ScrollText },
+  // Correction 6: each link names the capability it needs, and the workspace
+  // shows only the ones this administrator's level includes.
+  { to: '/admin/users', label: 'Users', icon: Users, capability: CAPABILITIES.MANAGE_ACCOUNTS },
+  { to: '/admin/reports', label: 'Reports', icon: ListChecks, capability: CAPABILITIES.MODERATE_REPORTS },
+  { to: '/admin/categories', label: 'Pet Categories', icon: FolderTree, capability: CAPABILITIES.MANAGE_REFERENCE_DATA },
+  { to: '/admin/moderation', label: 'Moderation', icon: Flag, capability: CAPABILITIES.MODERATE_REPORTS },
+  // Correction 5: sessions, IP addresses, activity and security events —
+  // Super Administrators only (Correction 6).
+  { to: '/admin/logs', label: 'Logs', icon: ScrollText, capability: CAPABILITIES.VIEW_SECURITY_LOGS },
 ]
 
 /**

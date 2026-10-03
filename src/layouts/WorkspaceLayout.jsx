@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Sidebar } from '@/components/Sidebar'
 import { Container } from '@/components/ui'
 import { useAsync } from '@/hooks/useAsync'
+import { can } from '@/utils/permissions'
 import { WorkspaceShell } from './WorkspaceShell'
 
 /**
@@ -52,11 +53,15 @@ export function WorkspaceLayout({ label, items, loadCounts, standalone = false, 
   )
   const { data: counts } = useAsync(readCounts)
 
+  // Only the sections this account may open (Correction 6): a link names the
+  // capability it needs, and an administrator's level decides which they have.
+  const visibleItems = items.filter((item) => !item.capability || can(user, item.capability))
+
   if (standalone) {
     return (
       <WorkspaceShell
         label={label}
-        items={items}
+        items={visibleItems}
         counts={counts}
         user={user}
         onSignOut={signOutToHome}
@@ -71,7 +76,9 @@ export function WorkspaceLayout({ label, items, loadCounts, standalone = false, 
               longer valid.
             </p>
           )}
-          <Outlet />
+          {/* The pages read the signed-in account from here
+              (useWorkspaceUser) to decide which actions to offer. */}
+          <Outlet context={{ user }} />
         </Container>
       </WorkspaceShell>
     )
@@ -79,7 +86,7 @@ export function WorkspaceLayout({ label, items, loadCounts, standalone = false, 
 
   return (
     <Container className="flex flex-col gap-6 lg:flex-row lg:gap-10">
-      <Sidebar label={label} items={items} counts={counts} />
+      <Sidebar label={label} items={visibleItems} counts={counts} />
 
       <div className="min-w-0 flex-1">
         <Outlet />

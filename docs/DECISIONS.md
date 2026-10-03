@@ -710,6 +710,57 @@ longer promises it, and the record shows which version each person agreed to.
 **Decision for the team:** build a "please review the updated notice" step, or
 accept the current position.
 
+### Administrator levels: three, as capabilities (Correction 6)
+
+Ma'am asked for "different admin levels of privileges" and nothing more
+specific, so the levels are the team's: Moderator, Manager, Super
+Administrator — the fewest that separate three real jobs (content, accounts,
+the administrators and the security record). They refine `role = 'admin'`
+in their own column (`users.admin_level`) rather than becoming three more
+roles: they are all administrators, the ERD says so, and a Pet Coordinator
+stays outside the hierarchy. Endpoints ask for a named capability
+(`moderate_reports`, `manage_accounts`, `manage_reference_data`,
+`manage_admins`, `view_security_logs`) from one table, not for a level; not a
+general role-based-access framework — five names, three rows.
+
+**Logs are Super Administrator only.** IP addresses, browsers and browsing
+history are the most sensitive data in the system; neither moderation nor
+account care needs them.
+
+**Only a Super Administrator manages administrators, and nobody manages
+themselves.** "Anyone may manage those below them" was rejected: it needs
+an ordering rule at every endpoint and lets a Manager disable a Moderator
+over a disagreement. One rule is easier to defend.
+
+**Roles are the Super Administrator's too** — including customer ↔
+coordinator, because a coordinator sees contact details and decides cases.
+
+**Existing administrators became Super Administrators** (migration 012):
+they had one unrestricted role, and this keeps exactly that. No history of
+a "promotion" is invented.
+
+**A level change ends the account's sessions** (`privilege_changed`), so a
+browser never keeps a screen built for powers it no longer has.
+
+**Never no active Super Administrator.** Structurally (self-changes refused,
+only Super Administrators change administrators), and against two
+simultaneous demotions by row locks taken in user_id order and a re-read of
+the acting administrator inside the transaction. A locked account cannot be
+prevented — three wrong passwords lock anyone — so if the last Super
+Administrator is locked, the recovery is the database owner setting
+`account_status = 'active'` (PRODUCTION_RUNBOOK). A second Super
+Administrator is the practical safeguard.
+
+**Administrators keep approving from a report page.** Correction 4 let any
+administrator approve or reject; Correction 6 does not change the publication
+workflow, so every level still may. The review queue remains the Pet
+Coordinator's workspace.
+
+**The Privacy Notice was not changed.** It says administrators can see the
+session, activity and security records; that is still true — it is now only
+the Super Administrators — and narrowing access does not alter what anybody
+agreed to, so the version stays 2026-10-03.
+
 ### No automatic retention (Correction 5)
 
 Nothing deletes old sessions or activity. A scheduled purge needs a scheduler

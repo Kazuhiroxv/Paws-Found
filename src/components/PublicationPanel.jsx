@@ -4,7 +4,8 @@ import { Check, EyeOff, Send, ShieldCheck, XCircle } from 'lucide-react'
 import { Button, Card, CardBody, CardHeader, Textarea } from '@/components/ui'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PublicationBadge } from '@/components/StatusBadge'
-import { PUBLICATION_STATUSES, ROLES } from '@/constants'
+import { CAPABILITIES, PUBLICATION_STATUSES, ROLES } from '@/constants'
+import { can } from '@/utils/permissions'
 import { petService } from '@/services'
 import { formatDateTime } from '@/utils/date'
 import { useRevealWhen } from '@/utils/reveal'
@@ -48,7 +49,9 @@ export function PublicationPanel({ report, viewer, onChanged, notice = null }) {
   const publication = report.publicationStatus
   const isOwner = Boolean(viewer) && viewer.id === report.reporterId
   const isCoordinator = viewer?.role === ROLES.STAFF || viewer?.role === ROLES.ADMIN
-  const isAdmin = viewer?.role === ROLES.ADMIN
+  // Removing a published report is moderation (Correction 6: every
+  // administrator level has it; the server checks moderate_reports).
+  const isAdmin = can(viewer, CAPABILITIES.MODERATE_REPORTS)
 
   // Published reports need no panel for their reporter or the public: the
   // page itself is the proof. Coordinators still see who approved it.

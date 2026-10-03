@@ -24,6 +24,8 @@ function userFromApi(row) {
     email: row.email ?? '',
     phone: row.contact_number ?? '',
     role: row.role,
+    // Only sent to another administrator (Correction 6); null otherwise.
+    adminLevel: row.admin_level ?? null,
     accountStatus: row.account_status,
     preferredLocation: row.preferred_location ?? '',
     createdAt: row.created_at,
@@ -94,6 +96,10 @@ export async function checkSession() {
       email: row.email,
       phone: row.contact_number ?? '',
       role: row.role,
+      // An administrator's level and what it allows (Correction 6). The
+      // capabilities are the server's; the interface asks can() of them.
+      adminLevel: row.admin_level ?? null,
+      capabilities: row.capabilities ?? [],
       accountStatus: 'active',
       preferredLocation: row.preferred_location ?? '',
       // A new address asked for and not yet confirmed. /auth/me has always
@@ -331,20 +337,27 @@ export async function unlockAccount(id) {
   return userFromApi(payload.data)
 }
 
-/** Administrator action: suspend or reinstate an account. */
-export async function setAccountStatus(id, accountStatus) {
+/**
+ * Administrator action: suspend or reinstate an account. Suspending needs a
+ * reason — the server refuses one without it, and it goes in the audit log.
+ */
+export async function setAccountStatus(id, accountStatus, reason) {
   const payload = await apiFetch(`/users/${id}`, {
     method: 'PATCH',
-    body: JSON.stringify({ account_status: accountStatus }),
+    body: JSON.stringify({ account_status: accountStatus, reason: reason || undefined }),
   })
 
   return userFromApi(payload.data)
 }
 
-export async function setUserRole(id, role) {
+/**
+ * Super Administrator action: change a role, and with it the administrator
+ * level — chosen on purpose for an administrator, cleared for anybody else.
+ */
+export async function setUserRole(id, role, adminLevel = null) {
   const payload = await apiFetch(`/users/${id}`, {
     method: 'PATCH',
-    body: JSON.stringify({ role }),
+    body: JSON.stringify({ role, admin_level: role === 'admin' ? adminLevel : null }),
   })
 
   return userFromApi(payload.data)

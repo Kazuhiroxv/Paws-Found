@@ -76,6 +76,16 @@ show on screen.
 `ENUM('active','suspended','locked')`. Both are constrained **by the database**,
 so a crafted request cannot invent a fourth role even if it gets past PHP.
 
+**`admin_level` (migration 012, Correction 6).**
+`ENUM('moderator','manager','super_admin')`, NULL for everybody who is not an
+administrator. A refinement of the Administrator role, not a fourth role, so
+it is a column beside `role` rather than more values in it. The CHECK
+constraint `chk_users_admin_level` holds the two together: an administrator
+has a level and nobody else has one, so a half-done role change cannot be
+stored. No new table: the history of privilege changes is in `audit_logs`
+(`role_changed`, `admin_level_changed`). Tables 24, foreign keys 35 —
+unchanged; CHECK constraints 2 → 3.
+
 **First name and last name (migration 008, post-defense).** The instructor
 asked for them separately, and the password rule needs them separately. They
 are what the API writes; `full_name` is now a **generated** column,

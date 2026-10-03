@@ -192,6 +192,21 @@ curl.exe -s https://paws-found-production.up.railway.app/api/health
 
 ---
 
+### If the last Super Administrator is locked out (Correction 6)
+
+Only a Super Administrator can unlock another administrator, and nobody can
+unlock themselves. Three wrong passwords lock any account, so if every Super
+Administrator is locked or suspended, Administration cannot fix it from the
+inside. The database owner can, after confirming who is asking:
+
+```sql
+UPDATE users SET account_status = 'active' WHERE email = '<their address>' AND role = 'admin';
+DELETE FROM login_attempts WHERE email = '<their address>';
+```
+
+This is a write to production: Kyle does it, never Claude. Keeping two Super
+Administrators is what makes it unnecessary.
+
 ## 5. Email
 
 Registration answers with the truth, and it is the fastest diagnostic:

@@ -15,8 +15,10 @@ import { Avatar } from '@/components/Avatar'
 import { PageHeader } from '@/components/PageHeader'
 import { ReportTypeBadge } from '@/components/ReportTypeBadge'
 import { StatusBadge } from '@/components/StatusBadge'
-import { MODERATION_REASON_LABELS } from '@/constants'
+import { CAPABILITIES, MODERATION_REASON_LABELS } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
+import { useWorkspaceUser } from '@/hooks/useWorkspaceUser'
+import { can } from '@/utils/permissions'
 import { moderationService, userService } from '@/services'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { formatCardDate } from '@/utils/date'
@@ -213,6 +215,7 @@ export function AdminModerationPage() {
 }
 
 function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, onDone }) {
+  const viewer = useWorkspaceUser()
   const [note, setNote] = useState(moderationCase.resolutionNote ?? '')
   const [busyAction, setBusyAction] = useState(null)
   const [actionError, setActionError] = useState(null)
@@ -379,15 +382,19 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
                   </Button>
                   {/* Set apart from "Remove the report", and spelled out: the
                       two used to sit side by side in the same red. */}
-                  <Button
-                    variant="danger"
-                    disabled={Boolean(busyAction) || !note.trim()}
-                    onClick={() => setAsking('suspend')}
-                    className="sm:ml-auto"
-                  >
-                    <Lock size={16} aria-hidden="true" />
-                    {DECISIONS.suspend.label}
-                  </Button>
+                  {/* Suspending is account management, a Manager's or above
+                      (Correction 6); a Moderator removes the report only. */}
+                  {can(viewer, CAPABILITIES.MANAGE_ACCOUNTS) && (
+                    <Button
+                      variant="danger"
+                      disabled={Boolean(busyAction) || !note.trim()}
+                      onClick={() => setAsking('suspend')}
+                      className="sm:ml-auto"
+                    >
+                      <Lock size={16} aria-hidden="true" />
+                      {DECISIONS.suspend.label}
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

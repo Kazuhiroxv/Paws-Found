@@ -30,15 +30,15 @@ curl.exe -s https://paws-found-production.up.railway.app/api/health
 Expected at the time of writing (2 October): on branch
 **`post-defense/revisions`**, local commits ahead of `portfolio/team/current`
 = **`2947a43`** (what production runs) — the §4 checkpoint, Correction 1, the
-instructor-feedback documents, Corrections 2, 3, 3A, 4 and 5; see §4a. None is
+instructor-feedback documents, Corrections 2, 3, 3A, 4, 5, 5A and 6; see §4a. None is
 pushed or deployed. Health `{"status":"ok","database":"ok"}`. Untracked:
 `docs/dbeaver-defense-queries.pdf`.
 
-**The local database has migrations `008`, `009`, `010` and `011` applied**
-(first and last name; the report reference data; reviewed publication and
-drafts; session records and the activity trail). The production database has
-none of them, and must get all four, in order, immediately before the code is
-pushed — see §4a.
+**The local database has migrations `008` to `012` applied** (first and last
+name; the report reference data; reviewed publication and drafts; session
+records and the activity trail; administrator levels). The production database
+has none of them, and must get all five, in order, immediately before the code
+is pushed — see §4a.
 
 ---
 
@@ -177,6 +177,7 @@ an XL size, presentation flow, and a date filter that exists but was not found).
 | 3 | Report data quality, PH places, contact safety, report-form quality | **Done** — see below |
 | 4 | Drafts, Pet Coordinator review before publication, Removed apart from Closed | **Done** (Cancel awaiting clarification) — see below |
 | 5 | Session and IP logging, page/action history, login/logout, "signed out" messages, the sign-out race | **Done** — see below |
+| 6 | Different levels of administrator privilege | **Done** (the three levels are the team's design) — see below |
 | 10 | Breed / colour / city / province: suggested values | **Done in Correction 3** |
 | others | | Not started — the register in `docs/feedback/` is the list (Reset: awaiting clarification) |
 
@@ -246,11 +247,28 @@ session for good (it used to revive on reinstatement). Privacy Notice
 2026-10-03. Design, before/after and limitations:
 `docs/security-activity-logging.md`.
 
-**Deploying Corrections 2–5 — the database goes first, all four migrations,
+**Correction 6.** Ma'am asked for "different admin levels of privileges"
+without saying which; the team chose three, all `role = 'admin'`, refined by
+`users.admin_level` (migration 012): **Moderator** (moderation, removing
+published reports), **Manager** (+ suspending, reinstating and unlocking
+customers and coordinators, pet categories, contact details), **Super
+Administrator** (+ roles, levels, other administrators, and the Logs). Pet
+Coordinators stay `staff`, outside the hierarchy. Endpoints ask for a
+capability (`require_capability()`, `ADMIN_CAPABILITIES` in
+`api/helpers.php`); `/auth/me` sends an administrator their capabilities, and
+the interface asks `can()`. Nobody changes their own role, level or status;
+promotion to administrator needs a level chosen on purpose; a level change or
+removing the role ends that account's sessions (`privilege_changed`); there is
+always an active Super Administrator (row locks against two simultaneous
+demotions). Existing administrators became Super Administrators. The matrix
+and every role's limits: `docs/role-permissions.md` §0–§0a. Found on the way:
+the Users page's Suspend never sent the reason the server requires, so it
+always failed; fixed.
+**Deploying Corrections 2–6 — the database goes first, all five migrations,
 in the same sitting.** New code reads `ph_cities`, `pet_colours`,
-`publication_status`, `publication_logs`, `report_drafts`, `user_sessions`
-and `user_activity_logs`, none of which exist before 009–011; and each
-migration assumes the one before. Use the official MySQL client with
+`publication_status`, `publication_logs`, `report_drafts`, `user_sessions`,
+`user_activity_logs` and `users.admin_level`, none of which exist before
+009–012; and each migration assumes the one before. Use the official MySQL client with
 `--default-character-set=utf8mb4`:
 
 1. back up the Railway database (`docs/PRODUCTION_RUNBOOK.md`)
@@ -259,6 +277,8 @@ migration assumes the one before. Use the official MySQL client with
 4. preview 010 (query at the top of `010_report_publication_workflow.sql` —
    it lists the reports that will become Removed), run 010
 5. run 011 (two new, empty tables; nothing to preview)
+5a. preview 012 (`SELECT user_id, email FROM users WHERE role = 'admin';` —
+   every one becomes a Super Administrator), run 012
 6. push; check `/api/health`; run `npm run verify:deploy <url>`
 7. **check the recorded IP** (`docs/security-activity-logging.md`, "IP
    address"): (a) sign in from network A, e.g. home Wi-Fi; (b) sign in from
@@ -270,7 +290,7 @@ migration assumes the one before. Use the official MySQL client with
    (never their values, never persisted), and stop relying on the IP for
    per-client rate limiting until it is resolved.
 
-All four were tested from the `2947a43` schema and seed on MySQL 9.4 (strict)
+All five were tested from the `2947a43` schema and seed on MySQL 9.4 (strict)
 and on MariaDB, the last run twice, and compared with a fresh install
 (`npm run test:migrations`): identical. Never run any against Railway without
 Kyle.
@@ -385,9 +405,10 @@ C:\xampp\php\php.exe scripts/identity_rules.php              # 41
 C:\xampp\php\php.exe scripts/report_rules.php                # 50
 C:\xampp\php\php.exe scripts/match_scores.php                # 11
 python scripts/report_controls.py                             # 62  (reseeds)
-python scripts/migration_parity.py                            # 27  (needs Docker; scratch databases only)
+python scripts/migration_parity.py                            # 29  (needs Docker; scratch databases only)
 python scripts/publication_workflow.py                        # 71  (reseeds)
 python scripts/session_activity.py                            # 88  (reseeds; writes config.local.php, restores it)
+python scripts/admin_levels.py                                # 78  (reseeds)
 C:\xampp\php\php.exe scripts/client_ip.php                   # 18
 python scripts/psgc_reference.py check                        # place data and SQL in step
 PAWS_PW=<seeded password> npm run audit                       # 384  (reseeds, restores)
@@ -399,15 +420,16 @@ PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:feedback # 49
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:report-ui # 47
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:workflow-ui # 33
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:session-ui  # 26 (reseeds)
-PAWS_BASE=http://localhost:5173 npm run a11y                      # 36 pages
+PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:admin-levels-ui # 27 (reseeds)
+PAWS_BASE=http://localhost:5173 npm run a11y                      # 40 pages
 C:\xampp\php\php.exe scripts/city_fallback.php                # 11
 C:\xampp\php\php.exe scripts/calendar_today.php               # 8
 C:\xampp\php\php.exe scripts/matching_log.php                 # 6
 ```
 
-**1,246 checks in total, in twenty-one suites** on `post-defense/revisions`
-(1,238 after Correction 5; 1,112 in eighteen after Correction 4; 1,006 in sixteen after 3A; 972 after 3;
-802 after 2; 689 in production). a11y: 36 pages. Plain `npm run lint` is the
+**1,353 checks in total, in twenty-three suites** on `post-defense/revisions`
+(1,246 after Correction 5A; 1,238 after Correction 5; 1,112 in eighteen after Correction 4; 1,006 in sixteen after 3A; 972 after 3;
+802 after 2; 689 in production). a11y: 40 pages. Plain `npm run lint` is the
 gate again: the four `PawsAndFound_*` folders that had appeared in the
 repository root were moved to `C:\Projects\_archives\paws-and-found\` on
 3 October (Kyle's decision; nothing deleted).
@@ -482,18 +504,17 @@ Rolling back and operating the live site: [PRODUCTION_RUNBOOK.md](PRODUCTION_RUN
 | Activity trail | `activity_log()` + `ACTIVITY_ACTIONS` (`api/helpers.php`); page views `RootLayout.jsx` → `POST /api/activity/page-view` (`api/logs.php`) |
 | Log viewer | `GET /api/logs/{activity,sessions,audit}` (`api/logs.php`); `src/pages/admin/AdminLogsPage.jsx` |
 | Visitor IP | `client_ip()` (`api/helpers.php`), `BEHIND_RAILWAY_EDGE` (`api/config.php`) |
+| Administrator levels | `ADMIN_CAPABILITIES`, `require_capability()`, `user_can()` (`api/helpers.php`); `user_update()` (`api/users.php`); `can()` (`src/utils/permissions.js`), `RequireCapability` (`src/components/RequireAccess.jsx`) |
 | Session re-check | `useSession()` (`src/hooks/useSession.js`); `SESSION_CHECK_EVENT` in `src/services/api.js` |
 
 ---
 
 ## 10. Still open
 
-- **Section 4 and Corrections 1–5 are committed locally, not deployed.**
-  Shipping them is Kyle's call, and they need migrations `008`, `009`, `010`
-  and `011` on Railway first (§4a), then the IP check.
+- **Section 4 and Corrections 1–6 are committed locally, not deployed.**
+  Shipping them is Kyle's call, and they need migrations `008` to `012`
+  on Railway first (§4a), then the IP check.
 - **Cancel (register 16) — AWAITING INSTRUCTOR-INTENT CLARIFICATION.**
-- **Administrator privilege levels — Correction 6.** The Logs page is
-  administrators-only until then.
 - **No automatic log retention, and no re-consent step** for members who
   agreed to an older Privacy Notice (`docs/security-activity-logging.md`).
 - **The ERD figure still shows `full_name` and lacks the three 009 tables.**

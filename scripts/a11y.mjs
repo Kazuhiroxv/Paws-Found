@@ -5,6 +5,9 @@
 // Needs the built site deployed and Chrome installed. Set PAWS_BASE to point
 // somewhere other than the local XAMPP deployment, and CHROME if Chrome is not
 // in the usual place.
+// The page.evaluate() callbacks below run inside the page, where this exists.
+/* global document */
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -16,6 +19,30 @@ const API = BASE + '/api'
 const CHROME = process.env.CHROME
   ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
 const AXE = fs.readFileSync(path.join(ROOT, 'node_modules', 'axe-core', 'axe.min.js'), 'utf8')
+const MYSQL = process.env.PAWS_MYSQL ?? 'C:/xampp/mysql/bin/mysql.exe'
+const sql = (query) =>
+  execFileSync(MYSQL, ['-uroot', '-h127.0.0.1', '-P3307', '--default-character-set=utf8mb4', '-N', '-B', 'pawsandfound', '-e', query])
+
+// Administrator levels (Correction 6). The seed has one administrator, a
+// Super Administrator, so a Moderator and a Manager are made for this run
+// from two seeded accounts and put back at the end.
+const MODERATOR = 'rafael.mendoza@example.com'
+const MANAGER = 'kenneth.villanueva@example.com'
+sql(`UPDATE users SET role = 'admin', admin_level = 'moderator' WHERE email = '${MODERATOR}';
+     UPDATE users SET role = 'admin', admin_level = 'manager' WHERE email = '${MANAGER}'`)
+
+/** Open the role dialog for the Manager and choose Administrator, so the level choice is on screen. */
+async function openRoleDialog(page) {
+  await page.evaluate((who) => {
+    const row = [...document.querySelectorAll('tbody tr')].find((r) => r.textContent.includes(who))
+    ;[...(row?.querySelectorAll('button') ?? [])].find((b) => b.textContent.includes('Change role'))?.click()
+  }, 'Kenneth')
+  await new Promise((r) => setTimeout(r, 500))
+  await page.evaluate(() => {
+    ;[...document.querySelectorAll('input[type=radio]')].find((r) => r.value === 'admin')?.click()
+  })
+  await new Promise((r) => setTimeout(r, 400))
+}
 
 const PAGES = [
   ['guest', '/', 'Homepage'],
@@ -56,6 +83,11 @@ const PAGES = [
   ['grace.bautista@example.com', '/admin/moderation', 'Moderation'],
   ['grace.bautista@example.com', '/admin/logs', 'Logs'],
   ['grace.bautista@example.com', '/admin/logs?tab=sessions', 'Logs: sessions'],
+  // Correction 6: what each administrator level sees.
+  [MODERATOR, '/admin', 'Admin overview — Moderator'],
+  [MODERATOR, '/admin/logs', 'No access — Moderator on Logs'],
+  [MANAGER, '/admin/users', 'Accounts — Manager'],
+  ['grace.bautista@example.com', '/admin/users', 'Accounts — role and level dialog', openRoleDialog],
 ]
 
 const browser = await puppeteer.launch({
@@ -91,10 +123,11 @@ const all = new Map()   // rule id -> { impact, help, count, pages:Set, sample }
 console.log('page'.padEnd(34) + 'critical  serious  moderate    minor')
 console.log('-'.repeat(74))
 
-for (const [who, route, label] of PAGES) {
+for (const [who, route, label, prepare] of PAGES) {
   if (who !== 'guest') await signIn(who)
   await page.goto(BASE + route, { waitUntil: 'networkidle2' })
   await new Promise((r) => setTimeout(r, 1400))
+  if (prepare) await prepare(page)
 
   // A signed-in page that bounced to /login is not the page this row names.
   if (who !== 'guest' && new URL(page.url()).pathname.endsWith('/login')) {
@@ -135,6 +168,8 @@ for (const [who, route, label] of PAGES) {
 }
 
 await browser.close()
+sql(`UPDATE users SET role = 'staff', admin_level = NULL WHERE email = '${MODERATOR}';
+     UPDATE users SET role = 'user', admin_level = NULL WHERE email = '${MANAGER}'`)
 
 console.log('')
 console.log('='.repeat(74))

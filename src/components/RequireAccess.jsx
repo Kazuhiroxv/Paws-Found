@@ -1,5 +1,9 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Link, Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Lock } from 'lucide-react'
+import { EmptyState } from '@/components/ui'
+import { PageHeader } from '@/components/PageHeader'
 import { ROLES } from '@/constants'
+import { can } from '@/utils/permissions'
 
 /**
  * Route guard for anything behind a sign-in.
@@ -52,4 +56,41 @@ export function AdminStaysInWorkspace({ role }) {
   }
 
   return <Outlet />
+}
+
+/**
+ * A section of Administration that this administrator's level does not
+ * include (Correction 6): Users without manage_accounts, Logs without
+ * view_security_logs, and so on.
+ *
+ * Says so in place, inside the workspace, rather than bouncing somewhere
+ * else: somebody who typed /admin/logs should learn why it is closed to them,
+ * and nothing of the page is rendered — not even a loading request for its
+ * data. Like RequireAccess, this keeps the interface coherent; the API
+ * refuses the same request with 403 whatever the page does.
+ *
+ * @param {Object} props
+ * @param {Object|null} props.user        The signed-in account.
+ * @param {string} props.capability       One of CAPABILITIES in src/constants.
+ */
+export function RequireCapability({ user, capability, children }) {
+  if (can(user, capability)) {
+    return children
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader eyebrow="Administrator" title="No access" />
+      <EmptyState
+        icon={Lock}
+        title="You don't have permission to access this page."
+        description="Your administrator level does not include this part of Administration. If you need it, ask a Super Administrator."
+        action={
+          <Link to="/admin" className="text-sm text-fg underline">
+            Back to the Overview
+          </Link>
+        }
+      />
+    </div>
+  )
 }

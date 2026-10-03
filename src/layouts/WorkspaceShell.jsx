@@ -2,7 +2,7 @@ import { useId, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { ArrowLeft, LogOut, Menu, X } from 'lucide-react'
 import logoLockup from '@/assets/pawsfound-logo-horizontal.webp'
-import { ROLE_LABELS, ROLES } from '@/constants'
+import { ROLES, roleLabel } from '@/constants'
 import { cn } from '@/utils/cn'
 
 const linkClasses = ({ isActive }) =>
@@ -88,7 +88,9 @@ export function WorkspaceShell({ label, items, counts, user, onSignOut, children
       {user && (
         <div className="px-3 pb-1">
           <p className="truncate text-sm font-medium text-fg">{user.fullName}</p>
-          <p className="truncate text-xs text-fg-muted">{ROLE_LABELS[user.role] ?? user.role}</p>
+          {/* "Administrator — Moderator", "Super Administrator": which part
+              of Administration this is (Correction 6). */}
+          <p className="truncate text-xs text-fg-muted">{roleLabel(user)}</p>
         </div>
       )}
 
