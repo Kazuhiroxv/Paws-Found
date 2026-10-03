@@ -97,7 +97,11 @@ behaviour, not the interface's.
 | `PATCH /matches/{id}` | `request_verification` and `dismiss`, and only on a pairing they are part of | `matches.php:89` |
 | `GET`/`PATCH /notifications` | Their own, by session id | `notifications.php:20` |
 | `PATCH /users/me` | Their own profile | `users.php:122` |
-| `POST /moderation` | Flag a listing | `moderation.php:142` |
+| `POST /moderation` | Flag a listing — a **published** one; any other answers 404 | `moderation_create()` |
+| `POST /reports` | Files it **for review** (Correction 4): `pending_review`, not public, not matched | `report_create()` |
+| `GET /reports/{id}` (unpublished) | **Their own** report waiting for review, not approved, or removed — with its publication history. Anybody else's: 404 | `report_detail()` |
+| `PATCH /reports/{id}/publication` `resubmit` | **Their own** report, only after a rejection | `PUBLICATION_ACTIONS` |
+| `GET`/`POST`/`PUT`/`DELETE /drafts` | **Their own** drafts only; anybody else's is 404 — coordinators and administrators included | `draft_own_or_404()` |
 
 **The one to be able to quote:** `profile_update()` takes the account id **from
 the session, never from the request**, so it cannot be pointed at somebody
@@ -117,6 +121,8 @@ Everything a customer can do, plus:
 | `GET /users/{id}` | See contact details, to arrange a handover | `users.php:107` |
 | `GET /reports/stats` | The dashboard figures | `reports.php:457` |
 | `GET /matches/{id}` | Read the proof notes on a case they are handling | `matches.php:468` |
+| `GET /reports?publication=pending_review` | The review queue (Correction 4) | `reports_list()` |
+| `PATCH /reports/{id}/publication` `approve` / `reject` | Publish a report, or mark it not approved with a reason — **never their own** | `report_publication()` |
 
 **What staff deliberately cannot do**, and this is the boundary the project
 brief asks for (CLAUDE.md §4.2 — *"must not have unrestricted administrator
@@ -139,7 +145,8 @@ Everything above, plus:
 | `GET /users` | List and filter accounts |
 | `PATCH /users/{id}` | Change a role; suspend, reinstate, **unlock** |
 | `POST`/`PATCH`/`DELETE /categories` | Manage the species list |
-| `GET /moderation`, `PATCH /moderation/{id}` | Review a flag: dismiss, warn, remove, suspend |
+| `GET /moderation`, `PATCH /moderation/{id}` | Review a flag: dismiss, warn, remove, suspend. Remove takes the report out of public view (`removed`); it no longer closes it |
+| `PATCH /reports/{id}/publication` `remove` | Remove a published report directly, with a reason (Correction 4) |
 
 Every one of these writes an `audit_logs` row naming the administrator, the
 target and what changed. `role_changed`, `account_suspended`,

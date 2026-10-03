@@ -244,14 +244,15 @@ async function fileFoundReport(width) {
   await pause(800)
   await scrollToBottom(page)
   await pause(300)
-  const submitted = await clickButton(page, 'Submit report')
+  // "Submit for review" since Correction 4: a coordinator approves it first.
+  const submitted = await clickButton(page, 'Submit for review')
   await pause(2500)
 
   const heading = await page.evaluateHandle(() =>
-    [...document.querySelectorAll('h2')].find((h) => h.textContent.trim() === 'Report submitted') ?? null)
+    [...document.querySelectorAll('h2')].find((h) => h.textContent.trim() === 'Submitted for review') ?? null)
   const seen = await inViewport(page, heading)
   const focusInside = await page.evaluate((h) => Boolean(h && h.closest('[tabindex="-1"]')?.contains(document.activeElement)), heading)
-  check(`SB-${width}b`, `Wizard at ${width}px: submitted from the bottom, "Report submitted" is on screen and focused`,
+  check(`SB-${width}b`, `Wizard at ${width}px: submitted from the bottom, "Submitted for review" is on screen and focused`,
     submitted && seen && focusInside, !submitted ? 'Submit button not reached' : `on screen ${seen}, focused ${focusInside}`)
   await context.close()
 }

@@ -193,6 +193,34 @@ export const NOTIFICATION_TYPES = {
   STATUS_CHANGED: 'status_changed',
   PET_RETURNED: 'pet_returned',
   REPORT_FLAGGED: 'report_flagged',
+  // Correction 4: a report's review.
+  REPORT_SUBMITTED: 'report_submitted',
+  REPORT_PUBLISHED: 'report_published',
+  REPORT_REJECTED: 'report_rejected',
+  REPORT_REMOVED: 'report_removed',
+}
+
+/**
+ * Whether the public may see a report (Correction 4) — a different question
+ * from its case status above. Filed reports wait for a Pet Coordinator; a
+ * published one can later be removed by an administrator. Removed is not
+ * Closed: `status` still says where the case is.
+ *
+ * A draft is not one of these: an unfinished report lives in its own table
+ * until it is submitted (see docs/DECISIONS.md, "Drafts").
+ */
+export const PUBLICATION_STATUSES = {
+  PENDING_REVIEW: 'pending_review',
+  PUBLISHED: 'published',
+  REJECTED: 'rejected',
+  REMOVED: 'removed',
+}
+
+export const PUBLICATION_STATUS_LABELS = {
+  [PUBLICATION_STATUSES.PENDING_REVIEW]: 'Pending review',
+  [PUBLICATION_STATUSES.PUBLISHED]: 'Published',
+  [PUBLICATION_STATUSES.REJECTED]: 'Not approved',
+  [PUBLICATION_STATUSES.REMOVED]: 'Removed',
 }
 
 /**

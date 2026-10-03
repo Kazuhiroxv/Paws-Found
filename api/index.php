@@ -14,7 +14,9 @@
  *   GET    /api/auth/me           who am I
  *   POST   /api/reports/12/photos  attach photographs to a report
  *   GET    /api/categories        species list
- *   GET    /api/reference/cities?province=…  a list the report form chooses from
+ *   GET    /api/reference/cities?area=…  a list the report form chooses from
+ *   PATCH  /api/reports/12/publication  approve, reject, resubmit, remove
+ *   GET    /api/drafts           your saved drafts
  */
 
 declare(strict_types=1);
@@ -55,7 +57,7 @@ try {
         case '':
             json_response([
                 'name' => 'Paws&Found API',
-                'endpoints' => ['/health', '/config', '/auth', '/reports', '/matches', '/notifications', '/users', '/categories', '/reference', '/moderation'],
+                'endpoints' => ['/health', '/config', '/auth', '/reports', '/matches', '/notifications', '/users', '/categories', '/reference', '/drafts', '/moderation'],
             ]);
 
         // A platform health check, and the first thing to curl after a deploy.
@@ -116,6 +118,11 @@ try {
         case 'reference':
             require __DIR__ . '/reference.php';
             handle_reference($method, $identifier);
+
+        // Unfinished reports, private to their author (Correction 4).
+        case 'drafts':
+            require __DIR__ . '/drafts.php';
+            handle_drafts($method, $identifier);
 
         case 'moderation':
             require __DIR__ . '/moderation.php';

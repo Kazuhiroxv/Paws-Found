@@ -128,6 +128,8 @@ function handle_reports(string $method, ?string $identifier, ?string $sub = null
 
         if ($method === 'POST' && $sub === 'photos') report_add_photos($id);
         if ($method === 'PATCH' && $sub === 'photos') report_edit_photos($id);
+        // Submit again, approve, reject, remove (Correction 4).
+        if ($method === 'PATCH' && $sub === 'publication') report_publication($id);
 
         if ($sub === null) {
             if ($method === 'GET') report_detail($id);
@@ -159,6 +161,22 @@ function report_create(): never
     // Every rule the form has, checked again here (report_validated()).
     $v = report_validated($body, $type);
 
+    // Submitting a saved draft files the report and deletes the draft, in the
+    // same transaction (Correction 4). Only the owner's own draft.
+    $draftId = null;
+    if (isset($body['draft_id']) && $body['draft_id'] !== null && $body['draft_id'] !== '') {
+        if (!ctype_digit((string) $body['draft_id'])) {
+            json_error('That draft does not exist.', 404);
+        }
+        $draft = db()->prepare('SELECT user_id FROM report_drafts WHERE draft_id = :id');
+        $draft->execute([':id' => (int) $body['draft_id']]);
+        $owner = $draft->fetchColumn();
+        if ($owner === false || (int) $owner !== (int) $user['user_id']) {
+            json_error('That draft does not exist.', 404);
+        }
+        $draftId = (int) $body['draft_id'];
+    }
+
     $pdo = db();
 
     // A report is a location, plus the report, plus its opening history entry.
@@ -184,13 +202,13 @@ function report_create(): never
 
         $report = $pdo->prepare(
             'INSERT INTO pet_reports
-                (user_id, category_id, breed_id, location_id, report_type, status,
+                (user_id, category_id, breed_id, location_id, report_type, status, publication_status,
                  pet_name, pet_size, pet_sex, primary_color, secondary_color,
                  distinct_features, description, has_collar, pet_condition,
                  incident_date, incident_time,
                  allow_platform_contact, show_phone, show_email)
              VALUES
-                (:user_id, :category_id, :breed_id, :location_id, :report_type, :status,
+                (:user_id, :category_id, :breed_id, :location_id, :report_type, :status, :publication,
                  :pet_name, :pet_size, :pet_sex, :primary_color, :secondary_color,
                  :distinct_features, :description, :has_collar, :pet_condition,
                  :incident_date, :incident_time,
@@ -203,6 +221,8 @@ function report_create(): never
             ':location_id' => $locationId,
             ':report_type' => $type,
             ':status' => 'active',
+            // Filed, not published: a Pet Coordinator reviews it first.
+            ':publication' => 'pending_review',
             ':pet_name' => $v['pet_name'],
             ':pet_size' => $v['pet_size'],
             ':pet_sex' => $v['pet_sex'],
@@ -220,7 +240,18 @@ function report_create(): never
         ]);
         $reportId = (int) $pdo->lastInsertId();
 
-        log_status_change($reportId, (int) $user['user_id'], null, 'active', 'Report created.');
+        // Filed is not published (Correction 4): the report waits for a Pet
+        // Coordinator. Its case history starts when it is published; its
+        // publication history starts now.
+        log_publication_change($reportId, (int) $user['user_id'], null, 'pending_review', null);
+        notify_report_owner((int) $user['user_id'], $reportId, 'report_submitted',
+            'Your report was submitted for review',
+            'A Pet Coordinator will check it before it appears publicly. You will be told when it is published.');
+
+        if ($draftId !== null) {
+            $pdo->prepare('DELETE FROM report_drafts WHERE draft_id = :id AND user_id = :user')
+                ->execute([':id' => $draftId, ':user' => (int) $user['user_id']]);
+        }
 
         $pdo->commit();
     } catch (Throwable $exception) {
@@ -228,28 +259,224 @@ function report_create(): never
         throw $exception;
     }
 
-    // Look for possible matches now that the report exists.
-    //
-    // Deliberately after the commit and in its own try: the report is filed,
-    // and a fault in the matching must not take it back. Somebody who has just
-    // lost a pet should not be told their report failed because the comparison
-    // did. The failure is logged and the coordinator's queue picks the case up
-    // from the report itself.
-    try {
-        require_once __DIR__ . '/matching.php';
-        generate_matches_for_report($reportId);
-    } catch (Throwable $exception) {
-        error_log('[pawsandfound] matching failed for report ' . $reportId . ': ' . $exception->getMessage());
-    }
+    // No matching here any more. An unreviewed report is compared with
+    // nothing and nothing is compared with it: matching starts when a
+    // coordinator publishes it (report_publication()).
 
     report_detail($reportId);
+}
+
+/**
+ * A report's publication: whether the public may see it (Correction 4).
+ *
+ * The case `status` (active, possible match, returned, closed) is a separate
+ * dimension and is not touched here, except that a report's case history
+ * starts when it is published. Filing is the first step (report_create(),
+ * nothing -> pending_review); the rest are these actions, and only these
+ * moves exist. A move not listed is refused, whoever asks.
+ *
+ *   action     from              to               who
+ *   approve    pending_review    published        a Pet Coordinator or administrator
+ *   reject     pending_review    rejected         a Pet Coordinator or administrator (reason required)
+ *   resubmit   rejected          pending_review   the reporter, after editing
+ *   remove     published         removed          an administrator (reason required)
+ *
+ * A third review decision (Ma'am's "cancel") is not here: what it means has
+ * not been confirmed. Adding it is one row in PUBLICATION_ACTIONS and one
+ * value in the publication ENUM.
+ */
+const PUBLICATION_ACTIONS = [
+    'approve' => ['from' => ['pending_review'], 'to' => 'published', 'by' => 'staff', 'note' => false],
+    'reject' => ['from' => ['pending_review'], 'to' => 'rejected', 'by' => 'staff', 'note' => true],
+    'resubmit' => ['from' => ['rejected'], 'to' => 'pending_review', 'by' => 'owner', 'note' => false],
+    'remove' => ['from' => ['published'], 'to' => 'removed', 'by' => 'admin', 'note' => true],
+];
+
+/** How each publication state reads in a sentence. */
+const PUBLICATION_WORDS = [
+    'pending_review' => 'Pending review',
+    'published' => 'Published',
+    'rejected' => 'Not approved',
+    'removed' => 'Removed',
+];
+
+function report_publication(int $id): never
+{
+    $user = require_login();
+    $body = request_body();
+
+    $action = require_one_of(trim((string) ($body['action'] ?? '')), array_keys(PUBLICATION_ACTIONS), 'action');
+    if ($action === null) {
+        json_error('Say what to do: approve, reject, resubmit or remove.', 422);
+    }
+    $rule = PUBLICATION_ACTIONS[$action];
+
+    $statement = db()->prepare('SELECT report_id, user_id, status, publication_status FROM pet_reports WHERE report_id = :id');
+    $statement->execute([':id' => $id]);
+    $report = $statement->fetch();
+    $isOwner = $report && (int) $report['user_id'] === (int) $user['user_id'];
+    $role = $user['role'];
+
+    // Somebody who may not see the report is not told it exists.
+    if (!$report || ($report['publication_status'] !== 'published' && !$isOwner
+            && !in_array($role, ['staff', 'admin'], true))) {
+        json_error('That report does not exist.', 404);
+    }
+
+    // Who may take this action. The reviewer is always the signed-in account:
+    // nothing in the request can name somebody else.
+    $allowed = match ($rule['by']) {
+        'staff' => in_array($role, ['staff', 'admin'], true),
+        'admin' => $role === 'admin',
+        'owner' => $isOwner,
+    };
+    if (!$allowed) {
+        json_error(match ($rule['by']) {
+            'staff' => 'Only a Pet Coordinator can review a report.',
+            'admin' => 'Only an administrator can remove a published report.',
+            'owner' => 'Only the person who filed a report can submit it again.',
+        }, 403);
+    }
+    if ($rule['by'] === 'staff' && $isOwner) {
+        json_error('You cannot review a report you filed yourself. Another Pet Coordinator has to.', 403);
+    }
+
+    $from = $report['publication_status'];
+    if (!in_array($from, $rule['from'], true)) {
+        json_error(
+            'This report is ' . strtolower(PUBLICATION_WORDS[$from]) . ', so it cannot be '
+            . ['approve' => 'approved', 'reject' => 'rejected', 'resubmit' => 'submitted again', 'remove' => 'removed'][$action] . '.',
+            409,
+            ['publication_status' => $from]
+        );
+    }
+
+    $note = trim((string) ($body['note'] ?? ''));
+    $note = $note === '' ? null : $note;
+    if ($rule['note'] && $note === null) {
+        $message = $action === 'reject'
+            ? 'Write why the report is not approved. The reporter is told this, so they can fix it.'
+            : 'Write why this report is being removed. The reporter is told this.';
+        json_error($message, 422, ['fields' => ['note' => $message]]);
+    }
+    if ($note !== null && mb_strlen($note) > 255) {
+        json_error('Keep the note to 255 characters.', 422, ['fields' => ['note' => 'Keep the note to 255 characters.']]);
+    }
+
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        if ($action === 'remove') {
+            report_remove_publication($report, $user, $note);
+        } else {
+            set_publication_status($id, $from, $rule['to']);
+            log_publication_change($id, (int) $user['user_id'], $from, $rule['to'], $note);
+
+            $owner = (int) $report['user_id'];
+            if ($action === 'approve') {
+                // The case history starts here: published, and Active.
+                log_status_change($id, (int) $user['user_id'], null, (string) $report['status'], 'Published after review.');
+                notify_report_owner($owner, $id, 'report_published', 'Your report is published',
+                    'A Pet Coordinator approved your report. It is now public and is being compared with other reports.');
+            } elseif ($action === 'reject') {
+                notify_report_owner($owner, $id, 'report_rejected', 'Your report was not approved', $note);
+            } else {
+                notify_report_owner($owner, $id, 'report_submitted', 'Your report was submitted for review again',
+                    'A Pet Coordinator will check it before it appears publicly.');
+            }
+        }
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        $pdo->rollBack();
+        throw $exception;
+    }
+
+    if ($action === 'approve' || $action === 'reject') {
+        audit_log('report_reviewed', (int) $user['user_id'], $user['email'], 'report', $id, 'success', $action);
+    }
+    if ($action === 'remove') {
+        audit_log('report_removed', (int) $user['user_id'], $user['email'], 'report', $id, 'success', 'removed by an administrator');
+    }
+
+    // Matching starts at publication — after the commit and in its own try,
+    // as filing always did: the report is published, and a fault in the
+    // comparison must not take that back. A failure is logged with the stage
+    // it stopped at (matching_log), and the next edit compares again.
+    if ($action === 'approve') {
+        try {
+            require_once __DIR__ . '/matching.php';
+            generate_matches_for_report($id);
+        } catch (Throwable $exception) {
+            error_log('[pawsandfound] matching failed for report ' . $id . ' after approval: ' . $exception->getMessage());
+        }
+    }
+
+    report_detail($id);
+}
+
+/**
+ * Take a published report out of public circulation: its own state, never
+ * Closed (Correction 4). Its open pairings are dismissed, and the reporter is
+ * told why. Used by an administrator from the report and by moderation.
+ * Runs inside the caller's transaction.
+ */
+function report_remove_publication(array $report, array $admin, string $reason): void
+{
+    $id = (int) $report['report_id'];
+    set_publication_status($id, 'published', 'removed');
+    log_publication_change($id, (int) $admin['user_id'], 'published', 'removed', $reason);
+
+    require_once __DIR__ . '/matches.php';
+    dismiss_open_pairings_for_report($id, $admin);
+
+    notify_report_owner((int) $report['user_id'], $id, 'report_removed', 'Your report was removed', $reason);
+}
+
+/** Move the state, but only from the one expected: a decision made a moment ago by somebody else wins. */
+function set_publication_status(int $id, string $from, string $to): void
+{
+    $update = db()->prepare(
+        'UPDATE pet_reports SET publication_status = :to WHERE report_id = :id AND publication_status = :from'
+    );
+    $update->execute([':to' => $to, ':id' => $id, ':from' => $from]);
+    if ($update->rowCount() !== 1) {
+        throw new RuntimeException('publication state changed underneath the request');
+    }
+}
+
+function log_publication_change(int $reportId, ?int $userId, ?string $from, string $to, ?string $note): void
+{
+    db()->prepare(
+        'INSERT INTO publication_logs (report_id, actor_user_id, previous_state, new_state, note)
+         VALUES (:report_id, :user_id, :previous, :new, :note)'
+    )->execute([
+        ':report_id' => $reportId,
+        ':user_id' => $userId,
+        ':previous' => $from,
+        ':new' => $to,
+        ':note' => $note,
+    ]);
+}
+
+function notify_report_owner(int $userId, int $reportId, string $type, string $title, ?string $body): void
+{
+    db()->prepare(
+        'INSERT INTO notifications (user_id, notification_type, title, body, report_id)
+         VALUES (:user_id, :type, :title, :body, :report_id)'
+    )->execute([
+        ':user_id' => $userId,
+        ':type' => $type,
+        ':title' => $title,
+        ':body' => $body,
+        ':report_id' => $reportId,
+    ]);
 }
 
 /** Edit a report. Only the person who filed it may change its details. */
 function report_update(int $id): never
 {
     $user = require_login();
-    report_open_for_owner($id, $user, 'Only the person who filed a report can edit it.');
+    $publication = report_open_for_owner($id, $user, 'Only the person who filed a report can edit it.')['publication_status'];
 
     // The report as it stands, in the API's own field names, so the request's
     // changes can be laid over it and the result checked as a whole.
@@ -378,11 +605,16 @@ function report_update(int $id): never
     // Pairings already decided are left as they were: a pair is never
     // suggested twice. After the commit and in its own try, as on filing: the
     // edit is saved whatever the comparison does.
-    try {
-        require_once __DIR__ . '/matching.php';
-        generate_matches_for_report($id);
-    } catch (Throwable $exception) {
-        error_log('[pawsandfound] matching failed for report ' . $id . ' after an edit: ' . $exception->getMessage());
+    // Only a published report is compared; an edit to a report that is not
+    // approved (returned for changes) waits for review like any other.
+    // generate_matches_for_report() refuses an unpublished report as well.
+    if ($publication === 'published') {
+        try {
+            require_once __DIR__ . '/matching.php';
+            generate_matches_for_report($id);
+        } catch (Throwable $exception) {
+            error_log('[pawsandfound] matching failed for report ' . $id . ' after an edit: ' . $exception->getMessage());
+        }
     }
 
     report_detail($id);
@@ -404,6 +636,18 @@ function report_set_status(int $id): never
 
     if (!$isOwner && !$isStaff) {
         json_error('You cannot change the status of a report you did not file.', 403);
+    }
+
+    // A case exists only once the report is published (Correction 4): an
+    // unreviewed, rejected or removed report cannot be marked returned or
+    // closed — removal in particular is never a closure.
+    if ($report['publication_status'] !== 'published') {
+        json_error(
+            'This report is ' . strtolower(PUBLICATION_WORDS[$report['publication_status']])
+            . '. Only a published report has a case to update.',
+            409,
+            ['publication_status' => $report['publication_status']]
+        );
     }
 
     $body = request_body();
@@ -588,10 +832,14 @@ function reports_stats(): never
         'closed' => 0,
     ];
 
+    // Published reports only (Correction 4): an unreviewed, rejected or
+    // removed report is not an Active, Lost or Found report anybody sees.
+    // They are counted separately, under `publication`.
     $rows = db()->query(
-        'SELECT status, report_type, COUNT(*) AS total
+        "SELECT status, report_type, COUNT(*) AS total
            FROM pet_reports
-          GROUP BY status, report_type'
+          WHERE publication_status = 'published'
+          GROUP BY status, report_type"
     )->fetchAll();
 
     foreach ($rows as $row) {
@@ -622,7 +870,7 @@ function reports_stats(): never
     $statement = db()->prepare(
         "SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, report_type, COUNT(*) AS total
            FROM pet_reports
-          WHERE created_at >= :since
+          WHERE created_at >= :since AND publication_status = 'published'
           GROUP BY month, report_type"
     );
     $statement->execute([':since' => $startOfThisMonth->modify('-5 months')->format('Y-m-d 00:00:00')]);
@@ -641,10 +889,11 @@ function reports_stats(): never
     $species = [];
 
     $rows = db()->query(
-        'SELECT c.category_code, c.category_name, r.report_type, COUNT(*) AS total
+        "SELECT c.category_code, c.category_name, r.report_type, COUNT(*) AS total
            FROM pet_reports r
            JOIN pet_categories c ON c.category_id = r.category_id
-          GROUP BY c.category_code, c.category_name, r.report_type'
+          WHERE r.publication_status = 'published'
+          GROUP BY c.category_code, c.category_name, r.report_type"
     )->fetchAll();
 
     foreach ($rows as $row) {
@@ -665,10 +914,18 @@ function reports_stats(): never
     // Most reported first — the question the chart answers.
     usort($species, fn ($a, $b) => $b['total'] <=> $a['total']);
 
+    // Where every report stands on publication — the review queue's size
+    // among them.
+    $publication = ['pending_review' => 0, 'published' => 0, 'rejected' => 0, 'removed' => 0];
+    foreach (db()->query('SELECT publication_status, COUNT(*) AS total FROM pet_reports GROUP BY publication_status') as $row) {
+        $publication[$row['publication_status']] = (int) $row['total'];
+    }
+
     json_response(['data' => [
         'totals' => $totals,
         'monthly' => array_values($window),
         'by_species' => $species,
+        'publication' => $publication,
     ]]);
 }
 
@@ -696,7 +953,9 @@ const PHOTO_TYPES = [
 function report_add_photos(int $id): never
 {
     $user = require_login();
-    report_open_for_owner($id, $user, 'Only the person who filed a report can add photographs to it.');
+    // True: the photographs filed with a report go up just after it, while it
+    // waits for review (Correction 4).
+    report_open_for_owner($id, $user, 'Only the person who filed a report can add photographs to it.', true);
 
     if (empty($_FILES['photos'])) {
         json_error('No photographs were received.', 422);
@@ -995,12 +1254,36 @@ function cleanup_uploads(array $paths): void
  * accepting changes, photographs included: changing it would rewrite what a
  * coordinator was looking at when they decided.
  */
-function report_open_for_owner(int $id, array $user, string $notOwner): array
+function report_open_for_owner(int $id, array $user, string $notOwner, bool $whileInReview = false): array
 {
     $report = find_report_or_404($id);
 
     if ((int) $report['user_id'] !== (int) $user['user_id']) {
         json_error($notOwner, 403);
+    }
+
+    // Publication first (Correction 4). Waiting for review: frozen, so the
+    // coordinator approves exactly what they read — except the photographs
+    // filed with it, which are uploaded straight after the report itself
+    // ($whileInReview). Removed: an administrator's decision, not editable.
+    // Not approved: editable, then submitted again.
+    $publication = $report['publication_status'];
+    if ($publication === 'pending_review' && !$whileInReview) {
+        json_error(
+            'This report is waiting for a Pet Coordinator to review it, and cannot be changed until they have.',
+            409,
+            ['publication_status' => $publication, 'code' => 'pending_review']
+        );
+    }
+    if ($publication === 'removed') {
+        json_error(
+            'This report was removed by an administrator and can no longer be changed.',
+            409,
+            ['publication_status' => $publication, 'code' => 'removed']
+        );
+    }
+    if ($publication !== 'published') {
+        return $report;
     }
 
     // Checked after ownership, so somebody else's closed report answers 403
@@ -1373,7 +1656,7 @@ function inside_philippines(float $lat, float $lng): bool
 
 function find_report_or_404(int $id): array
 {
-    $statement = db()->prepare('SELECT report_id, user_id, status FROM pet_reports WHERE report_id = :id');
+    $statement = db()->prepare('SELECT report_id, user_id, status, publication_status FROM pet_reports WHERE report_id = :id');
     $statement->execute([':id' => $id]);
     $report = $statement->fetch();
 
@@ -1479,6 +1762,27 @@ function reports_list(): never
     if ($status !== null) {
         $where[] = 'r.status = :status';
         $params[':status'] = $status;
+    }
+
+    // Publication (Correction 4). Everybody sees published reports and only
+    // those, unless they ask for more and may have it: a coordinator or an
+    // administrator any state, a member their own reports (reporter_id = them).
+    $publication = require_one_of(
+        query_string_param('publication'),
+        ['published', 'pending_review', 'rejected', 'removed', 'all'],
+        'publication'
+    ) ?? 'published';
+    if ($publication !== 'published') {
+        $ownList = $viewer !== null && query_string_param('reporter_id') !== null
+            && (int) query_string_param('reporter_id') === (int) $viewer['user_id'];
+        if (!$isStaff && !$ownList) {
+            json_error($viewer === null ? 'You need to be signed in to do that.' : 'Only Pet Coordinators can list reports that are not published.',
+                $viewer === null ? 401 : 403);
+        }
+    }
+    if ($publication !== 'all') {
+        $where[] = 'r.publication_status = :publication';
+        $params[':publication'] = $publication;
     }
 
     if (($species = query_string_param('species')) !== null) {
@@ -1603,7 +1907,7 @@ function reports_list(): never
     $countStatement->execute($params);
     $total = (int) $countStatement->fetchColumn();
 
-    $sql = "SELECT r.report_id, r.report_type, r.status, r.pet_name, r.pet_size, r.pet_sex,
+    $sql = "SELECT r.report_id, r.report_type, r.status, r.publication_status, r.pet_name, r.pet_size, r.pet_sex,
                    r.primary_color, r.secondary_color, r.distinct_features, r.description,
                    r.has_collar, r.pet_condition, r.incident_date, r.incident_time,
                    r.updated_at, r.user_id AS reporter_id,
@@ -1679,6 +1983,16 @@ function report_detail(int $id): never
     // everybody, and whether one exists is no secret — the public list names
     // every report. What a guest may not have is the detail.
     $viewer = current_user();
+
+    // An unpublished report — waiting for review, not approved, removed — is
+    // the reporter's and the coordinators' business only. To anybody else it
+    // does not exist, exactly as a missing one (Correction 4).
+    $mayReview = $viewer !== null && in_array($viewer['role'], ['staff', 'admin'], true);
+    $isReporter = $viewer !== null && (int) $viewer['user_id'] === (int) $row['reporter_id'];
+    if ($row['publication_status'] !== 'published' && !$mayReview && !$isReporter) {
+        json_error('That report does not exist.', 404);
+    }
+
     if ($viewer === null) {
         json_error("Sign in or create an account to see this report's details.", 401, [
             'code' => 'auth_required',
@@ -1777,6 +2091,35 @@ function report_detail(int $id): never
         return $shaped;
     }, $historyRows);
 
+    // The publication record, for the people it concerns: the reporter sees
+    // why a report was not approved or was removed; a coordinator sees who
+    // decided what. Anybody else sees only that it is published.
+    if ($mayEdit) {
+        $log = db()->prepare(
+            'SELECT p.log_id, p.previous_state, p.new_state, p.note, p.created_at,
+                    u.full_name AS actor_name, u.role AS actor_role, p.actor_user_id
+               FROM publication_logs p
+          LEFT JOIN users u ON u.user_id = p.actor_user_id
+              WHERE p.report_id = :id
+              ORDER BY p.created_at ASC, p.log_id ASC'
+        );
+        $log->execute([':id' => $id]);
+        $report['publication_history'] = array_map(fn ($entry) => [
+            'log_id' => (int) $entry['log_id'],
+            'previous_state' => $entry['previous_state'],
+            'new_state' => $entry['new_state'],
+            'note' => $entry['note'],
+            'created_at' => $entry['created_at'],
+            // The reporter sees a role, not a coordinator's name.
+            'actor' => $mayReview ? $entry['actor_name'] : match (true) {
+                $entry['actor_user_id'] !== null && (int) $entry['actor_user_id'] === (int) $row['reporter_id'] => 'You',
+                $entry['actor_role'] === 'staff' => 'Pet Coordinator',
+                $entry['actor_role'] === 'admin' => 'Administrator',
+                default => null,
+            },
+        ], $log->fetchAll());
+    }
+
     if ($mayEdit) {
         $report['contact_preferences'] = [
             'allow_platform_contact' => (bool) $row['allow_platform_contact'],
@@ -1815,7 +2158,9 @@ function shape_for_viewer(array $report, int $reporterId, ?array $viewer): array
         unset(
             $report['description'], $report['distinct_features'], $report['has_collar'],
             $report['condition'], $report['incident_time'], $report['updated_at'],
-            $report['reporter_id'], $report['location']['label']
+            $report['reporter_id'], $report['location']['label'],
+            // A guest only ever sees published reports, so saying so is noise.
+            $report['publication_status']
         );
         return $report;
     }
@@ -1848,6 +2193,7 @@ function shape_report_row(array $row): array
         'report_id' => (int) $row['report_id'],
         'report_type' => $row['report_type'],
         'status' => $row['status'],
+        'publication_status' => $row['publication_status'] ?? 'published',
         'pet_name' => $row['pet_name'],
         'species' => $row['species'],
         'species_label' => $row['species_label'],

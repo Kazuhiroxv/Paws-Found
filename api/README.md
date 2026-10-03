@@ -69,6 +69,14 @@ PATCH  /api/users/{id}           role or suspension       (administrators)
 
 GET    /api/categories           active species
 
+PATCH  /api/reports/{id}/publication   {action, note}: approve | reject (note) |
+                                 resubmit | remove (note)        (Correction 4)
+GET    /api/drafts               your drafts                      (signed in)
+POST   /api/drafts               save a new draft (report_type required)
+GET    /api/drafts/{id}          one of your drafts
+PUT    /api/drafts/{id}          save it again
+DELETE /api/drafts/{id}          delete it
+
 GET    /api/reference/colours                   the colour list, {code, name}
 GET    /api/reference/breeds?species=dog        that species' listed breeds
 GET    /api/reference/areas                     84 areas {code, name, type}: 82 PSA provinces
@@ -91,7 +99,7 @@ filed it; `suspend` additionally sets `account_status`. All of it runs in one
 transaction, and a case that has already been decided answers `409`.
 
 `GET /api/reports` accepts `q`, `type`, `status`, `species`, `size`, `city`,
-`area_code`, `city_code`, `colour`, `date_from`, `date_to`, `sort`
+`area_code`, `city_code`, `colour`, `date_from`, `date_to`, `publication`, `sort`
 (`newest` | `oldest` | `updated`), `page` and `per_page`. It answers with
 `data` and a `meta` block carrying `page`, `per_page`, `total` and
 `total_pages`. `size` includes `xl`. A `colour` that is on the list matches
@@ -99,6 +107,20 @@ exactly; anything else is the old substring search. Each row's `location`
 carries `city_code` and `area_code` (null for an old report whose place
 could not be identified). `location.province` is the column's old name: it
 holds the area's name, which for NCR is "Metro Manila" — not a province.
+
+**Publication (Correction 4).** `POST /api/reports` files a report as
+`pending_review` — not public, not matched — whatever the request says;
+`draft_id` submits a saved draft and deletes it. `GET /api/reports` returns
+published reports unless `publication` (`pending_review`, `rejected`,
+`removed`, `all`) is asked for: allowed to coordinators and administrators,
+and to a member listing their own reports (`reporter_id` = them); otherwise
+401/403. `GET /api/reports/{id}` of an unpublished report is 404 to anybody but
+its reporter, coordinators and administrators, who also receive
+`publication_history`. Rows carry `publication_status` (except in a guest's
+summary, which is always published). `PATCH .../publication` refuses a move
+that is not allowed from the current state with 409, a missing reason with
+422, the wrong role with 403. `GET /reports/stats` counts published reports and
+adds `publication` (counts by state).
 
 **Filing and editing a report (Correction 3).** The place is sent as
 `area_code` and `city_code` (PSGC); the server checks the city is in the

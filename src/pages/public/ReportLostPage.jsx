@@ -1,7 +1,7 @@
 import { Clock, Lock, TriangleAlert } from 'lucide-react'
 import { Container } from '@/components/ui'
 import { RouteOrnament } from '@/components/Ornament'
-import { ReportForm } from '@/components/report-form/ReportForm'
+import { NewReportForm } from '@/components/report-form/ReportForm'
 import { ReportGuidance } from '@/components/report-form/ReportGuidance'
 import { REPORT_TYPES } from '@/constants'
 import landscapeStrip from '@/assets/img-021-landscape-strip.webp'
@@ -69,7 +69,7 @@ export function ReportLostPage() {
         {/* The guidance is passed in, and the wizard renders it second in the
             DOM as well as on screen — Tab reaches the fields first. Nobody
             arrives here wanting to read the advice before filling anything in. */}
-        <ReportForm
+        <NewReportForm
           reportType={REPORT_TYPES.LOST}
           guidance={<ReportGuidance reportType={REPORT_TYPES.LOST} />}
         />

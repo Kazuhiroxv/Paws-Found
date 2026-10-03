@@ -28,6 +28,8 @@
     "test:report-ui": "node scripts/report_ui.mjs",
     "check:psgc": "python scripts/psgc_reference.py check",
     "test:migrations": "python scripts/migration_parity.py",
+    "test:publication": "python scripts/publication_workflow.py",
+    "test:workflow-ui": "node scripts/workflow_ui.mjs",
     "verify:deploy": "python scripts/verify_deployment.py",
     "test:contract": "node --import ./scripts/alias-hook.mjs --test scripts/*.test.mjs"
   },

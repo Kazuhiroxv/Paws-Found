@@ -290,10 +290,11 @@ for (const { tag, width, device } of [
 
   // File it once, at the first width, with its photographs.
   if (tag === '820') {
-    await clickButton(page, 'Submit report')
+    await clickButton(page, 'Submit for review')
     await pause(4000)
     const done = await text(page)
-    check('PHOTO-6', 'The report and its photographs are filed', done.includes('Report submitted') && !done.includes('could not'))
+    // Filed for review (Correction 4); its photographs go up with it.
+    check('PHOTO-6', 'The report and its photographs are filed', done.includes('Submitted for review') && !done.includes('could not'))
   }
   await page.close()
 }

@@ -108,6 +108,13 @@ function matching_generate(int $reportId, array &$trace, string &$stage): array
 {
     $report = matching_load_report($reportId);
 
+    // Only a published report is compared (Correction 4). Every caller checks
+    // this too; the matcher refuses on its own so no caller can forget.
+    if ($report !== null && $report['publication_status'] !== 'published') {
+        matching_log($trace, "not published ({$report['publication_status']})");
+        return [];
+    }
+
     if ($report === null || !in_array($report['status'], MATCH_OPEN_STATUSES, true)) {
         matching_log($trace, $report === null ? 'report not found' : "not open ({$report['status']})");
         return [];
@@ -134,6 +141,9 @@ function matching_generate(int $reportId, array &$trace, string &$stage): array
            JOIN locations l      ON l.location_id = r.location_id
           WHERE r.report_type = :type
             AND r.status IN ("active", "possible_match")
+            -- Only published reports are candidates (Correction 4): nothing
+            -- waiting for review, not approved, or removed is ever paired.
+            AND r.publication_status = "published"
             AND c.category_code = :species
             AND r.report_id <> :self
             AND r.report_id NOT IN (
@@ -317,7 +327,7 @@ function matching_mark_possible(int $reportId, string $currentStatus): void
 function matching_load_report(int $reportId): ?array
 {
     $statement = db()->prepare(
-        'SELECT r.report_id, r.user_id, r.report_type, r.status,
+        'SELECT r.report_id, r.user_id, r.report_type, r.status, r.publication_status,
                 c.category_code AS species,
                 b.breed_name AS breed,
                 r.pet_size AS size, r.primary_color, r.secondary_color,

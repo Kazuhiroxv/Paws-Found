@@ -1,5 +1,6 @@
 import {
   Bell,
+  ClipboardCheck,
   FileText,
   FolderTree,
   Flag,
@@ -50,6 +51,8 @@ export const USER_NAV = [
 /** Sidebar links for a Staff / Pet Coordinator. */
 export const STAFF_NAV = [
   { to: '/staff', label: 'Overview', icon: Gauge, end: true },
+  // Correction 4: new reports wait here for a coordinator before publication.
+  { to: '/staff/review', label: 'Report Review', icon: ClipboardCheck, countLabel: 'Waiting' },
   // The badge counts Active + Possible Match reports: the open ones.
   { to: '/staff/reports', label: 'Report Queue', icon: FileText, countLabel: 'Open' },
   { to: '/staff/matches', label: 'Match Queue', icon: Heart },

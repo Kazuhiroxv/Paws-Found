@@ -76,7 +76,7 @@ function moderation_queue(): never
         'SELECT c.case_id, c.report_id, c.reported_by_user_id, c.reason, c.details,
                 c.case_status, c.resolved_by_admin_id, c.resolution_note,
                 c.created_at, c.resolved_at,
-                r.pet_name, r.report_type, r.status AS report_status, r.description,
+                r.pet_name, r.report_type, r.status AS report_status, r.publication_status, r.description,
                 (SELECT i.image_path FROM report_images i
                   WHERE i.report_id = r.report_id
                   ORDER BY i.is_primary_photo DESC, i.image_id ASC
@@ -120,6 +120,7 @@ function moderation_row(array $row): array
             'pet_name' => $row['pet_name'],
             'report_type' => $row['report_type'],
             'status' => $row['report_status'],
+            'publication_status' => $row['publication_status'],
             'description' => $row['description'],
             'photo_path' => $row['photo_path'],
         ],
@@ -147,7 +148,10 @@ function moderation_create(): never
         json_error("'report_id' is required.", 422);
     }
 
-    $exists = db()->prepare('SELECT 1 FROM pet_reports WHERE report_id = :id');
+    // Only a published report can be flagged: it is the only kind anybody but
+    // its reporter and the coordinators can see (Correction 4). Any other is
+    // answered as missing, so a guessed id says nothing.
+    $exists = db()->prepare("SELECT 1 FROM pet_reports WHERE report_id = :id AND publication_status = 'published'");
     $exists->execute([':id' => $reportId]);
     if (!$exists->fetchColumn()) {
         json_error('That report does not exist.', 404);
@@ -198,7 +202,7 @@ function moderation_decide(int $id): never
 
     $statement = db()->prepare(
         'SELECT c.case_id, c.report_id, c.case_status,
-                r.user_id AS owner_id, r.status AS report_status
+                r.user_id AS owner_id, r.status AS report_status, r.publication_status
            FROM moderation_cases c
            JOIN pet_reports r ON r.report_id = c.report_id
           WHERE c.case_id = :id'
@@ -243,8 +247,16 @@ function moderation_decide(int $id): never
             );
         }
 
-        if ($action === 'remove' || $action === 'suspend') {
-            moderation_close_report($case, $admin, $note);
+        // Removal takes the report out of public circulation — its own
+        // publication state, never Closed (Correction 4). A report that is not
+        // published any more has nothing left to remove.
+        if (($action === 'remove' || $action === 'suspend') && $case['publication_status'] === 'published') {
+            require_once __DIR__ . '/reports.php';
+            report_remove_publication(
+                ['report_id' => $case['report_id'], 'user_id' => $case['owner_id']],
+                $admin,
+                $note
+            );
         }
 
         if ($action === 'suspend') {
@@ -281,7 +293,7 @@ function moderation_decide(int $id): never
         throw $exception;
     }
 
-    // A moderation decision can suspend an account or close somebody's report,
+    // A moderation decision can suspend an account or remove somebody's report,
     // so it belongs in the same trail as the account events rather than only
     // on the case row it resolved. The report it was about goes in the detail:
     // the target here is the case, and a case is the thing an administrator
@@ -290,34 +302,6 @@ function moderation_decide(int $id): never
         'moderation_case', $id, 'success', "{$action} on report {$case['report_id']}");
 
     json_response(['data' => ['case_id' => $id, 'action' => $action]]);
-}
-
-/** Removing closes the report and records why on its history. */
-function moderation_close_report(array $case, array $admin, ?string $note): void
-{
-    // Always a real reason now: moderation_decide() refuses removal without one.
-    $reason = $note;
-
-    $update = db()->prepare("UPDATE pet_reports SET status = 'closed' WHERE report_id = :id");
-    $update->execute([':id' => (int) $case['report_id']]);
-
-    // A removed report's open pairings end with it (see matches.php).
-    require_once __DIR__ . '/matches.php';
-    dismiss_open_pairings_for_report((int) $case['report_id'], $admin);
-
-    $log = db()->prepare(
-        'INSERT INTO status_logs (report_id, updated_by_user_id, previous_status, new_status, note)
-         VALUES (:report_id, :user_id, :previous, :new, :note)'
-    );
-    $log->execute([
-        ':report_id' => (int) $case['report_id'],
-        ':user_id' => (int) $admin['user_id'],
-        ':previous' => $case['report_status'],
-        ':new' => 'closed',
-        ':note' => $reason,
-    ]);
-
-    moderation_notify_owner($case, 'Your report was removed', $reason);
 }
 
 function moderation_notify_owner(array $case, string $title, string $body): void

@@ -4,6 +4,7 @@ import {
   ArrowRight,
   CalendarDays,
   CircleCheck,
+  FilePen,
   FilePlus2,
   HandHeart,
   Heart,
@@ -12,6 +13,7 @@ import {
   PawPrint,
   Pencil,
   Search,
+  Trash2,
   TriangleAlert,
   XCircle,
 } from 'lucide-react'
@@ -20,8 +22,8 @@ import { Button, EmptyState, LoadingSkeleton, Modal } from '@/components/ui'
 import { NavDropdown, NavDropdownItem } from '@/components/NavDropdown'
 import { PageHeader } from '@/components/PageHeader'
 import { ReportTypeBadge } from '@/components/ReportTypeBadge'
-import { StatusBadge } from '@/components/StatusBadge'
-import { MATCH_STATUSES, REPORT_STATUSES, REPORT_TYPES, speciesLabel } from '@/constants'
+import { PublicationBadge, StatusBadge } from '@/components/StatusBadge'
+import { MATCH_STATUSES, PUBLICATION_STATUSES, REPORT_STATUSES, REPORT_TYPES, speciesLabel } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
 import { matchService, petService, userService } from '@/services'
 import { formatDate } from '@/utils/date'
@@ -38,10 +40,19 @@ const SETTLED_MATCHES = [MATCH_STATUSES.CONFIRMED, MATCH_STATUSES.REJECTED, MATC
  * back. The cards still show the precise status (Active, Possible Match).
  */
 const TABS = [
+  // Correction 4: unfinished, and filed but not yet public — each its own
+  // place, never mixed into Open or Closed.
+  { id: 'drafts', label: 'Drafts' },
+  { id: 'review', label: 'In review' },
   { id: 'open', label: 'Open' },
   { id: 'returned', label: 'Returned' },
   { id: 'closed', label: 'Closed' },
+  // Removed by an administrator. Not Closed: the case did not end, the
+  // report was taken down. Listed only when there is one.
+  { id: 'removed', label: 'Removed', onlyIfAny: true },
 ]
+
+const PUBLISHED = PUBLICATION_STATUSES.PUBLISHED
 
 /**
  * The page's secondary button look, for the menu triggers built on NavDropdown.
@@ -53,18 +64,34 @@ const outlineTrigger =
 
 async function loadMyReports() {
   const user = await userService.getCurrentUser()
-  const [reports, matches] = await Promise.all([
+  const [reports, matches, drafts] = await Promise.all([
     petService.getReportsByUser(user.id),
     matchService.getMatchesForUser(user.id),
+    petService.getDrafts(),
   ])
-  return { user, reports, matches }
+  return { user, reports, matches, drafts }
 }
 
 export function MyReportsPage() {
   const [tab, setTab] = useState('open')
   const [closing, setClosing] = useState(null)
   const [isClosingBusy, setIsClosingBusy] = useState(false)
+  const [deletingDraft, setDeletingDraft] = useState(null)
+  const [isDeletingBusy, setIsDeletingBusy] = useState(false)
   const { data, error, isLoading, reload } = useAsync(loadMyReports)
+
+  // A draft is deleted for real: it was never published, so there is nothing
+  // to keep, and it is never recorded as a closure.
+  const confirmDeleteDraft = async () => {
+    setIsDeletingBusy(true)
+    try {
+      await petService.deleteDraft(deletingDraft.id)
+      setDeletingDraft(null)
+      reload()
+    } finally {
+      setIsDeletingBusy(false)
+    }
+  }
 
   // Same status change as before — only now it asks first.
   const confirmClose = async () => {
@@ -110,13 +137,20 @@ export function MyReportsPage() {
     )
   }
 
-  const { reports, matches } = data
+  const { reports, matches, drafts } = data
+  const published = reports.filter((report) => report.publicationStatus === PUBLISHED)
   const grouped = {
-    open: reports.filter((report) => OPEN_STATUSES.includes(report.status)),
-    returned: reports.filter((report) => report.status === REPORT_STATUSES.RETURNED),
-    closed: reports.filter((report) => report.status === REPORT_STATUSES.CLOSED),
+    drafts,
+    review: reports.filter((report) =>
+      [PUBLICATION_STATUSES.PENDING_REVIEW, PUBLICATION_STATUSES.REJECTED].includes(report.publicationStatus),
+    ),
+    open: published.filter((report) => OPEN_STATUSES.includes(report.status)),
+    returned: published.filter((report) => report.status === REPORT_STATUSES.RETURNED),
+    closed: published.filter((report) => report.status === REPORT_STATUSES.CLOSED),
+    removed: reports.filter((report) => report.publicationStatus === PUBLICATION_STATUSES.REMOVED),
   }
-  const visible = grouped[tab]
+  const tabs = TABS.filter((item) => !item.onlyIfAny || grouped[item.id].length > 0)
+  const visible = grouped[tab] ?? []
 
   const openMatchesFor = (reportId) =>
     matches.filter(
@@ -130,7 +164,7 @@ export function MyReportsPage() {
       {header}
 
       <div className="flex flex-wrap gap-1 border-b border-border" role="tablist">
-        {TABS.map((item) => (
+        {tabs.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -155,6 +189,12 @@ export function MyReportsPage() {
       <div id="reports-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
         {visible.length === 0 ? (
           <GroupEmptyState tab={tab} />
+        ) : tab === 'drafts' ? (
+          <ul className="flex flex-col gap-4">
+            {visible.map((draft) => (
+              <DraftCard key={draft.id} draft={draft} onDelete={() => setDeletingDraft(draft)} />
+            ))}
+          </ul>
         ) : (
           <ul className="flex flex-col gap-4">
             {visible.map((report) => (
@@ -168,6 +208,24 @@ export function MyReportsPage() {
           </ul>
         )}
       </div>
+
+      <Modal
+        isOpen={Boolean(deletingDraft)}
+        onClose={() => !isDeletingBusy && setDeletingDraft(null)}
+        size="sm"
+        title="Delete this draft?"
+        description="The draft is deleted for good. It was never submitted, so nothing else changes."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDeletingDraft(null)} disabled={isDeletingBusy} data-autofocus>
+              Keep it
+            </Button>
+            <Button variant="danger" onClick={confirmDeleteDraft} isLoading={isDeletingBusy}>
+              Delete draft
+            </Button>
+          </>
+        }
+      />
 
       <Modal
         isOpen={Boolean(closing)}
@@ -233,13 +291,21 @@ function ReportCaseCard({ report, openMatches, onClose }) {
   const isFound = report.reportType === REPORT_TYPES.FOUND
   const photo = report.photos.find((item) => item.isPrimary) ?? report.photos[0]
   const firstMatch = openMatches[0]
-  const canClose = report.status !== REPORT_STATUSES.CLOSED
+  const isPublished = report.publicationStatus === PUBLISHED
+  // Only a published report has a case to close (Correction 4).
+  const canClose = isPublished && report.status !== REPORT_STATUSES.CLOSED
   // Only an Active report is editable. A finished case keeps its details, and
   // one with an open possible match is frozen so the pairing's score and
   // signals keep describing the report being verified. The API refuses both
   // with a 409; offering a button that can only fail is worse than not
   // offering it. Close stays available either way.
-  const canEdit = report.status === REPORT_STATUSES.ACTIVE
+  //
+  // Correction 4: a report waiting for review is frozen too, so the
+  // coordinator approves what they read; one that was not approved is
+  // editable, then submitted again from its page; a removed one is not.
+  const canEdit =
+    (isPublished && report.status === REPORT_STATUSES.ACTIVE) ||
+    report.publicationStatus === PUBLICATION_STATUSES.REJECTED
   const kind = [speciesLabel(report.species), report.breed].filter(Boolean).join(' · ')
 
   const primary = firstMatch ? (
@@ -275,7 +341,9 @@ function ReportCaseCard({ report, openMatches, onClose }) {
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-2">
             <ReportTypeBadge reportType={report.reportType} size="sm" />
-            <StatusBadge status={report.status} variant="pill" />
+            {/* Before publication there is no case to show a status for. */}
+            {isPublished && <StatusBadge status={report.status} variant="pill" />}
+            <PublicationBadge publication={report.publicationStatus} />
           </div>
 
           <h2 className="text-lg font-semibold text-fg">
@@ -306,7 +374,22 @@ function ReportCaseCard({ report, openMatches, onClose }) {
               {openMatches.length} possible {openMatches.length === 1 ? 'match' : 'matches'} available
             </p>
           )}
-          {report.status === REPORT_STATUSES.RETURNED && (
+          {report.publicationStatus === PUBLICATION_STATUSES.PENDING_REVIEW && (
+            <p className="mt-1 text-sm text-fg">
+              Waiting for a Pet Coordinator to review it. It is not public yet.
+            </p>
+          )}
+          {report.publicationStatus === PUBLICATION_STATUSES.REJECTED && (
+            <p className="mt-1 text-sm text-fg">
+              Not approved. Open it to see why, edit it, and submit it again.
+            </p>
+          )}
+          {report.publicationStatus === PUBLICATION_STATUSES.REMOVED && (
+            <p className="mt-1 text-sm text-fg">
+              Removed by an administrator. Open it to see the reason.
+            </p>
+          )}
+          {isPublished && report.status === REPORT_STATUSES.RETURNED && (
             <p className="mt-1 inline-flex w-fit items-center gap-1.5 text-sm font-medium text-success-ink">
               <CircleCheck size={14} aria-hidden="true" />
               {isFound ? 'Returned to its owner' : 'Back home'}
@@ -405,6 +488,30 @@ function ReportCaseCard({ report, openMatches, onClose }) {
 }
 
 function GroupEmptyState({ tab }) {
+  if (tab === 'drafts') {
+    return (
+      <EmptyState
+        icon={FilePen}
+        title="No drafts"
+        description="Start a report and choose Save draft to finish it later, here or on another device."
+      />
+    )
+  }
+
+  if (tab === 'review') {
+    return (
+      <EmptyState
+        icon={FilePen}
+        title="Nothing waiting for review"
+        description="A report you submit waits here until a Pet Coordinator approves it. Then it is public, and moves to Open."
+      />
+    )
+  }
+
+  if (tab === 'removed') {
+    return <EmptyState icon={XCircle} title="No removed reports" description="" />
+  }
+
   if (tab === 'open') {
     return (
       <EmptyState
@@ -454,5 +561,45 @@ function reportName(report) {
   return (
     report.petName ??
     `${report.reportType === REPORT_TYPES.FOUND ? 'Found' : 'Lost'} ${speciesLabel(report.species).toLowerCase()}`
+  )
+}
+
+/**
+ * An unfinished report (Correction 4): continue it, or delete it. Not public,
+ * not compared with anything, and nobody else can see it.
+ */
+function DraftCard({ draft, onDelete }) {
+  const isFound = draft.reportType === REPORT_TYPES.FOUND
+  const title = draft.petName || `Unfinished ${isFound ? 'found' : 'lost'} pet report`
+  const kind = [draft.species && speciesLabel(draft.species), draft.breed].filter(Boolean).join(' · ')
+
+  return (
+    <li>
+      <article className="flex flex-col gap-3 rounded-card border border-dashed border-border-strong bg-panel p-4 sm:flex-row sm:items-center sm:gap-5">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <ReportTypeBadge reportType={draft.reportType} size="sm" />
+            <span className="inline-flex items-center rounded-pill border border-dashed border-border-strong px-2.5 py-0.5 text-xs font-medium text-fg">
+              Draft
+            </span>
+          </div>
+          <h2 className="text-lg font-semibold text-fg">{title}</h2>
+          {kind && <p className="text-sm text-fg-muted">{kind}</p>}
+          <p className="text-sm text-fg-muted">
+            Saved {formatDate(draft.updatedAt)}. Not submitted — nobody else can see it.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+          <Button as={Link} to={`/report/${draft.reportType}?draft=${draft.id}`} size="sm">
+            <FilePen size={14} aria-hidden="true" />
+            Continue editing
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onDelete} className="text-danger">
+            <Trash2 size={14} aria-hidden="true" />
+            Delete draft
+          </Button>
+        </div>
+      </article>
+    </li>
   )
 }

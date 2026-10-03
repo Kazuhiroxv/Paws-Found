@@ -119,6 +119,14 @@ export function AdminOverviewPage() {
         />
         <StatTile icon={Users} label="Accounts" value={users.length} to="/admin/users" />
         <StatTile icon={ListChecks} label="Active reports" value={stats.totals.active} to="/admin/reports" />
+        {/* Correction 4: reports filed but not yet published. Coordinators
+            review them; the administrator sees how many are waiting. */}
+        <StatTile
+          icon={ListChecks}
+          label="Waiting for review"
+          value={stats.publication?.pending_review ?? 0}
+          to="/admin/reports"
+        />
         <StatTile
           icon={Heart}
           label="Pets back home"

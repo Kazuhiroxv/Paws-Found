@@ -26,6 +26,10 @@ const TYPE_STYLES = {
   [NOTIFICATION_TYPES.REPORT_UPDATED]: [RefreshCw, 'bg-surface-muted text-fg-muted'],
   [NOTIFICATION_TYPES.STATUS_CHANGED]: [RefreshCw, 'bg-surface-muted text-fg-muted'],
   [NOTIFICATION_TYPES.REPORT_FLAGGED]: [Flag, 'bg-surface-muted text-fg-muted'],
+  [NOTIFICATION_TYPES.REPORT_SUBMITTED]: [ShieldCheck, 'bg-surface-muted text-fg-muted'],
+  [NOTIFICATION_TYPES.REPORT_PUBLISHED]: [ShieldCheck, 'bg-success-soft text-success-ink'],
+  [NOTIFICATION_TYPES.REPORT_REJECTED]: [XCircle, 'bg-surface-muted text-fg-muted'],
+  [NOTIFICATION_TYPES.REPORT_REMOVED]: [Flag, 'bg-surface-muted text-fg-muted'],
 }
 
 async function loadNotifications() {

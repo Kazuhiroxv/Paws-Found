@@ -35,6 +35,7 @@ import { ProfilePage } from '@/pages/dashboard/ProfilePage'
 
 import { StaffOverviewPage } from '@/pages/staff/StaffOverviewPage'
 import { StaffReportsPage } from '@/pages/staff/StaffReportsPage'
+import { StaffReviewPage } from '@/pages/staff/StaffReviewPage'
 import { StaffMatchesPage } from '@/pages/staff/StaffMatchesPage'
 import { StaffVerificationPage } from '@/pages/staff/StaffVerificationPage'
 
@@ -223,6 +224,7 @@ export default function App() {
             }
           >
             <Route index element={<StaffOverviewPage />} />
+            <Route path="review" element={<StaffReviewPage />} />
             <Route path="reports" element={<StaffReportsPage />} />
             <Route path="matches" element={<StaffMatchesPage />} />
             <Route path="verification" element={<StaffVerificationPage />} />

@@ -1,6 +1,6 @@
 import { HandHeart, Lock, ShieldCheck } from 'lucide-react'
 import { Container } from '@/components/ui'
-import { ReportForm } from '@/components/report-form/ReportForm'
+import { NewReportForm } from '@/components/report-form/ReportForm'
 import { ReportGuidance } from '@/components/report-form/ReportGuidance'
 import { REPORT_TYPES } from '@/constants'
 import landscapeStrip from '@/assets/img-021-landscape-strip.webp'
@@ -63,7 +63,7 @@ export function ReportFoundPage() {
           </ul>
         </div>
 
-        <ReportForm
+        <NewReportForm
           reportType={REPORT_TYPES.FOUND}
           guidance={<ReportGuidance reportType={REPORT_TYPES.FOUND} />}
         />

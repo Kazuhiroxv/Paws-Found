@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { Pagination } from '@/components/Pagination'
 import { StatTile } from '@/components/StatTile'
 import { ReportTypeBadge } from '@/components/ReportTypeBadge'
-import { StatusBadge } from '@/components/StatusBadge'
+import { PublicationBadge, StatusBadge } from '@/components/StatusBadge'
 import {
   PET_SEX_LABELS,
   PET_SIZE_LABELS,
@@ -22,7 +22,10 @@ import { orderedOptionsFromLabels } from '@/utils/options'
 import { formatCardDate, formatShortDate } from '@/utils/date'
 
 async function loadRecords() {
-  const [reports, users] = await Promise.all([petService.getReports(), userService.getUsers()])
+  const [reports, users] = await Promise.all([// Every report, whatever its publication (Correction 4): an
+    // administrator needs the removed ones as records too.
+    petService.getReports({ publication: 'all' }),
+    userService.getUsers(),])
   return {
     reports,
     usersById: Object.fromEntries(users.map((user) => [user.id, user])),
@@ -151,21 +154,21 @@ export function AdminReportsPage() {
           <StatTile
             icon={TriangleAlert}
             label="Lost reports"
-            value={reports.filter((r) => r.reportType === REPORT_TYPES.LOST).length}
+            value={reports.filter((r) => r.publicationStatus === 'published' && r.reportType === REPORT_TYPES.LOST).length}
           />
         </li>
         <li className="contents">
           <StatTile
             icon={HandHeart}
             label="Found reports"
-            value={reports.filter((r) => r.reportType === REPORT_TYPES.FOUND).length}
+            value={reports.filter((r) => r.publicationStatus === 'published' && r.reportType === REPORT_TYPES.FOUND).length}
           />
         </li>
         <li className="contents">
           <StatTile
             icon={CircleCheck}
             label="Back home"
-            value={reports.filter((r) => r.status === 'returned').length}
+            value={reports.filter((r) => r.publicationStatus === 'published' && r.status === 'returned').length}
           />
         </li>
       </ul>
@@ -343,6 +346,7 @@ export function AdminReportsPage() {
 
                       <td className="px-2 py-3">
                         <StatusBadge status={report.status} variant="pill" />
+                        <PublicationBadge publication={report.publicationStatus} />
                       </td>
 
                       <td className="px-2 py-3">
@@ -408,6 +412,7 @@ function RecordPanel({ report, reporter }) {
           <div className="flex flex-wrap items-center gap-2">
             <ReportTypeBadge reportType={report.reportType} size="sm" />
             <StatusBadge status={report.status} variant="pill" />
+                        <PublicationBadge publication={report.publicationStatus} />
           </div>
           <p className="text-sm text-fg-muted">
             {[speciesLabel(report.species), report.breed].filter(Boolean).join(' · ')}
@@ -467,6 +472,7 @@ function RecordCard({ report, reporter }) {
         <div className="flex flex-wrap items-center gap-2">
           <ReportTypeBadge reportType={report.reportType} size="sm" />
           <StatusBadge status={report.status} variant="pill" />
+                        <PublicationBadge publication={report.publicationStatus} />
         </div>
 
         <Link

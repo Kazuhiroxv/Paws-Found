@@ -647,10 +647,53 @@ into PSGC codes: a real place by name, a made-up one ("Audit QA City") into a
 municipality of its own chosen by hash, so each case still files where no
 other report is.
 
+### Correction 4 suites
+
+**`npm run test:publication` — 71 checks** (`scripts/publication_workflow.py`,
+local only, reseeds). `PUB` the state machine: filed means pending (a crafted
+`publication_status`/`status` is ignored), customers cannot approve, a
+coordinator cannot approve their own report, the reviewer is the session,
+rejection needs a reason, resubmission keeps the rejection in history, unknown
+actions (including "cancel") are refused. `VIS` direct access: a pending or
+rejected report is 404 to a guest and another member, 200 to its reporter,
+coordinators and administrators; never in public lists or search; asking for
+unpublished lists is 401/403; nobody can flag one. `MATCH-PUB-1`…`9`: drafts,
+pending and rejected reports are never paired; approval pairs at once; report
+2's twin, approved, pairs with report 1 at **85**; a published edit is
+compared again; the open-match freeze holds; removal withdraws open pairings
+and a removed report is never paired again. `DR` drafts: almost-empty drafts
+save, bad values do not, nobody else (coordinators included) can read or
+change one, an incomplete draft cannot be submitted, a complete one becomes a
+pending report and disappears, deletion deletes. `RM1`–`12` removal: not
+public, not Closed, reason shown to the reporter, 404 to the public, open to
+coordinators and administrators, logged and audited, no Closed event, nothing
+turns it back. `NT` notifications. `CNT` dashboards count published reports.
+`LEG` migration 010 on the seed.
+
+**`npm run test:workflow-ui` — 33 checks** (`scripts/workflow_ui.mjs`). In
+Chrome: a report saved as a draft, then continued in a second browser on a
+phone (another device, same account), restored exactly; another account cannot
+open it; never in Explore. Submit for review: the confirmation on screen and
+focused at 820 px and on a phone, saying a coordinator must approve it; not
+public, not matched; the coordinator's queue and sidebar count; Approve from
+the full report; published, matched, the reporter notified. A rejection with a
+required reason, the reporter sees it, edits, submits again, approved. An
+administrator removes it: 404 to the public, under Removed — not Closed — for
+its reporter.
+
+`npm run test:migrations` now runs 008 → 009 → 010 → 010 (25 checks), and
+compares the publication states, report 9's conversion and the pairings too.
+`audit.py`'s `file_report()` publishes what it files (a coordinator approves
+it) unless `publish=False`, so the existing suites keep testing public
+reports; it signs in again if a suite ended the coordinator's session. The
+audit's table and key counts are 22 and 32.
+
 ## 3. Last verified results
 
-3 October 2026 (Correction 3A), on the development laptop unless stated, on
-branch `post-defense/revisions`.
+3 October 2026 (Correction 4), on the development laptop unless stated, on
+branch `post-defense/revisions`. Lint is run over the project's own sources
+(`git ls-files`): four untracked `PawsAndFound_*` folders of built bundles sit
+in the repository root, and a bare `eslint .` would lint them.
 
 ```
 lint                                     clean
@@ -661,7 +704,9 @@ test:report-rules                        50/50
 test:scores                              11/11
 test:controls                            62/62
 test:report-ui                           47/47   (820 px, and 390 px with touch)
-test:migrations                          23/23   (MySQL 9.4 strict + MariaDB; upgrade = fresh)
+test:migrations                          25/25   (MySQL 9.4 strict + MariaDB; 008→009→010 = fresh)
+test:publication                         71/71
+test:workflow-ui                         33/33   (drafts on two devices, review, rejection, removal)
 test:feedback                            49/49
 check:psgc                               ok vs PSA's 30 June 2026 workbook: 82 provinces + NCR + SGA, 1,642 places
 check:bundle                             0 of 91 mock markers in dist/
@@ -674,8 +719,8 @@ test:signout                             24/24
 test:ui                                  66/66
 test:city                                11/11
 test:matching-log                         6/6
-a11y                                     31 pages, 0 violations
-docker build --pull --no-cache           clean, one MPM, Syntax OK  (3 October, Correction 3A)
+a11y                                     34 pages, 0 violations (+ Report review, report 9 removed as coordinator and admin)
+docker build --pull --no-cache           clean, one MPM, Syntax OK  (3 October, Correction 4)
 verify:deploy vs production              25/25 + 3 skipped (read-only default; production untouched since)
 verify:deploy vs local production image 24/25 + 3 skipped  (7.1, correctly, on plain HTTP; image on MySQL 9.4, fresh schema + seed; 3 October)
 verify:deploy --upload, local only       24/27   (7.1 as above; 5.1-5.2 409 — the verifier picks report 1, which the seed has as Possible Match; register D2)

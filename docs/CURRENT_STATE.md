@@ -30,13 +30,14 @@ curl.exe -s https://paws-found-production.up.railway.app/api/health
 Expected at the time of writing (2 October): on branch
 **`post-defense/revisions`**, local commits ahead of `portfolio/team/current`
 = **`2947a43`** (what production runs) — the §4 checkpoint, Correction 1, the
-instructor-feedback documents, Correction 2 and Correction 3; see §4a. None is
+instructor-feedback documents, Corrections 2, 3, 3A and 4; see §4a. None is
 pushed or deployed. Health `{"status":"ok","database":"ok"}`. Untracked:
 `docs/dbeaver-defense-queries.pdf`.
 
-**The local database has migrations `008` and `009` applied** (first and last
-name; the report reference data). The production database has neither, and
-must get both, in order, immediately before the code is pushed — see §4a.
+**The local database has migrations `008`, `009` and `010` applied** (first
+and last name; the report reference data; reviewed publication and drafts).
+The production database has none of them, and must get all three, in order,
+immediately before the code is pushed — see §4a.
 
 ---
 
@@ -173,6 +174,7 @@ an XL size, presentation flow, and a date filter that exists but was not found).
 | 1 | API should connect to the database | **Done** — audit plus cleanup, see below |
 | 2 | Identity, password, form feedback, responsive follow-up | **Done** — see below |
 | 3 | Report data quality, PH places, contact safety, report-form quality | **Done** — see below |
+| 4 | Drafts, Pet Coordinator review before publication, Removed apart from Closed | **Done** (Cancel awaiting clarification) — see below |
 | 10 | Breed / colour / city / province: suggested values | **Done in Correction 3** |
 | others | | Not started — the register in `docs/feedback/` is the list (Reset: awaiting clarification) |
 
@@ -206,19 +208,36 @@ proves upgrade = fresh install on MySQL 9.4 and MariaDB. **The contact-number
 item (register N1) is IMPLEMENTED, AWAITING INSTRUCTOR-INTENT CONFIRMATION:**
 the current behaviour is not a confirmed requirement.
 
-**Deploying Corrections 2 and 3 — the database goes first, both migrations,
-in the same sitting.** New code reads `ph_cities` and `pet_colours` and writes
-`city_code`, which do not exist before 009; and 009 assumes 008. Use the
+**Correction 4.** A filed report is not published: it waits for a Pet
+Coordinator (`pet_reports.publication_status`, migration 010), who approves it
+(published, then matched) or marks it not approved with a reason (the reporter
+edits and resubmits). Unpublished reports are their reporter's and the
+coordinators' only — 404 to anybody else, by URL, list, search or flag.
+Matching starts at publication. Removal by an administrator or moderation is
+the publication state `removed`, never Closed. Drafts are saved to MySQL
+(`report_drafts`) and continued from My reports on any device. History:
+`publication_logs` beside `status_logs`. Staff have a **Report review** queue.
+Before/after, the state machine and a demonstration sequence:
+`docs/feedback/correction-4-lifecycle.md`; reasons: `docs/DECISIONS.md`.
+**Cancel** (Ma'am's third decision) is not built: its meaning is unconfirmed.
+
+**Deploying Corrections 2–4 — the database goes first, all three migrations,
+in the same sitting.** New code reads `ph_cities`, `pet_colours`,
+`publication_status`, `publication_logs` and `report_drafts`, none of which
+exist before 009 and 010; and each migration assumes the one before. Use the
 official MySQL client with `--default-character-set=utf8mb4`:
 
 1. back up the Railway database (`docs/PRODUCTION_RUNBOOK.md`)
 2. preview 008 (query at the top of `008_split_user_names.sql`), run 008
 3. preview 009 (queries at the top of `009_report_reference_data.sql`), run 009
-4. push; check `/api/health`; run `npm run verify:deploy <url>`
+4. preview 010 (query at the top of `010_report_publication_workflow.sql` —
+   it lists the reports that will become Removed), run 010
+5. push; check `/api/health`; run `npm run verify:deploy <url>`
 
-Both were tested from the `2947a43` schema and seed on MySQL 9.4 (strict) and
-on MariaDB, run twice, and compared with a fresh install: identical structure
-and reference data. Never run either against Railway without Kyle.
+All three were tested from the `2947a43` schema and seed on MySQL 9.4 (strict)
+and on MariaDB, the last run twice, and compared with a fresh install
+(`npm run test:migrations`): identical. Never run any against Railway without
+Kyle.
 
 **Correction 2.** First and last name replace full name: migration `008` adds
 `first_name` and `last_name`, backfills them (particles stay with the surname:
@@ -331,7 +350,8 @@ C:\xampp\php\php.exe scripts/identity_rules.php              # 41
 C:\xampp\php\php.exe scripts/report_rules.php                # 50
 C:\xampp\php\php.exe scripts/match_scores.php                # 11
 python scripts/report_controls.py                             # 62  (reseeds)
-python scripts/migration_parity.py                            # 23  (needs Docker; scratch databases only)
+python scripts/migration_parity.py                            # 25  (needs Docker; scratch databases only)
+python scripts/publication_workflow.py                        # 71  (reseeds)
 python scripts/psgc_reference.py check                        # place data and SQL in step
 PAWS_PW=<seeded password> npm run audit                       # 384  (reseeds, restores)
 PAWS_PW=<seeded password> python scripts/auth_lifecycle.py    # 106
@@ -340,15 +360,18 @@ PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:ui       # 66
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:signout  # 24
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:feedback # 49
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:report-ui # 47
+PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:workflow-ui # 33
 PAWS_BASE=http://localhost:5173 npm run a11y                      # 31 pages
 C:\xampp\php\php.exe scripts/city_fallback.php                # 11
 C:\xampp\php\php.exe scripts/calendar_today.php               # 8
 C:\xampp\php\php.exe scripts/matching_log.php                 # 6
 ```
 
-**1,006 checks in total, in sixteen suites** on `post-defense/revisions` (972
-in fifteen after Correction 3; 802 in eleven after Correction 2; 689 in
-production).
+**1,112 checks in total, in eighteen suites** on `post-defense/revisions`
+(1,006 in sixteen after Correction 3A; 972 after 3; 802 after 2; 689 in
+production). a11y: 34 pages. Lint the project's own sources — four untracked
+`PawsAndFound_*` folders of built bundles now sit in the repository root, and
+a bare `eslint .` lints them too.
 Reseed after the browser suites; they change data.
 
 After `npm run build`, also run `npm run check:bundle`: it fails if any of the
@@ -412,9 +435,14 @@ Rolling back and operating the live site: [PRODUCTION_RUNBOOK.md](PRODUCTION_RUN
 
 ## 10. Still open
 
-- **Section 4 and Corrections 1–3 are committed locally, not deployed.**
-  Shipping them is Kyle's call, and they need migrations `008` then `009` on
-  Railway first (§4a).
+- **Section 4 and Corrections 1–4 are committed locally, not deployed.**
+  Shipping them is Kyle's call, and they need migrations `008`, `009` and
+  `010` on Railway first (§4a).
+- **Cancel (register 16) — AWAITING INSTRUCTOR-INTENT CLARIFICATION.**
+- **Four untracked `PawsAndFound_*` folders** appeared in the repository root
+  on 3 October (backups, a course archive, Phase 3/4 submissions). Not
+  committed and not touched; they should live outside the repository or be
+  added to `.gitignore` and `eslint.config.js`'s ignores — Kyle's call.
 - **The ERD figure still shows `full_name` and lacks the three 009 tables.**
   `docs/erd-defense.md` describes them in text; the figure is redrawn once, in
   the final ERD pass.

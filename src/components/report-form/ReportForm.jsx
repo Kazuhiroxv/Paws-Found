@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Check, CircleCheck, X } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, ArrowRight, Check, CircleCheck, Save, X } from 'lucide-react'
 import { Button, Card, CardBody, CardFooter, RequiredNote } from '@/components/ui'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { REPORT_TYPES } from '@/constants'
@@ -67,14 +67,25 @@ const ERROR_KEY_OF = {
  *   indicator can span both columns above it — which is what stops the
  *   guidance reading as an unrelated card parked next to a form.
  */
-export function ReportForm({ reportType, report, guidance }) {
+export function ReportForm({ reportType, report, draft = null, guidance }) {
   const isEditing = Boolean(report)
   const [isAskingAboutPhoto, setIsAskingAboutPhoto] = useState(false)
   const navigate = useNavigate()
 
-  const [values, setValues] = useState(() =>
-    report ? valuesFromReport(report) : createEmptyValues(reportType),
-  )
+  const [values, setValues] = useState(() => {
+    if (report) return valuesFromReport(report)
+    // A saved draft carries the form's own fields; the rest start empty.
+    if (draft) {
+      const { id: _id, updatedAt: _updatedAt, ...saved } = draft
+      return { ...createEmptyValues(draft.reportType), ...saved, photos: [] }
+    }
+    return createEmptyValues(reportType)
+  })
+
+  // Saved drafts (Correction 4): kept in MySQL, so a report can be finished
+  // later or on another device. The id is the draft being written over.
+  const [draftId, setDraftId] = useState(draft?.id ?? null)
+  const [draftState, setDraftState] = useState(null)
   // What the form looked like when it opened, so Cancel can tell "changed my
   // mind before typing anything" from "about to lose ten minutes of work".
   const startingValues = useRef(values)
@@ -206,6 +217,37 @@ export function ReportForm({ reportType, report, guidance }) {
     }
   }
 
+  /**
+   * Save the form as it stands, complete or not. The server checks only that
+   * what is there is real (a listed colour, a place from the list, a real
+   * date); completeness is for Submit for review.
+   *
+   * Photographs are not kept with a draft — they are uploaded only with the
+   * report itself — and the confirmation says so when there are some.
+   */
+  const handleSaveDraft = async () => {
+    setDraftState({ kind: 'saving', message: 'Saving…' })
+    try {
+      const saved = await petService.saveDraft(values, draftId)
+      setDraftId(saved.id)
+      // So a reload, or the link, opens this draft again. Not a navigation:
+      // the form, its step and its photographs stay as they are.
+      window.history.replaceState(window.history.state, '', `?draft=${saved.id}`)
+      setDraftState({
+        kind: 'saved',
+        message:
+          values.photos.length > 0
+            ? 'Draft saved. Photos are not kept with a draft — add them again before you submit.'
+            : 'Draft saved. You can finish it later from My reports.',
+      })
+    } catch (caught) {
+      setDraftState({
+        kind: 'failed',
+        message: `The draft could not be saved: ${caught instanceof Error ? caught.message : String(caught)}`,
+      })
+    }
+  }
+
   const handleSubmit = async () => {
     // Re-check every step, in case someone jumped back and emptied a field.
     for (const candidate of STEPS) {
@@ -243,7 +285,8 @@ export function ReportForm({ reportType, report, guidance }) {
       }
 
       const user = await userService.getCurrentUser()
-      const created = await petService.createReport(toReportInput(values, user.id))
+      // A draft being submitted is deleted by the server in the same step.
+      const created = await petService.createReport(toReportInput(values, user.id), draftId)
 
       // The photographs go up separately, once the report has an id. A failure
       // here is reported on its own rather than as a failed submission: the
@@ -365,21 +408,50 @@ export function ReportForm({ reportType, report, guidance }) {
             </Button>
           )}
 
-          {isLastStep ? (
-            <Button
-              variant={values.reportType === REPORT_TYPES.LOST ? 'accent' : 'primary'}
-              onClick={handleSubmit}
-              isLoading={isSubmitting}
-            >
-              <Check size={16} aria-hidden="true" />
-              {submitLabel(isEditing, isSubmitting)}
-            </Button>
-          ) : (
-            <Button onClick={handleNext}>
-              Continue
-              <ArrowRight size={16} aria-hidden="true" />
-            </Button>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* A new report can be put down and finished later (Correction
+                4). An edit saves the report itself, so it has no draft. */}
+            {!isEditing && (
+              <Button
+                variant="secondary"
+                onClick={handleSaveDraft}
+                disabled={isSubmitting}
+                isLoading={draftState?.kind === 'saving'}
+              >
+                <Save size={16} aria-hidden="true" />
+                Save draft
+              </Button>
+            )}
+
+            {isLastStep ? (
+              <Button
+                variant={values.reportType === REPORT_TYPES.LOST ? 'accent' : 'primary'}
+                onClick={handleSubmit}
+                isLoading={isSubmitting}
+              >
+                <Check size={16} aria-hidden="true" />
+                {submitLabel(isEditing, isSubmitting)}
+              </Button>
+            ) : (
+              <Button onClick={handleNext}>
+                Continue
+                <ArrowRight size={16} aria-hidden="true" />
+              </Button>
+            )}
+          </div>
+
+          {/* Announced, and in words: saved, or why not. */}
+          <p
+            role="status"
+            data-draft-status={draftState?.kind ?? ''}
+            className={cn(
+              'w-full text-sm',
+              draftState?.kind === 'failed' ? 'text-danger' : 'text-fg-muted',
+              !draftState && 'sr-only',
+            )}
+          >
+            {draftState?.message ?? ''}
+          </p>
         </CardFooter>
       </Card>
 
@@ -408,7 +480,50 @@ export function ReportForm({ reportType, report, guidance }) {
 
 function submitLabel(isEditing, isSubmitting) {
   if (isEditing) return isSubmitting ? 'Saving…' : 'Save changes'
-  return isSubmitting ? 'Submitting…' : 'Submit report'
+  // Not "Post": a Pet Coordinator reviews it before anyone else sees it.
+  return isSubmitting ? 'Submitting…' : 'Submit for review'
+}
+
+/**
+ * The wizard for a NEW report, opening a saved draft when the address says
+ * `?draft=12`. Used by the Report lost and Report found pages.
+ */
+export function NewReportForm({ reportType, guidance }) {
+  const [params] = useSearchParams()
+  const requested = params.get('draft')
+  const loadDraft = useCallback(
+    () => (requested ? petService.getDraft(requested) : Promise.resolve(null)),
+    [requested],
+  )
+  const { data: draft, error, isLoading } = useAsync(loadDraft)
+
+  if (requested && isLoading) {
+    return <p className="text-fg-muted">Opening your draft…</p>
+  }
+  if (requested && (error || !draft)) {
+    return (
+      <p role="alert" className="text-fg">
+        That draft could not be opened — it may have been submitted or deleted.{' '}
+        <Link to="/dashboard/reports" className="font-medium text-brand underline">
+          See My reports
+        </Link>
+        .
+      </p>
+    )
+  }
+  if (draft && draft.reportType !== reportType) {
+    return (
+      <p role="alert" className="text-fg">
+        That draft is a {draft.reportType} report.{' '}
+        <Link to={`/report/${draft.reportType}?draft=${draft.id}`} className="font-medium text-brand underline">
+          Open it there
+        </Link>
+        .
+      </p>
+    )
+  }
+
+  return <ReportForm key={draft?.id ?? 'new'} reportType={reportType} draft={draft} guidance={guidance} />
 }
 
 /** One line of context per step, shown under its heading. */
@@ -424,7 +539,7 @@ const STEP_HINTS = {
   details: 'What the animal looks like. These are the details the system compares against other reports.',
   incident: 'When and where it happened, and how people can reach you.',
   photos: 'A clear photo is the single most useful thing you can add.',
-  review: 'Check everything before it goes public. You can edit the report afterwards.',
+  review: 'Check everything. A Pet Coordinator reviews the report before it is published.',
 }
 
 /**
@@ -528,7 +643,7 @@ function SubmissionSuccess({ report, photoWarning }) {
       >
         <CircleCheck size={40} className="text-success" aria-hidden="true" />
 
-        <h2 className="text-xl font-semibold text-fg">Report submitted</h2>
+        <h2 className="text-xl font-semibold text-fg">Submitted for review</h2>
 
         {/* The report saved; only the photographs did not. Said plainly, with
             what to do about it, rather than hidden behind a generic error. */}
@@ -538,19 +653,25 @@ function SubmissionSuccess({ report, photoWarning }) {
             className="max-w-prose rounded-control border border-border bg-accent-soft px-3 py-2 text-sm text-fg"
           >
             Your report was saved, but the photographs could not be uploaded:{' '}
-            {photoWarning} You can add them by editing the report.
+            {photoWarning} You can add them by editing the report once it has been
+            reviewed.
           </p>
         )}
 
+        {/* Never "your report is now live": it is not (Correction 4). */}
+        <p className="max-w-prose text-fg">
+          Your report was submitted for review. A Pet Coordinator must approve it before it
+          appears publicly.
+        </p>
         <p className="max-w-prose text-sm text-fg-muted">
           {isLost
-            ? 'Your lost pet report is now public and searchable. If a found report matches its details, the possible match will appear in Possible Matches.'
-            : 'Thank you for reporting this pet. The report is now public, and if a lost report matches its details, the possible match will appear in Possible Matches for both of you.'}
+            ? 'You will be notified when it is published. From then on it is compared with found reports, and any possible match appears in Possible Matches.'
+            : 'Thank you for reporting this pet. You will be notified when the report is published; from then on it is compared with lost reports.'}
         </p>
 
         <div className="mt-2 flex flex-wrap justify-center gap-2">
           <Button as={Link} to={`/pet/${report.id}`}>
-            View the report
+            View your report
           </Button>
           <Button as={Link} to="/dashboard/reports" variant="secondary">
             My reports

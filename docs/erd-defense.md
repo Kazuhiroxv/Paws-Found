@@ -23,9 +23,9 @@ Counted from `information_schema`, 27 September 2026:
 
 | | |
 | --- | --- |
-| Tables | **20** (15 on the ERD figure + `ph_areas`, `ph_cities`, `pet_colours` from 009 + `schema_migrations` + `auth_rate_limits`) |
-| Foreign keys | **26** — the 24 among the 15, plus `ph_cities → ph_areas` and `locations → ph_cities` (009); neither operational table has one |
-| Primary keys | 20, one per table |
+| Tables | **22** (15 on the ERD figure + `ph_areas`, `ph_cities`, `pet_colours` from 009 + `publication_logs`, `report_drafts` from 010 + `schema_migrations` + `auth_rate_limits`) |
+| Foreign keys | **32** — the 24 among the 15; `ph_cities → ph_areas` and `locations → ph_cities` (009); `publication_logs → pet_reports, users` and `report_drafts → users, pet_categories, ph_areas, ph_cities` (010); neither operational table has one |
+| Primary keys | 22, one per table |
 | Unique constraints | 9, over 14 columns |
 | CHECK constraints | 2 |
 | Engine | InnoDB throughout — MyISAM ignores foreign keys silently |
@@ -197,6 +197,38 @@ is why the table is called *areas*.
 look `1380300000` up and find the City of Makati. A surrogate number would be a
 second identifier for the same thing. A highly urbanized city sits under the
 province it is inside. Provenance: `database/reference/README.md`.
+
+## 4c. `publication_logs` — 1 row in the seed (010)
+
+Who changed a report's publication, when, and why: submitted, approved, not
+approved, resubmitted, removed. The publication counterpart of
+`status_logs`.
+
+| | |
+| --- | --- |
+| **Primary key** | `log_id` |
+| **Foreign keys** | `report_id` → pet_reports (CASCADE) · `actor_user_id` → users (SET NULL) |
+| **ENUMs** | `previous_state` (NULL on the first submission), `new_state`: pending_review, published, rejected, removed |
+
+**Why not just `pet_reports.publication_status`?** That says where a report is
+now; this says how it got there. A rejected report that was resubmitted and
+approved keeps its rejection and its reason. The one seeded row is report 9's
+removal, moved here by migration 010 from a `status_logs` row that wrongly
+called it a closure. Reports published before review existed have no row:
+no approval is invented.
+
+## 4d. `report_drafts` — 0 rows at rest (010)
+
+An unfinished report, its author's alone.
+
+| | |
+| --- | --- |
+| **Primary key** | `draft_id` |
+| **Foreign keys** | `user_id` → users (CASCADE) · `category_id` → pet_categories (SET NULL) · `area_code` → ph_areas (SET NULL) · `city_code` → ph_cities (SET NULL) |
+
+**Why a separate table.** A draft may lack a species, a place or a date;
+`pet_reports` requires all three and keeps them NOT NULL. Submitting files a
+`pet_reports` row and deletes the draft in one transaction.
 
 ## 4b. `pet_colours` — 17 rows (009)
 
@@ -545,6 +577,12 @@ an email, and its consequence is a 429 and a Retry-After header.
     pet_breeds     0..1 ── N pet_reports         (SET NULL — breed is optional)
     locations        1 ── N  pet_reports         (RESTRICT)
     ph_areas         1 ── N  ph_cities           (RESTRICT, 009)
+    pet_reports      1 ── N  publication_logs    (CASCADE, 010)
+    users            1 ── N  publication_logs    (actor, SET NULL, 010)
+    users            1 ── N  report_drafts       (CASCADE, 010)
+    pet_categories 0..1 ── N report_drafts       (SET NULL, 010)
+    ph_areas       0..1 ── N report_drafts       (SET NULL, 010)
+    ph_cities      0..1 ── N report_drafts       (SET NULL, 010)
     ph_cities      0..1 ── N locations           (RESTRICT, 009 — NULL only for an old, unidentified place)
     pet_reports      1 ── N  report_images       (CASCADE)
     pet_reports      1 ── N  status_logs         (CASCADE)
@@ -555,7 +593,7 @@ an email, and its consequence is a 429 and a Retry-After header.
     match_claims     1 ── N  match_signals       (CASCADE)
     match_claims     1 ── N  notifications       (CASCADE)
 
-26 foreign keys. Counted from `information_schema`, not from memory.
+32 foreign keys. Counted from `information_schema`, not from memory.
 `auth_rate_limits` and `schema_migrations` appear nowhere above, because
 they have no relationships to appear in; neither does `pet_colours`, on purpose
 (4b).

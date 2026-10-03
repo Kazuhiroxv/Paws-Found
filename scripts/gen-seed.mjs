@@ -124,6 +124,8 @@ L.push('-- audit_logs is ON DELETE SET NULL — the trail deliberately outlives 
 L.push('-- accounts it describes — so reseeding would otherwise leave every')
 L.push('-- previous run\'s sign-ins behind. Resetting the demonstration should')
 L.push('-- produce the same database every time, including an empty log.')
+L.push('DELETE FROM report_drafts;')
+L.push('DELETE FROM publication_logs;')
 L.push('DELETE FROM audit_logs;')
 L.push('DELETE FROM login_attempts;')
 L.push('DELETE FROM privacy_consents;')
@@ -214,7 +216,9 @@ L.push('')
 
 // pet_reports
 L.push('-- 24 reports across both types, five species, four statuses and many regions.')
-L.push('INSERT INTO pet_reports (report_id, user_id, category_id, breed_id, location_id, report_type, status, pet_name, pet_size, pet_sex, primary_color, secondary_color, distinct_features, description, has_collar, pet_condition, incident_date, incident_time, allow_platform_contact, show_phone, show_email, created_at, updated_at) VALUES')
+// publication_status (migration 010): every demonstration report is public,
+// except report-009, which moderation removed.
+L.push('INSERT INTO pet_reports (report_id, user_id, category_id, breed_id, location_id, report_type, status, publication_status, pet_name, pet_size, pet_sex, primary_color, secondary_color, distinct_features, description, has_collar, pet_condition, incident_date, incident_time, allow_platform_contact, show_phone, show_email, created_at, updated_at) VALUES')
 L.push(petReports.map((r) => {
   const id = reportId.get(r.id)
   const cp = r.contactPreferences ?? {}
@@ -222,7 +226,7 @@ L.push(petReports.map((r) => {
   const collar = r.hasCollar === 'yes' || r.hasCollar === 'no' ? r.hasCollar : 'unknown'
   const created = r.statusHistory?.[0]?.createdAt ?? r.incidentDate
   return `  (${id}, ${userId.get(r.reporterId)}, ${categoryId[r.species] ?? 5}, ${bId}, ${id}, ` +
-    `${q(r.reportType)}, ${q(r.status)}, ${q(r.petName)}, ${q(r.size)}, ${q(r.sex ?? 'unknown')}, ` +
+    `${q(r.reportType)}, ${q(r.status)}, ${q(r.publicationStatus ?? 'published')}, ${q(r.petName)}, ${q(r.size)}, ${q(r.sex ?? 'unknown')}, ` +
     `${q(r.primaryColor)}, ${q(r.secondaryColor)}, ${q(r.distinctiveMarkings)}, ${q(r.description)}, ` +
     `${q(collar)}, ${q(r.condition)}, ${dateOnly(r.incidentDate)}, ${r.incidentTime ? q(r.incidentTime + ':00') : 'NULL'}, ` +
     `${b(cp.allowPlatformContact)}, ${b(cp.showPhone)}, ${b(cp.showEmail)}, ${ts(created)}, ${ts(r.updatedAt ?? created)})`
@@ -280,6 +284,20 @@ petReports.forEach((r) => {
 L.push('-- Case history. Appended to, never overwritten, so a case stays auditable.')
 L.push('INSERT INTO status_logs (report_id, updated_by_user_id, previous_status, new_status, note, created_at) VALUES')
 L.push(logs.map(([rid, uid, prev, next, note, at]) =>
+  `  (${rid}, ${uid ?? 'NULL'}, ${q(prev)}, ${q(next)}, ${q(note)}, ${ts(at)})`).join(',\n') + ';')
+L.push('')
+
+// publication_logs — only where something was decided. The other reports are
+// published with no row: they were public before review existed (010).
+const publicationLogs = []
+petReports.forEach((r) => {
+  ;(r.publicationHistory ?? []).forEach((e) => {
+    publicationLogs.push([reportId.get(r.id), e.actorId ? userId.get(e.actorId) : null, e.previous ?? null, e.state, e.note, e.createdAt])
+  })
+})
+L.push('-- Publication decisions: submitted, approved, rejected, removed (migration 010).')
+L.push('INSERT INTO publication_logs (report_id, actor_user_id, previous_state, new_state, note, created_at) VALUES')
+L.push(publicationLogs.map(([rid, uid, prev, next, note, at]) =>
   `  (${rid}, ${uid ?? 'NULL'}, ${q(prev)}, ${q(next)}, ${q(note)}, ${ts(at)})`).join(',\n') + ';')
 L.push('')
 

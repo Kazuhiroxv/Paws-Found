@@ -48,6 +48,11 @@ raw Tailwind colours.
 | `reveal`, `revealFirstInvalid`, `useRevealWhen` | `utils/reveal.js` | Scroll a result into view and focus it after a submit — a success card, an error, the first invalid field. Smooth only without reduced motion. The target needs `tabIndex={-1}` if it is not a control, and `scroll-mt-24` for the sticky navbar. |
 | `BreedField`, `PlaceFields`, `TimeOfDayField`, `DescriptionField` | `components/report-form/PetDetailsStep.jsx`, `LocationDateStep.jsx` | Correction 3, local to the report wizard (not exported): the species' breed list with "Not sure" / "type it"; province then dependent city from PSGC; Hour / Minutes / AM or PM handing back 24-hour time; the description with its live "N / 30 minimum". All lists come from `referenceService`, never from JSX. |
 | `referenceService` | `services/referenceService.js` | Colours, breeds per species, the 84 areas (PSA's 82 provinces, Metro Manila, the Special Geographic Area — each with its type), cities per area, from `/api/reference`; each fetched once per page load. Used by the report form and Explore. |
+| `PublicationBadge` | `components/StatusBadge.jsx` | Correction 4: Pending review / Not approved / Removed, dashed, beside the case status; nothing for a published report. |
+| `PublicationPanel` | `components/PublicationPanel.jsx` | On the report page, for its reporter, coordinators and administrators: the publication state, the reason for a rejection or removal, the review history, and the one move each may make (Approve and publish, Not approved…, Submit for review again, Remove from public view…). Reasons are required in its dialogs. |
+| `NewReportForm` | `components/report-form/ReportForm.jsx` | The wizard for a new report; opens a saved draft from `?draft=`. `ReportForm` gained Save draft. |
+| `DraftCard` | `pages/dashboard/MyReportsPage.jsx` | A draft in My reports: Continue editing, Delete draft. |
+| `StaffReviewPage` | `pages/staff/StaffReviewPage.jsx` | The Pet Coordinator's review queue, oldest first. |
 | `ActiveFilters` | `components/ActiveFilters.jsx` | Removable chips for every applied filter. |
 | `FlagReportDialog` | `components/FlagReportDialog.jsx` | "Report this listing" — creates a moderation case. Requires sign-in. |
 | `DemoRoleSelector` | `components/DemoRoleSelector.jsx` | **Development only.** Delete when real authentication lands. |

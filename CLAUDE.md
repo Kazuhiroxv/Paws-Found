@@ -276,10 +276,10 @@ Services operate on mock data now; only their internals change when they start
 calling the PHP API with `fetch`. Connecting the real backend must not require
 rewriting the UI — that is the whole reason this boundary exists.
 
-The database is built: `database/schema.sql` — **20 tables**, the 15 on the
+The database is built: `database/schema.sql` — **22 tables**, the 15 on the
 ERD, the three reference lists migration 009 added (`ph_areas`,
-`ph_cities`, `pet_colours`), plus `schema_migrations` and `auth_rate_limits`,
-with 26 foreign keys.
+`ph_cities`, `pet_colours`), `publication_logs` and `report_drafts` from 010,
+plus `schema_migrations` and `auth_rate_limits`, with 32 foreign keys.
 Counted from
 `information_schema` on MariaDB 10.4.32 via XAMPP, not from the file. **This XAMPP runs MySQL on port 3307**, not 3306, because a
 separate MySQL 8.0 Windows service holds 3306.

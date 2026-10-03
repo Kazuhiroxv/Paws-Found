@@ -45,16 +45,18 @@ import { Breadcrumb } from '@/components/Breadcrumb'
 import { MatchCard } from '@/components/MatchCard'
 import { ReportMap } from '@/components/LazyMaps'
 import { ReportTypeBadge } from '@/components/ReportTypeBadge'
-import { StatusBadge } from '@/components/StatusBadge'
+import { PublicationBadge, StatusBadge } from '@/components/StatusBadge'
+import { PublicationPanel } from '@/components/PublicationPanel'
 import { Timeline } from '@/components/Timeline'
 import { FlagReportDialog } from '@/components/FlagReportDialog'
 import { PhotoLightbox } from '@/components/PhotoLightbox'
 import {
-  SPECIES,
   PET_SEX_LABELS,
   PET_SIZE_LABELS,
+  PUBLICATION_STATUSES,
   REPORT_STATUSES,
   REPORT_TYPES,
+  SPECIES,
   speciesLabel,
 } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
@@ -84,6 +86,9 @@ export function PetDetailPage({ role }) {
   const [isFinishing, setIsFinishing] = useState(false)
   const [finishError, setFinishError] = useState(null)
   const [closeReason, setCloseReason] = useState('')
+  // What a review decision just did. Kept here, not in the panel: the report
+  // reloads after the decision, which remounts the panel.
+  const [publicationNotice, setPublicationNotice] = useState(null)
   const openFinish = (kind) => {
     setFinishError(null)
     setCloseReason('')
@@ -171,6 +176,10 @@ export function PetDetailPage({ role }) {
 
   const { report, reporter, matches, counterparts, currentUser, actorNames } = data
   const isOwner = Boolean(currentUser) && currentUser.id === report.reporterId
+  // Not published: waiting for review, not approved, or removed (Correction
+  // 4). Only its reporter and coordinators get this far — the API answers
+  // 404 to anybody else — and none of the public's actions apply to it.
+  const isPublished = report.publicationStatus === PUBLICATION_STATUSES.PUBLISHED
   // Set by the edit form when the details saved but a photo change did not.
   const photoWarning = location.state?.photoWarning
   const isFound = report.reportType === REPORT_TYPES.FOUND
@@ -353,7 +362,8 @@ export function PetDetailPage({ role }) {
               <div className="flex min-w-0 flex-col gap-2.5">
                 <div className="flex flex-wrap items-center gap-2.5">
                   <ReportTypeBadge reportType={report.reportType} />
-                  <StatusBadge status={report.status} />
+                  {isPublished && <StatusBadge status={report.status} />}
+                  <PublicationBadge publication={report.publicationStatus} />
                 </div>
 
                 <h1 className="text-[2.25rem] leading-[1.05] font-semibold tracking-tight text-balance text-fg sm:text-[2.75rem]">
@@ -544,7 +554,18 @@ export function PetDetailPage({ role }) {
               give: filing the opposite kind of report is what puts these two
               cases in front of the matching algorithm and a coordinator. That
               is the real path, so it is the one on the button. */}
-          {!isOwner && report.status !== REPORT_STATUSES.CLOSED && (
+          <PublicationPanel
+            report={report}
+            viewer={currentUser}
+            // Keyed to the report, so it never follows somebody to another one.
+            notice={publicationNotice?.reportId === report.id ? publicationNotice.message : null}
+            onChanged={(message) => {
+              setPublicationNotice({ reportId: report.id, message })
+              reload()
+            }}
+          />
+
+          {isPublished && !isOwner && report.status !== REPORT_STATUSES.CLOSED && (
             <NextStepCard report={report} />
           )}
 
@@ -627,7 +648,7 @@ export function PetDetailPage({ role }) {
             </CardBody>
           </Card>
 
-          {isOwner && report.status !== REPORT_STATUSES.CLOSED && (
+          {isPublished && isOwner && report.status !== REPORT_STATUSES.CLOSED && (
             <Card>
               <CardHeader titleAs="h2" title="Your report" />
               <CardBody className="flex flex-col gap-2">
@@ -651,6 +672,7 @@ export function PetDetailPage({ role }) {
             </Card>
           )}
 
+          {isPublished && (
           <Card>
             <CardHeader titleAs="h2" title={<HeadingWithIcon icon={Link2}>Actions</HeadingWithIcon>} />
             <CardBody className="flex flex-col gap-2">
@@ -678,6 +700,7 @@ export function PetDetailPage({ role }) {
               )}
             </CardBody>
           </Card>
+          )}
         </aside>
       </div>
 

@@ -1329,7 +1329,19 @@ export const petReports = [
   {
     id: 'report-009',
     reportType: REPORT_TYPES.LOST,
-    status: REPORT_STATUSES.CLOSED,
+    // Removed by moderation — a publication decision, not a case closure
+    // (Correction 4). The case itself was never closed: it stays Active.
+    status: REPORT_STATUSES.ACTIVE,
+    publicationStatus: 'removed',
+    publicationHistory: [
+      {
+        previous: 'published',
+        state: 'removed',
+        note: 'Removed by an administrator following a moderation review.',
+        actorId: 'admin-001',
+        createdAt: '2026-05-09T02:20:00.000Z',
+      },
+    ],
     petName: 'Rex',
     species: SPECIES.DOG,
     breed: 'German Shepherd',
@@ -1373,13 +1385,6 @@ export const petReports = [
         note: 'Report created.',
         actorId: 'user-007',
         createdAt: '2026-05-08T05:00:00.000Z',
-      },
-      {
-        id: 'log-009b',
-        status: REPORT_STATUSES.CLOSED,
-        note: 'Removed by an administrator following a moderation review.',
-        actorId: 'admin-001',
-        createdAt: '2026-05-09T02:20:00.000Z',
       },
     ],
     createdAt: '2026-05-08T05:00:00.000Z',

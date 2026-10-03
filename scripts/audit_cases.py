@@ -112,20 +112,23 @@ def sql_injection():
     check(C, 'SQL-11', 'pet_reports table intact afterwards', '32 rows',
           sql('SELECT COUNT(*) FROM pet_reports;') + ' rows',
           sql('SELECT COUNT(*) FROM pet_reports;') == '32')
-    # 20 physical: the 15 on the ERD, the three reference lists migration 009
-    # added (ph_areas, ph_cities, pet_colours), plus schema_migrations and
+    # 22 physical: the 15 on the ERD, the three reference lists migration 009
+    # added (ph_areas, ph_cities, pet_colours), publication_logs and
+    # report_drafts from 010, plus schema_migrations and
     # auth_rate_limits, which are infrastructure rather than domain tables
     # (database/migrations/README.md).
-    check(C, 'SQL-12', 'Schema intact afterwards', '20 tables',
+    check(C, 'SQL-12', 'Schema intact afterwards', '22 tables',
           sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='pawsandfound';") + ' tables',
-          sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='pawsandfound';") == '20')
-    # 26 since migration 009: ph_cities -> ph_areas and locations -> ph_cities.
-    # docs/erd-defense.md lists 26 (the figure is redrawn in the final ERD
+          sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='pawsandfound';") == '22')
+    # 26 after migration 009 (ph_cities -> ph_areas, locations -> ph_cities);
+    # 32 after 010 (publication_logs -> pet_reports, users; report_drafts ->
+    # users, pet_categories, ph_areas, ph_cities).
+    # docs/erd-defense.md lists 32 (the figure is redrawn in the final ERD
     # pass). A diagram cannot be wrong quietly if the suite counts
     # the same thing the diagram is drawing.
     fks = sql("SELECT COUNT(*) FROM information_schema.table_constraints "
               "WHERE table_schema='pawsandfound' AND constraint_type='FOREIGN KEY';")
-    check(C, 'SQL-14', 'Foreign keys match the ERD', '26 keys', fks + ' keys', fks == '26')
+    check(C, 'SQL-14', 'Foreign keys match the ERD', '32 keys', fks + ' keys', fks == '32')
     roles = sql('SELECT GROUP_CONCAT(role ORDER BY user_id) FROM users WHERE user_id<=3;')
     check(C, 'SQL-13', 'No account was promoted', 'user,user,user', roles, roles == 'user,user,user')
 

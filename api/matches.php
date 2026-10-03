@@ -412,7 +412,7 @@ function dismiss_open_pairings_for_report(int $reportId, array $user, ?int $keep
                 ':user_id' => $otherUser,
                 ':type' => 'status_changed',
                 ':title' => 'A possible match is no longer open',
-                ':body' => 'The other report in this pairing has been closed or marked returned, so the pairing was withdrawn. Your report stays open.',
+                ':body' => 'The other report in this pairing is no longer open, so the pairing was withdrawn. Your report stays open.',
                 ':report_id' => $otherReport,
                 ':match_id' => (int) $match['match_id'],
             ]);

@@ -23,6 +23,18 @@ function fromApi(row) {
     id: row.report_id,
     reportType: row.report_type,
     status: row.status,
+    // Whether the public may see it (Correction 4). Absent from a guest's
+    // list rows, which are only ever published ones.
+    publicationStatus: row.publication_status ?? 'published',
+    // Who decided what, and why — sent only to the reporter and coordinators.
+    publicationHistory: (row.publication_history ?? []).map((entry) => ({
+      id: `pub-${entry.log_id}`,
+      previous: entry.previous_state,
+      state: entry.new_state,
+      note: entry.note ?? '',
+      actor: entry.actor,
+      createdAt: entry.created_at,
+    })),
     petName: row.pet_name,
     species: row.species,
     breed: row.breed ?? '',
@@ -141,6 +153,9 @@ export async function getReportsPage(query = {}) {
     date_from: query.dateFrom,
     date_to: query.dateTo,
     reporter_id: query.reporterId,
+    // 'published' unless asked: the server allows more only to coordinators
+    // and to a member listing their own reports.
+    publication: query.publication,
     sort: query.sort === 'oldest' ? 'oldest' : 'newest',
     page: query.page,
     // The pages that use `limit` want a short list, not a page of results.
@@ -182,8 +197,28 @@ export async function getReportById(id) {
   }
 }
 
+/** Every report somebody filed, whatever its publication — their own list. */
 export async function getReportsByUser(userId) {
-  return getReports({ reporterId: userId })
+  return getReports({ reporterId: userId, publication: 'all' })
+}
+
+/** The reports waiting for a Pet Coordinator, oldest first: the review queue. */
+export async function getReportsForReview() {
+  return getReports({ publication: 'pending_review', sort: 'oldest' })
+}
+
+/**
+ * Move a report's publication (Correction 4): 'approve' or 'reject' (a Pet
+ * Coordinator), 'resubmit' (its reporter, after a rejection), 'remove' (an
+ * administrator). A rejection and a removal need a note; the server refuses
+ * any move that is not allowed from where the report is.
+ */
+export async function updatePublication(id, action, note = null) {
+  const payload = await apiFetch(`/reports/${id}/publication`, {
+    method: 'PATCH',
+    body: JSON.stringify({ action, note }),
+  })
+  return fromApi(payload.data)
 }
 
 /**
@@ -204,10 +239,12 @@ export async function getRecentReports(limit = 6) {
  * Create a report. The id, timestamps and opening status entry are generated
  * here for now; the real backend will generate them instead.
  */
-export async function createReport(input) {
+export async function createReport(input, draftId = null) {
   const payload = await apiFetch('/reports', {
     method: 'POST',
     body: JSON.stringify({
+      // A saved draft being submitted: the server deletes it with the filing.
+      draft_id: draftId,
       report_type: input.reportType,
       species: input.species,
       breed: input.breed,
@@ -406,7 +443,100 @@ export async function getReportStats() {
     totals: payload.data.totals,
     monthly: payload.data.monthly,
     bySpecies: payload.data.by_species,
+    // Every report by publication state; totals above count published only.
+    publication: payload.data.publication,
   }
+}
+
+// ---------------------------------------------------------------- drafts
+//
+// An unfinished report, saved to MySQL (Correction 4). Kept in the API's
+// report field names, so a draft opens in the same form a report does.
+
+/** A form's values, as the draft endpoints take them. Nothing is required. */
+function draftBody(values) {
+  return {
+    report_type: values.reportType,
+    species: values.species,
+    pet_name: values.reportType === 'found' ? null : values.petName,
+    breed: values.breed,
+    size: values.size,
+    sex: values.sex,
+    primary_color: values.primaryColor,
+    secondary_color: values.secondaryColor,
+    distinct_features: values.distinctiveMarkings,
+    description: values.description,
+    has_collar: values.hasCollar,
+    condition: values.condition,
+    incident_date: values.incidentDate,
+    incident_time: values.incidentTime,
+    location_label: values.locationLabel,
+    area_code: values.areaCode,
+    city_code: values.cityCode,
+    lat: values.lat,
+    lng: values.lng,
+    allow_platform_contact: values.allowPlatformContact,
+    show_email: values.showEmail,
+  }
+}
+
+function draftFromApi(row) {
+  return {
+    id: row.draft_id,
+    reportType: row.report_type,
+    petName: row.pet_name ?? '',
+    species: row.species ?? '',
+    breed: row.breed ?? '',
+    sex: row.sex ?? '',
+    size: row.size ?? '',
+    primaryColor: row.primary_color ?? '',
+    secondaryColor: row.secondary_color ?? '',
+    distinctiveMarkings: row.distinct_features ?? '',
+    description: row.description ?? '',
+    incidentDate: row.incident_date ?? '',
+    incidentTime: row.incident_time ? row.incident_time.slice(0, 5) : '',
+    condition: row.condition ?? '',
+    hasCollar: row.has_collar ?? '',
+    locationLabel: row.location_label ?? '',
+    areaCode: row.area_code ?? '',
+    province: row.area_name ?? '',
+    cityCode: row.city_code ?? '',
+    city: row.city_name ?? '',
+    lat: row.lat,
+    lng: row.lng,
+    allowPlatformContact: row.allow_platform_contact,
+    showEmail: row.show_email,
+    updatedAt: row.updated_at,
+  }
+}
+
+/** The signed-in account's drafts, most recently saved first. */
+export async function getDrafts() {
+  const payload = await apiFetch('/drafts')
+  return payload.data.map(draftFromApi)
+}
+
+export async function getDraft(id) {
+  try {
+    const payload = await apiFetch(`/drafts/${id}`)
+    return draftFromApi(payload.data)
+  } catch (error) {
+    if (error.status === 404) throw new NotFoundError(error.message)
+    throw error
+  }
+}
+
+/** Save the form as a draft: a new one, or over `id`. Returns the saved draft. */
+export async function saveDraft(values, id = null) {
+  const payload = await apiFetch(id ? `/drafts/${id}` : '/drafts', {
+    method: id ? 'PUT' : 'POST',
+    body: JSON.stringify(draftBody(values)),
+  })
+  return draftFromApi(payload.data)
+}
+
+export async function deleteDraft(id) {
+  await apiFetch(`/drafts/${id}`, { method: 'DELETE' })
 }
 
 export async function getRecentActivity(limit = 6) {

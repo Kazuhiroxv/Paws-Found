@@ -1,4 +1,4 @@
-import { REPORT_STATUSES, MATCH_STATUSES } from '@/constants'
+import { MATCH_STATUSES, PUBLICATION_STATUSES, REPORT_STATUSES } from '@/constants'
 import { matchService, notificationService, petService, userService } from '@/services'
 
 const OPEN_STATUSES = [REPORT_STATUSES.ACTIVE, REPORT_STATUSES.POSSIBLE_MATCH]
@@ -21,11 +21,16 @@ export async function loadDashboardSummary() {
     notificationService.getUnreadCount(user.id),
   ])
 
+  // Open and Returned are cases, and a case starts at publication
+  // (Correction 4): a report waiting for review is not an Open report yet.
+  const published = reports.filter((report) => report.publicationStatus === PUBLICATION_STATUSES.PUBLISHED)
+
   return {
     user,
     reports,
-    openReports: reports.filter((report) => OPEN_STATUSES.includes(report.status)),
-    returnedReports: reports.filter((report) => report.status === REPORT_STATUSES.RETURNED),
+    openReports: published.filter((report) => OPEN_STATUSES.includes(report.status)),
+    returnedReports: published.filter((report) => report.status === REPORT_STATUSES.RETURNED),
+    inReview: reports.filter((report) => report.publicationStatus === PUBLICATION_STATUSES.PENDING_REVIEW),
     openMatches: suggestions.filter((match) => match.status !== MATCH_STATUSES.CONFIRMED),
     unread,
   }

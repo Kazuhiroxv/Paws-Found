@@ -33,9 +33,15 @@ migration with current data. A database that ran the superseded version must
 be rebuilt — drop `ph_cities`, `ph_provinces` and `pet_colours`, restore the
 pre-009 backup, run 009 — because the new file cannot be laid over the old.
 
+    010_report_publication_workflow.sql  pet_reports.publication_status,
+                            publication_logs, report_drafts; new notification
+                            and audit words; earlier moderation removals
+                            converted from Closed to Removed, on evidence.
+                            AFTER 009, WITH the code — see the file.
+
 `npm run test:migrations` builds the production path (2947a43 schema and seed
-→ 008 → 009 → 009) and a fresh install on MySQL 9.4 and MariaDB, and requires
-them to be identical.
+→ 008 → 009 → 010 → 010) and a fresh install on MySQL 9.4 and MariaDB, and
+requires them to be identical.
 
 Deploying 008 and 009 (Correction 3), in one sitting: back up, preview 008
 (query in the file), run 008, preview 009 (queries in the file), run 009, push

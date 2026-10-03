@@ -222,7 +222,15 @@ def place_codes(city, province=None):
     return pick[1], pick[0]
 
 
-def file_report(role, **overrides):
+def file_report(role, publish=True, **overrides):
+    """File a report as `role`, and — unless publish=False — have it published.
+
+    Since Correction 4 a filed report waits for a Pet Coordinator. Nearly every
+    case here is about a report that is public (matched, listed, edited), so
+    by default a coordinator approves it straight away, exactly as one would
+    in the interface. The report filed by a coordinator is approved by the
+    administrator: nobody reviews their own report.
+    """
     body = {
         'report_type': 'lost', 'species': 'dog', 'pet_name': 'Audit Dog',
         'breed': 'Aspin (Philippine Native Dog)', 'size': 'medium', 'sex': 'male',
@@ -246,4 +254,13 @@ def file_report(role, **overrides):
         body['area_code'], body['city_code'] = area_code, city_code
     body.update(overrides)
     code, payload = session(role).call('POST', '/reports', body)
-    return payload.get('data', {}).get('report_id'), code
+    rid = payload.get('data', {}).get('report_id')
+    if publish and rid:
+        reviewer = 'admin' if role == 'staff' else 'staff'
+        approved, _ = session(reviewer).call('PATCH', f'/reports/{rid}/publication', {'action': 'approve'})
+        # A suite that ends sessions (sign-out everywhere, a password change)
+        # leaves the cached one dead: sign in again, once.
+        if approved == 401:
+            _sessions.pop(reviewer, None)
+            session(reviewer).call('PATCH', f'/reports/{rid}/publication', {'action': 'approve'})
+    return rid, code

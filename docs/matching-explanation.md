@@ -44,7 +44,15 @@ beside it. **The score cannot disagree with its own reasons.**
 
 ## 3. When a pairing is actually raised
 
-Three conditions, all of them (`matching_is_worth_suggesting`, `:285`):
+**Only between published reports** (Correction 4). A report is compared when a
+Pet Coordinator publishes it, and again when its reporter edits it while it is
+published and Active. A report waiting for review, not approved, or removed is
+never compared and is never a candidate — the matcher checks this itself
+(`matching_generate()`), so no caller can forget. A removal dismisses the
+report's open pairings. The weights and the demonstration's four scores (85,
+75, 100, 100) did not change.
+
+Then three conditions, all of them (`matching_is_worth_suggesting`, `:285`):
 
 1. **Species matched.** A dog is never suggested as a cat, whatever else lines
    up. This is the one non-negotiable.

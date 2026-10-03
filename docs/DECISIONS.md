@@ -561,6 +561,73 @@ report is found and matched by. Moving the map to the chosen city was not
 done: PSGC has no coordinates, and inventing centre points would be
 fabricated data.
 
+### Publication is its own dimension, not another status (Correction 4)
+
+A report filed is not published: a Pet Coordinator reviews it first
+(`pet_reports.publication_status`: pending_review → published, or rejected;
+published → removed). It is a second column rather than more values for
+`status`, because the two answer different questions — *may the public see
+it?* and *where is the case?* — and a report needs one answer to each: a
+published report can be Possible Match; a removed one keeps the case status it
+had. Folding them into one list is how "removed" ended up meaning "closed".
+
+The moves are a table in one place (`PUBLICATION_ACTIONS`, `api/reports.php`):
+approve and reject (a coordinator or administrator, never on their own report;
+a rejection needs a reason), resubmit (the reporter, after a rejection),
+remove (an administrator, with a reason). Nothing else exists, so draft →
+published, rejected → published and removed → anything are refused by
+construction. The reviewer is always the session's account. Each move changes
+the state only from the one expected (`WHERE publication_status = :from`), so
+two coordinators deciding at once cannot both win.
+
+**Matching starts at publication**, after the approval is committed — as
+filing always did — so a matching fault cannot take a publication back; it is
+logged and the next edit compares again. The matcher also refuses an
+unpublished report on its own, as subject or as candidate.
+
+### History: three tables, three questions (Correction 4)
+
+`status_logs` is the case (active, possible match, returned, closed);
+`publication_logs` is the publication (submitted, approved, rejected,
+resubmitted, removed — who, when, why); `audit_logs` is the security trail
+(`report_reviewed`, `report_removed` among it). A report's case history starts
+when it is published ("Published after review."). A rejection is never
+overwritten: resubmitting adds a row.
+
+### Drafts have their own table (Correction 4)
+
+A draft may be a species and a name. `pet_reports` requires a species, a
+place and a date, and keeping those NOT NULL is what lets every query trust a
+report. Storing drafts there would have meant loosening those columns for
+everybody, or inventing placeholder values. So `report_drafts` holds the
+form's fields, all optional but typed and checked (a listed colour, a real
+place, a real date); Submit applies the full rules, files the report and
+deletes the draft in one transaction. Drafts are their author's only — not a
+coordinator's, not an administrator's — and deleting one deletes it: it was
+never published, so there is nothing to keep. Save draft is manual; auto-save
+was not added, because manual saving meets the requirement with less to go
+wrong. Photographs are not kept with a draft: they are uploaded with the
+report, and the confirmation says so.
+
+### Removed is not Closed (Correction 4)
+
+Moderation used to "remove" a report by closing it, so a scam report sat in
+its reporter's Closed tab looking like a finished case. Removal is now a
+publication state: not public, not matched, its open pairings dismissed, kept
+with its history, visible to coordinators and administrators. Closed means
+the case ended normally, and nothing else writes it. Migration 010 converts
+earlier removals only on evidence (an actioned moderation case and a closure
+written by the administrator who resolved it), and invents no approval for
+the reports that were already public.
+
+### What was not built (Correction 4)
+
+**Cancel** — Ma'am's third decision. Its meaning is not established, so it is
+not guessed; the dialogs' "Go back" only closes the dialog. **Withdraw
+submission** — turning a filed report back into a draft would undo a filing
+with its photographs; not needed for the required flow. **Flagging** an
+unpublished report is impossible: only published reports can be flagged.
+
 ### Time: AM/PM on screen, 24-hour in the API (Correction 3)
 
 Hour, minutes and AM or PM as three choices, because a native time box shows
@@ -577,7 +644,7 @@ a time is refused rather than guessed.
 | **Exact addresses in public** | Locations are barangay-level and drawn as a circle, so the imprecision is visible rather than implied. A lost-pet listing that publishes a home address is a burglary notice. |
 | **Forced-scroll consent** | Making somebody scroll a notice before a checkbox unlocks measures patience, not understanding. Consent is recorded per notice version in `privacy_consents`. |
 | **Password strength meter** | A coloured bar rewards `P@ssw0rd!` and punishes a long passphrase. The checklist states the rule the server actually enforces. *Revisited 30 September 2026:* a Weak / Fair / Strong label now sits **beside** the checklist as guidance only — Weak means a requirement is not met, Fair is accepted, Strong is recommended — and it rewards length, not symbols. The rule is still the checklist. |
-| **Draft reports** | A whole second lifecycle — expiry, cleanup, "is this a report?" everywhere. The wizard already has a review step. |
+| **Draft reports** | *Reversed by Correction 4* — the instructor asked for saved drafts. Built as a separate table so a real report's columns stay strict (see "Drafts have their own table"). |
 | **Social login / OAuth** | A second authentication path to secure and explain, for accounts that already work. |
 | **SMS verification** | Costs money per message and adds a provider. |
 | **PWA / offline** | Nothing in the workflow is useful offline. |

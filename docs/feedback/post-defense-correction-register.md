@@ -32,14 +32,14 @@ States: **done** (committed on `post-defense/revisions`), **in progress**,
 | 9 | Pet name accepts one character | NOTES | **done (Correction 3)** — a lost pet's name needs 2 letters or digits ("Bo", "CJ", "R2"); letters, digits, spaces, `'` `.` `-` only; same rule in the form and the API | Correction 3 |
 | 10 | Breed, colour, city, province: contained or suggested values | NOTES + AUDIO (colours, rec 1 14:27–15:09) | **done (Correction 3, 3A)** — breed: the species' listed breeds (typed ones kept, never suggested); colour: a list of 17; place: PSA's PSGC as of 30 June 2026 — a list of 84 *areas* (PSA's 82 provinces, Metro Manila, BARMM's Special Geographic Area; never "84 provinces") then the city or municipality, depending on it. All from MySQL through `/api/reference` | Correction 3, 3A |
 | 11 | Reset button | NOTES | **AWAITING CLARIFICATION — exact Reset behavior not established.** Not built: reset the report form, a filter, or a password? | |
-| 12 | Saved draft | NOTES | **deferred** — not part of Correction 3 | |
+| 12 | Saved draft | NOTES | **done (Correction 4)** — Save draft on every step of the report form; drafts kept in MySQL (`report_drafts`), private to their author, continued from My reports on any device; never public, never matched. Manual save; no auto-save | Correction 4 |
 | 13 | Time shown with AM/PM | NOTES | **done (Correction 3)** — Hour / Minutes / AM or PM on the form, "1:05 PM" on the review and the report page; the API and the TIME column stay 24-hour | Correction 3 |
 | 14 | Map focused on the Philippines | NOTES | **done (Correction 3)** — opens on the whole country, cannot be dragged far off it, refuses a pin outside it (in the browser and the API); a pin never changes the province or city | Correction 3 |
 | 15 | Description of at least 30 characters | NOTES + AUDIO (rec 1 02:01) | **done (Correction 3)** — counted after trimming, runs of spaces counted once; a live "18 / 30 minimum" | Correction 3 |
-| 16 | Pet Coordinator approves a report before it is posted | NOTES + AUDIO (rec 1 03:48–07:31) | open — Ma'am names **accept / reject / cancel**; "cancel" unconfirmed | |
+| 16 | Pet Coordinator approves a report before it is posted | NOTES + AUDIO (rec 1 03:48–07:31) | **done (Correction 4) — except Cancel.** A filed report waits for review (`publication_status = pending_review`), is not public and not matched; a Pet Coordinator approves (published, then matched) or marks it not approved with a reason (the reporter edits and resubmits). **Cancel: AWAITING CLARIFICATION** — see below | Correction 4 |
 | 17 | Presentation order: scope and limitations by role, then the ERD, then the demo | NOTES | open | |
 | 18 | Other languages, such as Filipino | NOTES + AUDIO (rec 1 16:57, "you can also consider") | open | |
-| 19 | Removed reports must not appear as Closed | NOTES + AUDIO (rec 1 18:58–19:21) | open | |
+| 19 | Removed reports must not appear as Closed | NOTES + AUDIO (rec 1 18:58–19:21) | **done (Correction 4)** — removal is its own publication state (`removed`), never `status = closed`; no Closed entry is written; legacy removals (seeded report 9) converted by migration 010 on evidence | Correction 4 |
 
 ### Raised in the recordings, not in the written notes
 
@@ -112,8 +112,13 @@ The recordings do not cover these, so they rest on the written notes alone:
   way to reach the reporter? Built for now: never published, coordinators see
   it.
 - **Filipino (18)** — the whole site, or the community pages only?
-- **Cancel (16)** — Ma'am's three actions are accept, reject and cancel. What
-  does cancel do that reject does not?
+- **Cancel (16)** — AWAITING INSTRUCTOR-INTENT CLARIFICATION. Ma'am's three
+  actions are accept, reject and cancel; accept and reject are built
+  (Correction 4). Cancel could mean: A closing the decision dialog with no
+  action; B the coordinator returning the report to its reporter; C the
+  reporter withdrawing their submission; D an administrative cancellation; E
+  something else. None is built or assumed. The recordings give no more than
+  "you cancel it, you reject it, or you accept it".
 - **Flagged posts (19)** — rec 1 11:49–11:52 may mean a flagged report should
   disappear *before* a decision. If so, anyone could hide any report by flagging
   it; confirm before building.
