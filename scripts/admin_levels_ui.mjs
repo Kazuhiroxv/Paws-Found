@@ -109,6 +109,60 @@ async function open(page, route) {
 }
 
 try {
+  // ============================================================ REV
+  // Correction 6A, and the demonstration sequence for the defense: a customer
+  // submits; every administrator level opens the pending report and finds no
+  // way to publish it; the Pet Coordinator approves it.
+  console.log('\nREV. Only the Pet Coordinator publishes (Correction 6A)')
+  {
+    const customer = await signedIn(CUSTOMER)
+    const pending = await customer.page.evaluate(async (api) => {
+      const me = await (await fetch(api + '/auth/me', { credentials: 'include' })).json()
+      const response = await fetch(api + '/reports', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': me.csrf_token ?? '' },
+        body: JSON.stringify({
+          report_type: 'lost', species: 'dog', pet_name: 'Demo Review Dog', breed: 'Aspin (Philippine Native Dog)',
+          size: 'medium', sex: 'male', primary_color: 'Brown', distinct_features: 'A white tip on the tail',
+          incident_date: '2026-10-01', area_code: '1300000000', city_code: '1381100000',
+          allow_platform_contact: true, has_collar: 'unknown', location_label: 'Near the barangay hall',
+          description: 'Filed for the defense demonstration of the coordinator review step.',
+        }),
+      })
+      return (await response.json()).data?.report_id
+    }, API)
+    await customer.context.close()
+    const reviewControls = (page) => page.evaluate(() =>
+      [...document.querySelectorAll('button')].map((b) => b.textContent.trim())
+        .filter((t) => t.startsWith('Approve and publish') || t.startsWith('Not approved')))
+
+    for (const [id, email, label] of [['REV-UI-1', MODERATOR, 'Moderator'], ['REV-UI-2', MANAGER, 'Manager'],
+      ['REV-UI-3', SUPER, 'Super Administrator']]) {
+      const { context, page } = await signedIn(email)
+      await open(page, `/pet/${pending}`)
+      const controls = await reviewControls(page)
+      const says = (await text(page)).includes('Only a Pet Coordinator can approve it or not')
+      check(id, `${label} opens the pending report: no Approve / Not approved, and it says who decides`,
+        controls.length === 0 && says, controls.join(', ') || 'no controls')
+      await context.close()
+    }
+    check('REV-UI-4', 'After every administrator has inspected it, it is still pending',
+      sql(`SELECT publication_status FROM pet_reports WHERE report_id = ${pending}`) === 'pending_review')
+
+    const coordinator = await signedIn('patricia.lim@example.com')
+    await open(coordinator.page, `/pet/${pending}`)
+    const controls = await reviewControls(coordinator.page)
+    check('REV-UI-5', 'The Pet Coordinator sees Approve and publish, and Not approved…',
+      controls.length === 2, controls.join(', '))
+    await clickText(coordinator.page, 'Approve and publish')
+    await pause(2000)
+    check('REV-UI-6', 'The Pet Coordinator approves: published, with the coordinator as reviewer',
+      sql(`SELECT CONCAT(r.publication_status, '/', u.role) FROM pet_reports r JOIN publication_logs p
+             ON p.report_id = r.report_id AND p.new_state = 'published' JOIN users u ON u.user_id = p.actor_user_id
+            WHERE r.report_id = ${pending}`) === 'published/staff')
+    await coordinator.context.close()
+  }
+
   // ============================================================ MOD
   console.log('\nMOD. A Moderator')
   {

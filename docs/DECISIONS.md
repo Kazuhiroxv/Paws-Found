@@ -572,7 +572,8 @@ published report can be Possible Match; a removed one keeps the case status it
 had. Folding them into one list is how "removed" ended up meaning "closed".
 
 The moves are a table in one place (`PUBLICATION_ACTIONS`, `api/reports.php`):
-approve and reject (a coordinator or administrator, never on their own report;
+approve and reject (a Pet Coordinator only — since Correction 6A never an
+administrator — and never on their own report;
 a rejection needs a reason), resubmit (the reporter, after a rejection),
 remove (an administrator, with a reason). Nothing else exists, so draft →
 published, rejected → published and removed → anything are refused by
@@ -751,10 +752,22 @@ Administrator is locked, the recovery is the database owner setting
 `account_status = 'active'` (PRODUCTION_RUNBOOK). A second Super
 Administrator is the practical safeguard.
 
-**Administrators keep approving from a report page.** Correction 4 let any
-administrator approve or reject; Correction 6 does not change the publication
-workflow, so every level still may. The review queue remains the Pet
-Coordinator's workspace.
+**The review is the Pet Coordinator's alone (Correction 6A).** Correction 4
+let the server accept an administrator's approval, and Correction 6 left it
+so — which meant the coordinator could be bypassed from a report's page,
+against Ma'am's "pet coordinator muna sa reports bago mapost". Now the
+approve and reject moves require `role = 'staff'`: every administrator level,
+Super Administrator included, gets 403 and no button. Only Pet Coordinators may make the pre-publication decision. Administrator levels govern system administration and post-publication moderation, not the Pet Coordinator review workflow.
+Administrators may still open and read a pending report. Separation of
+duties: a coordinator decides what is published; an administrator decides
+what is removed afterwards.
+
+**Suspension and lock move the session generation on (Correction 6A).**
+Correction 5 closed the session records on a suspension or a lock, but a
+device that made no request while the account was suspended found its PHP
+session working again after reinstatement. Now the suspension (from Users or
+from moderation) and the lock bump `session_version`, so every session made
+before it is refused, and says why.
 
 **The Privacy Notice was not changed.** It says administrators can see the
 session, activity and security records; that is still true — it is now only

@@ -279,8 +279,13 @@ function report_create(): never
  * moves exist. A move not listed is refused, whoever asks.
  *
  *   action     from              to               who
- *   approve    pending_review    published        a Pet Coordinator or administrator
- *   reject     pending_review    rejected         a Pet Coordinator or administrator (reason required)
+ *   approve    pending_review    published        a Pet Coordinator, never their own report
+ *   reject     pending_review    rejected         a Pet Coordinator (reason required), never their own
+ *
+ * The review is the Pet Coordinator's alone (Correction 6A): "pet
+ * coordinator muna sa reports bago mapost". No administrator level reviews,
+ * a Super Administrator included — administrators govern the system and
+ * moderate PUBLISHED reports (remove), which is a different job.
  *   resubmit   rejected          pending_review   the reporter, after editing
  *   remove     published         removed          an administrator (reason required)
  *
@@ -329,13 +334,17 @@ function report_publication(int $id): never
     // Who may take this action. The reviewer is always the signed-in account:
     // nothing in the request can name somebody else.
     $allowed = match ($rule['by']) {
-        'staff' => in_array($role, ['staff', 'admin'], true),
+        // role = 'staff' and nothing else: an administrator of any level may
+        // inspect a pending report, but the decision is a coordinator's.
+        'staff' => $role === 'staff',
         'admin' => user_can($user, 'moderate_reports'),
         'owner' => $isOwner,
     };
     if (!$allowed) {
         json_error(match ($rule['by']) {
-            'staff' => 'Only a Pet Coordinator can review a report.',
+            'staff' => $role === 'admin'
+                ? 'Only a Pet Coordinator can approve or reject a report before it is published. Administrators moderate published reports.'
+                : 'Only a Pet Coordinator can review a report.',
             'admin' => 'Only an administrator can remove a published report.',
             'owner' => 'Only the person who filed a report can submit it again.',
         }, 403);

@@ -92,7 +92,9 @@ def state_machine():
     code, _ = decide('staff', own, 'approve')
     check(C, 'PUB-10', 'A coordinator cannot review a report they filed themselves', 403, code, code == 403)
     code, _ = decide('admin', own, 'approve')
-    check(C, 'PUB-11', '...another (here the administrator) can', 200, code, code == 200)
+    code2, _ = decide('staff2', own, 'approve')
+    check(C, 'PUB-11', '...nor can an administrator (403, Correction 6A); another coordinator can', '403, 200',
+          f'{code}, {code2}', code == 403 and code2 == 200)
 
     bad, _ = file_report('customer', publish=False)
     code, _ = decide('staff', bad, 'reject')

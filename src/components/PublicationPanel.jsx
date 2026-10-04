@@ -48,19 +48,24 @@ export function PublicationPanel({ report, viewer, onChanged, notice = null }) {
 
   const publication = report.publicationStatus
   const isOwner = Boolean(viewer) && viewer.id === report.reporterId
-  const isCoordinator = viewer?.role === ROLES.STAFF || viewer?.role === ROLES.ADMIN
+  // Coordinators and administrators both see the publication state and its
+  // history; only a coordinator decides (Correction 6A).
+  const isStaffOrAdmin = viewer?.role === ROLES.STAFF || viewer?.role === ROLES.ADMIN
+  const isCoordinator = viewer?.role === ROLES.STAFF
   // Removing a published report is moderation (Correction 6: every
   // administrator level has it; the server checks moderate_reports).
   const isAdmin = can(viewer, CAPABILITIES.MODERATE_REPORTS)
 
   // Published reports need no panel for their reporter or the public: the
   // page itself is the proof. Coordinators still see who approved it.
-  if (publication === PUBLICATION_STATUSES.PUBLISHED && !isCoordinator && !notice) return null
+  if (publication === PUBLICATION_STATUSES.PUBLISHED && !isStaffOrAdmin && !notice) return null
 
   const latest = (state) => [...report.publicationHistory].reverse().find((entry) => entry.state === state)
   const rejection = latest(PUBLICATION_STATUSES.REJECTED)
   const removal = latest(PUBLICATION_STATUSES.REMOVED)
 
+  // The pre-publication decision is the Pet Coordinator's alone: no
+  // administrator level is offered it, and the server refuses it (403).
   const canReview = isCoordinator && !isOwner && publication === PUBLICATION_STATUSES.PENDING_REVIEW
   const canResubmit = isOwner && publication === PUBLICATION_STATUSES.REJECTED
   const canRemove = isAdmin && publication === PUBLICATION_STATUSES.PUBLISHED
@@ -121,7 +126,9 @@ export function PublicationPanel({ report, viewer, onChanged, notice = null }) {
           {publication === PUBLICATION_STATUSES.PENDING_REVIEW &&
             (isOwner
               ? 'Waiting for a Pet Coordinator to review it. Nobody else can see it until it is approved, and it is not compared with other reports yet.'
-              : 'Waiting for review. Check it is a genuine, appropriate report before it goes public.')}
+              : isCoordinator
+                ? 'Waiting for review. Check it is a genuine, appropriate report before it goes public.'
+                : 'Waiting for a Pet Coordinator’s review. Only a Pet Coordinator can approve it or not; it is not public and not compared with other reports yet.')}
           {publication === PUBLICATION_STATUSES.REJECTED &&
             (isOwner
               ? 'Not approved, so it is not public. Edit it to address the reason below, then submit it again.'

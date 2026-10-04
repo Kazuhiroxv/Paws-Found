@@ -59,7 +59,7 @@ are checked by what the file actually is; administrators add, rename, retire and
 delete pet categories. Nothing the app shows comes from mock data any more. See
 [`docs/feature-status.md`](docs/feature-status.md) for the item-by-item picture.
 
-**It is tested.** 1,353 automated checks in twenty-three suites, all passing, and
+**It is tested.** 1,374 automated checks in twenty-three suites, all passing, and
 axe-core over 40 pages — see [`docs/TESTING.md`](docs/TESTING.md) §3.
 
 ## Getting started
@@ -187,8 +187,8 @@ with the password itself. On a built site everyone signs in through the form.
 | `npm run test:sessions` | 88 checks of the session records, the activity trail, who may read the logs, and secrets that must never be logged (**reseeds**) |
 | `npm run test:session-ui` | 26 browser checks: the cross-tab sign-out race reproduced on purpose, every session-end message, page views, the Logs page |
 | `npm run test:client-ip` | 18 checks of which address is logged: `REMOTE_ADDR`, or Railway's `X-Real-IP` only when the deployment is Railway (needs `php` on PATH) |
-| `npm run test:admin-levels` | 78 checks of the administrator levels by direct API call, including two Super Administrators demoting each other at once (**reseeds**) |
-| `npm run test:admin-levels-ui` | 27 browser checks of what each administrator level sees and can do (**reseeds**) |
+| `npm run test:admin-levels` | 93 checks of the administrator levels by direct API call, including two Super Administrators demoting each other at once, and that only a Pet Coordinator approves or rejects a report before it is published (**reseeds**) |
+| `npm run test:admin-levels-ui` | 33 browser checks of what each administrator level sees and can do, including no review buttons on a pending report (**reseeds**) |
 | `npm run a11y` | axe-core over all 40 pages in every role (`PAWS_BASE=http://localhost:5173` for the dev build) |
 | `npm run verify:deploy <url>` | 28 checks that only fail on a real host |
 

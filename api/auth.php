@@ -287,7 +287,11 @@ function login_failed(string $email, ?int $userId): never
         $update->execute([':id' => $userId]);
 
         // Every session it has open ends here, on every device.
+        // The generation moves on too (Correction 6A), so a session that made
+        // no request while locked does not come back to life when an
+        // administrator unlocks the account; its record already says why.
         if ($update->rowCount() > 0) {
+            db()->prepare('UPDATE users SET session_version = session_version + 1 WHERE user_id = :id')->execute([':id' => $userId]);
             end_open_sessions($userId, 'account_locked');
         }
 

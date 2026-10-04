@@ -40,7 +40,7 @@ the administrators and the security record.
 | Browse, search, map (public summary) | yes | yes | yes | report pages only¹ | report pages only¹ | report pages only¹ |
 | Read a full report | — | yes | yes | yes | yes | yes |
 | File a report; drafts | — | own | own | — ¹ | — ¹ | — ¹ |
-| Review new reports (approve / not approved) | — | — | yes, never their own | from a report's page² | from a report's page² | from a report's page² |
+| Review new reports (approve / not approved) | — | — | **yes**, never their own | **—** (may inspect) | **—** (may inspect) | **—** (may inspect) |
 | Decide pairings, verification | — | own pairings: claim / "not my pet" | yes | — ³ | — ³ | — ³ |
 | Moderation queue; remove a published report | — | flag only | — | **yes** | **yes** | **yes** |
 | Suspend / reinstate / unlock customers and coordinators | — | — | — | — | **yes** | **yes** |
@@ -53,8 +53,9 @@ the administrators and the security record.
 
 ¹ The administrator stays in Administration: the community pages send them to
 `/admin`; a report's own page stays open (it is linked from Administration).
-² Unchanged since Correction 4: the server lets any administrator approve or
-reject from a report's page; the review queue is the Pet Coordinator's. ³ The
+² Correction 6A. **Only Pet Coordinators may make the pre-publication decision. Administrator levels govern system administration and post-publication moderation, not the Pet Coordinator review workflow.** An administrator may open
+and read a pending report; the server refuses them the decision (403) and the
+page offers them no button. ³ The
 server accepts an administrator for these (§3a); the Administration workspace
 does not offer them.
 
@@ -78,23 +79,29 @@ details; cannot decide a pairing (only claim it or say "not my pet"); cannot
 moderate, manage accounts or categories, or open any log; cannot change their
 own role or status.
 
-**Pet Coordinator.** Cannot review their own report; cannot moderate flags,
+**Pet Coordinator.** CAN inspect pending reports and approve or reject them —
+the pre-publication decision is theirs alone. Cannot review their own report; cannot moderate flags,
 manage accounts, roles or categories; cannot open any log; cannot edit a
 reporter's words (only move a case's status); is not an administrator of any
 level.
 
-**Administrator — Moderator.** Cannot suspend, reinstate or unlock any account
+**Administrator — Moderator.** Cannot approve or reject a report before it is
+published (that is the Pet Coordinator's; Moderators moderate published ones).
+Cannot suspend, reinstate or unlock any account
 (a moderation case can remove the report but not suspend its author); cannot
 see account contact details; cannot change categories, roles or levels;
 cannot open the logs; cannot touch another administrator.
 
-**Administrator — Manager.** Cannot change anybody's role or anybody's level
+**Administrator — Manager.** Cannot approve or reject a report before it is
+published. Cannot change anybody's role or anybody's level
 (not even make a customer a coordinator); cannot suspend, reinstate or unlock
 another administrator; cannot open the logs.
 
 **Super Administrator.** The highest level, and still not a bypass. Cannot
 change their own role, level or status; cannot leave the system with no active
-Super Administrator; cannot edit a reporter's report as if it were theirs,
+Super Administrator; cannot approve or reject a report before it is
+published — the highest administrative level is not a review privilege;
+cannot edit a reporter's report as if it were theirs,
 resubmit it for them, or answer a coordinator's question as one of the
 reporters; cannot publish a report without the review step; cannot write,
 edit or delete an audit, session or activity record — no endpoint does.
@@ -234,7 +241,7 @@ Everything a customer can do, plus:
 | `GET /reports/stats` | The dashboard figures | `reports.php:457` |
 | `GET /matches/{id}` | Read the proof notes on a case they are handling | `matches.php:468` |
 | `GET /reports?publication=pending_review` | The review queue (Correction 4) | `reports_list()` |
-| `PATCH /reports/{id}/publication` `approve` / `reject` | Publish a report, or mark it not approved with a reason — **never their own** | `report_publication()` |
+| `PATCH /reports/{id}/publication` `approve` / `reject` | Publish a report, or mark it not approved with a reason — **never their own**. **Pet Coordinators only** (`role = 'staff'`): every administrator level gets 403 (Correction 6A) | `report_publication()` |
 
 **What staff deliberately cannot do**, and this is the boundary the project
 brief asks for (CLAUDE.md §4.2 — *"must not have unrestricted administrator
@@ -347,12 +354,17 @@ signed in is not enough; you have to be *in the case*.
 
 ## 5. How this was tested, and what the tests found
 
-**Administrator levels (Correction 6).** `npm run test:admin-levels` — 78
-direct API calls: each level asking for each thing it may and may not do,
+**Administrator levels (Correction 6, 6A).** `npm run test:admin-levels` — 93
+direct API calls, including REV-ROLE-01…12: customers, Moderators, Managers and
+Super Administrators all refused the pre-publication decision (403), the Pet
+Coordinator allowed, never on their own report, and recorded as the reviewer;
+and each level asking for each thing it may and may not do,
 coordinators, customers and guests asking for all of it, invalid levels and
 inconsistent role/level pairs, the self rule, ten rounds of two simultaneous
 Super Administrator demotions, sessions ending on a level change, and the
-audit trail. `npm run test:admin-levels-ui` — 27 checks in a browser: the
+audit trail. `npm run test:admin-levels-ui` — 33 checks in a browser, starting
+with the demonstration sequence (every administrator level opens a pending
+report and finds no way to publish it; the Pet Coordinator approves it): the
 navigation each level sees, the permission-denied page for a typed address,
 no hidden link left for the keyboard, a Manager suspending with a reason, a
 Super Administrator promoting only once a level is chosen, and the person on

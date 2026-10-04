@@ -50,10 +50,14 @@ it had. Closed means one thing again: the case ended normally.
 | Move | Who | Needs | Side effects |
 | --- | --- | --- | --- |
 | file (→ pending_review) | the reporter | every final rule | publication_logs; "submitted" notice; **no matching** |
-| approve (→ published) | a Pet Coordinator or administrator, not the reporter | — | publication_logs; status_logs "Published after review."; "published" notice; audit `report_reviewed`; **matching**, after the commit |
-| reject (→ rejected) | a coordinator or administrator, not the reporter | a reason | publication_logs; notice with the reason; audit `report_reviewed` |
+| approve (→ published) | a Pet Coordinator, not the reporter — **never an administrator** (Correction 6A) | — | publication_logs; status_logs "Published after review."; "published" notice; audit `report_reviewed`; **matching**, after the commit |
+| reject (→ rejected) | a Pet Coordinator, not the reporter — never an administrator | a reason | publication_logs; notice with the reason; audit `report_reviewed` |
 | resubmit (→ pending_review) | the reporter | — | publication_logs; "submitted again" notice |
 | remove (→ removed) | an administrator, from the report or through moderation | a reason | publication_logs; open pairings dismissed; notice with the reason; audit `report_removed` |
+
+**Only Pet Coordinators may make the pre-publication decision. Administrator levels govern system administration and post-publication moderation, not the Pet Coordinator review workflow.** (Correction 6A: until then the server
+also accepted an administrator's approval, so the coordinator could be
+bypassed from a report's page. It no longer does.)
 
 Anything else — draft → published, rejected → published, removed → anything,
 an unknown action such as "cancel" — is refused by the server (`PUBLICATION_ACTIONS`
@@ -100,6 +104,10 @@ seed that is report 9; reports 8 and 14, closed by their reporters, stay Closed.
    appears publicly."
 2. **Explore (signed out)** — the report is not there; its link says it does
    not exist.
+2a. **Super Administrator laptop** (Correction 6A) — open the same report from
+   Administration → Reports. The page shows it *Pending review* and says only a
+   Pet Coordinator can approve it; there is no Approve button, and the API
+   would answer 403. The report is still pending afterwards.
 3. **Pet Coordinator laptop** — Report review (the sidebar shows *Waiting 1*)
    → *Review* → the whole report → *Approve and publish*.
 4. **Explore** — the report appears. If it resembles a found report, the

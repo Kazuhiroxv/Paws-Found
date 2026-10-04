@@ -154,7 +154,9 @@ characters (`8f31c2a4…`), and filtering accepts any prefix of four or more.
 No other reason exists, because no other code ends a session. Demotion ends
 nothing (policy unchanged: the session carries on as a customer's).
 
-**Suspension and lock now end the session for good.** Before, a suspended
+**Suspension and lock now end the session for good** — and since Correction
+6A they also bump `session_version`, so a session that made no request while
+the account was suspended cannot revive on reinstatement either. Before, a suspended
 account's session was refused but kept, and worked again if the account was
 reinstated — which the record could not have described truthfully. Now the
 request that discovers it ends the PHP session; after reinstatement or unlock

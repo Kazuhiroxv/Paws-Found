@@ -141,7 +141,9 @@ published reports unless `publication` (`pending_review`, `rejected`,
 and to a member listing their own reports (`reporter_id` = them); otherwise
 401/403. `GET /api/reports/{id}` of an unpublished report is 404 to anybody but
 its reporter, coordinators and administrators, who also receive
-`publication_history`. Rows carry `publication_status` (except in a guest's
+`publication_history`. `approve` and `reject` are **Pet Coordinators
+only** (`role = 'staff'`, never their own report): every administrator level
+gets 403 (Correction 6A); `remove` is an administrator's. Rows carry `publication_status` (except in a guest's
 summary, which is always published). `PATCH .../publication` refuses a move
 that is not allowed from the current state with 409, a missing reason with
 422, the wrong role with 403. `GET /reports/stats` counts published reports and

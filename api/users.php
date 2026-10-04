@@ -473,7 +473,15 @@ function user_update(int $id): never
         // Suspended: every session the account has open ends, and its records
         // say why. current_user() would refuse them on their next request
         // anyway; this is what makes the Sessions log agree straight away.
+        //
+        // The generation moves on as well (Correction 6A): without it, a
+        // device that made no request while the account was suspended found
+        // its session working again after reinstatement.
         if ($newStatus === 'suspended' && $before['account_status'] !== 'suspended') {
+            if ($endReason === null) {
+                $pdo->prepare('UPDATE users SET session_version = session_version + 1 WHERE user_id = :id')
+                    ->execute([':id' => $id]);
+            }
             end_open_sessions($id, 'account_suspended');
         }
 

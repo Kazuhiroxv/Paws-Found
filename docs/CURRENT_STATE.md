@@ -253,7 +253,13 @@ without saying which; the team chose three, all `role = 'admin'`, refined by
 published reports), **Manager** (+ suspending, reinstating and unlocking
 customers and coordinators, pet categories, contact details), **Super
 Administrator** (+ roles, levels, other administrators, and the Logs). Pet
-Coordinators stay `staff`, outside the hierarchy. Endpoints ask for a
+Coordinators stay `staff`, outside the hierarchy.
+**Correction 6A:** only Pet Coordinators approve or reject a report before
+it is published; every administrator level gets 403 and no button (Ma'am's
+"pet coordinator muna sa reports bago mapost"; Correction 4 and 6 had left
+an administrator able to approve from a report's page). Suspension and lock
+now also bump `session_version`, so an idle session does not revive on
+reinstatement. Endpoints ask for a
 capability (`require_capability()`, `ADMIN_CAPABILITIES` in
 `api/helpers.php`); `/auth/me` sends an administrator their capabilities, and
 the interface asks `can()`. Nobody changes their own role, level or status;
@@ -408,7 +414,7 @@ python scripts/report_controls.py                             # 62  (reseeds)
 python scripts/migration_parity.py                            # 29  (needs Docker; scratch databases only)
 python scripts/publication_workflow.py                        # 71  (reseeds)
 python scripts/session_activity.py                            # 88  (reseeds; writes config.local.php, restores it)
-python scripts/admin_levels.py                                # 78  (reseeds)
+python scripts/admin_levels.py                                # 93  (reseeds)
 C:\xampp\php\php.exe scripts/client_ip.php                   # 18
 python scripts/psgc_reference.py check                        # place data and SQL in step
 PAWS_PW=<seeded password> npm run audit                       # 384  (reseeds, restores)
@@ -420,15 +426,15 @@ PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:feedback # 49
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:report-ui # 47
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:workflow-ui # 33
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:session-ui  # 26 (reseeds)
-PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:admin-levels-ui # 27 (reseeds)
+PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:admin-levels-ui # 33 (reseeds)
 PAWS_BASE=http://localhost:5173 npm run a11y                      # 40 pages
 C:\xampp\php\php.exe scripts/city_fallback.php                # 11
 C:\xampp\php\php.exe scripts/calendar_today.php               # 8
 C:\xampp\php\php.exe scripts/matching_log.php                 # 6
 ```
 
-**1,353 checks in total, in twenty-three suites** on `post-defense/revisions`
-(1,246 after Correction 5A; 1,238 after Correction 5; 1,112 in eighteen after Correction 4; 1,006 in sixteen after 3A; 972 after 3;
+**1,374 checks in total, in twenty-three suites** on `post-defense/revisions`
+(1,353 after Correction 6; 1,246 after Correction 5A; 1,238 after Correction 5; 1,112 in eighteen after Correction 4; 1,006 in sixteen after 3A; 972 after 3;
 802 after 2; 689 in production). a11y: 40 pages. Plain `npm run lint` is the
 gate again: the four `PawsAndFound_*` folders that had appeared in the
 repository root were moved to `C:\Projects\_archives\paws-and-found\` on

@@ -171,6 +171,12 @@ try:
     check('MAN-05', 'Suspend and reinstate a Pet Coordinator -> 200, 200', [200, 200],
           [code(man, 'PATCH', f'/users/{uid(COORDINATOR)}', {'account_status': 'suspended', 'reason': 'Manager test.'}),
            code(man, 'PATCH', f'/users/{uid(COORDINATOR)}', {'account_status': 'active'})])
+    # The coordinator's session made no request while suspended. It must not
+    # come back to life now the account is active again (6A: the suspension
+    # moves the session generation on, not only the session record).
+    check('MAN-05b', 'Their session, idle through the suspension, stays ended after reinstatement',
+          ('', 'account_suspended'), (lambda m: (m[0].get('role', ''), m[1]))(me(staff)))
+    staff = device(COORDINATOR)
     check('MAN-06', 'Create a pet category, then delete it -> 201, 200', (201, 200),
           (code(man, 'POST', '/categories', {'label': 'Manager Test Hedgehog'}),
            code(man, 'DELETE', '/categories/manager-test-hedgehog')))
@@ -226,6 +232,45 @@ try:
            code(sa, 'PATCH', f'/users/{uid(SUPER)}', {'role': 'staff'}),
            code(sa, 'PATCH', f'/users/{uid(SUPER)}', {'account_status': 'suspended', 'reason': 'x'})])
     mod = device(MODERATOR)
+
+    # =================================================================== REV
+    banner('REV — the pre-publication review is the Pet Coordinator\'s alone (Correction 6A)')
+    pending, _ = audit.file_report('customer2', publish=False, pet_name='Review Role Dog')
+    owner = audit.session('customer2')
+    check('REV-ROLE-01', 'Customer (the reporter) approves their pending report -> 403', 403,
+          code(owner, 'PATCH', f'/reports/{pending}/publication', {'action': 'approve'}))
+    check('REV-ROLE-02', 'Customer rejects it -> 403', 403,
+          code(owner, 'PATCH', f'/reports/{pending}/publication', {'action': 'reject', 'note': 'Not mine to decide.'}))
+    for n, (label, s) in enumerate((('Moderator', mod), ('Manager', man), ('Super Administrator', sa))):
+        check(f'REV-ROLE-{3 + 2 * n:02d}', f'{label} approves a pending report -> 403', 403,
+              code(s, 'PATCH', f'/reports/{pending}/publication', {'action': 'approve'}))
+        check(f'REV-ROLE-{4 + 2 * n:02d}', f'{label} rejects it -> 403', 403,
+              code(s, 'PATCH', f'/reports/{pending}/publication', {'action': 'reject', 'note': 'Administrator attempt.'}))
+    check('REV-ROLE-08b', 'After all that: still pending, never paired, readable by the Super Administrator',
+          ('pending_review', '0', 200),
+          (sql(f'SELECT publication_status FROM pet_reports WHERE report_id = {pending}'),
+           sql(f'SELECT COUNT(*) FROM match_claims WHERE lost_report_id = {pending} OR found_report_id = {pending}'),
+           code(sa, 'GET', f'/reports/{pending}')))
+    check('REV-ROLE-09', 'Pet Coordinator approves it -> 200, published', (200, 'published'),
+          (code(staff, 'PATCH', f'/reports/{pending}/publication', {'action': 'approve'}),
+           sql(f'SELECT publication_status FROM pet_reports WHERE report_id = {pending}')))
+    second, _ = audit.file_report('customer2', publish=False, pet_name='Review Role Cat')
+    check('REV-ROLE-10', 'Pet Coordinator rejects another, with a reason -> 200, rejected', (200, 'rejected'),
+          (code(staff, 'PATCH', f'/reports/{second}/publication', {'action': 'reject', 'note': 'Add a photograph.'}),
+           sql(f'SELECT publication_status FROM pet_reports WHERE report_id = {second}')))
+    own, _ = audit.file_report('staff', publish=False, pet_name='Coordinator Own Dog')
+    # file_report signed the coordinator in on a session of its own, which (one
+    # session at a time for a privileged account) ended ours: use that one.
+    staff = audit.session('staff')
+    check('REV-ROLE-11', 'A Pet Coordinator cannot approve a report they filed themselves -> 403', 403,
+          code(staff, 'PATCH', f'/reports/{own}/publication', {'action': 'approve'}))
+    check('REV-ROLE-12', 'The approval is recorded with the Pet Coordinator as reviewer',
+          f'{uid(COORDINATOR)}\tstaff',
+          sql(f"SELECT p.actor_user_id, u.role FROM publication_logs p JOIN users u ON u.user_id = p.actor_user_id "
+              f"WHERE p.report_id = {pending} AND p.new_state = 'published'"))
+    check('REV-ROLE-12b', 'No approval or rejection anywhere names an administrator', '0',
+          sql("SELECT COUNT(*) FROM publication_logs p JOIN users u ON u.user_id = p.actor_user_id "
+              "WHERE u.role = 'admin' AND p.new_state IN ('published', 'rejected')"))
 
     # =================================================================== OUT
     banner('OUT — coordinators, customers and guests')

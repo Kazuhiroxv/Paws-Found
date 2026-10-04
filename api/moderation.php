@@ -287,6 +287,9 @@ function moderation_decide(int $id): never
             );
             $suspend->execute([':id' => (int) $case['owner_id']]);
             // Its open sessions end with it, and their records say why.
+            // A new generation, so no open session survives a later reinstatement.
+            $pdo->prepare('UPDATE users SET session_version = session_version + 1 WHERE user_id = :id')
+                ->execute([':id' => (int) $case['owner_id']]);
             end_open_sessions((int) $case['owner_id'], 'account_suspended');
 
             moderation_notify_owner(

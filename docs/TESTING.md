@@ -757,7 +757,7 @@ invented. The audit's table and key counts are 24 and 35. `a11y` adds Logs
 
 ### Correction 6 suites
 
-**`npm run test:admin-levels` — 78 checks** (`scripts/admin_levels.py`,
+**`npm run test:admin-levels` — 93 checks** (`scripts/admin_levels.py`,
 local, reseeds). The seed's one administrator (a Super Administrator)
 promotes a coordinator to Moderator and a customer to Manager through the API.
 `CAP` what `/auth/me` sends each kind of account. `MOD` a Moderator by direct
@@ -780,7 +780,7 @@ newest-login-wins at every level, customers unchanged, a level change ends
 the target's session only. `AUD` audit and activity rows: actor, target,
 `old -> new`, IP, session.
 
-**`npm run test:admin-levels-ui` — 27 checks** (`scripts/admin_levels_ui.mjs`,
+**`npm run test:admin-levels-ui` — 33 checks** (`scripts/admin_levels_ui.mjs`,
 reseeds). In Chrome, per level: the navigation each sees; a typed
 `/admin/users`, `/admin/logs` or `/admin/categories` answered "You don't have
 permission to access this page." with nothing of the page rendered; no link
@@ -791,6 +791,22 @@ Administrator whose confirm waits until a level is chosen, promoting a
 customer and then changing her level — and her open sessions told why each
 time.
 
+**Correction 6A adds** `REV-ROLE-01`…`12` to `test:admin-levels` (now 93):
+a customer, a Moderator, a Manager and a Super Administrator each refused
+(403) approving and rejecting a pending report; the report still pending and
+compared with nothing; the Super Administrator still able to open it; a Pet
+Coordinator approving one report and rejecting another (200), refused on
+their own; every `published` and `rejected` row of `publication_logs` written
+by a coordinator, none by an administrator. `MAN-05b`: a coordinator's
+session that made no request while the account was suspended stays ended
+after reinstatement, saying why. And `REV-UI-1`…`6` to
+`test:admin-levels-ui` (now 33), the demonstration itself: a customer files;
+a Moderator, a Manager and a Super Administrator open the report and see no
+"Approve and publish" or "Not approved" button, only "Only a Pet Coordinator
+can approve it or not"; the report is still pending; the coordinator sees
+both buttons, approves, and it is published with the coordinator as
+reviewer.
+
 `npm run test:migrations` now runs to 012 (29 checks), comparing the role and
 level of every account and the CHECK constraint count as well. `a11y` adds the
 Moderator's Overview, the permission-denied page, the Manager's Users page and
@@ -798,10 +814,10 @@ the role-and-level dialog: 40 pages.
 
 ## 3. Last verified results
 
-3 October 2026 (Correction 6), on the development laptop unless stated, on
-branch `post-defense/revisions`. **1,353 checks in twenty-three suites, all
-passing, first run, on a quiet tree with a reseed before each browser suite;
-a11y 40 pages** (1,246 at Correction 5A; 1,238 at Correction 5). Plain `npm run lint` again: the `PawsAndFound_*`
+4 October 2026 (Correction 6A), on the development laptop unless stated, on
+branch `post-defense/revisions`. **1,374 checks in twenty-three suites, all
+passing, on a quiet tree with a reseed before each browser suite;
+a11y 40 pages** (1,353 at Correction 6; 1,246 at Correction 5A; 1,238 at Correction 5). Plain `npm run lint` again: the `PawsAndFound_*`
 folders were moved out of the repository.
 
 **Two lessons from this gate.** (1) Do not edit any file in the repository
@@ -828,8 +844,8 @@ test:publication                         71/71
 test:sessions                            88/88   (session records, activity trail, log access, client IP end to end, sentinel secrets)
 test:session-ui                          26/26   (race held at the network, session-end messages, page views, Logs page)
 test:client-ip                           18/18   (Railway detection, X-Real-IP policy)
-test:admin-levels                        78/78   (each level by direct API call; SA-08 ten rounds of simultaneous demotions)
-test:admin-levels-ui                     27/27   (navigation, permission-denied page, Manager suspend, Super Admin promote/level change)
+test:admin-levels                        93/93   (each level by direct API call; SA-08 ten rounds of simultaneous demotions; REV-ROLE coordinator-only review)
+test:admin-levels-ui                     33/33   (navigation, permission-denied page, Manager suspend, Super Admin promote/level change; REV-UI no review buttons for any level)
 test:workflow-ui                         33/33   (drafts on two devices, review, rejection, removal)
 test:feedback                            49/49
 check:psgc                               ok vs PSA's 30 June 2026 workbook: 82 provinces + NCR + SGA, 1,642 places
@@ -844,11 +860,12 @@ test:ui                                  66/66
 test:city                                11/11
 test:matching-log                         6/6
 a11y                                     40 pages, 0 violations (+ Moderator overview, permission denied, Manager users, role-and-level dialog)
-docker build --pull --no-cache           clean, one MPM, Syntax OK  (3 October, Correction 6)
+docker build --pull --no-cache           clean, one MPM, Syntax OK  (4 October, Correction 6A)
+image on MySQL 9.4 strict, Correction 6A customer files (pending); Super Admin approve 403, reject 403, may open it 200; Pet Coordinator approves 200; Super Admin logs 200: 6/6
 image on MySQL 9.4 strict, Correction 6  migrations to 012, seed admin = super_admin; Moderator moderates, logs/suspend 403; Manager suspends/reinstates, logs/levels 403; Super Admin logs and level change 200, own level 422: 13/13
 image on MySQL 9.4 strict, Correction 5  health ok; sign-in writes a session record (IP, UA, 32-hex ref); page view 201; filed = pending, guest refused, approved = public; admin reads all three logs, staff 403; sign-out recorded: 14/14
 verify:deploy vs production              25/25 + 3 skipped (read-only default; production untouched since)
-verify:deploy vs local production image 24/25 + 3 skipped  (7.1, correctly, on plain HTTP; image on MySQL 9.4, fresh schema + seed; 3 October, Correction 6)
+verify:deploy vs local production image 24/25 + 3 skipped  (7.1, correctly, on plain HTTP; image on MySQL 9.4, fresh schema + seed; 4 October, Correction 6A)
 verify:deploy --upload, local only       24/27   (7.1 as above; 5.1-5.2 409 — the verifier picks report 1, which the seed has as Possible Match; register D2)
 2947a43 schema + seed -> 008 -> 009 -> 009, MySQL 9.4 strict and MariaDB   clean, idempotent
 migrated vs fresh schema.sql + seed.sql   identical structure (24 tables, 35 FKs, 3 CHECKs) and reference data, on both engines

@@ -46,6 +46,9 @@ ACCOUNTS = {
     'customer2': 'liza.ocampo@example.com',
     'finder': 'noel.aguilar@example.com',
     'staff': 'patricia.lim@example.com',
+    # The second Pet Coordinator: reviews what the first files, because nobody
+    # reviews their own report and no administrator reviews at all (6A).
+    'staff2': 'rafael.mendoza@example.com',
     'admin': 'grace.bautista@example.com',
 }
 
@@ -228,8 +231,9 @@ def file_report(role, publish=True, **overrides):
     Since Correction 4 a filed report waits for a Pet Coordinator. Nearly every
     case here is about a report that is public (matched, listed, edited), so
     by default a coordinator approves it straight away, exactly as one would
-    in the interface. The report filed by a coordinator is approved by the
-    administrator: nobody reviews their own report.
+    in the interface. A report filed by a coordinator is approved by the
+    other coordinator: nobody reviews their own report, and since Correction
+    6A no administrator reviews at all.
     """
     body = {
         'report_type': 'lost', 'species': 'dog', 'pet_name': 'Audit Dog',
@@ -254,9 +258,14 @@ def file_report(role, publish=True, **overrides):
         body['area_code'], body['city_code'] = area_code, city_code
     body.update(overrides)
     code, payload = session(role).call('POST', '/reports', body)
+    # A suite that suspended or locked this account in between has, rightly,
+    # ended the cached session (Correction 6A): sign in again, once.
+    if code == 401:
+        _sessions.pop(role, None)
+        code, payload = session(role).call('POST', '/reports', body)
     rid = payload.get('data', {}).get('report_id')
     if publish and rid:
-        reviewer = 'admin' if role == 'staff' else 'staff'
+        reviewer = 'staff2' if role == 'staff' else 'staff'
         approved, _ = session(reviewer).call('PATCH', f'/reports/{rid}/publication', {'action': 'approve'})
         # A suite that ends sessions (sign-out everywhere, a password change)
         # leaves the cached one dead: sign in again, once.
