@@ -11,6 +11,8 @@ import { useSession } from '@/hooks/useSession'
 import { CAPABILITIES, ROLES } from '@/constants'
 import { ADMIN_NAV, STAFF_NAV, USER_NAV } from '@/constants/navigation'
 import { userService } from '@/services'
+import { t } from '@/i18n'
+import { useLanguage } from '@/i18n/useLanguage'
 
 import { HomePage } from '@/pages/public/HomePage'
 import { ExplorePage } from '@/pages/public/ExplorePage'
@@ -20,6 +22,7 @@ import { PetDetailPage } from '@/pages/public/PetDetailPage'
 import { AboutPage } from '@/pages/public/AboutPage'
 import { HelpPage } from '@/pages/public/HelpPage'
 import { PrivacyPage } from '@/pages/public/PrivacyPage'
+import { DisclaimerPage } from '@/pages/public/DisclaimerPage'
 import { LoginPage } from '@/pages/public/LoginPage'
 import { RegisterPage } from '@/pages/public/RegisterPage'
 import { VerifyEmailPage } from '@/pages/public/VerifyEmailPage'
@@ -68,6 +71,12 @@ export default function App() {
   // immediately, and this is what makes their screens agree
   // (src/hooks/useSession.js).
   const { user, notice, dismissNotice, refresh, setSignedInUser, signOut } = useSession()
+
+  // English or Filipino (Correction 7). Subscribing here re-renders every
+  // route when the language changes — in place, without remounting, so the
+  // page, its form contents and the session all stay where they were. Not
+  // part of `sessionKey` below for exactly that reason.
+  useLanguage()
 
   /**
    * The development role selector.
@@ -118,7 +127,7 @@ export default function App() {
         aria-live="polite"
         className="flex min-h-dvh items-center justify-center bg-surface"
       >
-        <span className="text-sm text-fg-muted">Loading Paws&amp;Found…</span>
+        <span className="text-sm text-fg-muted">{t('shell.loading')}</span>
       </div>
     )
   }
@@ -137,6 +146,7 @@ export default function App() {
               user={user}
               notice={notice}
               onDismissNotice={dismissNotice}
+              onPrivacyAcknowledged={refresh}
               // Every route change re-asks who is signed in, so opening a page
               // is itself a check rather than something the timer catches up
               // with a few seconds later.
@@ -158,12 +168,16 @@ export default function App() {
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          {/* What the system is and is not, and what it records: open to
+              every account, the administrator included (Correction 7), so
+              "Review Privacy Notice" works from Administration too. */}
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/disclaimer" element={<DisclaimerPage />} />
           <Route element={<AdminStaysInWorkspace role={role} />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/explore" element={<ExplorePage role={role} />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/help" element={<HelpPage />} />
-            <Route path="/privacy" element={<PrivacyPage />} />
 
             {/* Filing a report requires an account, so a report can be traced
                 back to a person and followed up. Any signed-in role but the
@@ -192,7 +206,7 @@ export default function App() {
             element={
               <RequireAccess role={role} allowed={[ROLES.USER]}>
                 <WorkspaceLayout
-                  label="My account"
+                  label={t('shell.workspace.myAccount')}
                   items={USER_NAV}
                   loadCounts={loadDashboardCounts}
                 />
@@ -213,7 +227,7 @@ export default function App() {
             element={
               <RequireAccess role={role} allowed={[ROLES.STAFF]}>
                 <WorkspaceLayout
-                  label="Staff workspace"
+                  label={t('shell.workspace.staff')}
                   items={STAFF_NAV}
                   loadCounts={loadStaffCounts}
                   // Its own chrome: the public bar comes off inside a tool.
@@ -234,7 +248,7 @@ export default function App() {
               element={
                 <NotificationsPage
                   workspacePath="/staff"
-                  workspaceLabel="Staff workspace"
+                  workspaceLabel={t('shell.workspace.staff')}
                   // The Match Queue holds every pairing; Verification only
                   // the ones someone asked to be checked, so an open match
                   // linked there was not on the page.
@@ -250,7 +264,7 @@ export default function App() {
             element={
               <RequireAccess role={role} allowed={[ROLES.ADMIN]}>
                 <WorkspaceLayout
-                  label="Administration"
+                  label={t('shell.workspace.admin')}
                   items={ADMIN_NAV}
                   loadCounts={loadAdminCounts}
                   standalone

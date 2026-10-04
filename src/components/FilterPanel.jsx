@@ -11,7 +11,7 @@ import {
 import { Button, Input, Select } from '@/components/ui'
 import { cn } from '@/utils/cn'
 import {
-  AREA_LABEL,
+  areaLabel,
   PET_SIZE_LABELS,
   REPORT_STATUS_LABELS,
   REPORT_STATUS_ORDER,
@@ -19,6 +19,7 @@ import {
 } from '@/constants'
 import { optionsFromLabels, orderedOptionsFromLabels } from '@/utils/options'
 import { todayAsInputValue } from '@/utils/date'
+import { t } from '@/i18n'
 
 const ANY = ''
 
@@ -72,14 +73,14 @@ export function FilterPanel({
     // it does not lift.
     <div className="flex flex-col gap-4 rounded-card border border-border bg-layer p-5">
       <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
-        <h2 className="text-lg font-semibold text-fg">Filters</h2>
+        <h2 className="text-lg font-semibold text-fg">{t('filters.title')}</h2>
         {hasActiveFilters && (
           <button
             type="button"
             onClick={onClear}
             className="text-sm font-medium text-brand hover:underline"
           >
-            Clear all
+            {t('filters.clearAll')}
           </button>
         )}
       </div>
@@ -89,10 +90,10 @@ export function FilterPanel({
           dropdown — or behind a disclosure. */}
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-0.5">
-          <FilterLabel icon={PawPrint}>Report type</FilterLabel>
+          <FilterLabel icon={PawPrint}>{t('filters.reportType')}</FilterLabel>
         </legend>
         <div className="flex rounded-control border border-border-strong bg-panel p-1">
-          {[{ value: ANY, label: 'Both' }, ...optionsFromLabels(REPORT_TYPE_LABELS)].map(
+          {[{ value: ANY, label: t('filters.both') }, ...optionsFromLabels(REPORT_TYPE_LABELS)].map(
             (option) => (
               <button
                 key={option.value || 'any'}
@@ -114,10 +115,10 @@ export function FilterPanel({
       </fieldset>
 
       <Select
-        label={<FilterLabel icon={Dog}>Species</FilterLabel>}
+        label={<FilterLabel icon={Dog}>{t('filters.species')}</FilterLabel>}
         value={filters.species}
         onChange={(event) => onChange('species', event.target.value)}
-        options={[{ value: ANY, label: 'Any species' }, ...speciesOptions]}
+        options={[{ value: ANY, label: t('filters.anySpecies') }, ...speciesOptions]}
       />
 
       {/* Date sits directly under species and starts open. At the defense it
@@ -127,19 +128,19 @@ export function FilterPanel({
           the second thing anyone asks, after the species. */}
       <FilterGroup
         icon={CalendarDays}
-        title="Date of incident"
+        title={t('filters.date')}
         activeCount={setCount('dateFrom', 'dateTo')}
         defaultOpen
       >
         <Input
-          label="From"
+          label={t('filters.from')}
           type="date"
           value={filters.dateFrom}
           max={filters.dateTo || todayAsInputValue()}
           onChange={(event) => onChange('dateFrom', event.target.value)}
         />
         <Input
-          label="To"
+          label={t('filters.to')}
           type="date"
           value={filters.dateTo}
           min={filters.dateFrom || undefined}
@@ -150,61 +151,61 @@ export function FilterPanel({
 
       <FilterGroup
         icon={Ruler}
-        title="Size and colour"
+        title={t('filters.sizeColour')}
         activeCount={setCount('size', 'color')}
       >
         <Select
-          label="Size"
+          label={t('filters.size')}
           value={filters.size}
           onChange={(event) => onChange('size', event.target.value)}
-          options={[{ value: ANY, label: 'Any size' }, ...optionsFromLabels(PET_SIZE_LABELS)]}
+          options={[{ value: ANY, label: t('filters.anySize') }, ...optionsFromLabels(PET_SIZE_LABELS)]}
         />
         <Select
-          label="Colour"
+          label={t('filters.colour')}
           value={filters.color}
           onChange={(event) => onChange('color', event.target.value)}
-          options={[{ value: ANY, label: 'Any colour' }, ...colourOptions]}
-          hint="Either colour of the pet."
+          options={[{ value: ANY, label: t('filters.anyColour') }, ...colourOptions]}
+          hint={t('filters.colourHint')}
         />
       </FilterGroup>
 
       <FilterGroup
         icon={MapPin}
-        title="Place"
+        title={t('filters.place')}
         activeCount={setCount('areaCode', 'cityCode', 'city')}
       >
         <Select
-          label={AREA_LABEL}
+          label={areaLabel()}
           value={filters.areaCode}
           onChange={(event) => onChange('areaCode', event.target.value)}
-          options={[{ value: ANY, label: 'Anywhere' }, ...areaOptions]}
+          options={[{ value: ANY, label: t('filters.anywhere') }, ...areaOptions]}
         />
         <Select
-          label="City or municipality"
+          label={t('labels.city')}
           value={filters.cityCode}
           onChange={(event) => onChange('cityCode', event.target.value)}
           disabled={!filters.areaCode}
           options={[
-            { value: ANY, label: filters.areaCode ? 'Any city or municipality' : 'Choose the area first' },
+            { value: ANY, label: filters.areaCode ? t('filters.anyCity') : t('filters.areaFirst') },
             ...cityOptions,
           ]}
         />
       </FilterGroup>
 
-      <FilterGroup icon={CircleCheck} title="Status" activeCount={setCount('status')}>
+      <FilterGroup icon={CircleCheck} title={t('filters.status')} activeCount={setCount('status')}>
         <Select
-          label="Report status"
+          label={t('filters.reportStatus')}
           value={filters.status}
           onChange={(event) => onChange('status', event.target.value)}
           options={[
-            { value: ANY, label: 'Any status' },
+            { value: ANY, label: t('filters.anyStatus') },
             ...orderedOptionsFromLabels(REPORT_STATUS_LABELS, REPORT_STATUS_ORDER),
           ]}
         />
       </FilterGroup>
 
       <Button variant="secondary" onClick={onClear} disabled={!hasActiveFilters} fullWidth>
-        Clear all filters
+        {t('filters.clearAllFilters')}
       </Button>
     </div>
   )
@@ -244,7 +245,7 @@ function FilterGroup({ icon, title, activeCount, defaultOpen = false, children }
         <span className="flex shrink-0 items-center gap-2">
           {activeCount > 0 && (
             <span className="rounded-pill bg-brand-soft px-2 py-0.5 text-xs font-medium text-brand-hover">
-              {activeCount} set
+              {t('filters.set', { count: activeCount })}
             </span>
           )}
           <ChevronDown

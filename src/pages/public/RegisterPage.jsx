@@ -16,6 +16,9 @@ import { cleanName, nameProblem } from '@/utils/nameRules'
 import { userService } from '@/services'
 import { cn } from '@/utils/cn'
 import { reveal, useRevealWhen } from '@/utils/reveal'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
+import { Rich } from '@/i18n/Rich'
 
 /**
  * Create an account.
@@ -85,9 +88,9 @@ export function RegisterPage() {
     last_name: nameProblem(form.lastName, 'last'),
     email:
       form.email.trim() === ''
-        ? 'Enter your email address.'
+        ? t('auth.register.emailEmpty')
         : !EMAIL_SHAPE.test(form.email.trim())
-          ? 'Enter a valid email address, such as name@example.com.'
+          ? t('auth.register.emailInvalid')
           : null,
   }
   const shown = (apiField, field) => fieldErrors[apiField] ?? (touched[field] ? problems[apiField] : null)
@@ -177,20 +180,19 @@ export function RegisterPage() {
               <TriangleAlert size={40} className="text-lost" aria-hidden="true" />
             )}
             <PageHeader
-              title={sent.emailSent ? 'Check your email' : 'Account created — but the email did not send'}
+              title={sent.emailSent ? t('auth.register.checkEmail') : t('auth.register.notSent')}
               description={
                 sent.emailSent
-                  ? `We sent a link to ${sent.email}. Follow it and your account is ready.`
-                  : 'Your account exists and nothing was lost. The message could not be delivered just now, so ask for it again in a moment.'
+                  ? t('auth.register.sentTo', { email: sent.email })
+                  : t('auth.register.notSentBody')
               }
             />
             <p className="text-sm text-fg-muted">
-              The link works once and expires in a day. If nothing arrives, check the spam
-              folder before asking for another.
+              {t('auth.register.linkNote')}
             </p>
             <ResendVerification email={form.email.trim()} />
             <Button as={Link} to="/login" variant="ghost">
-              Back to sign in
+              {t('auth.backToSignIn')}
             </Button>
           </CardBody>
         </Card>
@@ -201,8 +203,8 @@ export function RegisterPage() {
   return (
     <AuthShell>
       <PageHeader
-        title="Create an account"
-        description="An account lets you file reports, follow possible matches, and receive notifications."
+        title={t('auth.register.title')}
+        description={t('auth.register.description')}
       />
 
       <Card>
@@ -215,9 +217,9 @@ export function RegisterPage() {
                 phone. */}
             <div className="grid gap-4 sm:grid-cols-2">
               <Input
-                label="First name"
+                label={t('auth.register.firstName')}
                 autoComplete="given-name"
-                placeholder="e.g. Maria"
+                placeholder={t('auth.register.firstNamePlaceholder')}
                 value={form.firstName}
                 onChange={(event) => change('firstName', event.target.value)}
                 onBlur={() => leave('firstName')}
@@ -226,9 +228,9 @@ export function RegisterPage() {
                 required
               />
               <Input
-                label="Last name"
+                label={t('auth.register.lastName')}
                 autoComplete="family-name"
-                placeholder="e.g. Dela Cruz"
+                placeholder={t('auth.register.lastNamePlaceholder')}
                 value={form.lastName}
                 onChange={(event) => change('lastName', event.target.value)}
                 onBlur={() => leave('lastName')}
@@ -238,10 +240,10 @@ export function RegisterPage() {
               />
             </div>
             <p className="-mt-2 text-sm text-fg-muted">
-              Shown on the reports you file. Letters, spaces, apostrophes, hyphens and periods.
+              {t('auth.register.nameHint')}
             </p>
             <Input
-              label="Email address"
+              label={t('auth.email')}
               type="email"
               autoComplete="email"
               placeholder="you@example.com"
@@ -253,18 +255,18 @@ export function RegisterPage() {
               required
             />
             <Input
-              label="Phone number"
+              label={t('auth.register.phone')}
               type="tel"
               autoComplete="tel"
-              placeholder="e.g. +63 917 000 0000"
+              placeholder={t('auth.register.phonePlaceholder')}
               value={form.phone}
               onChange={(event) => change('phone', event.target.value)}
               error={fieldErrors.contact_number}
               maxLength={30}
-              hint="Optional. Never shown on a report unless you choose to share it."
+              hint={t('auth.register.phoneHint')}
             />
             <PasswordField
-              label="Password"
+              label={t('auth.password')}
               value={form.password}
               onChange={(event) => change('password', event.target.value)}
               error={fieldErrors.password}
@@ -306,18 +308,21 @@ export function RegisterPage() {
                   className="mt-0.5 size-4 shrink-0 accent-brand"
                 />
                 <span className="text-fg">
-                  I have read and understood the{' '}
-                  <Link to="/privacy" target="_blank" rel="noreferrer" className="text-brand underline">
-                    Paws&amp;Found Privacy Notice
-                  </Link>
-                  .
+                  <Rich
+                    k="auth.register.consent"
+                    tags={{
+                      link: (text) => (
+                        <Link to="/privacy" target="_blank" rel="noreferrer" className="text-brand underline">
+                          {text}
+                        </Link>
+                      ),
+                    }}
+                  />
                 </span>
               </label>
 
               <p id="privacy-consent-hint" className="pl-7 text-sm text-fg-muted">
-                It opens in a new tab, so you will not lose what you have typed. In short: your
-                name is shown on the reports you file, your phone number and email are not unless
-                you choose to share them, and locations are kept approximate.
+                {t('auth.register.consentHint')}
               </p>
 
               {fieldErrors.privacy_consent && (
@@ -335,7 +340,7 @@ export function RegisterPage() {
                 tabIndex={-1}
                 className="scroll-mt-24 text-sm text-danger outline-none"
               >
-                {error.message}
+                {errorText(error)}
               </p>
             )}
 
@@ -344,20 +349,20 @@ export function RegisterPage() {
                 is visible before it is discovered. The API refuses either way. */}
             <div className="flex flex-wrap items-center gap-3">
               <Button type="submit" isLoading={isSubmitting} disabled={!canSubmit}>
-                {isSubmitting ? 'Creating account…' : 'Create account'}
+                {isSubmitting ? t('auth.register.creating') : t('auth.register.create')}
               </Button>
               {/* A marked way out. Somebody who arrived here and changed
                   their mind had only the browser's Back button, which is the
                   first thing a cautious person looks for and does not find. */}
               <Button as={Link} to="/" variant="ghost" disabled={isSubmitting}>
-                Cancel
+                {t('common.cancel')}
               </Button>
             </div>
 
             <p className="text-sm text-fg-muted">
-              Already have an account?{' '}
+              {t('auth.register.haveAccount')}{' '}
               <Link to="/login" className="text-fg underline">
-                Sign in
+                {t('auth.login.title')}
               </Link>
               .
             </p>
@@ -396,14 +401,14 @@ export function ResendVerification({ email }) {
   if (state === 'sent') {
     return (
       <p role="status" className="text-sm text-fg-muted">
-        {message}
+        {errorText(message)}
       </p>
     )
   }
 
   return (
     <Button onClick={send} isLoading={state === 'sending'} disabled={!email}>
-      {state === 'sending' ? 'Sending…' : 'Send the link again'}
+      {state === 'sending' ? t('flag.sending') : t('auth.register.resend')}
     </Button>
   )
 }

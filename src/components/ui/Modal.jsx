@@ -2,6 +2,7 @@ import { Children, useEffect, useId, useLayoutEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { Button } from './Button'
+import { t } from '@/i18n'
 
 /**
  * Dialog built on the native `<dialog>` element.
@@ -123,7 +124,7 @@ function OpenModal({
             </p>
           )}
         </div>
-        <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close dialog">
+        <Button variant="ghost" size="sm" onClick={onClose} aria-label={t('ui.closeDialog')}>
           <X size={16} aria-hidden="true" />
         </Button>
       </div>

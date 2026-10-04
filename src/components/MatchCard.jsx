@@ -7,6 +7,7 @@ import { MATCH_STATUS_LABELS, MATCH_STATUSES, isRuledOut, speciesLabel, wasWithd
 import { HistoricalNote } from './MatchComparison'
 import { formatDate } from '@/utils/date'
 import { cn } from '@/utils/cn'
+import { t } from '@/i18n'
 
 /** A pairing still being decided; confirmed, rejected and dismissed are final. */
 const OPEN_MATCH_STATUSES = [
@@ -47,12 +48,12 @@ export function MatchCard({ match, lostReport, foundReport, actions, headingAs =
     <Card>
       <CardHeader
         titleAs={headingAs}
-        title={isHistory ? 'Earlier pairing' : 'Possible match'}
+        title={isHistory ? t('matching.earlierPairing') : t('matching.possibleMatch')}
         action={
           !match.isSuggestion && (
             <span className="text-sm text-fg-muted">
               {wasWithdrawn(match.status, lostReport, foundReport)
-                ? 'Withdrawn · a report was finished'
+                ? t('matching.withdrawn')
                 : MATCH_STATUS_LABELS[match.status]}
             </span>
           )
@@ -72,7 +73,7 @@ export function MatchCard({ match, lostReport, foundReport, actions, headingAs =
               {match.score}%
             </span>
             <span className="text-sm text-fg-muted">
-              {isHistory ? 'compatibility when paired' : 'compatibility'}
+              {isHistory ? t('matching.compatibilityWhenPaired') : t('matching.compatibility')}
             </span>
           </div>
 
@@ -85,8 +86,10 @@ export function MatchCard({ match, lostReport, foundReport, actions, headingAs =
           {/* One level below the card heading, whatever that is. Fixed at
               h4 it skipped a level as soon as the card became an h2. */}
           <SignalHeading className="font-semibold text-fg">
-            {matchedSignals.length} of {match.signals.length} characteristics matched
-            {isHistory && ' when paired'}
+            {t(isHistory ? 'matching.matchedWhenPaired' : 'matching.matched', {
+              matched: matchedSignals.length,
+              total: match.signals.length,
+            })}
           </SignalHeading>
 
           <ul className="grid gap-2 sm:grid-cols-2">
@@ -110,9 +113,10 @@ export function MatchCard({ match, lostReport, foundReport, actions, headingAs =
                 <span className="min-w-0">
                   <span className="font-medium text-fg">{signal.label}</span>
                   <span className="sr-only">
-                    {signal.matched ? ': matches' : ': does not match'}
+                    {signal.matched ? t('matching.srMatches') : t('matching.srNoMatch')}
                   </span>
-                  <span className="text-fg-muted"> — {signal.detail}</span>
+                  {/* Written by the server when the pairing was scored, in English. */}
+                  <span lang="en" className="text-fg-muted"> — {signal.detail}</span>
                 </span>
               </li>
             ))}
@@ -124,8 +128,7 @@ export function MatchCard({ match, lostReport, foundReport, actions, headingAs =
             there is no handover left to verify. */}
         {isOpen && (
           <p className="rounded-control bg-accent-soft px-3 py-2 text-sm text-fg">
-            This is a suggestion, not a confirmation. A Pet Coordinator helps verify ownership
-            before any handover is arranged.
+            {t('matching.suggestionNote')}
           </p>
         )}
       </CardBody>
@@ -137,7 +140,7 @@ export function MatchCard({ match, lostReport, foundReport, actions, headingAs =
 
 function ReportSide({ report }) {
   const primaryPhoto = report.photos.find((photo) => photo.isPrimary) ?? report.photos[0]
-  const heading = report.petName ?? `${speciesLabel(report.species)} (name unknown)`
+  const heading = report.petName ?? t('common.nameUnknown', { species: speciesLabel(report.species) })
 
   return (
     <div className="flex min-w-0 flex-col gap-3">

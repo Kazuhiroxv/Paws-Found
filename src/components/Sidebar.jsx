@@ -2,6 +2,7 @@ import { useId, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '@/utils/cn'
+import { t } from '@/i18n'
 
 const linkClasses = ({ isActive }) =>
   cn(
@@ -48,7 +49,7 @@ export function Sidebar({ label, items, counts }) {
       return (
         <li key={item.to}>
           <NavLink to={item.to} end={item.end} className={linkClasses} onClick={onNavigate}>
-            <Icon size={16} aria-hidden="true" />
+            <Icon size={16} className="shrink-0" aria-hidden="true" />
             <span className="whitespace-nowrap">{item.label}</span>
             {count > 0 && <CountBadge count={count} />}
           </NavLink>
@@ -70,7 +71,7 @@ export function Sidebar({ label, items, counts }) {
         >
           <span className="flex items-center gap-2">
             <CurrentIcon size={16} className="text-brand" aria-hidden="true" />
-            <span className="sr-only">{label} section: </span>
+            <span className="sr-only">{t('shell.workspace.section', { label })}</span>
             {current.label}
           </span>
           <ChevronDown
@@ -99,7 +100,7 @@ function CountBadge({ count }) {
   return (
     <span className="ml-auto min-w-6 rounded-pill bg-surface-muted px-2 py-0.5 text-center text-xs font-medium text-fg tabular-nums">
       {count}
-      <span className="sr-only"> {count === 1 ? 'item' : 'items'}</span>
+      <span className="sr-only"> {t('shell.workspace.item', { count })}</span>
     </span>
   )
 }

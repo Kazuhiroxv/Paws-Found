@@ -22,6 +22,8 @@ import { formatDateTime } from '@/utils/date'
 import { hasCoordinates } from '@/utils/location'
 import { reveal } from '@/utils/reveal'
 import emptyQueueClear from '@/assets/empty-queue-clear.webp'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
 
 async function loadVerificationQueue() {
   const [staff, pairings] = await Promise.all([
@@ -72,25 +74,11 @@ function repliesSinceQuestion(pairings, notifications) {
   return replies
 }
 
-/** What each decision does, as the confirmation dialogs describe it. */
-const DECISIONS = {
-  confirm: {
-    title: 'Confirm this match?',
-    description:
-      'Both reports will be marked Returned, and both reporters will be notified that '
-      + 'ownership was verified. This is the end of the case. '
-      + 'Remind them to meet somewhere public, in daylight, with somebody else along.',
-    button: 'Confirm match',
-    variant: 'primary',
-  },
-  reject: {
-    title: 'Rule this pairing out?',
-    description:
-      'The pairing will be marked as not the same pet and both reporters will be notified. Each report goes back to Active — unless it has another open pairing — so the search continues.',
-    button: 'Not the same pet',
-    variant: 'danger',
-  },
-}
+/**
+ * What each decision does, as the confirmation dialogs describe it. The words
+ * are `staff.verify.decisions.<kind>`, read when the dialog opens.
+ */
+const DECISION_VARIANTS = { confirm: 'primary', reject: 'danger' }
 
 /**
  * Where a Pet Coordinator decides whether two reports are the same animal.
@@ -123,10 +111,10 @@ export function StaffVerificationPage() {
   const header = (
     <PageHeader
       icon={BadgeCheck}
-      eyebrow="Pet Coordinator"
-      title="Verification"
-      description="Compare a lost report against a found report before a handover is arranged."
-      breadcrumb={[{ label: 'Staff workspace', to: '/staff' }, { label: 'Verification' }]}
+      eyebrow={t('staff.eyebrow')}
+      title={t('nav.verification')}
+      description={t('staff.verify.description')}
+      breadcrumb={[{ label: t('shell.workspace.staff'), to: '/staff' }, { label: t('nav.verification') }]}
     />
   )
 
@@ -145,7 +133,7 @@ export function StaffVerificationPage() {
       <div className="flex flex-col gap-6">
         {header}
         <p role="alert" className="text-sm text-danger">
-          The verification queue could not be loaded: {error.message}
+          {t('staff.verify.failed', { message: errorText(error) })}
         </p>
       </div>
     )
@@ -168,7 +156,7 @@ export function StaffVerificationPage() {
         <section
           ref={decidedRef}
           tabIndex={-1}
-          aria-label="Decided just now"
+          aria-label={t('staff.verify.decidedNow')}
           className="flex scroll-mt-24 flex-col gap-3 outline-none"
         >
           {decided.map(({ match, lostReport, foundReport, outcome }) => (
@@ -180,8 +168,8 @@ export function StaffVerificationPage() {
       {waiting.length === 0 ? (
         <EmptyState
           illustration={emptyQueueClear}
-          title="Nothing waiting"
-          description="When a reporter asks for a possible match to be checked, it will appear here."
+          title={t('staff.verify.nothing')}
+          description={t('staff.verify.nothingBody')}
         />
       ) : (
         <ul className="flex flex-col gap-10">
@@ -259,14 +247,13 @@ function DecisionPanel({ match, staff, lost, found, owner, finder, replies, onDe
     >
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
         <h3 id={`decision-${match.id}`} className="text-lg font-semibold text-fg">
-          Coordinator decision
+          {t('staff.verify.decision')}
         </h3>
         <MatchStatusBadge status={match.status} className="px-2.5 py-0.5 text-xs" />
       </div>
 
       <p className="rounded-control bg-accent-soft px-3 py-2 text-sm text-fg">
-        This is a suggestion, not a confirmation. Check ownership with both people before any
-        handover is arranged.
+        {t('staff.verify.suggestion')}
       </p>
 
       <Completeness lost={lost} found={found} match={match} />
@@ -275,30 +262,30 @@ function DecisionPanel({ match, staff, lost, found, owner, finder, replies, onDe
 
       {/* Contact details: staff only. */}
       <div className="flex flex-col gap-3">
-        <h4 className="text-sm font-semibold text-fg">Coordination details</h4>
+        <h4 className="text-sm font-semibold text-fg">{t('staff.verify.details')}</h4>
         <p className="flex items-start gap-2 rounded-control border border-danger/25 bg-danger-soft px-3 py-2 text-sm font-medium text-fg">
           <Lock size={15} className="mt-0.5 shrink-0 text-danger" aria-hidden="true" />
-          Visible to staff only. Do not pass either person&apos;s details to the other.
+          {t('staff.verify.staffOnly')}
         </p>
         <ul className="grid gap-3 sm:grid-cols-2">
-          <ContactCard role="Lost report · owner" person={owner} />
-          <ContactCard role="Found report · finder" person={finder} />
+          <ContactCard role={t('staff.verify.owner')} person={owner} />
+          <ContactCard role={t('staff.verify.finder')} person={finder} />
         </ul>
       </div>
 
       <Textarea
-        label="Case note"
+        label={t('staff.verify.note')}
         value={note}
         onChange={(event) => setNote(event.target.value)}
         rows={3}
         maxLength={255}
-        placeholder="e.g. Please describe any tag or marking on the collar."
-        hint="Sent to both reporters. Required to request more information or to rule the pairing out. Optional when confirming: a note there replaces the standard handover message they receive, so say how the handover will be arranged."
+        placeholder={t('staff.verify.notePlaceholder')}
+        hint={t('staff.verify.noteHint')}
       />
 
       {actionError && (
         <p role="alert" className="text-sm text-danger">
-          That could not be saved: {actionError.message}
+          {t('ui.notSaved', { message: errorText(actionError) })}
         </p>
       )}
 
@@ -311,7 +298,7 @@ function DecisionPanel({ match, staff, lost, found, owner, finder, replies, onDe
         <div className="flex flex-col gap-2">
           <Button onClick={() => setAsking('confirm')} disabled={Boolean(busyAction)} fullWidth>
             <Check size={16} aria-hidden="true" />
-            Confirm match
+            {t('staff.verify.confirm')}
           </Button>
           <Button
             variant="secondary"
@@ -326,7 +313,7 @@ function DecisionPanel({ match, staff, lost, found, owner, finder, replies, onDe
               )
             }
           >
-            Request more information
+            {t('staff.verify.requestInfo')}
           </Button>
         </div>
         <div className="border-t border-border pt-3">
@@ -340,7 +327,7 @@ function DecisionPanel({ match, staff, lost, found, owner, finder, replies, onDe
             fullWidth
           >
             <X size={16} aria-hidden="true" />
-            Not the same pet
+            {t('myMatches.notSame')}
           </Button>
         </div>
       </div>
@@ -349,17 +336,17 @@ function DecisionPanel({ match, staff, lost, found, owner, finder, replies, onDe
           say what actually happens, because the difference between the three is
           consequence, not colour, and Confirm closes two cases for good. */}
       <dl className="-mt-1 grid gap-x-6 gap-y-1.5 text-sm text-fg-muted sm:grid-cols-[auto_1fr]">
-        <dt className="font-medium text-fg">Confirm match</dt>
-        <dd>Closes both reports as returned and tells both reporters. It cannot be undone.</dd>
-        <dt className="font-medium text-fg">Request more information</dt>
-        <dd>Keeps the case open and sends your note to both reporters.</dd>
-        <dt className="font-medium text-fg">Not the same pet</dt>
-        <dd>Rules the pairing out and sends your note to both reporters. Each report goes back to Active unless another pairing is open on it.</dd>
+        <dt className="font-medium text-fg">{t('staff.verify.confirm')}</dt>
+        <dd>{t('staff.verify.confirmMeans')}</dd>
+        <dt className="font-medium text-fg">{t('staff.verify.requestInfo')}</dt>
+        <dd>{t('staff.verify.requestMeans')}</dd>
+        <dt className="font-medium text-fg">{t('myMatches.notSame')}</dt>
+        <dd>{t('staff.verify.rejectMeans')}</dd>
       </dl>
 
       {!note.trim() && (
         <p className="-mt-2 text-sm text-fg-muted">
-          Write a case note to request more information or to rule the pairing out. Both reporters receive it.
+          {t('staff.verify.noteNeeded')}
         </p>
       )}
 
@@ -367,20 +354,20 @@ function DecisionPanel({ match, staff, lost, found, owner, finder, replies, onDe
         isOpen={Boolean(asking)}
         onClose={() => !busyAction && setAsking(null)}
         size="sm"
-        title={asking ? DECISIONS[asking].title : ''}
-        description={asking ? DECISIONS[asking].description : ''}
+        title={asking ? t(`staff.verify.decisions.${asking}.title`) : ''}
+        description={asking ? t(`staff.verify.decisions.${asking}.description`) : ''}
         footer={
           asking && (
             <>
               <Button variant="ghost" onClick={() => setAsking(null)} disabled={Boolean(busyAction)} data-autofocus>
-                Go back
+                {t('publication.goBack')}
               </Button>
               <Button
-                variant={DECISIONS[asking].variant}
+                variant={DECISION_VARIANTS[asking]}
                 isLoading={busyAction === asking}
                 onClick={() => decide(asking)}
               >
-                {DECISIONS[asking].button}
+                {t(`staff.verify.decisions.${asking}.button`)}
               </Button>
             </>
           )
@@ -394,7 +381,7 @@ function ContactCard({ role, person }) {
   return (
     <li className="flex flex-col gap-1 rounded-control border border-border bg-panel p-3 text-sm">
       <p className="text-xs font-medium tracking-wide text-fg-muted uppercase">{role}</p>
-      <p className="font-semibold text-fg">{person?.fullName ?? 'Unknown'}</p>
+      <p className="font-semibold text-fg">{person?.fullName ?? t('detail.unknown')}</p>
       <p className="flex min-w-0 items-center gap-1.5 text-fg-muted">
         <Mail size={14} className="shrink-0 text-fg-subtle" aria-hidden="true" />
         <span className="break-all">{person?.email || '—'}</span>
@@ -411,9 +398,8 @@ function ContactCard({ role, person }) {
 function DecidedStrip({ lost, found, outcome }) {
   if (outcome === 'confirm') {
     return (
-      <StatusStrip tone="success" icon={HeartHandshake} title="Match confirmed">
-        <PairingName lost={lost} found={found} />: ownership was verified and both reports are now
-        Returned. Both reporters have been notified.
+      <StatusStrip tone="success" icon={HeartHandshake} title={t('myMatches.confirmedTitle')}>
+        <PairingName lost={lost} found={found} />: {t('staff.verify.confirmedStrip')}
       </StatusStrip>
     )
   }
@@ -422,10 +408,9 @@ function DecidedStrip({ lost, found, outcome }) {
     <div role="status" className="flex items-start gap-3 rounded-card border border-border bg-surface px-4 py-3">
       <CircleX size={20} className="mt-0.5 shrink-0 text-fg-muted" aria-hidden="true" />
       <div className="flex flex-col gap-0.5">
-        <p className="font-semibold text-fg">Pairing ruled out</p>
+        <p className="font-semibold text-fg">{t('staff.verify.ruledOut')}</p>
         <p className="text-sm text-fg">
-          <PairingName lost={lost} found={found} />: marked as not the same pet. Both reporters have
-          been notified, and the reports carry on being searched.
+          <PairingName lost={lost} found={found} />: {t('staff.verify.ruledOutStrip')}
         </p>
       </div>
     </div>
@@ -466,42 +451,42 @@ function Completeness({ lost, found, match }) {
   const checks = [
     {
       ok: photoCount === 2,
-      label: 'Photographs on both reports',
+      label: t('staff.verify.checks.photos'),
       detail:
         photoCount === 2
-          ? 'Both sides can be compared by eye.'
+          ? t('staff.verify.checks.photosBoth')
           : photoCount === 1
-            ? 'Only one side has a photograph — ask the other for one.'
-            : 'Neither side has a photograph.',
+            ? t('staff.verify.checks.photosOne')
+            : t('staff.verify.checks.photosNone'),
     },
     {
       ok: bothPinned,
-      label: 'Both locations mapped',
+      label: t('staff.verify.checks.mapped'),
       detail: bothPinned
-        ? `${lost.location.city} and ${found.location.city}, both pinned.`
-        : 'At least one side gave a city but no map pin, so distance is approximate.',
+        ? t('staff.verify.checks.mappedBoth', { a: lost.location.city, b: found.location.city })
+        : t('staff.verify.checks.mappedNot'),
     },
     {
       ok: contactable === 2,
-      label: 'Both reporters reachable',
+      label: t('staff.verify.checks.reachable'),
       detail:
         contactable === 2
-          ? 'Both agreed to be contacted, at least through a coordinator.'
-          : 'One side has shared no way of being reached.',
+          ? t('staff.verify.checks.reachableBoth')
+          : t('staff.verify.checks.reachableNot'),
     },
     {
       ok: aligned >= 5,
-      label: `${aligned} of ${match.signals.length} characteristics align`,
+      label: t('matching.align', { aligned, total: match.signals.length }),
       detail:
         aligned >= 5
-          ? 'The algorithm found broad agreement across the details.'
-          : 'Fewer details agree than usual — read the comparison carefully.',
+          ? t('staff.verify.checks.alignBroad')
+          : t('staff.verify.checks.alignFew'),
     },
   ]
 
   return (
     <div className="flex flex-col gap-2.5">
-      <h4 className="text-sm font-semibold text-fg">What we can check automatically</h4>
+      <h4 className="text-sm font-semibold text-fg">{t('staff.verify.checks.title')}</h4>
 
       <ul className="flex flex-col gap-2.5">
         {checks.map((check) => (
@@ -519,7 +504,7 @@ function Completeness({ lost, found, match }) {
               <span className="text-sm font-medium text-fg">
                 {check.label}
                 {/* The word, not only the icon and its colour. */}
-                <span className="sr-only">{check.ok ? ' — fine' : ' — needs a look'}</span>
+                <span className="sr-only">{check.ok ? t('staff.verify.checks.fine') : t('staff.verify.checks.needsLook')}</span>
               </span>
               <span className="text-sm text-fg-muted">{check.detail}</span>
             </span>
@@ -528,7 +513,7 @@ function Completeness({ lost, found, match }) {
       </ul>
 
       <p className="text-sm text-fg-muted">
-        None of this proves ownership. It only says where the evidence is thin.
+        {t('staff.verify.checks.note')}
       </p>
     </div>
   )
@@ -543,7 +528,7 @@ function Replies({ replies }) {
   if (replies.length === 0) {
     return (
       <p className="rounded-control border border-border bg-sunken/70 px-3 py-2 text-sm text-fg-muted">
-        Waiting for an answer to your request for more information.
+        {t('staff.verify.awaitingAnswer')}
       </p>
     )
   }
@@ -551,12 +536,13 @@ function Replies({ replies }) {
   return (
     <div className="flex flex-col gap-2">
       <h4 className="text-sm font-semibold text-fg">
-        Information received{replies.length > 1 ? ` (${replies.length})` : ''}
+        {t('staff.verify.received')}
+        {replies.length > 1 ? ` (${replies.length})` : ''}
       </h4>
       <ul className="flex flex-col gap-2">
         {replies.map((reply) => (
           <li key={reply.id} className="rounded-control border border-brand/25 bg-brand-soft/60 px-3 py-2.5">
-            <p className="text-sm font-medium text-fg">{reply.title}</p>
+            <p lang="en" className="text-sm font-medium text-fg">{reply.title}</p>
             <p className="mt-1 text-sm whitespace-pre-line text-fg">{reply.body}</p>
             <p className="mt-1 text-xs text-fg-muted">{formatDateTime(reply.createdAt)}</p>
           </li>

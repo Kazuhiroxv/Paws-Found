@@ -10,30 +10,25 @@ import { useAsync } from '@/hooks/useAsync'
 import { matchService } from '@/services'
 import { cn } from '@/utils/cn'
 import { useRevealWhen } from '@/utils/reveal'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
 
+// Each label is `staff.matches.tabs.<id>`, read when the tabs render.
 const TABS = [
-  { id: 'open', label: 'Open', statuses: [MATCH_STATUSES.SUGGESTED] },
+  { id: 'open', statuses: [MATCH_STATUSES.SUGGESTED] },
   {
     id: 'review',
-    label: 'With a coordinator',
     statuses: [MATCH_STATUSES.VERIFICATION_REQUESTED, MATCH_STATUSES.UNDER_REVIEW],
   },
-  { id: 'confirmed', label: 'Confirmed', statuses: [MATCH_STATUSES.CONFIRMED] },
+  { id: 'confirmed', statuses: [MATCH_STATUSES.CONFIRMED] },
   {
     id: 'closed',
-    label: 'Ruled out',
     statuses: [MATCH_STATUSES.REJECTED, MATCH_STATUSES.DISMISSED],
   },
 ]
 
 const tabOf = (match) => TABS.find((tab) => tab.statuses.includes(match.status))?.id
 
-const EMPTY = {
-  open: ['No open pairings', 'New possible matches appear here until a reporter asks for them to be verified.'],
-  review: ['Nothing with a coordinator', 'Pairings a reporter has asked to be verified wait here until one is decided.'],
-  confirmed: ['No confirmed matches yet', 'Pairings confirmed in Verification — pets back home — are kept here.'],
-  closed: ['Nothing ruled out', 'Pairings a coordinator or a reporter ruled out are kept here for the record.'],
-}
 
 const loadAllMatches = () => matchService.getMatchesWithReports()
 
@@ -68,10 +63,10 @@ export function StaffMatchesPage() {
   const header = (
     <PageHeader
       icon={Heart}
-      eyebrow="Pet Coordinator"
-      title="Match queue"
-      description="Possible matches raised between lost and found reports, highest compatibility first."
-      breadcrumb={[{ label: 'Staff workspace', to: '/staff' }, { label: 'Match queue' }]}
+      eyebrow={t('staff.eyebrow')}
+      title={t('staff.matches.title')}
+      description={t('staff.matches.description')}
+      breadcrumb={[{ label: t('shell.workspace.staff'), to: '/staff' }, { label: t('staff.matches.title') }]}
     />
   )
 
@@ -89,7 +84,7 @@ export function StaffMatchesPage() {
       <div className="flex flex-col gap-6">
         {header}
         <p role="alert" className="text-sm text-danger">
-          The match queue could not be loaded: {error.message}
+          {t('staff.matches.failed', { message: errorText(error) })}
         </p>
       </div>
     )
@@ -111,21 +106,25 @@ export function StaffMatchesPage() {
 
       {reopened > 0 && (
         <div ref={reopenedRef} tabIndex={-1} role="status" className="scroll-mt-24 outline-none">
-          <StatusStrip tone="brand" icon={RotateCcw} title="Pairing reopened for review">
-            It is back under “With a coordinator”, and both reporters have been told why.
+          <StatusStrip tone="brand" icon={RotateCcw} title={t('staff.matches.reopened')}>
+            {t('staff.matches.reopenedBody')}
           </StatusStrip>
         </div>
       )}
 
       <StageTabs
-        tabs={TABS.map((item) => ({ ...item, count: countFor(item.statuses) }))}
+        tabs={TABS.map((item) => ({ ...item, label: t(`staff.matches.tabs.${item.id}`), count: countFor(item.statuses) }))}
         selected={tab}
         onSelect={setChosenTab}
       />
 
       <div id="match-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
         {visible.length === 0 ? (
-          <EmptyState icon={Heart} title={EMPTY[tab][0]} description={EMPTY[tab][1]} />
+          <EmptyState
+            icon={Heart}
+            title={t(`staff.matches.empty.${tab}`)}
+            description={t(`staff.matches.empty.${tab}Body`)}
+          />
         ) : (
           <ul className="flex flex-col gap-6">
             {visible.map(({ match, lostReport, foundReport }) => (
@@ -157,10 +156,10 @@ function QueueOutcome({ match, lost, found, onReopened }) {
   const reportLinks = (
     <div className="flex flex-wrap gap-2">
       <Button as={Link} to={`/pet/${lost.id}`} variant="secondary" size="sm">
-        View lost report
+        {t('staff.matches.viewLost')}
       </Button>
       <Button as={Link} to={`/pet/${found.id}`} variant="secondary" size="sm">
-        View found report
+        {t('staff.matches.viewFound')}
       </Button>
     </div>
   )
@@ -171,11 +170,10 @@ function QueueOutcome({ match, lost, found, onReopened }) {
       return (
         <div className="flex flex-col gap-3">
           <p className="rounded-control bg-accent-soft px-3 py-2 text-sm text-fg">
-            This is a suggestion, not a confirmation. Verify ownership before any handover is
-            arranged.
+            {t('staff.matches.suggestion')}
           </p>
           <Button as={Link} to={`/staff/verification#match-${match.id}`} className="self-start">
-            Review this pairing
+            {t('staff.matches.reviewPairing')}
             <ArrowRight size={16} aria-hidden="true" />
           </Button>
         </div>
@@ -183,8 +181,8 @@ function QueueOutcome({ match, lost, found, onReopened }) {
     case MATCH_STATUSES.CONFIRMED:
       return (
         <div className="flex flex-col gap-3">
-          <StatusStrip tone="success" icon={HeartHandshake} title="Match confirmed">
-            Ownership was verified and both reports were marked returned.
+          <StatusStrip tone="success" icon={HeartHandshake} title={t('myMatches.confirmedTitle')}>
+            {t('staff.matches.confirmedBody')}
           </StatusStrip>
           <ReopenAction match={match} onReopened={onReopened} />
         </div>
@@ -196,14 +194,14 @@ function QueueOutcome({ match, lost, found, onReopened }) {
           <CircleX size={20} className="mt-0.5 shrink-0 text-fg-muted" aria-hidden="true" />
           <div className="flex flex-col gap-0.5">
             <p className="font-semibold text-fg">
-              {wasWithdrawn(match.status, lost, found) ? 'Withdrawn' : 'Ruled out'}
+              {wasWithdrawn(match.status, lost, found) ? t('staff.matches.withdrawn') : t('staff.matches.ruledOut')}
             </p>
             <p className="text-sm text-fg">
               {match.status === MATCH_STATUSES.REJECTED
-                ? 'A coordinator decided these are not the same pet. Both reports carry on being searched and matched.'
+                ? t('staff.matches.rejectedBody')
                 : wasWithdrawn(match.status, lost, found)
-                  ? 'One of the reports was marked returned or closed, so this pairing is no longer open. Nobody ruled it out.'
-                  : 'One of the reporters said this is not their pet. Both reports carry on being searched and matched.'}
+                  ? t('staff.matches.withdrawnBody')
+                  : t('staff.matches.dismissedBody')}
             </p>
             {/* A rejection, or a reporter's "Not my pet" pressed by mistake,
                 can be reopened. A withdrawal cannot: its case has ended. */}
@@ -219,9 +217,8 @@ function QueueOutcome({ match, lost, found, onReopened }) {
       // Suggested: nobody has asked for it to be verified yet.
       return (
         <div className="flex flex-col gap-3">
-          <StatusStrip tone="info" icon={Hourglass} title="Waiting on a reporter">
-            Both reporters have been told about this pairing. It comes to Verification when either
-            asks for it to be checked.
+          <StatusStrip tone="info" icon={Hourglass} title={t('staff.matches.waiting')}>
+            {t('staff.matches.waitingBody')}
           </StatusStrip>
           {reportLinks}
         </div>
@@ -266,31 +263,26 @@ function ReopenAction({ match, onReopened }) {
     <>
       <Button variant="secondary" size="sm" onClick={() => setIsOpen(true)} className="self-start">
         <RotateCcw size={15} aria-hidden="true" />
-        Reopen for review
+        {t('staff.matches.reopen')}
       </Button>
       <ConfirmDialog
         isOpen={isOpen}
         onCancel={close}
         onConfirm={reopen}
-        title="Reopen this pairing for review?"
-        confirmLabel="Reopen for review"
+        title={t('staff.matches.reopenTitle')}
+        confirmLabel={t('staff.matches.reopen')}
         tone="primary"
         isBusy={isBusy}
         confirmDisabled={reason.trim() === ''}
         error={error}
       >
         <p>
-          {confirmed
-            ? 'Both reports come out of Returned and go back to Possible Match, and the pairing returns to Verification.'
-            : 'Both reports go back to Possible Match, and the pairing returns to Verification.'}{' '}
-          Both reporters are told, with the reason below.
+          {confirmed ? t('staff.matches.reopenConfirmed') : t('staff.matches.reopenRejected')}{' '}
+          {t('staff.matches.reopenTold')}
         </p>
-        <p className="text-fg-muted">
-          It cannot be reopened if either report has been closed since, or has changed so that this
-          comparison no longer describes it.
-        </p>
+        <p className="text-fg-muted">{t('staff.matches.reopenLimit')}</p>
         <Textarea
-          label="Why is it being reopened?"
+          label={t('staff.matches.reopenWhy')}
           value={reason}
           onChange={(event) => setReason(event.target.value)}
           maxLength={255}
@@ -305,7 +297,7 @@ function ReopenAction({ match, onReopened }) {
 /** Stage tabs with their counts, in the same pill style as the owner's page. */
 function StageTabs({ tabs, selected, onSelect }) {
   return (
-    <div className="flex flex-wrap gap-2" role="tablist" aria-label="Pairing stage">
+    <div className="flex flex-wrap gap-2" role="tablist" aria-label={t('staff.matches.stage')}>
       {tabs.map((item) => {
         const isSelected = selected === item.id
 

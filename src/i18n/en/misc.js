@@ -1,0 +1,71 @@
+/** The report pages' introductions, the system pages, and the API's sentences. */
+export const reportPage = {
+  lostBadge: 'Report lost',
+  lostTitleBefore: 'Report a',
+  lostWord: 'lost',
+  foundBadge: 'Report found',
+  foundTitleBefore: 'Report a',
+  foundWord: 'found',
+  titleAfter: 'pet',
+  lostLead: 'Help the community know what to look for.',
+  lostBody: 'We’ll compare these details with pets found nearby. It takes a few minutes, and you can edit anything afterwards.',
+  lostUrgent: 'The first hours matter most. File now and add details later.',
+  foundLead: 'Give the owner the best chance of recognising them.',
+  foundBody:
+    'We’ll compare these details with pets reported missing nearby. It takes a few minutes, and you can edit anything afterwards.',
+  foundSafe: 'Keep the pet safe where you are. A coordinator verifies the owner before any handover.',
+  noAddress: 'Exact addresses are never shown publicly.',
+}
+
+export const system = {
+  notFound: 'Page not found',
+  notFoundBody: 'The page you were looking for does not exist, or it may have been moved.',
+  nothingHere: 'Nothing here',
+  checkAddress: 'Check the address, or start from the homepage.',
+  home: 'Go to the homepage',
+  unauthorized: 'Your account does not have permission to open that page.',
+  otherRole: 'This area is for a different role',
+  otherRoleBody:
+    'Community members, Pet Coordinators and administrators each see a different workspace, and this one is not yours. If you were in here a moment ago, an administrator has changed what this account is allowed to reach — the change applies everywhere the account is signed in, straight away.',
+  myAccount: 'Go to my account',
+}
+
+/** The API's sentences people meet in the workflow (src/i18n/apiErrors.js). English as the server writes them. */
+export const api = {
+  signIn: 'You need to be signed in to do that.',
+  noAccess: 'Your account does not have access to that.',
+  levelLacks: 'Your administrator level does not include that.',
+  levelAccounts: 'Your administrator level does not include managing accounts.',
+  emailPassword: 'Enter your email address and password.',
+  suspended: 'This account has been suspended by an administrator.',
+  verify: 'Check your email and follow the verification link before signing in.',
+  locked: 'This account is locked after 3 failed sign-in attempts. An administrator has to unlock it before you can sign in again.',
+  checkFields: 'Please check the highlighted fields.',
+  emailTaken: 'An account already uses that email address.',
+  linkInvalid: 'That link is no longer valid. Ask for a new one.',
+  tooMany: 'Too many attempts. Please try again later.',
+  csrf: 'That request could not be verified. Please try again.',
+  captcha: 'That verification could not be confirmed. Please try again.',
+  server: 'The server could not complete that request.',
+  reportMissing: 'That report does not exist.',
+  matchMissing: 'That match does not exist.',
+  draftMissing: 'That draft does not exist.',
+  accountMissing: 'That account does not exist.',
+  reportsChanged: 'One of these reports changed while this page was open.',
+  reportChanged: 'This report changed while the page was open.',
+  pairingDecided: 'That pairing has already been decided.',
+  pairingDecidedElsewhere: 'That pairing was decided by somebody else while this page was open.',
+  ownReview: 'You cannot review a report you filed yourself. Another Pet Coordinator has to.',
+  coordinatorOnly:
+    'Only a Pet Coordinator can approve or reject a report before it is published. Administrators moderate published reports.',
+  coordinatorReview: 'Only a Pet Coordinator can review a report.',
+  adminRemove: 'Only an administrator can remove a published report.',
+  ownAccount: 'You cannot change your own role, administrator level or account status.',
+  lastSuperAdmin: 'This is the last active Super Administrator. Make another account a Super Administrator first.',
+  nothingToChange: 'Nothing to change.',
+  resent: 'If an unverified account uses that email address, a new verification link has been sent.',
+  resetSent: 'If an account uses that email address, password reset instructions have been sent.',
+  unreadable: 'The server sent a response that could not be read.',
+  failed: 'The request failed.',
+  offline: 'The server could not be reached. Check your connection and try again.',
+}

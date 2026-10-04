@@ -1,50 +1,32 @@
 import { ShieldAlert, X } from 'lucide-react'
 import { Container } from '@/components/ui'
 import { PROJECT_ADMINISTRATOR_NAME, PROJECT_CONTACT_EMAIL, ROLE_LABELS } from '@/constants'
+import { hasKey, t } from '@/i18n'
 
 /**
  * What to say when the session ended, by the reason the SERVER gave
  * (`session_ended` from /auth/me; api/helpers.php). Never guessed here: a
- * browser that was not told why says only that it is signed out.
+ * browser that was not told why says only that it is signed out. The words
+ * are `shell.session.<reason>` and, where there is more to say,
+ * `shell.session.<reason>_body`, in English or Filipino (Correction 7).
  */
-const SIGNED_OUT = {
-  logout: ['You have been signed out.', null],
-  idle_timeout: [
-    'Your session expired due to inactivity. Please sign in again.',
-    'Nothing was done on Paws&Found for a while, so the session was ended to protect the account.',
-  ],
-  absolute_timeout: [
-    'Your session has ended. Please sign in again.',
-    'For security, a session lasts a fixed time however active it is.',
-  ],
-  new_privileged_login: [
-    'Your session ended because this account was signed in on another device.',
-    'A Pet Coordinator or Administrator account stays signed in on one device at a time. If that was not you, sign in again and tell the Paws&Found Administrator.',
-  ],
-  password_reset: [
-    'Your session ended because the account password was changed.',
-    'Every device signed in to this account was signed out. Sign in with the new password.',
-  ],
-  role_promoted: [
-    "Your session ended because this account's access level changed. Please sign in again.",
-    null,
-  ],
-  privilege_changed: [
-    "Your session ended because this account's administrator privileges changed. Please sign in again.",
-    'A Super Administrator changed what this account may do in Administration. Signing in again shows the pages it now has.',
-  ],
-  account_locked: [
-    'Your account is locked.',
-    'It was locked after repeated failed sign-in attempts. An administrator must unlock it before you can sign in again.',
-  ],
-  account_suspended: [
-    'Your account has been suspended.',
-    'If you believe this was a mistake or need help restoring access, contact the Paws&Found Administrator.',
-  ],
-}
+const REASONS = [
+  'logout',
+  'idle_timeout',
+  'absolute_timeout',
+  'new_privileged_login',
+  'password_reset',
+  'role_promoted',
+  'privilege_changed',
+  'account_locked',
+  'account_suspended',
+]
 
-/** Any other ending, or none given: another tab signed out, or the server did not say. */
-const SIGNED_OUT_UNKNOWN = ['You have been signed out.', 'This browser is no longer signed in to Paws&Found.']
+function signedOutWords(reason) {
+  const key = REASONS.includes(reason) ? reason : 'unknown'
+  const body = `shell.session.${key}_body`
+  return [t(`shell.session.${key}`), hasKey(body) ? t(body) : null]
+}
 
 /**
  * Says out loud that the session ended or the account changed underneath the
@@ -66,12 +48,13 @@ export function SessionNotice({ notice, onDismiss }) {
 
   const [title, body] =
     notice.kind === 'signed-out'
-      ? (SIGNED_OUT[notice.reason] ?? SIGNED_OUT_UNKNOWN)
+      ? signedOutWords(notice.reason)
       : [
-          'Your access level changed',
-          `An administrator changed this account from ${ROLE_LABELS[notice.from] ?? notice.from} to ${
-            ROLE_LABELS[notice.to] ?? notice.to
-          }. The pages available to you have changed to match.`,
+          t('shell.session.roleChangedTitle'),
+          t('shell.session.roleChangedBody', {
+            from: ROLE_LABELS[notice.from] ?? notice.from,
+            to: ROLE_LABELS[notice.to] ?? notice.to,
+          }),
         ]
   const contact = ['account_locked', 'account_suspended'].includes(notice.reason)
 
@@ -99,7 +82,7 @@ export function SessionNotice({ notice, onDismiss }) {
           className="-m-1 shrink-0 rounded-control p-1 text-fg-muted hover:bg-panel hover:text-fg focus-visible:bg-panel focus-visible:text-fg"
         >
           <X size={18} aria-hidden="true" />
-          <span className="sr-only">Dismiss this message</span>
+          <span className="sr-only">{t('shell.session.dismiss')}</span>
         </button>
       </Container>
     </div>

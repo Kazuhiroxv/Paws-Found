@@ -7,6 +7,7 @@ import { ReportForm } from '@/components/report-form/ReportForm'
 import { useAsync } from '@/hooks/useAsync'
 import { REPORT_STATUS_LABELS, REPORT_STATUSES } from '@/constants'
 import { petService, userService } from '@/services'
+import { t } from '@/i18n'
 
 /** The two states a report does not come back from. Mirrors REPORT_TRANSITIONS
  *  in api/reports.php, which is what actually enforces it. */
@@ -34,7 +35,7 @@ export function EditReportPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="Edit report" />
+        <PageHeader title={t('editReport.title')} />
         <LoadingSkeleton lines={6} />
       </div>
     )
@@ -43,14 +44,14 @@ export function EditReportPage() {
   if (error) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="Report not found" />
+        <PageHeader title={t('detail.notFound')} />
         <EmptyState
           icon={Lock}
-          title="This report does not exist"
-          description="It may have been removed, or the address may be wrong."
+          title={t('detail.missing')}
+          description={t('detail.missingBody')}
           action={
             <Button as={Link} to="/dashboard/reports" variant="secondary">
-              Back to my reports
+              {t('editReport.backToMine')}
             </Button>
           }
         />
@@ -65,14 +66,14 @@ export function EditReportPage() {
   if (report.reporterId !== user?.id) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="No access" />
+        <PageHeader title={t('shell.access.title')} />
         <EmptyState
           icon={Lock}
-          title="This is not your report"
-          description="Only the person who filed a report can edit it. You can still view it and, if something is wrong with it, report the listing."
+          title={t('editReport.notYours')}
+          description={t('editReport.notYoursBody')}
           action={
             <Button as={Link} to={`/pet/${report.id}`} variant="secondary">
-              View the report
+              {t('editReport.view')}
             </Button>
           }
         />
@@ -86,18 +87,18 @@ export function EditReportPage() {
   if (report.status === REPORT_STATUSES.POSSIBLE_MATCH) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="Editing is paused" />
+        <PageHeader title={t('editReport.paused')} />
         <EmptyState
           icon={Lock}
-          title="This report has an open possible match"
-          description="Review or resolve the match before editing the report details. Its score and reasons describe the report as it is now, and changing the details underneath a pairing being checked would make them wrong. Once no match is open, the report is Active again and can be edited."
+          title={t('editReport.openMatch')}
+          description={t('editReport.openMatchBody')}
           action={
             <div className="flex flex-wrap items-center justify-center gap-3">
               <Button as={Link} to="/dashboard/matches">
-                Review the match
+                {t('editReport.reviewMatch')}
               </Button>
               <Button as={Link} to={`/pet/${report.id}`} variant="secondary">
-                View the report
+                {t('editReport.view')}
               </Button>
             </div>
           }
@@ -114,18 +115,18 @@ export function EditReportPage() {
 
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="This case is finished" />
+        <PageHeader title={t('editReport.finished')} />
         <EmptyState
           icon={Lock}
-          title={`This report shows “${word}”`}
-          description="A finished report keeps the details it had when it was decided, so the case history beside it still describes what happened. If something about it is wrong, a Pet Coordinator can look at it — or file a new report if the pet is missing again."
+          title={t('editReport.shows', { status: word })}
+          description={t('editReport.finishedBody')}
           action={
             <div className="flex flex-wrap items-center justify-center gap-3">
               <Button as={Link} to={`/pet/${report.id}`} variant="secondary">
-                View the report
+                {t('editReport.view')}
               </Button>
               <Button as={Link} to="/dashboard/reports" variant="ghost">
-                Back to my reports
+                {t('editReport.backToMine')}
               </Button>
             </div>
           }
@@ -134,19 +135,19 @@ export function EditReportPage() {
     )
   }
 
-  const heading = report.petName ?? 'Found pet report'
+  const heading = report.petName ?? t('editReport.foundReport')
 
   return (
     // The same width as the report pages, because it is the same wizard; the
     // narrow form width left its fields about 300px wide.
     <Container width="page" className="flex flex-col gap-6 px-0 sm:px-0 lg:px-0">
       <PageHeader
-        title={`Edit ${heading}`}
-        description="Changes appear on the public report straight away."
+        title={t('editReport.editName', { name: heading })}
+        description={t('editReport.description')}
         breadcrumb={[
-          { label: 'My dashboard', to: '/dashboard' },
-          { label: 'My reports', to: '/dashboard/reports' },
-          { label: 'Edit' },
+          { label: t('dashboard.title'), to: '/dashboard' },
+          { label: t('myReports.title'), to: '/dashboard/reports' },
+          { label: t('common.edit') },
         ]}
       />
       <ReportForm report={report} />

@@ -9,6 +9,8 @@ import { PROJECT_ADMINISTRATOR_NAME, PROJECT_CONTACT_EMAIL, ROLES, ROLE_LABELS }
 import { useAsync } from '@/hooks/useAsync'
 import { userService } from '@/services'
 import { destinationAfterSignIn } from '@/constants/navigation'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
 
 const loadDemoAccounts = () => userService.getDemoAccounts()
 
@@ -95,11 +97,11 @@ export function LoginPage({ onSignedIn, onDemoSignIn }) {
 
   return (
     <AuthShell>
-      <PageHeader title="Sign in" description="Access your reports, matches and notifications." />
+      <PageHeader title={t('auth.login.title')} description={t('auth.login.description')} />
 
       {returnTo && (
         <p className="rounded-control border border-border bg-accent-soft px-3 py-2 text-sm text-fg">
-          Please sign in to continue.
+          {t('auth.login.continue')}
         </p>
       )}
 
@@ -109,7 +111,7 @@ export function LoginPage({ onSignedIn, onDemoSignIn }) {
             <RequiredNote className="text-sm text-fg-muted" />
 
             <Input
-              label="Email address"
+              label={t('auth.email')}
               type="email"
               autoComplete="email"
               placeholder="you@example.com"
@@ -118,7 +120,7 @@ export function LoginPage({ onSignedIn, onDemoSignIn }) {
               required
             />
             <Input
-              label="Password"
+              label={t('auth.password')}
               type="password"
               autoComplete="current-password"
               value={form.password}
@@ -131,10 +133,9 @@ export function LoginPage({ onSignedIn, onDemoSignIn }) {
             <div className="flex flex-wrap items-center gap-3">
               {needsVerification && (
                 <div className="flex flex-col gap-2 rounded-control border border-border bg-sunken/70 p-3">
-                  <p className="text-sm font-medium text-fg">Email not verified</p>
+                  <p className="text-sm font-medium text-fg">{t('auth.login.notVerified')}</p>
                   <p className="text-sm text-fg-muted">
-                    Follow the link we sent when you registered. If it has expired or never
-                    arrived, ask for another.
+                    {t('auth.login.notVerifiedBody')}
                   </p>
                   <div className="self-start">
                     <ResendVerification email={form.email.trim()} />
@@ -144,25 +145,25 @@ export function LoginPage({ onSignedIn, onDemoSignIn }) {
 
               <p className="-mt-1 text-sm">
                 <Link to="/forgot-password" className="text-brand hover:underline">
-                  Forgot your password?
+                  {t('auth.login.forgot')}
                 </Link>
               </p>
 
               <Button type="submit" isLoading={isSubmitting} disabled={isLocked}>
-                {isLocked ? 'Account locked' : isSubmitting ? 'Signing in…' : 'Sign in'}
+                {isLocked ? t('auth.login.locked') : isSubmitting ? t('auth.login.signingIn') : t('auth.login.title')}
               </Button>
               {/* A marked way out. Somebody who arrived here and changed
                   their mind had only the browser's Back button, which is the
                   first thing a cautious person looks for and does not find. */}
               <Button as={Link} to="/" variant="ghost" disabled={isSubmitting}>
-                Cancel
+                {t('common.cancel')}
               </Button>
             </div>
 
             <p className="text-sm text-fg-muted">
-              No account yet?{' '}
+              {t('auth.login.noAccount')}{' '}
               <Link to="/register" className="text-brand underline">
-                Create one
+                {t('auth.login.createOne')}
               </Link>
               .
             </p>
@@ -173,6 +174,7 @@ export function LoginPage({ onSignedIn, onDemoSignIn }) {
       {/* Development scaffolding. Removed from the production bundle rather
           than hidden: these buttons sign in without a password, which must not
           reach a deployed site. */}
+      {/* i18n-ignore-start: development-only, not in the production build. */}
       {import.meta.env.DEV && (
         <Card>
           <CardBody className="flex flex-col gap-3">
@@ -201,6 +203,7 @@ export function LoginPage({ onSignedIn, onDemoSignIn }) {
           </CardBody>
         </Card>
       )}
+      {/* i18n-ignore-end */}
     </AuthShell>
   )
 }
@@ -238,11 +241,8 @@ function SignInProblem({ error }) {
       >
         <ShieldAlert size={18} className="mt-0.5 shrink-0 text-danger-hover" aria-hidden="true" />
         <div className="flex flex-col gap-1 text-sm">
-          <p className="font-medium text-danger-hover">Your account has been suspended.</p>
-          <p className="text-fg">
-            If you believe this was a mistake or need help restoring access, contact the
-            Paws&amp;Found Administrator.
-          </p>
+          <p className="font-medium text-danger-hover">{t('shell.session.account_suspended')}</p>
+          <p className="text-fg">{t('shell.session.account_suspended_body')}</p>
           <AdministratorContact subject="Suspended Paws&Found account" />
         </div>
       </div>
@@ -257,12 +257,8 @@ function SignInProblem({ error }) {
       >
         <Lock size={18} className="mt-0.5 shrink-0 text-danger-hover" aria-hidden="true" />
         <div className="flex flex-col gap-1 text-sm">
-          <p className="font-medium text-danger-hover">Your account is locked.</p>
-          <p className="text-fg">
-            It was locked after {MAX_ATTEMPTS} failed sign-in attempts in a row. An administrator
-            must unlock it before you can sign in again; resetting the password does not unlock
-            it.
-          </p>
+          <p className="font-medium text-danger-hover">{t('shell.session.account_locked')}</p>
+          <p className="text-fg">{t('auth.login.lockedBody', { max: MAX_ATTEMPTS })}</p>
           <AdministratorContact subject="Locked Paws&Found account" />
         </div>
       </div>
@@ -279,11 +275,13 @@ function SignInProblem({ error }) {
       >
         <ShieldAlert size={18} className="mt-0.5 shrink-0 text-lost" aria-hidden="true" />
         <div className="flex flex-col gap-2 text-sm">
-          <p className="text-fg">{error.message}</p>
+          {/* The server's sentence, said in the language showing: it is one
+              of two, chosen by how many attempts remain. */}
+          <p className="text-fg">{t('auth.login.mismatch', { count: remaining })}</p>
 
           <p className="flex items-center gap-2 text-fg-muted">
             <span>
-              Attempt {used} of {MAX_ATTEMPTS}
+              {t('auth.login.attempt', { used, max: MAX_ATTEMPTS })}
             </span>
             <span className="flex gap-1" aria-hidden="true">
               {Array.from({ length: MAX_ATTEMPTS }, (_, index) => (
@@ -305,7 +303,7 @@ function SignInProblem({ error }) {
 
   return (
     <p role="alert" className="text-sm text-danger">
-      {error.message}
+      {errorText(error)}
     </p>
   )
 }
@@ -322,9 +320,9 @@ function AdministratorContact({ subject }) {
   return (
     <div className="mt-1 flex flex-col gap-3">
       <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-0.5">
-        <dt className="text-fg-muted">Administrator</dt>
+        <dt className="text-fg-muted">{t('labels.role.admin')}</dt>
         <dd className="font-medium text-fg">{PROJECT_ADMINISTRATOR_NAME}</dd>
-        <dt className="text-fg-muted">Contact</dt>
+        <dt className="text-fg-muted">{t('auth.login.contact')}</dt>
         <dd>
           <a href={mailto} className="font-medium break-all text-brand hover:underline">
             {PROJECT_CONTACT_EMAIL}
@@ -333,10 +331,10 @@ function AdministratorContact({ subject }) {
       </dl>
       <div className="flex flex-wrap gap-2">
         <Button as="a" href={mailto} size="sm">
-          Contact administrator
+          {t('auth.login.contactAdmin')}
         </Button>
         <Button as={Link} to="/explore" variant="secondary" size="sm">
-          Continue browsing
+          {t('auth.login.keepBrowsing')}
         </Button>
       </div>
     </div>

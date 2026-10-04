@@ -1,0 +1,23 @@
+/** A report list on paper, or saved as PDF (Correction 7). */
+export default {
+  button: 'Print / Save as PDF',
+  failed: 'The list could not be prepared for printing: {message}',
+  exploreTitle: 'Lost and found reports',
+  adminTitle: 'Report records',
+  staffTitle: 'Report queue',
+  printed: 'Printed {date}',
+  filters: 'Filters applied:',
+  noFilters: 'none — every report in the list',
+  sortedBy: 'Sorted: {sort}',
+  count: { one: '{count} report', other: '{count} reports' },
+  reference: 'Ref.',
+  type: 'Type',
+  pet: 'Pet name',
+  species: 'Species',
+  breed: 'Breed',
+  colour: 'Colour',
+  incident: 'Incident date',
+  publication: 'Publication',
+  status: 'Case status',
+  filed: 'Filed',
+}

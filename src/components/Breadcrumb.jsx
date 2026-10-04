@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
+import { t } from '@/i18n'
 
 /**
  * Trail of links back up to the current page.
@@ -14,7 +15,7 @@ export function Breadcrumb({ items }) {
   if (!items || items.length === 0) return null
 
   return (
-    <nav aria-label="Breadcrumb">
+    <nav aria-label={t('ui.breadcrumb')}>
       <ol className="flex flex-wrap items-center gap-1 text-sm text-fg-muted">
         {items.map((item, index) => {
           const isLast = index === items.length - 1

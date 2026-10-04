@@ -9,13 +9,15 @@ import { NavDropdown, NavDropdownItem } from './NavDropdown'
 import { ROLES } from '@/constants'
 import { PUBLIC_NAV, WORKSPACE_BY_ROLE } from '@/constants/navigation'
 import { cn } from '@/utils/cn'
+import { t } from '@/i18n'
+import { LanguageSwitcher } from './LanguageSwitcher'
 
 /**
  * The first word of a name, for the header. The fixed-width trigger used to
  * carry the whole name and cut "Kyle Michael V. Austria" to "Kyle Michael
  * Aust…", which reads as a bug. The full name is one click away in the menu.
  */
-const firstName = (fullName) => String(fullName ?? '').trim().split(/\s+/)[0] || 'Account'
+const firstName = (fullName) => String(fullName ?? '').trim().split(/\s+/)[0] || t('shell.navbar.account')
 
 /**
  * Profile is a customer page (`/dashboard/profile` is guarded for the user
@@ -26,13 +28,13 @@ const PROFILE_PATH = '/dashboard/profile'
 
 const linkClasses = ({ isActive }) =>
   cn(
-    'rounded-control px-3 py-2 text-[0.9375rem] font-medium transition-colors',
+    'rounded-control px-3 py-2 text-[0.9375rem] font-medium whitespace-nowrap transition-colors',
     isActive ? 'bg-brand-soft text-brand-hover' : 'text-fg-muted hover:bg-surface-muted hover:text-fg',
   )
 
 /** The "Report" trigger, styled to sit level with the plain links beside it. */
 const triggerClasses =
-  'flex items-center gap-1 rounded-control px-3 py-2 text-[0.9375rem] font-medium text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg'
+  'flex items-center gap-1 rounded-control px-3 py-2 text-[0.9375rem] font-medium whitespace-nowrap text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg'
 
 /**
  * Top navigation.
@@ -126,8 +128,11 @@ export function Navbar({ role, onRoleChange, onSignOut, user }) {
         {/* 3 and 4 sit together on the right, behind a divider: the public
             links answer "where can I go", these answer "who am I", and without
             a break between them the whole row reads as one list. */}
-        <div className="ml-auto hidden items-center gap-4 xl:flex">
+        <div className="ml-auto hidden items-center gap-3 xl:flex">
           <span className="h-7 w-px bg-border" aria-hidden="true" />
+          {/* English or Filipino (Correction 7), before the account: it is a
+              setting of this browser, there whether or not anybody signed in. */}
+          <LanguageSwitcher compact />
           {/* 3. The role's own workspace — a destination, not a sixth link.
               A fixed width, and a fixed width on the account menu beside it, so
               "My Dashboard", "Staff Workspace" and "Administration" all start
@@ -139,7 +144,7 @@ export function Navbar({ role, onRoleChange, onSignOut, user }) {
               to={workspace.to}
               className={({ isActive }) =>
                 cn(
-                  'inline-flex w-36 justify-center rounded-control border px-3 py-1.5 text-[0.9375rem] font-medium whitespace-nowrap transition-colors',
+                  'inline-flex min-w-32 justify-center rounded-control border px-3 py-1.5 text-[0.9375rem] font-medium whitespace-nowrap transition-colors',
                   isActive
                     ? 'border-brand-soft bg-brand-soft text-brand-hover'
                     : 'border-border-strong text-fg hover:bg-surface-muted',
@@ -159,10 +164,10 @@ export function Navbar({ role, onRoleChange, onSignOut, user }) {
                 <span className="flex min-w-0 items-center gap-2">
                   <Avatar name={user.fullName} size="sm" />
                   <span className="min-w-0 truncate">{firstName(user.fullName)}</span>
-                  <span className="sr-only">, account menu</span>
+                  <span className="sr-only">{t('shell.navbar.accountMenu')}</span>
                 </span>
               }
-              triggerClassName="flex w-44 items-center justify-between gap-1.5 rounded-control border border-transparent px-2 py-1 text-left text-[0.9375rem] font-medium text-fg transition-colors hover:bg-surface-muted"
+              triggerClassName="flex w-40 items-center justify-between gap-1.5 rounded-control border border-transparent px-2 py-1 text-left text-[0.9375rem] font-medium text-fg transition-colors hover:bg-surface-muted"
             >
               {(close) => (
                 <>
@@ -177,7 +182,7 @@ export function Navbar({ role, onRoleChange, onSignOut, user }) {
                   {role === ROLES.USER && (
                     <NavDropdownItem as={Link} to={PROFILE_PATH} onClick={close}>
                       <UserRound size={15} aria-hidden="true" />
-                      Profile &amp; account security
+                      {t('shell.navbar.profileSecurity')}
                     </NavDropdownItem>
                   )}
                   <NavDropdownItem
@@ -189,14 +194,14 @@ export function Navbar({ role, onRoleChange, onSignOut, user }) {
                     }}
                   >
                     <LogOut size={15} aria-hidden="true" />
-                    Sign out
+                    {t('shell.navbar.signOut')}
                   </NavDropdownItem>
                 </>
               )}
             </NavDropdown>
           ) : (
             <Button as={Link} to="/login" size="sm" variant="secondary">
-              Sign in
+              {t('shell.navbar.signIn')}
             </Button>
           )}
 
@@ -208,7 +213,9 @@ export function Navbar({ role, onRoleChange, onSignOut, user }) {
             <>
               <span className="h-6 w-px bg-border" aria-hidden="true" />
               <div className="flex items-center gap-2">
-                <span className="text-xs text-fg-muted">Demo:</span>
+                {/* Read aloud everywhere; drawn only where the row has room
+                    for it (development scaffolding, see above). */}
+                <span className="sr-only text-xs text-fg-muted 2xl:not-sr-only">{t('shell.navbar.demo')}</span>
                 <DemoRoleSelector role={role} onRoleChange={onRoleChange} hideLabel />
               </div>
             </>
@@ -223,7 +230,7 @@ export function Navbar({ role, onRoleChange, onSignOut, user }) {
           className="ml-auto rounded-control p-2.5 text-fg hover:bg-surface-muted xl:hidden"
         >
           {isMenuOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
-          <span className="sr-only">{isMenuOpen ? 'Close menu' : 'Open menu'}</span>
+          <span className="sr-only">{isMenuOpen ? t('shell.navbar.closeMenu') : t('shell.navbar.openMenu')}</span>
         </button>
       </Container>
 
@@ -277,6 +284,7 @@ export function Navbar({ role, onRoleChange, onSignOut, user }) {
             )}
 
             <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4">
+              <LanguageSwitcher className="self-start" />
               {user ? (
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="flex min-w-0 items-center gap-3">
@@ -295,7 +303,7 @@ export function Navbar({ role, onRoleChange, onSignOut, user }) {
                       className="inline-flex items-center gap-1.5 rounded-control px-2 py-1.5 text-sm font-medium text-brand hover:bg-surface-muted"
                     >
                       <UserRound size={14} aria-hidden="true" />
-                      Profile
+                      {t('shell.navbar.profile')}
                     </Link>
                   )}
                   <Button
@@ -307,19 +315,19 @@ export function Navbar({ role, onRoleChange, onSignOut, user }) {
                     }}
                   >
                     <LogOut size={14} aria-hidden="true" />
-                    Sign out
+                    {t('shell.navbar.signOut')}
                   </Button>
                 </div>
               ) : (
                 <Button as={Link} to="/login" variant="secondary" onClick={closeMenu}>
-                  Sign in
+                  {t('shell.navbar.signIn')}
                 </Button>
               )}
 
               {/* Development scaffolding — see the note on the desktop copy. */}
               {import.meta.env.DEV && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-fg-muted">Demo:</span>
+                  <span className="text-xs text-fg-muted">{t('shell.navbar.demo')}</span>
                   <DemoRoleSelector role={role} onRoleChange={onRoleChange} hideLabel />
                 </div>
               )}

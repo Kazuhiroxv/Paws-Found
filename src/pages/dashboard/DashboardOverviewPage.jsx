@@ -14,6 +14,8 @@ import { cn } from '@/utils/cn'
 import { formatDate, formatShortDate } from '@/utils/date'
 import { loadDashboardSummary } from './dashboardSummary'
 import companions from '@/assets/img-020-companions.webp'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
 
 /** How many timeline entries the Overview shows. It summarises; it is not the log. */
 const TIMELINE_LIMIT = 5
@@ -61,7 +63,7 @@ export function DashboardOverviewPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="My dashboard" compact />
+        <PageHeader title={t('dashboard.title')} compact />
         <LoadingSkeleton lines={6} />
       </div>
     )
@@ -70,9 +72,9 @@ export function DashboardOverviewPage() {
   if (error) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="My dashboard" compact />
+        <PageHeader title={t('dashboard.title')} compact />
         <p role="alert" className="text-sm text-danger">
-          Your dashboard could not be loaded: {error.message}
+          {t('dashboard.failed', { message: errorText(error) })}
         </p>
       </div>
     )
@@ -98,19 +100,19 @@ export function DashboardOverviewPage() {
           <div className="flex min-w-0 flex-col gap-5">
             <div className="flex flex-col gap-2">
               <h1 className="text-[2rem] leading-[1.1] font-semibold tracking-tight text-balance text-fg sm:text-[2.4rem]">
-                Welcome back, {user.fullName.split(' ')[0]}.
+                {t('dashboard.welcome', { name: user.fullName.split(' ')[0] })}
               </h1>
-              <p className="text-lg text-fg-muted">Here is where your cases stand today.</p>
+              <p className="text-lg text-fg-muted">{t('dashboard.lead')}</p>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Button as={Link} to="/report/lost" variant="accent" size="lg">
                 <TriangleAlert size={18} aria-hidden="true" />
-                Report a lost pet
+                {t('nav.reportLost')}
               </Button>
               <Button as={Link} to="/report/found" size="lg">
                 <HandHeart size={18} aria-hidden="true" />
-                Report a found pet
+                {t('nav.reportFound')}
               </Button>
             </div>
           </div>
@@ -134,7 +136,7 @@ export function DashboardOverviewPage() {
           something unread; a permanent "0" would just be noise. */}
       <section aria-labelledby="summary-heading">
         <h2 id="summary-heading" className="sr-only">
-          Summary
+          {t('dashboard.summary')}
         </h2>
         <ul
           className={cn(
@@ -142,32 +144,32 @@ export function DashboardOverviewPage() {
             unread > 0 ? 'sm:grid-cols-4' : 'sm:grid-cols-3',
           )}
         >
-          <SummaryTile value={openReports.length} label="Active reports" to="/dashboard/reports" />
+          <SummaryTile value={openReports.length} label={t('dashboard.activeReports')} to="/dashboard/reports" />
           <SummaryTile
             value={openMatches.length}
-            label={openMatches.length === 1 ? 'Possible match' : 'Possible matches'}
+            label={t('dashboard.possibleMatches', { count: openMatches.length })}
             to="/dashboard/matches"
             highlight={openMatches.length > 0}
           />
           <SummaryTile
             value={returnedDetails.length}
-            label={returnedDetails.length === 1 ? 'Pet returned' : 'Pets returned'}
+            label={t('dashboard.petsReturned', { count: returnedDetails.length })}
             to="/dashboard/reports"
           />
           {unread > 0 && (
-            <SummaryTile value={unread} label="Unread updates" to="/dashboard/notifications" />
+            <SummaryTile value={unread} label={t('dashboard.unread')} to="/dashboard/notifications" />
           )}
         </ul>
       </section>
 
       {/* 3. Possible matches — the actionable part of the page. */}
       <Section
-        title="Possible matches"
-        description="Reports that share characteristics with yours. A suggestion, never a confirmation."
+        title={t('dashboard.matchesTitle')}
+        description={t('dashboard.matchesBody')}
         action={
           openMatches.length > 0 && (
             <Button as={Link} to="/dashboard/matches" variant="ghost" size="sm">
-              See all
+              {t('dashboard.seeAll')}
               <ArrowRight size={14} aria-hidden="true" />
             </Button>
           )
@@ -175,8 +177,7 @@ export function DashboardOverviewPage() {
       >
         {openMatches.length === 0 ? (
           <p className="rounded-card border border-border bg-panel px-4 py-4 text-fg-muted">
-            Nothing to review right now. When a report is filed that lines up with one of yours,
-            it will appear here with an explanation of what matches.
+            {t('dashboard.noMatches')}
           </p>
         ) : (
           <ul className="flex flex-col gap-2 rounded-card border border-accent/40 bg-accent-soft/40 p-2 sm:p-3">
@@ -196,12 +197,12 @@ export function DashboardOverviewPage() {
       {/* 4. Active reports — three across when there is room, so a typical
           owner's open cases sit side by side above the fold. */}
       <Section
-        title="Your active reports"
-        description="Cases that are still open."
+        title={t('dashboard.activeTitle')}
+        description={t('dashboard.activeBody')}
         action={
           reports.length > 0 && (
             <Button as={Link} to="/dashboard/reports" variant="ghost" size="sm">
-              See all reports
+              {t('dashboard.seeAllReports')}
               <ArrowRight size={14} aria-hidden="true" />
             </Button>
           )
@@ -210,15 +211,11 @@ export function DashboardOverviewPage() {
         {openReports.length === 0 ? (
           <EmptyState
             icon={PawPrint}
-            title={reports.length === 0 ? 'You have not filed a report yet' : 'Nothing open'}
-            description={
-              reports.length === 0
-                ? 'When you report a lost or found pet, it will appear here so you can follow it.'
-                : 'None of your reports are currently active. Closed and recovered cases are on the My Reports page.'
-            }
+            title={reports.length === 0 ? t('dashboard.noReports') : t('dashboard.nothingOpen')}
+            description={reports.length === 0 ? t('dashboard.noReportsBody') : t('dashboard.nothingOpenBody')}
             action={
               <Button as={Link} to="/report/lost" variant="accent">
-                Report a lost pet
+                {t('nav.reportLost')}
               </Button>
             }
           />
@@ -245,9 +242,9 @@ export function DashboardOverviewPage() {
       </Section>
 
       {/* 5. Recent updates — the newest few events, written as sentences. */}
-      <Section title="Recent updates" description="The latest changes across your reports.">
+      <Section title={t('dashboard.recent')} description={t('dashboard.recentBody')}>
         {activity.length === 0 ? (
-          <p className="text-fg-muted">Nothing has happened on your reports yet.</p>
+          <p className="text-fg-muted">{t('dashboard.noActivity')}</p>
         ) : (
           <ol className="flex flex-col">
             {activity.slice(0, TIMELINE_LIMIT).map((entry, index, list) => (
@@ -264,7 +261,7 @@ export function DashboardOverviewPage() {
 
       {/* 6. Returned pets — a finished case is an accomplishment. */}
       {returnedDetails.length > 0 && (
-        <Section title="Returned pets" description="Cases that ended the way they should.">
+        <Section title={t('dashboard.returned')} description={t('dashboard.returnedBody')}>
           <ul className="grid gap-4 md:grid-cols-2">
             {returnedDetails.map((report) => (
               <ReunionCard key={report.id} report={report} />
@@ -323,9 +320,9 @@ function SummaryTile({ value, label, to, highlight = false }) {
 function MatchRow({ match, lost, found, userId }) {
   const mine = Number(lost.reporterId) === Number(userId) ? lost : found
   const theirs = mine === lost ? found : lost
-  const theirLabel = `${theirs.reportType === REPORT_TYPES.FOUND ? 'found' : 'lost'} ${speciesLabel(
-    theirs.species,
-  ).toLowerCase()}`
+  const theirLabel = t(theirs.reportType === REPORT_TYPES.FOUND ? 'dashboard.aFound' : 'dashboard.aLost', {
+    species: speciesLabel(theirs.species).toLowerCase(),
+  })
   const waitingOnCoordinator = match.status === MATCH_STATUSES.VERIFICATION_REQUESTED
 
   return (
@@ -344,28 +341,29 @@ function MatchRow({ match, lost, found, userId }) {
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="rounded-pill bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-lost">
-              Possible match
+              {t('matching.possibleMatch')}
             </span>
             <span className="text-sm text-fg-muted">
-              <span className="font-semibold text-fg tabular-nums">{match.score}%</span> compatibility
+              <span className="font-semibold text-fg tabular-nums">{match.score}%</span> {t('matching.compatibility')}
             </span>
           </span>
           <span className="font-medium text-fg">
-            {mine.petName ?? `Your found ${speciesLabel(mine.species).toLowerCase()}`}
+            {mine.petName ?? t('dashboard.yourFound', { species: speciesLabel(mine.species).toLowerCase() })}
             <span className="text-fg-muted" aria-hidden="true">
               {' '}
               ↔{' '}
             </span>
-            <span className="sr-only"> and </span>a {theirLabel}
+            <span className="sr-only"> {t('matching.and')} </span>
+            {theirLabel}
           </span>
           <span className="text-sm text-fg-muted">
             {theirs.location.city}
-            {waitingOnCoordinator && ' · A Pet Coordinator is reviewing it'}
+            {waitingOnCoordinator && ` · ${t('dashboard.coordinatorReviewing')}`}
           </span>
         </span>
 
         <span className="col-start-2 inline-flex items-center gap-1 text-sm font-medium text-brand group-hover:underline sm:ml-auto">
-          {waitingOnCoordinator ? 'View match' : 'Review match'}
+          {waitingOnCoordinator ? t('dashboard.viewMatch') : t('dashboard.reviewMatch')}
           <ArrowRight size={14} aria-hidden="true" />
         </span>
       </Link>
@@ -375,7 +373,7 @@ function MatchRow({ match, lost, found, userId }) {
 
 /** A compact report row for phones: thumbnail, name, what it is, status. */
 function ReportRow({ report }) {
-  const name = report.petName ?? `${speciesLabel(report.species)} (name unknown)`
+  const name = report.petName ?? t('common.nameUnknown', { species: speciesLabel(report.species) })
 
   return (
     <Link
@@ -446,7 +444,7 @@ function TimelineEntry({ entry, userName, isLast }) {
         {detail && <p className="text-sm text-fg-muted">{detail}</p>}
         <p className="text-sm text-fg-muted">
           {formatShortDate(entry.createdAt)}
-          {byOther && ` · by ${entry.actorName}`}
+          {byOther && ` · ${t('dashboard.by', { name: entry.actorName })}`}
         </p>
       </div>
     </li>
@@ -467,22 +465,22 @@ function describeActivity(entry) {
   switch (entry.status) {
     case REPORT_STATUSES.POSSIBLE_MATCH:
       return {
-        title: named ? `Possible match found for ${name}` : 'Possible match found for a pet you found',
+        title: named ? t('dashboard.activity.matchNamed', { name }) : t('dashboard.activity.match'),
         detail,
       }
     case REPORT_STATUSES.RETURNED:
       return {
-        title: named ? `${name} was returned home` : 'A pet you found was returned to its owner',
+        title: named ? t('dashboard.activity.returnedNamed', { name }) : t('dashboard.activity.returned'),
         detail,
       }
     case REPORT_STATUSES.CLOSED:
-      return { title: named ? `${name}'s report was closed` : 'Your found-pet report was closed', detail }
+      return { title: named ? t('dashboard.activity.closedNamed', { name }) : t('dashboard.activity.closed'), detail }
     default:
       if (!entry.previousStatus) {
-        return { title: named ? `${name}'s report was created` : 'You reported a found pet', detail }
+        return { title: named ? t('dashboard.activity.createdNamed', { name }) : t('dashboard.activity.created'), detail }
       }
       return {
-        title: named ? `${name}'s report is active again` : 'Your found-pet report is active again',
+        title: named ? t('dashboard.activity.activeNamed', { name }) : t('dashboard.activity.active'),
         detail,
       }
   }
@@ -509,14 +507,14 @@ function ReunionCard({ report }) {
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="flex items-center gap-1.5 font-semibold text-fg">
             <Heart size={15} className="shrink-0 text-success" aria-hidden="true" />
-            {name} is home
+            {t('home.storyNamed', { name })}
           </span>
           {returned && (
-            <span className="text-sm text-fg-muted">Returned {formatDate(returned.createdAt)}</span>
+            <span className="text-sm text-fg-muted">{t('dashboard.returnedOn', { date: formatDate(returned.createdAt) })}</span>
           )}
           <span className="text-sm text-fg-muted">{report.location.city}</span>
           <span className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-brand group-hover:underline">
-            View case
+            {t('dashboard.viewCase')}
             <ArrowRight size={14} aria-hidden="true" />
           </span>
         </span>

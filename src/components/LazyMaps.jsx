@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react'
 import { LoadingSkeleton } from '@/components/ui'
 import { cn } from '@/utils/cn'
+import { t } from '@/i18n'
 
 /**
  * Lazy-loaded map components.
@@ -29,7 +30,7 @@ function MapFallback({ height }) {
   return (
     <div className={cn('overflow-hidden rounded-card border border-border', height)}>
       <LoadingSkeleton className="size-full" />
-      <span className="sr-only">Loading map…</span>
+      <span className="sr-only">{t('map.loading')}</span>
     </div>
   )
 }

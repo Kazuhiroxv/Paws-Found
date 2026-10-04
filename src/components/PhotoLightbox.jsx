@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { t } from '@/i18n'
 
 /**
  * A report photograph at full size — used by the report page and the Possible
@@ -92,7 +93,7 @@ function LightboxDialog({ onClose, src, alt, index = 0, total = 1, onStep }) {
   return (
     <dialog
       ref={dialogRef}
-      aria-label={alt || 'Photo'}
+      aria-label={alt || t('ui.photo')}
       // Escape closes the dialog natively; the resulting `close` event tells
       // the parent, which then removes it.
       onClose={onClose}
@@ -136,7 +137,7 @@ function LightboxDialog({ onClose, src, alt, index = 0, total = 1, onStep }) {
         className="absolute top-4 right-4 flex size-11 items-center justify-center rounded-full bg-panel text-fg shadow-raised hover:bg-surface-muted"
       >
         <X size={20} aria-hidden="true" />
-        <span className="sr-only">Close full photo</span>
+        <span className="sr-only">{t('ui.closePhoto')}</span>
       </button>
     </dialog>
   )
@@ -156,7 +157,7 @@ function StepButton({ side, onClick }) {
       }`}
     >
       <Icon size={22} aria-hidden="true" />
-      <span className="sr-only">{isLeft ? 'Previous photo' : 'Next photo'}</span>
+      <span className="sr-only">{isLeft ? t('ui.previousPhoto') : t('ui.nextPhoto')}</span>
     </button>
   )
 }

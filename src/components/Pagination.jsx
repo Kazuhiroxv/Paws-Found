@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/utils/cn'
+import { t } from '@/i18n'
 
 /**
  * Which page numbers to draw.
@@ -56,7 +57,7 @@ export function Pagination({ page, totalPages, onChange, className }) {
   const items = pageItems(page, totalPages)
 
   return (
-    <nav aria-label="Pagination" className={cn('flex justify-center', className)}>
+    <nav aria-label={t('ui.pagination.label')} className={cn('flex justify-center', className)}>
       <ul className="flex flex-wrap items-center justify-center gap-1.5">
         <li>
           <button
@@ -68,7 +69,7 @@ export function Pagination({ page, totalPages, onChange, className }) {
             <ChevronLeft size={16} aria-hidden="true" />
             {/* The word is hidden on a phone, where the row has to stay on one
                 line, but never removed — an icon-only control needs its name. */}
-            <span className="sr-only sm:not-sr-only">Previous</span>
+            <span className="sr-only sm:not-sr-only">{t('ui.pagination.previous')}</span>
           </button>
         </li>
 
@@ -83,7 +84,7 @@ export function Pagination({ page, totalPages, onChange, className }) {
                 type="button"
                 onClick={() => onChange(item)}
                 aria-current={item === page ? 'page' : undefined}
-                aria-label={`Page ${item}`}
+                aria-label={t('ui.pagination.page', { page: item })}
                 className={cn(
                   buttonBase,
                   item === page
@@ -104,7 +105,7 @@ export function Pagination({ page, totalPages, onChange, className }) {
             disabled={page === totalPages}
             className={cn(buttonBase, 'border-border-strong bg-panel text-fg hover:bg-surface-muted')}
           >
-            <span className="sr-only sm:not-sr-only">Next</span>
+            <span className="sr-only sm:not-sr-only">{t('ui.pagination.next')}</span>
             <ChevronRight size={16} aria-hidden="true" />
           </button>
         </li>

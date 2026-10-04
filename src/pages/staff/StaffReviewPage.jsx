@@ -4,10 +4,12 @@ import photoPlaceholder from '@/assets/pet-photo-placeholder.png'
 import { Button, EmptyState, LoadingSkeleton } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { ReportTypeBadge } from '@/components/ReportTypeBadge'
-import { REPORT_TYPES, speciesLabel } from '@/constants'
+import { PET_SIZE_LABELS, REPORT_TYPES, colourLabel, speciesLabel } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
 import { petService } from '@/services'
 import { formatDate, formatRelativeTime, formatTime12Hour } from '@/utils/date'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
 
 const loadQueue = () => petService.getReportsForReview()
 
@@ -27,10 +29,10 @@ export function StaffReviewPage() {
   const header = (
     <PageHeader
       icon={ClipboardCheck}
-      eyebrow="Pet Coordinator"
-      title="Report review"
-      description="New reports wait here until a Pet Coordinator approves them. Nothing here is public, and nothing here is compared with other reports yet."
-      breadcrumb={[{ label: 'Staff workspace', to: '/staff' }, { label: 'Report review' }]}
+      eyebrow={t('staff.eyebrow')}
+      title={t('staff.review.title')}
+      description={t('staff.review.description')}
+      breadcrumb={[{ label: t('shell.workspace.staff'), to: '/staff' }, { label: t('staff.review.title') }]}
     />
   )
 
@@ -48,7 +50,7 @@ export function StaffReviewPage() {
       <div className="flex flex-col gap-6">
         {header}
         <p role="alert" className="text-sm text-danger">
-          The review queue could not be loaded: {error.message}
+          {t('staff.review.failed', { message: errorText(error) })}
         </p>
       </div>
     )
@@ -59,16 +61,14 @@ export function StaffReviewPage() {
       {header}
 
       <p className="text-sm text-fg-muted" aria-live="polite">
-        {reports.length === 0
-          ? 'Nothing is waiting for review.'
-          : `${reports.length} ${reports.length === 1 ? 'report is' : 'reports are'} waiting, oldest first.`}
+        {reports.length === 0 ? t('staff.review.nothing') : t('staff.review.waiting', { count: reports.length })}
       </p>
 
       {reports.length === 0 ? (
         <EmptyState
           icon={ClipboardCheck}
-          title="All caught up"
-          description="When somebody submits a report, it appears here for review before anyone else can see it."
+          title={t('staff.review.caughtUp')}
+          description={t('staff.review.caughtUpBody')}
         />
       ) : (
         <ul className="flex flex-col gap-4" data-review-queue>
@@ -84,8 +84,8 @@ export function StaffReviewPage() {
 function ReviewItem({ report }) {
   const isFound = report.reportType === REPORT_TYPES.FOUND
   const photo = report.photos[0]
-  const name = report.petName ?? `${speciesLabel(report.species)} (name unknown)`
-  const looks = [speciesLabel(report.species), report.breed, report.size && `${report.size}`, report.primaryColor]
+  const name = report.petName ?? t('common.nameUnknown', { species: speciesLabel(report.species) })
+  const looks = [speciesLabel(report.species), report.breed, PET_SIZE_LABELS[report.size], colourLabel(report.primaryColor)]
     .filter(Boolean)
     .join(' · ')
 
@@ -94,7 +94,7 @@ function ReviewItem({ report }) {
       <article className="flex flex-col gap-4 rounded-card border border-border bg-panel p-4 shadow-card sm:flex-row sm:items-center sm:gap-5">
         <img
           src={photo?.url ?? photoPlaceholder}
-          alt={photo ? photo.alt || '' : 'No photo was provided for this report'}
+          alt={photo ? photo.alt || '' : t('ui.noPhoto')}
           loading="lazy"
           className="aspect-16/9 w-full shrink-0 rounded-control bg-surface-muted object-cover sm:aspect-square sm:size-24"
         />
@@ -102,7 +102,7 @@ function ReviewItem({ report }) {
           <div className="flex flex-wrap items-center gap-2">
             <ReportTypeBadge reportType={report.reportType} size="sm" />
             <span className="text-xs text-fg-muted">
-              Waiting since {formatRelativeTime(report.updatedAt)}
+              {t('staff.review.since', { time: formatRelativeTime(report.updatedAt) })}
             </span>
           </div>
           <h2 className="text-lg font-semibold text-fg">{name}</h2>
@@ -113,12 +113,12 @@ function ReviewItem({ report }) {
           </p>
           <p className="flex items-center gap-1.5 text-sm text-fg-muted">
             <CalendarDays size={14} className="shrink-0 text-fg-subtle" aria-hidden="true" />
-            {isFound ? 'Found' : 'Last seen'} {formatDate(report.incidentDate)}
-            {report.incidentTime && `, around ${formatTime12Hour(report.incidentTime)}`}
+            {t(isFound ? 'matching.foundOn' : 'matching.lastSeenOn', { date: formatDate(report.incidentDate) })}
+            {report.incidentTime && t('staff.review.around', { time: formatTime12Hour(report.incidentTime) })}
           </p>
         </div>
         <Button as={Link} to={`/pet/${report.id}`} size="sm" className="sm:shrink-0">
-          Review
+          {t('staff.overview.review')}
           <ArrowRight size={14} aria-hidden="true" />
         </Button>
       </article>

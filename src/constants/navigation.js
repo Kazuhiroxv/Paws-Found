@@ -14,6 +14,7 @@ import {
   Users,
 } from 'lucide-react'
 import { CAPABILITIES, ROLES } from '@/constants'
+import { t } from '@/i18n'
 
 /**
  * Navigation link lists.
@@ -21,58 +22,63 @@ import { CAPABILITIES, ROLES } from '@/constants'
  * Kept as plain data in one file so the navbar and the sidebar cannot drift
  * apart. `end` marks a link that should only be highlighted on an exact match
  * (otherwise the index link stays active on every child route).
+ *
+ * Each `label` is a getter (Correction 7): it reads the dictionary when the
+ * navigation renders, so the same list answers in English or Filipino.
  */
 
 /** Links shown to everyone in the top navigation. */
 export const PUBLIC_NAV = [
-  { to: '/', label: 'Home', end: true },
-  { to: '/explore', label: 'Explore' },
+  { to: '/', get label() { return t('nav.home') }, end: true },
+  { to: '/explore', get label() { return t('nav.explore') } },
   // The two reporting routes are unchanged; they simply share one menu, which
   // takes an item out of the header without hiding anything.
   {
-    label: 'Report',
+    get label() {
+      return t('nav.report')
+    },
     children: [
-      { to: '/report/lost', label: 'Report a lost pet' },
-      { to: '/report/found', label: 'Report a found pet' },
+      { to: '/report/lost', get label() { return t('nav.reportLost') } },
+      { to: '/report/found', get label() { return t('nav.reportFound') } },
     ],
   },
-  { to: '/about', label: 'About' },
-  { to: '/help', label: 'Help' },
+  { to: '/about', get label() { return t('nav.about') } },
+  { to: '/help', get label() { return t('nav.help') } },
 ]
 
 /** Sidebar links for a Customer/User. */
 export const USER_NAV = [
-  { to: '/dashboard', label: 'Overview', icon: LayoutDashboard, end: true },
-  { to: '/dashboard/reports', label: 'My Reports', icon: FileText },
-  { to: '/dashboard/matches', label: 'Possible Matches', icon: Heart },
-  { to: '/dashboard/notifications', label: 'Notifications', icon: Bell },
-  { to: '/dashboard/profile', label: 'Profile', icon: User },
+  { to: '/dashboard', get label() { return t('nav.overview') }, icon: LayoutDashboard, end: true },
+  { to: '/dashboard/reports', get label() { return t('nav.myReports') }, icon: FileText },
+  { to: '/dashboard/matches', get label() { return t('nav.possibleMatches') }, icon: Heart },
+  { to: '/dashboard/notifications', get label() { return t('nav.notifications') }, icon: Bell },
+  { to: '/dashboard/profile', get label() { return t('nav.profile') }, icon: User },
 ]
 
 /** Sidebar links for a Staff / Pet Coordinator. */
 export const STAFF_NAV = [
-  { to: '/staff', label: 'Overview', icon: Gauge, end: true },
+  { to: '/staff', get label() { return t('nav.overview') }, icon: Gauge, end: true },
   // Correction 4: new reports wait here for a coordinator before publication.
-  { to: '/staff/review', label: 'Report Review', icon: ClipboardCheck, countLabel: 'Waiting' },
+  { to: '/staff/review', get label() { return t('nav.reportReview') }, icon: ClipboardCheck, get countLabel() { return t('nav.countWaiting') } },
   // The badge counts Active + Possible Match reports: the open ones.
-  { to: '/staff/reports', label: 'Report Queue', icon: FileText, countLabel: 'Open' },
-  { to: '/staff/matches', label: 'Match Queue', icon: Heart },
-  { to: '/staff/verification', label: 'Verification', icon: ShieldCheck },
-  { to: '/staff/notifications', label: 'Notifications', icon: Bell },
+  { to: '/staff/reports', get label() { return t('nav.reportQueue') }, icon: FileText, get countLabel() { return t('nav.countOpen') } },
+  { to: '/staff/matches', get label() { return t('nav.matchQueue') }, icon: Heart },
+  { to: '/staff/verification', get label() { return t('nav.verification') }, icon: ShieldCheck },
+  { to: '/staff/notifications', get label() { return t('nav.notifications') }, icon: Bell },
 ]
 
 /** Sidebar links for an Administrator. */
 export const ADMIN_NAV = [
-  { to: '/admin', label: 'Overview', icon: Gauge, end: true },
+  { to: '/admin', get label() { return t('nav.overview') }, icon: Gauge, end: true },
   // Correction 6: each link names the capability it needs, and the workspace
   // shows only the ones this administrator's level includes.
-  { to: '/admin/users', label: 'Users', icon: Users, capability: CAPABILITIES.MANAGE_ACCOUNTS },
-  { to: '/admin/reports', label: 'Reports', icon: ListChecks, capability: CAPABILITIES.MODERATE_REPORTS },
-  { to: '/admin/categories', label: 'Pet Categories', icon: FolderTree, capability: CAPABILITIES.MANAGE_REFERENCE_DATA },
-  { to: '/admin/moderation', label: 'Moderation', icon: Flag, capability: CAPABILITIES.MODERATE_REPORTS },
+  { to: '/admin/users', get label() { return t('nav.users') }, icon: Users, capability: CAPABILITIES.MANAGE_ACCOUNTS },
+  { to: '/admin/reports', get label() { return t('nav.reports') }, icon: ListChecks, capability: CAPABILITIES.MODERATE_REPORTS },
+  { to: '/admin/categories', get label() { return t('nav.categories') }, icon: FolderTree, capability: CAPABILITIES.MANAGE_REFERENCE_DATA },
+  { to: '/admin/moderation', get label() { return t('nav.moderation') }, icon: Flag, capability: CAPABILITIES.MODERATE_REPORTS },
   // Correction 5: sessions, IP addresses, activity and security events —
   // Super Administrators only (Correction 6).
-  { to: '/admin/logs', label: 'Logs', icon: ScrollText, capability: CAPABILITIES.VIEW_SECURITY_LOGS },
+  { to: '/admin/logs', get label() { return t('nav.logs') }, icon: ScrollText, capability: CAPABILITIES.VIEW_SECURITY_LOGS },
 ]
 
 /**
@@ -80,9 +86,9 @@ export const ADMIN_NAV = [
  * their own workspace — switching the demo role is how you see the others.
  */
 export const WORKSPACE_BY_ROLE = {
-  [ROLES.USER]: { to: '/dashboard', label: 'My Dashboard' },
-  [ROLES.STAFF]: { to: '/staff', label: 'Staff Workspace' },
-  [ROLES.ADMIN]: { to: '/admin', label: 'Administration' },
+  [ROLES.USER]: { to: '/dashboard', get label() { return t('nav.myDashboard') } },
+  [ROLES.STAFF]: { to: '/staff', get label() { return t('nav.staffWorkspace') } },
+  [ROLES.ADMIN]: { to: '/admin', get label() { return t('nav.administration') } },
 }
 
 /**

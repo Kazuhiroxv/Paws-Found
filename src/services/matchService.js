@@ -13,17 +13,10 @@ import { MATCH_STATUSES, REPORT_STATUSES } from '@/constants'
 import * as petService from './petService'
 
 import { apiFetch, queryString } from './api'
+import { t } from '@/i18n'
 
 /** The seven signals the matcher compares, with the wording the UI shows. */
-const SIGNAL_LABELS = {
-  species: 'Species',
-  location: 'Location proximity',
-  breed: 'Breed',
-  color: 'Colour',
-  size: 'Size',
-  date: 'Date proximity',
-  characteristics: 'Other characteristics',
-}
+const SIGNAL_KEYS = ['species', 'location', 'breed', 'color', 'size', 'date', 'characteristics']
 
 
 /**
@@ -54,7 +47,12 @@ function matchFromApi(row) {
     updatedAt: row.updated_at,
     signals: (row.signals ?? []).map((signal) => ({
       key: signal.key,
-      label: SIGNAL_LABELS[signal.key] ?? signal.key,
+      // Read when shown, in the language showing (Correction 7). The detail
+      // beside it is the server's own sentence, written in English when the
+      // pairing was scored.
+      get label() {
+        return SIGNAL_KEYS.includes(signal.key) ? t(`matching.signal.${signal.key}`) : signal.key
+      },
       matched: signal.matched,
       weight: signal.weight,
       detail: signal.detail ?? '',

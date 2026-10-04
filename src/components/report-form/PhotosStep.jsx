@@ -5,6 +5,7 @@ import { Button, Input } from '@/components/ui'
 import { createId } from '@/utils/id'
 import { cn } from '@/utils/cn'
 import { LIMITS, PHOTO_RULES } from './reportFormModel'
+import { t } from '@/i18n'
 
 /**
  * Step 3 — photographs.
@@ -33,15 +34,17 @@ export function PhotosStep({ values, onChange }) {
 
     for (const file of incoming) {
       if (values.photos.length + accepted.length >= PHOTO_RULES.maxCount) {
-        problems.push(`You can add up to ${PHOTO_RULES.maxCount} photos.`)
+        // Keys, not sentences, so a message showing when the language
+        // changes is shown again in the new one.
+        problems.push(['reportForm.photos.tooMany', { max: PHOTO_RULES.maxCount }])
         break
       }
       if (!PHOTO_RULES.acceptedTypes.includes(file.type)) {
-        problems.push(`${file.name} is not a JPEG, PNG or WebP image.`)
+        problems.push(['reportForm.photos.wrongType', { name: file.name }])
         continue
       }
       if (file.size > PHOTO_RULES.maxBytes) {
-        problems.push(`${file.name} is larger than 5 MB.`)
+        problems.push(['reportForm.photos.tooLarge', { name: file.name }])
         continue
       }
 
@@ -123,18 +126,15 @@ export function PhotosStep({ values, onChange }) {
         <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-panel text-brand shadow-card">
           <ImagePlus size={26} aria-hidden="true" />
         </span>
-        <p className="mt-4 text-lg font-semibold text-fg">Add photos</p>
-        <p className="mx-auto mt-1.5 max-w-prose text-fg-muted">
-          A clear, well-lit picture of the whole animal is the single most useful thing you
-          can add — it is what people recognise, and what a coordinator compares.
-        </p>
+        <p className="mt-4 text-lg font-semibold text-fg">{t('reportForm.photos.title')}</p>
+        <p className="mx-auto mt-1.5 max-w-prose text-fg-muted">{t('reportForm.photos.intro')}</p>
         <ul className="mx-auto mt-3 flex max-w-prose flex-col gap-1 text-left text-sm text-fg-muted">
-          <li>Optional, but one clear photo of the whole animal helps the most.</li>
-          <li>Up to {PHOTO_RULES.maxCount} photos, each a JPEG, PNG or WebP image of 5 MB or less.</li>
-          <li>The first photo you add is the main photo, shown on the report card and the map. You can choose another.</li>
+          <li>{t('reportForm.photos.rule1')}</li>
+          <li>{t('reportForm.photos.rule2', { max: PHOTO_RULES.maxCount })}</li>
+          <li>{t('reportForm.photos.rule3')}</li>
         </ul>
         <p className="mt-1 hidden text-sm text-fg-muted sm:block">
-          {isDraggingOver ? 'Drop them here' : 'Drag them here, or choose them below.'}
+          {isDraggingOver ? t('reportForm.photos.dropHere') : t('reportForm.photos.dragHere')}
         </p>
 
         <input
@@ -147,29 +147,30 @@ export function PhotosStep({ values, onChange }) {
           className="sr-only"
         />
         <Button as="label" htmlFor="report-photos" className="mt-5 cursor-pointer">
-          Choose photos
+          {t('reportForm.photos.choose')}
         </Button>
       </div>
 
       {/* Said in words and announced, so "how many more can I add?" never
           needs counting thumbnails. */}
       <p className="text-sm font-medium text-fg" aria-live="polite" data-photo-count>
-        {values.photos.length} of {PHOTO_RULES.maxCount} photos added
-        {values.photos.length >= PHOTO_RULES.maxCount ? ' — that is the most a report can have.' : '.'}
+        {t(values.photos.length >= PHOTO_RULES.maxCount ? 'reportForm.photos.countFull' : 'reportForm.photos.count', {
+          count: values.photos.length,
+          max: PHOTO_RULES.maxCount,
+        })}
       </p>
 
       {fileErrors.length > 0 && (
         <ul role="alert" className="flex flex-col gap-1 text-sm text-danger">
-          {fileErrors.map((message) => (
-            <li key={message}>{message}</li>
+          {fileErrors.map(([key, vars]) => (
+            <li key={key + JSON.stringify(vars)}>{t(key, vars)}</li>
           ))}
         </ul>
       )}
 
       {values.photos.length === 0 ? (
         <p className="text-fg-muted">
-          No photos yet. You can still submit the report without one — a description alone
-          still helps.
+          {t('reportForm.photos.none')}
         </p>
       ) : (
         <ul className="flex flex-col gap-4">
@@ -183,31 +184,31 @@ export function PhotosStep({ values, onChange }) {
               <div className="relative shrink-0 sm:w-52">
                 <img
                   src={photo.url ?? photoPlaceholder}
-                  alt={photo.alt || `Photo ${index + 1}, not yet described`}
+                  alt={photo.alt || t('reportForm.photos.undescribed', { number: index + 1 })}
                   className="aspect-4/3 w-full rounded-control bg-surface-muted object-cover"
                 />
                 {photo.isPrimary && (
                   <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-pill bg-panel/90 px-2.5 py-1 text-xs font-medium text-brand-hover shadow-card backdrop-blur-sm">
                     <Star size={12} aria-hidden="true" />
-                    Main photo
+                    {t('reportForm.photos.main')}
                   </span>
                 )}
               </div>
 
               <div className="flex min-w-0 flex-1 flex-col gap-3">
                 <Input
-                  label={`Describe photo ${index + 1}`}
+                  label={t('reportForm.photos.describe', { number: index + 1 })}
                   value={photo.alt}
                   onChange={(event) => updateAlt(photo.id, event.target.value)}
                   maxLength={LIMITS.photoAlt}
-                  placeholder="e.g. Brown Shih Tzu sitting on a tiled floor"
-                  hint="Used by screen readers, and helps people scanning quickly."
+                  placeholder={t('reportForm.photos.describePlaceholder')}
+                  hint={t('reportForm.photos.describeHint')}
                 />
 
                 <div className="flex flex-wrap items-center gap-2">
                   {!photo.isPrimary && (
                     <Button size="sm" variant="secondary" onClick={() => setPrimary(photo.id)}>
-                      Make main photo
+                      {t('reportForm.photos.makeMain')}
                     </Button>
                   )}
 
@@ -218,8 +219,8 @@ export function PhotosStep({ values, onChange }) {
                     className="text-danger"
                   >
                     <Trash2 size={14} aria-hidden="true" />
-                    Remove
-                    <span className="sr-only"> photo {index + 1}</span>
+                    {t('common.remove')}
+                    <span className="sr-only"> {t('reportForm.photos.photoNumber', { number: index + 1 })}</span>
                   </Button>
                 </div>
               </div>

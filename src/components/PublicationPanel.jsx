@@ -9,13 +9,15 @@ import { can } from '@/utils/permissions'
 import { petService } from '@/services'
 import { formatDateTime } from '@/utils/date'
 import { useRevealWhen } from '@/utils/reveal'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
 
 /** What each publication move is called in the history. */
 const EVENT_WORDS = {
-  pending_review: (previous) => (previous ? 'Submitted for review again' : 'Submitted for review'),
-  published: () => 'Approved and published',
-  rejected: () => 'Not approved',
-  removed: () => 'Removed from public view',
+  pending_review: (previous) => (previous ? t('publication.event.resubmitted') : t('publication.event.submitted')),
+  published: () => t('publication.event.published'),
+  rejected: () => t('publication.event.rejected'),
+  removed: () => t('publication.event.removed'),
 }
 
 /**
@@ -34,7 +36,8 @@ const EVENT_WORDS = {
  * @param {Object} props
  * @param {Object} props.report
  * @param {Object|null} props.viewer   The signed-in account.
- * @param {(message: string) => void} props.onChanged  Called with what was done;
+ * @param {(message: string) => void} props.onChanged  Called with what was done
+ *   — a dictionary key, so it is said in the language showing (Correction 7);
  *   the page keeps it, because it reloads the report and remounts this panel.
  * @param {string|null} [props.notice]  What was just done, to say and reveal.
  */
@@ -80,11 +83,7 @@ export function PublicationPanel({ report, viewer, onChanged, notice = null }) {
   const act = async (action) => {
     const needsNote = action === 'reject' || action === 'remove'
     if (needsNote && !note.trim()) {
-      setNoteError(
-        action === 'reject'
-          ? 'Write why it is not approved. The reporter is told this, so they can fix it.'
-          : 'Write why it is being removed. The reporter is told this.',
-      )
+      setNoteError(action === 'reject' ? 'publication.noteReject' : 'publication.noteRemove')
       return
     }
     setIsBusy(true)
@@ -92,14 +91,7 @@ export function PublicationPanel({ report, viewer, onChanged, notice = null }) {
     try {
       await petService.updatePublication(report.id, action, needsNote ? note.trim() : null)
       setDialog(null)
-      onChanged(
-        {
-          approve: 'Approved. The report is now public, and it is being compared with other reports.',
-          reject: 'Marked as not approved. The reporter has been told why.',
-          resubmit: 'Submitted for review again. A Pet Coordinator will check it before it appears publicly.',
-          remove: 'Removed from public view. The reporter has been told why.',
-        }[action],
-      )
+      onChanged(`publication.done.${action}`)
     } catch (caught) {
       setFailure(caught instanceof Error ? caught : new Error(String(caught)))
     } finally {
@@ -109,13 +101,13 @@ export function PublicationPanel({ report, viewer, onChanged, notice = null }) {
 
   return (
     <Card data-publication-panel={publication}>
-      <CardHeader titleAs="h2" title="Publication" />
+      <CardHeader titleAs="h2" title={t('publication.title')} />
       <CardBody className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
           {publication === PUBLICATION_STATUSES.PUBLISHED ? (
             <span className="inline-flex items-center gap-1.5 text-sm font-medium text-success-ink">
               <ShieldCheck size={15} aria-hidden="true" />
-              Published
+              {t('labels.publication.published')}
             </span>
           ) : (
             <PublicationBadge publication={publication} />
@@ -125,31 +117,31 @@ export function PublicationPanel({ report, viewer, onChanged, notice = null }) {
         <p className="text-sm text-fg">
           {publication === PUBLICATION_STATUSES.PENDING_REVIEW &&
             (isOwner
-              ? 'Waiting for a Pet Coordinator to review it. Nobody else can see it until it is approved, and it is not compared with other reports yet.'
+              ? t('publication.pendingOwner')
               : isCoordinator
-                ? 'Waiting for review. Check it is a genuine, appropriate report before it goes public.'
-                : 'Waiting for a Pet Coordinator’s review. Only a Pet Coordinator can approve it or not; it is not public and not compared with other reports yet.')}
+                ? t('publication.pendingCoordinator')
+                : t('publication.pendingOther'))}
           {publication === PUBLICATION_STATUSES.REJECTED &&
             (isOwner
-              ? 'Not approved, so it is not public. Edit it to address the reason below, then submit it again.'
-              : 'Not approved. The reporter can edit it and submit it again.')}
+              ? t('publication.rejectedOwner')
+              : t('publication.rejectedOther'))}
           {publication === PUBLICATION_STATUSES.REMOVED &&
-            'Removed by an administrator. It is not public and is no longer compared with other reports. It is kept, with its history.'}
+            t('publication.removed')}
           {publication === PUBLICATION_STATUSES.PUBLISHED &&
             (report.publicationHistory.length === 0
-              ? 'Public. Filed before reports were reviewed, so it has no review record.'
-              : 'Public, and compared with other reports.')}
+              ? t('publication.publicLegacy')
+              : t('publication.public'))}
         </p>
 
         {publication === PUBLICATION_STATUSES.REJECTED && rejection?.note && (
           <p className="rounded-control border border-border bg-surface-alt px-3 py-2 text-sm text-fg">
-            <span className="font-medium">Reason: </span>
+            <span className="font-medium">{t('publication.reasonLabel')} </span>
             {rejection.note}
           </p>
         )}
         {publication === PUBLICATION_STATUSES.REMOVED && removal?.note && (
           <p className="rounded-control border border-border bg-surface-alt px-3 py-2 text-sm text-fg">
-            <span className="font-medium">Reason: </span>
+            <span className="font-medium">{t('publication.reasonLabel')} </span>
             {removal.note}
           </p>
         )}
@@ -158,46 +150,46 @@ export function PublicationPanel({ report, viewer, onChanged, notice = null }) {
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => act('approve')} isLoading={isBusy && !dialog}>
               <Check size={16} aria-hidden="true" />
-              Approve and publish
+              {t('publication.approve')}
             </Button>
             <Button variant="secondary" onClick={() => open('reject')} disabled={isBusy}>
               <XCircle size={16} aria-hidden="true" />
-              Not approved…
+              {t('publication.rejectOpen')}
             </Button>
           </div>
         )}
         {canResubmit && (
           <div className="flex flex-wrap gap-2">
             <Button as={Link} to={`/dashboard/reports/${report.id}/edit`} variant="secondary">
-              Edit the report
+              {t('publication.edit')}
             </Button>
             <Button onClick={() => open('resubmit')}>
               <Send size={16} aria-hidden="true" />
-              Submit for review again
+              {t('publication.resubmit')}
             </Button>
           </div>
         )}
         {canRemove && (
           <Button variant="secondary" onClick={() => open('remove')} className="text-danger">
             <EyeOff size={16} aria-hidden="true" />
-            Remove from public view…
+            {t('publication.removeOpen')}
           </Button>
         )}
 
         {failure && !dialog && (
           <p role="alert" className="text-sm text-danger">
-            That did not work: {failure.message}
+            {t('publication.failed', { message: errorText(failure) })}
           </p>
         )}
         {notice && (
           <p ref={doneRef} tabIndex={-1} role="status" className="scroll-mt-24 text-sm font-medium text-fg outline-none">
-            {notice}
+            {t(notice)}
           </p>
         )}
 
         {report.publicationHistory.length > 0 && (
           <details className="text-sm">
-            <summary className="cursor-pointer text-fg-muted">Review history</summary>
+            <summary className="cursor-pointer text-fg-muted">{t('publication.history')}</summary>
             <ol className="mt-2 flex flex-col gap-2">
               {report.publicationHistory.map((entry) => (
                 <li key={entry.id} className="border-l-2 border-border pl-3">
@@ -218,13 +210,19 @@ export function PublicationPanel({ report, viewer, onChanged, notice = null }) {
         isOpen={dialog !== null}
         title={
           dialog === 'reject'
-            ? 'Not approve this report?'
+            ? t('publication.rejectTitle')
             : dialog === 'remove'
-              ? 'Remove this report from public view?'
-              : 'Submit this report for review again?'
+              ? t('publication.removeTitle')
+              : t('publication.resubmitTitle')
         }
-        confirmLabel={dialog === 'reject' ? 'Not approved' : dialog === 'remove' ? 'Remove from public view' : 'Submit again'}
-        cancelLabel="Go back"
+        confirmLabel={
+          dialog === 'reject'
+            ? t('publication.rejectConfirm')
+            : dialog === 'remove'
+              ? t('publication.removeConfirm')
+              : t('publication.resubmitConfirm')
+        }
+        cancelLabel={t('publication.goBack')}
         tone={dialog === 'resubmit' ? 'primary' : 'danger'}
         isBusy={isBusy}
         error={failure}
@@ -232,26 +230,26 @@ export function PublicationPanel({ report, viewer, onChanged, notice = null }) {
         onConfirm={() => act(dialog)}
       >
         {dialog === 'resubmit' ? (
-          <p>A Pet Coordinator will review it again before it appears publicly.</p>
+          <p>{t('publication.resubmitBody')}</p>
         ) : (
           <>
             <p>
               {dialog === 'reject'
-                ? 'The report stays private. The reporter is told the reason and can edit and submit it again.'
-                : 'The report stops being public and stops being compared with other reports. It is not Closed: it is kept, with its history, and the reporter is told the reason.'}
+                ? t('publication.rejectBody')
+                : t('publication.removeBody')}
             </p>
             <Textarea
-              label="Reason"
+              label={t('publication.reason')}
               required
               value={note}
               onChange={(event) => {
                 setNote(event.target.value)
                 setNoteError(null)
               }}
-              error={noteError}
+              error={noteError && t(noteError)}
               rows={3}
               maxLength={255}
-              hint="The reporter sees this."
+              hint={t('publication.reasonHint')}
             />
           </>
         )}

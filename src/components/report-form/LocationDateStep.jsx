@@ -1,12 +1,13 @@
 import { useCallback, useState } from 'react'
 import { Checkbox, Input, Select, Textarea } from '@/components/ui'
 import { LocationPicker } from '@/components/LazyMaps'
-import { AREA_HINT, AREA_LABEL, REPORT_TYPES } from '@/constants'
+import { areaHint, areaLabel, REPORT_TYPES } from '@/constants'
 import { referenceService } from '@/services'
 import { useAsync } from '@/hooks/useAsync'
 import { timeFrom12Hour, timeTo12Hour, todayAsInputValue } from '@/utils/date'
 import { cn } from '@/utils/cn'
 import { DESCRIPTION_MIN, LIMITS, descriptionLength } from './reportFormModel'
+import { t } from '@/i18n'
 
 const loadAreas = () => referenceService.getAreas()
 
@@ -29,7 +30,7 @@ export function LocationDateStep({ values, errors, onChange }) {
     <div className="flex flex-col gap-5">
       <div className="grid gap-5 sm:grid-cols-2">
         <Input
-          label={isFound ? 'Date found' : 'Date last seen'}
+          label={isFound ? t('reportForm.place.dateFound') : t('reportForm.place.dateLost')}
           type="date"
           required
           value={values.incidentDate}
@@ -51,14 +52,14 @@ export function LocationDateStep({ values, errors, onChange }) {
       <PlaceFields values={values} errors={errors} onChange={onChange} />
 
       <Input
-        label={isFound ? 'Where you found the pet' : 'Where your pet was last seen'}
+        label={isFound ? t('reportForm.place.whereFound') : t('reportForm.place.whereLost')}
         required
         value={values.locationLabel}
         onChange={(event) => onChange('locationLabel', event.target.value)}
         error={errors.locationLabel}
         maxLength={LIMITS.locationLabel}
-        placeholder="e.g. Near the public market, Barangay Poblacion"
-        hint="The barangay, a street or a landmark, in your own words. Please do not give an exact home address."
+        placeholder={t('reportForm.place.wherePlaceholder')}
+        hint={t('reportForm.place.whereHint')}
       />
 
       <LocationPicker
@@ -87,22 +88,20 @@ export function LocationDateStep({ values, errors, onChange }) {
         aria-invalid={errors.contact ? true : undefined}
       >
         <legend className="px-1 text-sm font-medium text-fg">
-          How can people reach you? <span className="text-danger" aria-hidden="true">*</span>
+          {t('reportForm.place.reachTitle')} <span className="text-danger" aria-hidden="true">*</span>
         </legend>
 
         <p className="text-sm text-fg-muted">
-          Your phone number is never shown on a report. A Pet Coordinator can see it when
-          checking a possible match, and passes messages on. Your email address is shown only
-          if you tick it, and only to people who are signed in.
+          {t('reportForm.place.reachBody')}
         </p>
 
         <Checkbox
-          label="Let people reach me through a Pet Coordinator"
+          label={t('reportForm.place.viaCoordinator')}
           checked={values.allowPlatformContact}
           onChange={(event) => onChange('allowPlatformContact', event.target.checked)}
         />
         <Checkbox
-          label="Show my email address on the report"
+          label={t('reportForm.place.showEmail')}
           checked={values.showEmail}
           onChange={(event) => onChange('showEmail', event.target.checked)}
         />
@@ -136,7 +135,7 @@ function PlaceFields({ values, errors, onChange }) {
     <div className="flex flex-col gap-2">
       <div className="grid gap-5 sm:grid-cols-2">
         <Select
-          label={AREA_LABEL}
+          label={areaLabel()}
           required
           value={values.areaCode}
           onChange={(event) => {
@@ -150,13 +149,13 @@ function PlaceFields({ values, errors, onChange }) {
             onChange('city', '')
           }}
           error={errors.province}
-          placeholder={areas ? 'Choose one' : 'Loading…'}
+          placeholder={areas ? t('common.chooseOne') : t('common.loading')}
           options={(areas ?? []).map((area) => ({ value: area.code, label: area.name }))}
-          hint={AREA_HINT}
+          hint={areaHint()}
         />
 
         <Select
-          label="City or municipality"
+          label={t('labels.city')}
           required
           value={values.cityCode}
           onChange={(event) => {
@@ -168,7 +167,7 @@ function PlaceFields({ values, errors, onChange }) {
           error={errors.city}
           disabled={!values.areaCode}
           placeholder={
-            !values.areaCode ? 'Choose the province or Metro Manila first' : citiesLoading ? 'Loading…' : 'Choose one'
+            !values.areaCode ? t('reportForm.place.areaFirst') : citiesLoading ? t('common.loading') : t('common.chooseOne')
           }
           options={(cities ?? []).map((city) => ({ value: city.code, label: city.name }))}
         />
@@ -176,8 +175,7 @@ function PlaceFields({ values, errors, onChange }) {
 
       {listFailed && (
         <p role="alert" className="text-sm text-danger">
-          The list of places could not be loaded. Check your connection and open this step
-          again.
+          {t('reportForm.place.listFailed')}
         </p>
       )}
     </div>
@@ -208,24 +206,24 @@ function TimeOfDayField({ value, error, onChange }) {
 
   return (
     <fieldset className="flex min-w-0 flex-col gap-2">
-      <legend className="text-sm font-medium text-fg">Approximate time</legend>
+      <legend className="text-sm font-medium text-fg">{t('reportForm.place.time')}</legend>
       <div className="grid grid-cols-3 gap-2">
         <Select
-          label="Hour"
+          label={t('reportForm.place.hour')}
           value={parts.hour}
           onChange={(event) => update('hour', event.target.value)}
           options={[{ value: '', label: '--' }, ...HOURS.map((h) => ({ value: h, label: h }))]}
           aria-invalid={error && !parts.hour ? true : undefined}
         />
         <Select
-          label="Minutes"
+          label={t('reportForm.place.minutes')}
           value={parts.minute}
           onChange={(event) => update('minute', event.target.value)}
           options={[{ value: '', label: '--' }, ...MINUTES.map((m) => ({ value: m, label: m }))]}
           aria-invalid={error && !parts.minute ? true : undefined}
         />
         <Select
-          label="AM or PM"
+          label={t('reportForm.place.period')}
           value={parts.period}
           onChange={(event) => update('period', event.target.value)}
           options={[
@@ -242,7 +240,7 @@ function TimeOfDayField({ value, error, onChange }) {
         </p>
       ) : (
         <p className="text-sm leading-relaxed text-fg-muted">
-          Optional; roughly is fine. 12:00 PM is noon, 12:00 AM is midnight.
+          {t('reportForm.place.timeHint')}
         </p>
       )}
     </fieldset>
@@ -260,7 +258,7 @@ function DescriptionField({ isFound, value, error, onChange }) {
 
   return (
     <Textarea
-      label="Description"
+      label={t('reportForm.place.description')}
       required
       value={value}
       onChange={(event) => onChange(event.target.value)}
@@ -269,14 +267,14 @@ function DescriptionField({ isFound, value, error, onChange }) {
       rows={4}
       placeholder={
         isFound
-          ? 'e.g. Found wandering along the service road early in the morning. Calm, let me pick him up. Safe at our house and has been fed.'
-          : 'e.g. Slipped out of the gate while we were unloading groceries. Friendly but nervous around traffic, usually hides under parked cars.'
+          ? t('reportForm.place.descriptionFound')
+          : t('reportForm.place.descriptionLost')
       }
       hint={
         <>
-          What happened, and how the pet behaves around strangers.{' '}
+          {t('reportForm.place.descriptionHint')}{' '}
           <span className={cn('font-medium', enough ? 'text-fg' : 'text-fg-muted')} data-description-count>
-            {length} / {DESCRIPTION_MIN} minimum{enough ? ' — enough' : ''}
+            {t(enough ? 'reportForm.place.countEnough' : 'reportForm.place.count', { length, min: DESCRIPTION_MIN })}
           </span>
         </>
       }

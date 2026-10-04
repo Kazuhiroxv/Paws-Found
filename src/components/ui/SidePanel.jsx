@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/utils/cn'
+import { t } from '@/i18n'
 
 /**
  * A panel that opens beside a list, for reading one row without leaving the
@@ -102,7 +103,7 @@ export function SidePanel({ isOpen, title, eyebrow, onClose, children }) {
           className="-m-1 shrink-0 rounded-control p-1 text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
         >
           <X size={20} aria-hidden="true" />
-          <span className="sr-only">Close this panel</span>
+          <span className="sr-only">{t('ui.closePanel')}</span>
         </button>
       </div>
 

@@ -105,6 +105,11 @@ export async function checkSession() {
       // A new address asked for and not yet confirmed. /auth/me has always
       // sent it; without this line the Profile page could never say so.
       pendingEmail: row.pending_email ?? null,
+      // Correction 7: has this account been shown the Privacy Notice as it
+      // now reads? Absent (an older server) counts as yes: never nag on a
+      // guess.
+      privacyNoticeVersion: row.privacy_notice?.version ?? null,
+      privacyNoticeAcknowledged: row.privacy_notice?.acknowledged ?? true,
       notificationPreferences: {
         possibleMatches: row.notify_matches ?? true,
         statusUpdates: row.notify_status ?? true,
@@ -112,6 +117,15 @@ export async function checkSession() {
       },
     },
   }
+}
+
+/**
+ * Record that the signed-in person has been shown the updated Privacy Notice
+ * (Correction 7). Always their own account: the server reads the session,
+ * never an id from here.
+ */
+export async function acknowledgePrivacyNotice() {
+  await apiFetch('/auth/privacy-acknowledgement', { method: 'POST' })
 }
 
 /**

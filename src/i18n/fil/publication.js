@@ -1,0 +1,51 @@
+/** Ang paglalathala ng report: pagsusuri ng Pet Coordinator, muling pagpasa, pag-alis. */
+export default {
+  title: 'Paglalathala',
+  event: {
+    submitted: 'Ipinasa para masuri',
+    resubmitted: 'Ipinasa ulit para masuri',
+    published: 'Inaprubahan at inilathala',
+    rejected: 'Hindi inaprubahan',
+    removed: 'Inalis sa pampublikong view',
+  },
+  noteReject: 'Isulat kung bakit hindi ito inaprubahan. Sasabihin ito sa nag-report, para maayos niya.',
+  noteRemove: 'Isulat kung bakit ito inaalis. Sasabihin ito sa nag-report.',
+  done: {
+    approve: 'Inaprubahan. Pampubliko na ang report, at kinukumpara na ito sa ibang report.',
+    reject: 'Minarkahang hindi inaprubahan. Sinabihan na ang nag-report kung bakit.',
+    resubmit: 'Ipinasa ulit para masuri. Susuriin ito ng isang Pet Coordinator bago lumabas sa publiko.',
+    remove: 'Inalis sa pampublikong view. Sinabihan na ang nag-report kung bakit.',
+  },
+  pendingOwner:
+    'Hinihintay ang pagsusuri ng isang Pet Coordinator. Walang ibang makakakita nito hangga’t hindi ito naaaprubahan, at hindi pa ito kinukumpara sa ibang report.',
+  pendingCoordinator: 'Hinihintay ang pagsusuri. Tiyaking totoo at angkop ang report bago ito ilathala.',
+  pendingOther:
+    'Hinihintay ang pagsusuri ng isang Pet Coordinator. Pet Coordinator lang ang makapagpapasya kung aaprubahan ito; hindi pa ito pampubliko at hindi pa kinukumpara sa ibang report.',
+  rejectedOwner: 'Hindi inaprubahan, kaya hindi ito pampubliko. I-edit ito ayon sa dahilan sa ibaba, saka ipasa ulit.',
+  rejectedOther: 'Hindi inaprubahan. Maaari itong i-edit at ipasa ulit ng nag-report.',
+  removed:
+    'Inalis ng isang administrator. Hindi ito pampubliko at hindi na kinukumpara sa ibang report. Itinatago ito, kasama ang kasaysayan nito.',
+  publicLegacy: 'Pampubliko. Na-file bago nagsimula ang pagsusuri ng mga report, kaya wala itong rekord ng pagsusuri.',
+  public: 'Pampubliko, at kinukumpara sa ibang report.',
+  reasonLabel: 'Dahilan:',
+  approve: 'Aprubahan at ilathala',
+  rejectOpen: 'Hindi inaprubahan…',
+  edit: 'I-edit ang report',
+  resubmit: 'Ipasa ulit para masuri',
+  removeOpen: 'Alisin sa pampublikong view…',
+  failed: 'Hindi iyon gumana: {message}',
+  history: 'Kasaysayan ng pagsusuri',
+  rejectTitle: 'Hindi aaprubahan ang report na ito?',
+  removeTitle: 'Aalisin ang report na ito sa pampublikong view?',
+  resubmitTitle: 'Ipapasa ulit ang report na ito para masuri?',
+  rejectConfirm: 'Hindi inaprubahan',
+  removeConfirm: 'Alisin sa pampublikong view',
+  resubmitConfirm: 'Ipasa ulit',
+  goBack: 'Bumalik',
+  resubmitBody: 'Susuriin ulit ito ng isang Pet Coordinator bago lumabas sa publiko.',
+  rejectBody: 'Mananatiling pribado ang report. Sasabihin sa nag-report ang dahilan, at maaari niya itong i-edit at ipasa ulit.',
+  removeBody:
+    'Hindi na pampubliko ang report at hindi na ito kinukumpara sa ibang report. Hindi ito Sarado: itinatago ito, kasama ang kasaysayan nito, at sasabihin sa nag-report ang dahilan.',
+  reason: 'Dahilan',
+  reasonHint: 'Makikita ito ng nag-report.',
+}

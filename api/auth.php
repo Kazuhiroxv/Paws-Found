@@ -32,6 +32,11 @@ function handle_auth(string $method, ?string $action): never
         auth_me();
     }
 
+    // Correction 7: "I have been shown the updated Privacy Notice."
+    if ($method === 'POST' && $action === 'privacy-acknowledgement') {
+        auth_acknowledge_privacy_notice();
+    }
+
     // Proving an address, and getting back in without an administrator.
     if ($method === 'POST' && $action === 'verify-email') {
         auth_verify_email();
@@ -824,6 +829,13 @@ function auth_me(): never
             // an address change is already done.
             'email_verified_at' => $user['email_verified_at'],
             'pending_email' => $user['pending_email'],
+            // Correction 7: whether this account has been shown the notice as
+            // it now reads. An account that registered under an earlier
+            // version is told, once, without being stopped from working.
+            'privacy_notice' => [
+                'version' => PRIVACY_NOTICE_VERSION,
+                'acknowledged' => privacy_notice_acknowledged((int) $user['user_id']),
+            ],
         ] + ($user['role'] === 'admin' ? [
             // Correction 6. The capabilities are what the interface reads to
             // decide what to show; they are derived here from the level, so
@@ -833,4 +845,58 @@ function auth_me(): never
             'capabilities' => admin_capabilities($user),
         ] : []),
     ]);
+}
+
+
+/**
+ * Whether this account has a `privacy_consents` row for the notice as it now
+ * reads (PRIVACY_NOTICE_VERSION). Registering writes one; acknowledging an
+ * update writes one.
+ */
+function privacy_notice_acknowledged(int $userId): bool
+{
+    $statement = db()->prepare(
+        'SELECT 1 FROM privacy_consents WHERE user_id = :user_id AND notice_version = :version'
+    );
+    $statement->execute([':user_id' => $userId, ':version' => PRIVACY_NOTICE_VERSION]);
+
+    return (bool) $statement->fetchColumn();
+}
+
+/**
+ * The signed-in person acknowledges the current Privacy Notice (Correction 7).
+ *
+ * "Acknowledge" means "I have been shown it", not "I agree to optional
+ * processing": the security records the notice describes are kept whether or
+ * not anybody presses the button, and the notice says so. The row goes into
+ * the same `privacy_consents` table registration writes to, against the
+ * current version, so there is one record of which notice each account has
+ * seen, not two.
+ *
+ * Always the session's own account — the body is not read, so nobody can
+ * acknowledge for somebody else. Pressing it twice is harmless: the unique
+ * key on (user_id, notice_version) keeps one row, and the first one's time.
+ */
+function auth_acknowledge_privacy_notice(): never
+{
+    $user = require_login();
+    $userId = (int) $user['user_id'];
+
+    if (!privacy_notice_acknowledged($userId)) {
+        db()->prepare(
+            'INSERT IGNORE INTO privacy_consents (user_id, notice_version, ip_address)
+                  VALUES (:user_id, :version, :ip)'
+        )->execute([
+            ':user_id' => $userId,
+            ':version' => PRIVACY_NOTICE_VERSION,
+            ':ip' => client_ip(),
+        ]);
+
+        activity_log($userId, 'privacy_notice_acknowledged', null, null, PRIVACY_NOTICE_VERSION);
+    }
+
+    json_response(['ok' => true, 'privacy_notice' => [
+        'version' => PRIVACY_NOTICE_VERSION,
+        'acknowledged' => true,
+    ]]);
 }

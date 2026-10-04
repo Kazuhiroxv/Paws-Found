@@ -26,47 +26,26 @@ import { cn } from '@/utils/cn'
 import { ModerationStatusBadge } from './AdminBadges'
 import { StatusStrip } from '@/components/MatchComparison'
 import { useRevealWhen } from '@/utils/reveal'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
 
-/** What each decision did, said where the administrator is looking. */
-const OUTCOMES = {
-  dismiss: (title) => ['Flag dismissed', `“${title}” stays published. The case is under Dismissed.`],
-  warn: (title) => ['Report author warned', `About “${title}”. The case is under Actioned.`],
-  remove: (title) => ['Report removed', `“${title}” is no longer public. The case is under Actioned.`],
-  suspend: (title) => [
-    'Report removed and account suspended',
-    `“${title}” is no longer public and its author cannot sign in. The case is under Actioned.`,
-  ],
-}
+/**
+ * What each decision did, said where the administrator is looking:
+ * `admin.moderation.outcome.<action>` and `<action>Body`, read when shown.
+ */
 
-const TABS = [
-  { id: 'open', label: 'Awaiting review' },
-  { id: 'actioned', label: 'Actioned' },
-  { id: 'dismissed', label: 'Dismissed' },
-]
+// The tab labels are the case states' own words (AdminBadges).
+const TABS = ['open', 'actioned', 'dismissed']
 
 /**
  * The four approved decisions (CLAUDE.md §6.9), in order of severity, with
  * what each one does. The two that change something are confirmed first: they
  * close someone's report, and one of them locks an account.
  */
-const DECISIONS = {
-  dismiss: { label: 'Dismiss flag', variant: 'secondary' },
-  // "Report author", not "reporter": the person who flagged the listing
-  // reported it too, and the warning goes to the other one.
-  warn: { label: 'Warn report author', variant: 'secondary' },
-  remove: {
-    label: 'Remove the report',
-    variant: 'danger',
-    title: (report) => `Remove “${report}”?`,
-    confirm: 'Remove report',
-  },
-  suspend: {
-    label: 'Remove report and suspend account',
-    variant: 'danger',
-    title: (report, person) => `Remove “${report}” and suspend ${person}?`,
-    confirm: 'Remove and suspend',
-  },
-}
+//
+// The words are `admin.moderation.decisions.<action>`. "Report author", not
+// "reporter": the person who flagged the listing reported it too, and the
+// warning goes to the other one.
 
 async function loadModeration() {
   const [cases, admin] = await Promise.all([
@@ -95,10 +74,10 @@ export function AdminModerationPage() {
   const header = (
     <PageHeader
       icon={Flag}
-      eyebrow="Administrator"
-      title="Moderation"
-      description="Reports flagged by the community, and what was decided."
-      breadcrumb={[{ label: 'Administration', to: '/admin' }, { label: 'Moderation' }]}
+      eyebrow={t('shell.access.eyebrow')}
+      title={t('nav.moderation')}
+      description={t('admin.moderation.description')}
+      breadcrumb={[{ label: t('shell.workspace.admin'), to: '/admin' }, { label: t('nav.moderation') }]}
     />
   )
 
@@ -116,7 +95,7 @@ export function AdminModerationPage() {
       <div className="flex flex-col gap-6">
         {header}
         <p role="alert" className="text-sm text-danger">
-          The moderation queue could not be loaded: {error.message}
+          {t('admin.moderation.failed', { message: errorText(error) })}
         </p>
       </div>
     )
@@ -130,8 +109,9 @@ export function AdminModerationPage() {
     <div className="flex flex-col gap-6">
       {header}
 
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Moderation queue">
-        {TABS.map((item) => {
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label={t('admin.moderation.queue')}>
+        {TABS.map((id) => {
+          const item = { id }
           const isSelected = tab === item.id
 
           return (
@@ -150,7 +130,7 @@ export function AdminModerationPage() {
                   : 'border-border-strong bg-panel text-fg-muted hover:text-fg',
               )}
             >
-              {item.label}
+              {t(`admin.state.moderation.${item.id}`)}
               <span
                 className={cn(
                   'min-w-5 rounded-pill px-1.5 text-center text-xs font-semibold tabular-nums',
@@ -166,8 +146,8 @@ export function AdminModerationPage() {
 
       {outcome && (
         <div ref={outcomeRef} tabIndex={-1} role="status" className="scroll-mt-24 outline-none">
-          <StatusStrip tone="success" icon={ShieldCheck} title={outcome.title}>
-            {outcome.detail}
+          <StatusStrip tone="success" icon={ShieldCheck} title={t(`admin.moderation.outcome.${outcome.action}`)}>
+            {t(`admin.moderation.outcome.${outcome.action}Body`, { title: outcome.reportTitle })}
           </StatusStrip>
         </div>
       )}
@@ -178,16 +158,12 @@ export function AdminModerationPage() {
             icon={tab === 'open' ? ShieldCheck : Flag}
             title={
               tab === 'open'
-                ? 'Nothing awaiting review'
+                ? t('admin.moderation.emptyOpen')
                 : tab === 'actioned'
-                  ? 'Nothing has been actioned'
-                  : 'Nothing has been dismissed'
+                  ? t('admin.moderation.emptyActioned')
+                  : t('admin.moderation.emptyDismissed')
             }
-            description={
-              tab === 'open'
-                ? 'When someone flags a report, it will appear here for a decision.'
-                : 'Decisions you make will be recorded in this group.'
-            }
+            description={tab === 'open' ? t('admin.moderation.emptyOpenBody') : t('admin.moderation.emptyDoneBody')}
           />
         ) : (
           <ul className="flex flex-col gap-6">
@@ -201,8 +177,7 @@ export function AdminModerationPage() {
                   admin={admin}
                   onDone={async (action, title) => {
                     await reload()
-                    const [heading, detail] = OUTCOMES[action](title)
-                    setOutcome({ title: heading, detail, at: Date.now() })
+                    setOutcome({ action, reportTitle: title, at: Date.now() })
                   }}
                 />
               </li>
@@ -222,7 +197,7 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
   const [asking, setAsking] = useState(null) // 'remove' | 'suspend' | null
 
   const isOpen = moderationCase.status === 'open'
-  const reportTitle = report.petName ?? 'Found pet report'
+  const reportTitle = report.petName ?? t('editReport.foundReport')
 
   const decide = async (action) => {
     setBusyAction(action)
@@ -251,7 +226,7 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
         title={MODERATION_REASON_LABELS[moderationCase.reason]}
         subtitle={
           <span className="flex flex-wrap items-center gap-1.5">
-            Flagged by
+            {t('admin.moderation.flaggedBy')}
             <Avatar name={reportedBy.fullName} size="sm" />
             {reportedBy.fullName} · {formatCardDate(moderationCase.createdAt)}
           </span>
@@ -264,10 +239,10 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
             complaint, not anything the report itself says. */}
         <div className="flex flex-col gap-1.5">
           <h3 className="text-sm font-semibold text-fg">
-            What {reportedBy.fullName} said
+            {t('admin.moderation.said', { name: reportedBy.fullName })}
           </h3>
           <blockquote className="rounded-control border-l-2 border-accent bg-accent-soft px-3 py-2 text-sm text-fg">
-            {moderationCase.details || 'No further detail was given.'}
+            {moderationCase.details || t('admin.moderation.noDetail')}
           </blockquote>
         </div>
 
@@ -275,7 +250,7 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
             to judge a flag without leaving the queue, so the photograph and the
             opening of the description come with it. */}
         <div className="flex flex-col gap-1.5">
-          <h3 className="text-sm font-semibold text-fg">The flagged report</h3>
+          <h3 className="text-sm font-semibold text-fg">{t('admin.moderation.flaggedReport')}</h3>
 
           <div className="relative flex gap-4 rounded-control border border-border p-3 transition-colors hover:bg-surface has-[a:focus-visible]:bg-surface">
             <img
@@ -298,11 +273,11 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
                 {reportTitle}
               </Link>
               <p className="flex flex-wrap items-center gap-1.5 text-sm text-fg-muted">
-                Filed by
+                {t('admin.reports.filedBy')}
                 <Avatar name={reporter.fullName} size="sm" />
                 {reporter.fullName}
                 {reporter.accountStatus === 'suspended' && (
-                  <span className="font-medium text-danger">· account suspended</span>
+                  <span className="font-medium text-danger">· {t('admin.moderation.accountSuspended')}</span>
                 )}
               </p>
               <p className="line-clamp-2 text-sm text-fg-muted">{report.description}</p>
@@ -314,7 +289,7 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
                 to={`/pet/${report.id}`}
                 className="relative self-start text-sm font-medium text-brand hover:underline"
               >
-                Open the full report
+                {t('admin.reports.openFull')}
                 <ArrowRight size={14} className="ml-1 inline" aria-hidden="true" />
               </Link>
             </div>
@@ -324,18 +299,18 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
         {isOpen ? (
           <>
             <Textarea
-              label="Decision note"
+              label={t('admin.moderation.note')}
               value={note}
               onChange={(event) => setNote(event.target.value)}
               rows={2}
               maxLength={255}
-              placeholder="Explain what you decided and why."
-              hint="The decision is sent to the person who filed the pet report; the person who flagged it is not notified. Required to remove the report."
+              placeholder={t('admin.moderation.notePlaceholder')}
+              hint={t('admin.moderation.noteHint')}
             />
 
             {actionError && (
               <p role="alert" className="text-sm text-danger">
-                That could not be saved: {actionError.message}
+                {t('ui.notSaved', { message: errorText(actionError) })}
               </p>
             )}
 
@@ -350,7 +325,7 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
                   disabled={Boolean(busyAction)}
                   onClick={() => decide('dismiss')}
                 >
-                  {DECISIONS.dismiss.label}
+                  {t('admin.moderation.decisions.dismiss')}
                 </Button>
                 <Button
                   variant="secondary"
@@ -358,19 +333,19 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
                   disabled={Boolean(busyAction)}
                   onClick={() => decide('warn')}
                 >
-                  {DECISIONS.warn.label}
+                  {t('admin.moderation.decisions.warn')}
                 </Button>
               </div>
 
               <div className="flex flex-col gap-2 border-t border-danger/20 pt-4">
                 <p className="flex items-center gap-1.5 text-sm font-medium text-fg">
                   <AlertTriangle size={15} className="shrink-0 text-danger" aria-hidden="true" />
-                  These close the report
+                  {t('admin.moderation.closeThese')}
                 </p>
                 {/* The same rule as suspending from Users, and the server
                     enforces it: removal needs a reason the reporter can read. */}
                 {!note.trim() && (
-                  <p className="text-sm text-fg-muted">Write a decision note above to remove the report.</p>
+                  <p className="text-sm text-fg-muted">{t('admin.moderation.noteNeeded')}</p>
                 )}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
                   <Button
@@ -378,7 +353,7 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
                     disabled={Boolean(busyAction) || !note.trim()}
                     onClick={() => setAsking('remove')}
                   >
-                    {DECISIONS.remove.label}
+                    {t('admin.moderation.decisions.remove')}
                   </Button>
                   {/* Set apart from "Remove the report", and spelled out: the
                       two used to sit side by side in the same red. */}
@@ -392,7 +367,7 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
                       className="sm:ml-auto"
                     >
                       <Lock size={16} aria-hidden="true" />
-                      {DECISIONS.suspend.label}
+                      {t('admin.moderation.decisions.suspend')}
                     </Button>
                   )}
                 </div>
@@ -400,31 +375,26 @@ function ModerationCase({ moderationCase, report, reporter, reportedBy, admin, o
             </div>
 
             <p className="text-sm text-fg-muted">
-              Removing closes the report rather than deleting it, so the record of what
-              happened survives. The person who filed it is told either way.
+              {t('admin.moderation.removingNote')}
             </p>
 
             {asking && (
               <ConfirmDialog
                 isOpen
-                title={DECISIONS[asking].title(reportTitle, reporter.fullName)}
-                confirmLabel={DECISIONS[asking].confirm}
+                title={t(`admin.moderation.decisions.${asking}Title`, { title: reportTitle, name: reporter.fullName })}
+                confirmLabel={t(`admin.moderation.decisions.${asking}Confirm`)}
                 isBusy={busyAction === asking}
                 onCancel={() => setAsking(null)}
                 onConfirm={() => decide(asking)}
               >
-                <p>
-                  The report will be closed and removed from active use. It is not deleted: the
-                  record, its history and this case stay in the system.
-                </p>
+                <p>{t('admin.moderation.confirmBody')}</p>
                 {asking === 'suspend' && (
                   <p>
-                    <span className="font-medium">{reporter.fullName}</span> will also be
-                    suspended and will not be able to sign in until an administrator reinstates
-                    the account.
+                    <span className="font-medium">{reporter.fullName}</span>{' '}
+                    {t('admin.moderation.suspendBody')}
                   </p>
                 )}
-                <p className="text-fg-muted">Your decision note is sent to them.</p>
+                <p className="text-fg-muted">{t('admin.moderation.noteSent')}</p>
               </ConfirmDialog>
             )}
           </>
@@ -451,15 +421,15 @@ function DecisionRecord({ moderationCase, reportedBy }) {
 
   return (
     <div className="flex flex-col gap-2 rounded-control border border-border bg-surface px-4 py-3">
-      <h3 className="text-sm font-semibold text-fg">Decision</h3>
+      <h3 className="text-sm font-semibold text-fg">{t('admin.moderation.decision')}</h3>
       <ol className="flex flex-col gap-2 text-sm">
         <li className="flex gap-2">
           <span className="mt-1.5 size-2 shrink-0 rounded-full bg-status-match" aria-hidden="true" />
           <span>
-            <span className="font-medium text-fg">Flagged</span>
+            <span className="font-medium text-fg">{t('admin.moderation.flagged')}</span>
             <span className="text-fg-muted">
               {' '}
-              by {reportedBy.fullName} · {formatCardDate(moderationCase.createdAt)}
+              {t('dashboard.by', { name: reportedBy.fullName })} · {formatCardDate(moderationCase.createdAt)}
             </span>
           </span>
         </li>
@@ -472,10 +442,12 @@ function DecisionRecord({ moderationCase, reportedBy }) {
             aria-hidden="true"
           />
           <span>
-            <span className="font-medium text-fg">{dismissed ? 'Dismissed' : 'Actioned'}</span>
+            <span className="font-medium text-fg">
+              {dismissed ? t('admin.state.moderation.dismissed') : t('admin.state.moderation.actioned')}
+            </span>
             <span className="text-fg-muted">
               {' '}
-              by an administrator
+              {t('admin.moderation.byAdmin')}
               {moderationCase.resolvedAt && ` · ${formatCardDate(moderationCase.resolvedAt)}`}
             </span>
             {moderationCase.resolutionNote && (

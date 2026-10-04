@@ -1,7 +1,15 @@
 /**
  * Dates are stored as ISO strings and formatted at render time, so the stored
  * value stays locale-independent.
+ *
+ * Formatted in the language showing (Correction 7): en-PH or fil-PH, so a
+ * date reads "October 4, 2026" or "Oktubre 4, 2026". Only the words change —
+ * never the stored value, and never the time: both locales show a 12-hour
+ * clock with AM and PM.
  */
+import { languageInfo, t } from '@/i18n'
+
+const locale = () => languageInfo().locale
 
 const SERVER_TIMESTAMP = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/
 const CALENDAR_DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -41,7 +49,7 @@ export function formatDate(value) {
   if (!value) return ''
   const date = parseDateTime(value)
   if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
+  return date.toLocaleDateString(locale(), { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
 /**
@@ -52,7 +60,7 @@ export function formatDateTime(value) {
   if (!value) return ''
   const date = parseDateTime(value)
   if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleString('en-PH', {
+  return date.toLocaleString(locale(), {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -74,16 +82,16 @@ export function formatRelativeTime(value, now = new Date()) {
   if (Number.isNaN(date.getTime())) return ''
 
   const seconds = Math.round((now.getTime() - date.getTime()) / 1000)
-  if (seconds < 60) return 'just now'
+  if (seconds < 60) return t('dates.justNow')
 
   const minutes = Math.round(seconds / 60)
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`
+  if (minutes < 60) return t('dates.minutesAgo', { count: minutes })
 
   const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
+  if (hours < 24) return t('dates.hoursAgo', { count: hours })
 
   const days = Math.round(hours / 24)
-  if (days < 30) return `${days} day${days === 1 ? '' : 's'} ago`
+  if (days < 30) return t('dates.daysAgo', { count: days })
 
   return formatDate(date)
 }
@@ -101,7 +109,7 @@ export function formatShortDate(value, now = new Date()) {
   const date = parseDateTime(value)
   if (Number.isNaN(date.getTime())) return ''
   const sameYear = date.getFullYear() === now.getFullYear()
-  return date.toLocaleDateString('en-PH', {
+  return date.toLocaleDateString(locale(), {
     month: 'short',
     day: 'numeric',
     ...(sameYear ? {} : { year: 'numeric' }),
@@ -122,6 +130,17 @@ export function formatCardDate(value, now = new Date()) {
   if (Number.isNaN(date.getTime())) return ''
   const days = (now.getTime() - date.getTime()) / 86400000
   return days < 30 ? formatRelativeTime(date, now) : formatShortDate(date, now)
+}
+
+/**
+ * A month from the API ("2026-10") as its short name — "Oct" or "Okt".
+ *
+ * @param {string} value  "YYYY-MM".
+ */
+export function formatMonthShort(value) {
+  const match = /^(\d{4})-(\d{2})$/.exec(value ?? '')
+  if (!match) return ''
+  return new Date(Number(match[1]), Number(match[2]) - 1, 1).toLocaleDateString(locale(), { month: 'short' })
 }
 
 /**

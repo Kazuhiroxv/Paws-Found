@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { userService } from '@/services'
+import { t } from '@/i18n'
 
 const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
 
@@ -92,8 +93,7 @@ export function Turnstile({ onToken, attempt = 0 }) {
     <div className="flex flex-col gap-2">
       <div ref={container} />
       <p className="text-sm text-fg-muted">
-        This check keeps automated sign-ups out. It runs in your browser and does not
-        track you across other sites.
+        {t('ui.turnstile')}
       </p>
     </div>
   )

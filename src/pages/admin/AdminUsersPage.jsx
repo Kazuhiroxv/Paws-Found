@@ -14,6 +14,8 @@ import { can } from '@/utils/permissions'
 import { optionsFromLabels } from '@/utils/options'
 import { AccountStatusBadge } from './AdminBadges'
 import { parseDateTime } from '@/utils/date'
+import { errorText } from '@/i18n/apiErrors'
+import { languageInfo, t } from '@/i18n'
 
 /**
  * When an account was created, always with the year: accounts span years, and
@@ -21,29 +23,18 @@ import { parseDateTime } from '@/utils/date'
  */
 const joinedOn = (value) =>
   value
-    ? parseDateTime(value).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+    ? parseDateTime(value).toLocaleDateString(languageInfo().locale, { month: 'short', day: 'numeric', year: 'numeric' })
     : ''
 
 async function loadUsers() {
   return { users: await userService.getUsers() }
 }
 
-/** What each role can do, so a role change is made with its meaning in view. */
-const ROLE_DESCRIPTIONS = {
-  [ROLES.USER]: 'Files and manages their own reports. No access to either workspace.',
-  [ROLES.STAFF]:
-    'Reviews reports and possible matches, decides verifications, and sees both reporters’ contact details.',
-  [ROLES.ADMIN]: 'Works in Administration, to the level chosen below.',
-}
-
-/** What each administrator level adds (ADMIN_CAPABILITIES in api/helpers.php). */
-const LEVEL_DESCRIPTIONS = {
-  [ADMIN_LEVELS.MODERATOR]: 'Moderation and removing published reports. No accounts, categories or logs.',
-  [ADMIN_LEVELS.MANAGER]:
-    'Everything a Moderator does, plus suspending, reinstating and unlocking customers and coordinators, and pet categories.',
-  [ADMIN_LEVELS.SUPER_ADMIN]:
-    'Everything, including roles, administrator levels, other administrators’ accounts and the security logs.',
-}
+/**
+ * What each role can do, so a role change is made with its meaning in view
+ * (`admin.users.roleInfo.<role>`), and what each administrator level adds
+ * (`admin.users.levelInfo.<level>`; ADMIN_CAPABILITIES in api/helpers.php).
+ */
 
 /**
  * Account management.
@@ -78,10 +69,10 @@ export function AdminUsersPage() {
   const header = (
     <PageHeader
       icon={Users}
-      eyebrow="Administrator"
-      title="Users"
-      description="Community members, Pet Coordinators and administrators."
-      breadcrumb={[{ label: 'Administration', to: '/admin' }, { label: 'Users' }]}
+      eyebrow={t('shell.access.eyebrow')}
+      title={t('nav.users')}
+      description={t('admin.users.description')}
+      breadcrumb={[{ label: t('shell.workspace.admin'), to: '/admin' }, { label: t('nav.users') }]}
     />
   )
 
@@ -99,7 +90,7 @@ export function AdminUsersPage() {
       <div className="flex flex-col gap-6">
         {header}
         <p role="alert" className="text-sm text-danger">
-          The account list could not be loaded: {error.message}
+          {t('admin.users.failed', { message: errorText(error) })}
         </p>
       </div>
     )
@@ -167,34 +158,34 @@ export function AdminUsersPage() {
           are otherwise three filter clicks apart. */}
       <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <li className="contents">
-          <StatTile icon={Users} label="Accounts" value={users.length} />
+          <StatTile icon={Users} label={t('admin.overview.accounts')} value={users.length} />
         </li>
         <li className="contents">
           <StatTile
             icon={UserRound}
-            label="Community members"
+            label={t('admin.users.members')}
             value={users.filter((user) => user.role === ROLES.USER).length}
           />
         </li>
         <li className="contents">
           <StatTile
             icon={UserCog}
-            label="Coordinators and admins"
+            label={t('admin.users.staffAdmins')}
             value={users.filter((user) => user.role !== ROLES.USER).length}
           />
         </li>
         <li className="contents">
           <StatTile
             icon={ShieldAlert}
-            label="Need attention"
+            label={t('admin.users.needAttention')}
             value={users.filter((user) => user.accountStatus !== 'active').length}
           />
         </li>
       </ul>
 
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_11rem_11rem]">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_13rem_13rem]">
         <label className="relative">
-          <span className="sr-only">Search accounts</span>
+          <span className="sr-only">{t('admin.users.search')}</span>
           <Search
             size={16}
             className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-fg-muted"
@@ -204,27 +195,27 @@ export function AdminUsersPage() {
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Name or email"
+            placeholder={t('admin.users.placeholder')}
             className="h-10 w-full rounded-control border border-border-strong bg-panel pr-3 pl-9 text-sm text-fg placeholder:text-fg-muted"
           />
         </label>
         <Select
-          label="Role"
+          label={t('admin.users.role')}
           hideLabel
           value={roleFilter}
           onChange={(event) => setRoleFilter(event.target.value)}
-          options={[{ value: '', label: 'Any role' }, ...optionsFromLabels(ROLE_LABELS)]}
+          options={[{ value: '', label: t('admin.users.anyRole') }, ...optionsFromLabels(ROLE_LABELS)]}
         />
         <Select
-          label="Account status"
+          label={t('admin.users.accountStatus')}
           hideLabel
           value={statusFilter}
           onChange={(event) => setStatusFilter(event.target.value)}
           options={[
-            { value: '', label: 'Any status' },
-            { value: 'active', label: 'Active' },
-            { value: 'suspended', label: 'Suspended' },
-            { value: 'locked', label: 'Locked (failed sign-ins)' },
+            { value: '', label: t('filters.anyStatus') },
+            { value: 'active', label: t('admin.state.account.active') },
+            { value: 'suspended', label: t('admin.state.account.suspended') },
+            { value: 'locked', label: t('admin.users.lockedOption') },
           ]}
         />
       </div>
@@ -232,12 +223,12 @@ export function AdminUsersPage() {
       <div className="flex flex-wrap items-center gap-3">
         <p className="text-sm text-fg-muted" aria-live="polite">
           {isFiltering
-            ? `${visible.length} of ${users.length} accounts`
-            : `${users.length} ${users.length === 1 ? 'account' : 'accounts'}`}
+            ? t('admin.users.countFiltered', { shown: visible.length, total: users.length })
+            : t('admin.users.count', { count: users.length })}
         </p>
         {isFiltering && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
-            Clear filters
+            {t('staff.reports.clear')}
           </Button>
         )}
       </div>
@@ -245,11 +236,11 @@ export function AdminUsersPage() {
       {visible.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="No accounts match"
-          description="Try a broader search, or clear the filters."
+          title={t('admin.users.noMatch')}
+          description={t('admin.users.noMatchBody')}
           action={
             <Button variant="secondary" onClick={clearFilters}>
-              Clear filters
+              {t('staff.reports.clear')}
             </Button>
           }
         />
@@ -275,19 +266,19 @@ export function AdminUsersPage() {
               <thead className="sticky top-0 z-10 border-b border-border bg-surface-muted text-fg shadow-[0_1px_0_var(--color-border)] [&>tr>th:first-child]:rounded-tl-card [&>tr>th:last-child]:rounded-tr-card">
                 <tr>
                   <th scope="col" className="px-4 py-2.5 font-medium">
-                    User
+                    {t('admin.users.user')}
                   </th>
                   <th scope="col" className="px-2 py-2.5 font-medium">
-                    Role
+                    {t('admin.users.role')}
                   </th>
                   <th scope="col" className="px-2 py-2.5 font-medium">
-                    Status
+                    {t('filters.status')}
                   </th>
                   <th scope="col" className="px-2 py-2.5 font-medium">
-                    Joined
+                    {t('admin.users.joined')}
                   </th>
                   <th scope="col" className="px-4 py-2.5 text-right font-medium">
-                    Actions
+                    {t('detail.actions')}
                   </th>
                 </tr>
               </thead>
@@ -313,7 +304,7 @@ export function AdminUsersPage() {
                           <div className="min-w-0">
                             <p className="font-medium text-fg">
                               {user.fullName}
-                              {isSelf && <span className="ml-2 text-fg-muted">(you)</span>}
+                              {isSelf && <span className="ml-2 text-fg-muted">{t('admin.users.you')}</span>}
                             </p>
                             <p className="break-all text-fg-muted">{user.email}</p>
                           </div>
@@ -351,11 +342,8 @@ export function AdminUsersPage() {
       )}
 
       <p className="text-sm text-fg-muted">
-        You cannot change your own role, level or account — that is how an administrator locks
-        themselves out.
-        {mayManageAdmins
-          ? ' Roles, administrator levels and other administrators’ accounts are yours to manage; the last active Super Administrator cannot be removed.'
-          : ' Roles, administrator levels and administrators’ accounts are managed by a Super Administrator.'}
+        {t('admin.users.ownNote')}{' '}
+        {mayManageAdmins ? t('admin.users.superNote') : t('admin.users.otherNote')}
       </p>
 
       {asking?.kind === 'role' && (
@@ -399,7 +387,7 @@ export function AdminUsersPage() {
           does, on top of the panel. */}
       <SidePanel
         isOpen={Boolean(viewing)}
-        eyebrow="Account"
+        eyebrow={t('admin.users.account')}
         title={viewing?.fullName ?? ''}
         onClose={() => setViewing(null)}
       >
@@ -439,45 +427,44 @@ function AccountPanel({ user, isSelf, mayManageAdmins, onAsk }) {
 
       <dl className="flex flex-col gap-3 text-sm">
         <div className="grid grid-cols-[7rem_1fr] gap-3">
-          <dt className="text-fg-muted">Email</dt>
+          <dt className="text-fg-muted">{t('auth.email')}</dt>
           <dd className="break-all text-fg">{user.email}</dd>
         </div>
         <div className="grid grid-cols-[7rem_1fr] gap-3">
-          <dt className="text-fg-muted">Phone</dt>
+          <dt className="text-fg-muted">{t('admin.users.phone')}</dt>
           <dd className={user.phone ? 'text-fg' : 'text-fg-subtle'}>
-            {user.phone || 'Not given'}
+            {user.phone || t('common.notGiven')}
           </dd>
         </div>
         <div className="grid grid-cols-[7rem_1fr] gap-3">
-          <dt className="text-fg-muted">Usually in</dt>
+          <dt className="text-fg-muted">{t('admin.users.usuallyIn')}</dt>
           <dd className={user.preferredLocation ? 'text-fg' : 'text-fg-subtle'}>
-            {user.preferredLocation || 'Not given'}
+            {user.preferredLocation || t('common.notGiven')}
           </dd>
         </div>
         <div className="grid grid-cols-[7rem_1fr] gap-3">
-          <dt className="text-fg-muted">Joined</dt>
+          <dt className="text-fg-muted">{t('admin.users.joined')}</dt>
           <dd className="text-fg">{joinedOn(user.createdAt)}</dd>
         </div>
       </dl>
 
       {isSelf ? (
         <p className="rounded-control border border-border bg-sunken px-3 py-2.5 text-sm text-fg-muted">
-          This is your own account. An administrator cannot change their own role or suspend
-          themselves — that is how the last administrator locks everyone out.
+          {t('admin.users.ownAccount')}
         </p>
       ) : user.role === ROLES.ADMIN && !mayManageAdmins ? (
         <p className="rounded-control border border-border bg-sunken px-3 py-2.5 text-sm text-fg-muted">
-          An administrator’s account is managed by a Super Administrator.
+          {t('admin.users.adminManaged')}
         </p>
       ) : (
         <div className="flex flex-col gap-2 border-t border-border pt-4">
           {isLocked && (
             <>
               <Button fullWidth onClick={() => onAsk({ user, kind: 'unlock' })}>
-                Unlock this account
+                {t('admin.users.unlockThis')}
               </Button>
               <p className="-mt-1 mb-1 text-sm text-fg-muted">
-                Locked after three failed sign-in attempts. Unlocking gives them three more.
+                {t('admin.users.unlockNote')}
               </p>
             </>
           )}
@@ -488,18 +475,18 @@ function AccountPanel({ user, isSelf, mayManageAdmins, onAsk }) {
               fullWidth
               onClick={() => onAsk({ user, kind: 'role', role: user.role, level: user.adminLevel })}
             >
-              Change role or level
+              {t('admin.users.changeRoleLevel')}
             </Button>
           )}
 
           <Button variant="ghost" fullWidth onClick={() => onAsk({ user, kind: 'status' })}>
-            {isSuspended ? 'Reinstate this account' : 'Suspend this account'}
+            {isSuspended ? t('admin.users.reinstateThis') : t('admin.users.suspendThis')}
           </Button>
 
           <p className="text-sm text-fg-muted">
             {isSuspended
-              ? 'Reinstating lets them sign in again. Their reports were never affected.'
-              : 'Suspending stops them signing in, on every device, straight away. Their reports stay visible.'}
+              ? t('admin.users.reinstateNote')
+              : t('admin.users.suspendNote')}
           </p>
         </div>
       )}
@@ -518,12 +505,12 @@ function AccountPanel({ user, isSelf, mayManageAdmins, onAsk }) {
  */
 function RowActions({ user, isSelf, mayManageAdmins, onAsk }) {
   if (isSelf) {
-    return <span className="text-fg-muted">This is your account</span>
+    return <span className="text-fg-muted">{t('admin.users.yourAccount')}</span>
   }
 
   // Correction 6: another administrator is a Super Administrator's to manage.
   if (user.role === ROLES.ADMIN && !mayManageAdmins) {
-    return <span className="text-fg-muted">Managed by a Super Administrator</span>
+    return <span className="text-fg-muted">{t('admin.users.managedBySuper')}</span>
   }
 
   const isSuspended = user.accountStatus === 'suspended'
@@ -536,8 +523,8 @@ function RowActions({ user, isSelf, mayManageAdmins, onAsk }) {
           probably waiting on the other end of a telephone. */}
       {isLocked && (
         <Button size="sm" onClick={() => onAsk({ user, kind: 'unlock' })}>
-          Unlock
-          <span className="sr-only"> {user.fullName}’s account</span>
+          {t('admin.users.unlock')}
+          <span className="sr-only"> {t('admin.users.srAccount', { name: user.fullName })}</span>
         </Button>
       )}
       {mayManageAdmins && (
@@ -546,8 +533,8 @@ function RowActions({ user, isSelf, mayManageAdmins, onAsk }) {
           variant="secondary"
           onClick={() => onAsk({ user, kind: 'role', role: user.role, level: user.adminLevel })}
         >
-          Change role
-          <span className="sr-only"> for {user.fullName}</span>
+          {t('admin.users.changeRole')}
+          <span className="sr-only"> {t('admin.users.srFor', { name: user.fullName })}</span>
         </Button>
       )}
       <Button
@@ -556,8 +543,8 @@ function RowActions({ user, isSelf, mayManageAdmins, onAsk }) {
         className={isSuspended ? undefined : 'border-danger/45 text-danger-hover! hover:bg-danger-soft!'}
         onClick={() => onAsk({ user, kind: 'status' })}
       >
-        {isSuspended ? 'Reinstate' : 'Suspend'}
-        <span className="sr-only"> {user.fullName}’s account</span>
+        {isSuspended ? t('admin.users.reinstate') : t('admin.users.suspend')}
+        <span className="sr-only"> {t('admin.users.srAccount', { name: user.fullName })}</span>
       </Button>
     </div>
   )
@@ -572,7 +559,7 @@ function UserCard({ user, isSelf, mayManageAdmins, onAsk }) {
         <div className="min-w-0 flex-1">
           <p className="font-medium text-fg">
             {user.fullName}
-            {isSelf && <span className="ml-2 text-fg-muted">(you)</span>}
+            {isSelf && <span className="ml-2 text-fg-muted">{t('admin.users.you')}</span>}
           </p>
           <p className="text-sm break-all text-fg-muted">{user.email}</p>
         </div>
@@ -580,17 +567,17 @@ function UserCard({ user, isSelf, mayManageAdmins, onAsk }) {
 
       <dl className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <div className="flex items-center gap-1.5">
-          <dt className="text-fg-muted">Role:</dt>
+          <dt className="text-fg-muted">{t('admin.users.roleColon')}</dt>
           <dd className="text-fg">{roleLabel(user)}</dd>
         </div>
         <div className="flex items-center gap-1.5">
-          <dt className="sr-only">Status</dt>
+          <dt className="sr-only">{t('filters.status')}</dt>
           <dd>
             <AccountStatusBadge status={user.accountStatus} />
           </dd>
         </div>
         <div className="flex items-center gap-1.5">
-          <dt className="text-fg-muted">Joined</dt>
+          <dt className="text-fg-muted">{t('admin.users.joined')}</dt>
           <dd className="text-fg-muted">{joinedOn(user.createdAt)}</dd>
         </div>
       </dl>
@@ -611,8 +598,8 @@ function RoleDialog({ user, role, level, onPick, onPickLevel, onCancel, onConfir
   return (
     <ConfirmDialog
       isOpen
-      title={`Change ${user.fullName}’s role?`}
-      confirmLabel={ready ? `Make ${target}` : 'Change role'}
+      title={t('admin.users.roleTitle', { name: user.fullName })}
+      confirmLabel={ready ? t('admin.users.make', { target }) : t('admin.users.changeRole')}
       tone="primary"
       confirmDisabled={!ready || isBusy}
       isBusy={isBusy}
@@ -621,14 +608,11 @@ function RoleDialog({ user, role, level, onPick, onPickLevel, onCancel, onConfir
       onConfirm={onConfirm}
     >
       <p className="text-fg-muted">
-        {user.fullName} is currently {roleLabel(user)}. A role decides what someone can reach, and
-        the change takes effect on their very next request. Becoming a coordinator or an
-        administrator, or any change to an administrator’s level, signs them out everywhere so
-        they start again with the right pages; they are told why.
+        {t('admin.users.roleBody', { name: user.fullName, role: roleLabel(user) })}
       </p>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="sr-only">New role for {user.fullName}</legend>
+        <legend className="sr-only">{t('admin.users.newRole', { name: user.fullName })}</legend>
         {Object.entries(ROLE_LABELS).map(([value, label]) => (
           <label
             key={value}
@@ -645,9 +629,9 @@ function RoleDialog({ user, role, level, onPick, onPickLevel, onCancel, onConfir
             <span className="flex flex-col gap-0.5">
               <span className="font-medium text-fg">
                 {label}
-                {value === user.role && <span className="text-fg-muted"> · current</span>}
+                {value === user.role && <span className="text-fg-muted"> · {t('admin.users.current')}</span>}
               </span>
-              <span className="text-fg-muted">{ROLE_DESCRIPTIONS[value]}</span>
+              <span className="text-fg-muted">{t(`admin.users.roleInfo.${value}`)}</span>
             </span>
           </label>
         ))}
@@ -655,7 +639,7 @@ function RoleDialog({ user, role, level, onPick, onPickLevel, onCancel, onConfir
 
       {isAdmin && (
         <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-sm font-medium text-fg">Administrator level (required)</legend>
+          <legend className="mb-1 text-sm font-medium text-fg">{t('admin.users.levelRequired')}</legend>
           {Object.values(ADMIN_LEVELS).map((value) => (
             <label
               key={value}
@@ -673,10 +657,10 @@ function RoleDialog({ user, role, level, onPick, onPickLevel, onCancel, onConfir
                 <span className="font-medium text-fg">
                   {ADMIN_LEVEL_LABELS[value]}
                   {user.role === ROLES.ADMIN && value === user.adminLevel && (
-                    <span className="text-fg-muted"> · current</span>
+                    <span className="text-fg-muted"> · {t('admin.users.current')}</span>
                   )}
                 </span>
-                <span className="text-fg-muted">{LEVEL_DESCRIPTIONS[value]}</span>
+                <span className="text-fg-muted">{t(`admin.users.levelInfo.${value}`)}</span>
               </span>
             </label>
           ))}
@@ -698,8 +682,8 @@ function UnlockDialog({ user, onCancel, onConfirm, isBusy, error }) {
   return (
     <ConfirmDialog
       isOpen
-      title={`Unlock ${user.fullName}’s account?`}
-      confirmLabel="Unlock account"
+      title={t('admin.users.unlockTitle', { name: user.fullName })}
+      confirmLabel={t('admin.users.unlockConfirm')}
       tone="primary"
       isBusy={isBusy}
       error={error}
@@ -709,14 +693,8 @@ function UnlockDialog({ user, onCancel, onConfirm, isBusy, error }) {
       <p className="text-fg-muted">
         {user.fullName} · {roleLabel(user)} · {user.email}
       </p>
-      <p>
-        This account locked itself after three failed sign-in attempts. Unlocking sets it back to
-        active and clears the counter, so they have three attempts again.
-      </p>
-      <p className="text-fg-muted">
-        It does not change their password. Check that you are speaking to the account holder
-        before you do this — three failures may have been somebody else trying to guess it.
-      </p>
+      <p>{t('admin.users.unlockBody')}</p>
+      <p className="text-fg-muted">{t('admin.users.unlockCaution')}</p>
     </ConfirmDialog>
   )
 }
@@ -731,8 +709,8 @@ function StatusDialog({ user, reason, onReason, onCancel, onConfirm, isBusy, err
   return (
     <ConfirmDialog
       isOpen
-      title={isSuspended ? `Reinstate ${user.fullName}?` : `Suspend ${user.fullName}?`}
-      confirmLabel={isSuspended ? 'Reinstate account' : 'Suspend account'}
+      title={isSuspended ? t('admin.users.reinstateTitle', { name: user.fullName }) : t('admin.users.suspendTitle', { name: user.fullName })}
+      confirmLabel={isSuspended ? t('admin.users.reinstateConfirm') : t('admin.users.suspendConfirm')}
       tone={isSuspended ? 'primary' : 'danger'}
       confirmDisabled={needsReason || isBusy}
       isBusy={isBusy}
@@ -745,17 +723,17 @@ function StatusDialog({ user, reason, onReason, onCancel, onConfirm, isBusy, err
       </p>
       <p>
         {isSuspended
-          ? 'They will be able to sign in again and use their account as before. Their reports are untouched either way.'
-          : 'They will not be able to sign in until an administrator reinstates them. Reports they have already filed stay in the system and stay visible.'}
+          ? t('admin.users.reinstateBody')
+          : t('admin.users.suspendBody')}
       </p>
       {!isSuspended && (
         <Textarea
-          label="Reason"
+          label={t('publication.reason')}
           required
           rows={3}
           value={reason}
           onChange={(event) => onReason(event.target.value)}
-          hint="Kept in the audit log, next to your name."
+          hint={t('admin.users.reasonHint')}
         />
       )}
     </ConfirmDialog>

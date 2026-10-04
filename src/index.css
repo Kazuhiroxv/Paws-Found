@@ -418,3 +418,94 @@
     radial-gradient(46rem 26rem at 0% 0%, rgb(21 122 120 / 0.14), transparent 64%),
     radial-gradient(38rem 24rem at 100% 10%, rgb(244 163 64 / 0.06), transparent 62%);
 }
+
+/* ---------------------------------------------------------------------------
+   A report list on paper (Correction 7, src/components/PrintReportList.jsx).
+
+   The sheet is drawn outside #root and hidden on screen. While it exists and
+   the page is printed, the application itself — navigation, sidebars,
+   buttons, filters, the map — is taken out, so the printout is the title,
+   the date, the filters applied, the table and one line of disclaimer.
+   Black on white, no backgrounds, and the type is a word, not a colour.
+   --------------------------------------------------------------------------- */
+.print-sheet {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 10mm 14mm;
+
+    @bottom-right {
+      content: counter(page) ' / ' counter(pages);
+      font-size: 8pt;
+      color: #333;
+    }
+  }
+
+  body.printing-report-list {
+    background: #fff !important;
+  }
+
+  body.printing-report-list > #root {
+    display: none !important;
+  }
+
+  body.printing-report-list > .print-sheet {
+    display: block;
+    color: #000;
+    font-size: 8.5pt;
+    line-height: 1.35;
+  }
+
+  .print-sheet .print-header {
+    margin-bottom: 4mm;
+  }
+
+  .print-sheet .print-brand {
+    font-weight: 600;
+    font-size: 9pt;
+  }
+
+  .print-sheet h1 {
+    font-size: 15pt;
+    font-weight: 600;
+    margin: 1mm 0 2mm;
+  }
+
+  .print-sheet table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  /* The heading row again on every page. */
+  .print-sheet thead {
+    display: table-header-group;
+  }
+
+  .print-sheet th,
+  .print-sheet td {
+    border: 0.5pt solid #555;
+    padding: 1.2mm 1.4mm;
+    text-align: left;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+
+  .print-sheet th {
+    font-weight: 600;
+    background: none;
+  }
+
+  /* A row is never split across two pages. */
+  .print-sheet tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-sheet .print-footer {
+    margin-top: 4mm;
+    font-size: 7.5pt;
+  }
+}

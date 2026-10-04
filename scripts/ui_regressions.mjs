@@ -918,11 +918,16 @@ if (/^(localhost|127\.0\.0\.1)$/.test(new URL(BASE).hostname)) {
     return page.evaluate(() => window.location.pathname)
   }
   const sent = {}
-  for (const route of ['/', '/explore', '/report/lost', '/report/found', '/about', '/help', '/privacy']) {
+  for (const route of ['/', '/explore', '/report/lost', '/report/found', '/about', '/help']) {
     sent[route] = await landsOn(route)
   }
-  check('ADMIN-SITE-1', 'Home, Explore, Report a pet, About, Help and Privacy send the administrator to /admin',
-    Object.values(sent).every((path) => path === '/admin'), JSON.stringify(sent))
+  // Correction 7: the Privacy Notice and the Disclaimer stay open to an
+  // administrator — the notice-update message links to the Privacy Notice.
+  const notices = { '/privacy': await landsOn('/privacy'), '/disclaimer': await landsOn('/disclaimer') }
+  check('ADMIN-SITE-1', 'Home, Explore, Report a pet, About and Help send the administrator to /admin; Privacy and Disclaimer stay open',
+    Object.values(sent).every((path) => path === '/admin')
+      && Object.entries(notices).every(([route, path]) => route === path),
+    JSON.stringify({ ...sent, ...notices }))
   const report = await landsOn('/pet/1')
   check('ADMIN-SITE-2', 'A report page still opens for the administrator (Moderation and Records link to it)',
     report === '/pet/1', report)

@@ -11,16 +11,23 @@ import { useAsync } from '@/hooks/useAsync'
 import { userService } from '@/services'
 import { cleanName, nameProblem } from '@/utils/nameRules'
 import { reveal } from '@/utils/reveal'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
+import { Rich } from '@/i18n/Rich'
 
 const loadCurrentUser = () => userService.getCurrentUser()
 
-const header = (
-  <PageHeader
-    title="Profile"
-    description="Your contact details, what you want to be told about, and your password."
-    breadcrumb={[{ label: 'My dashboard', to: '/dashboard' }, { label: 'Profile' }]}
-  />
-)
+// A component, not a constant element: its words are read when it renders,
+// in the language showing (Correction 7).
+function Header() {
+  return (
+    <PageHeader
+      title={t('nav.profile')}
+      description={t('profile.description')}
+      breadcrumb={[{ label: t('dashboard.title'), to: '/dashboard' }, { label: t('nav.profile') }]}
+    />
+  )
+}
 
 /** The API's field names → this form's, so a rejected field is marked where it is. */
 const API_FIELDS = {
@@ -32,25 +39,9 @@ const API_FIELDS = {
 }
 
 /** The three switches, as the rows they are shown in. */
-const PREFERENCES = [
-  {
-    field: 'possibleMatches',
-    label: 'Possible matches',
-    hint: 'When a report is filed that could be the same pet.',
-  },
-  {
-    field: 'statusUpdates',
-    label: 'Status updates',
-    hint: 'When one of your reports changes status.',
-  },
-  {
-    field: 'staffMessages',
-    label: 'Messages from a Pet Coordinator',
-    // What notify_staff actually gates: a coordinator asking for more
-    // information. Their decisions arrive as status updates.
-    hint: 'When a Pet Coordinator asks you for more information about a pairing.',
-  },
-]
+// What notify_staff actually gates: a coordinator asking for more
+// information. Their decisions arrive as status updates.
+const PREFERENCES = ['possibleMatches', 'statusUpdates', 'staffMessages']
 
 /**
  * Your own details and notification preferences.
@@ -68,7 +59,7 @@ export function ProfilePage() {
   if (isLoading && !user) {
     return (
       <div className="flex flex-col gap-6">
-        {header}
+        <Header />
         <LoadingSkeleton lines={6} />
       </div>
     )
@@ -77,9 +68,9 @@ export function ProfilePage() {
   if (error || !user) {
     return (
       <div className="flex flex-col gap-6">
-        {header}
+        <Header />
         <p role="alert" className="text-sm text-danger">
-          Your profile could not be loaded{error ? `: ${error.message}` : '.'}
+          {error ? t('profile.loadFailedBecause', { message: errorText(error) }) : t('profile.loadFailed')}
         </p>
       </div>
     )
@@ -127,31 +118,31 @@ function AccountSecurity({ email }) {
 
   return (
     <Card>
-      <CardHeader titleAs="h2" title="Account & security" />
+      <CardHeader titleAs="h2" title={t('profile.security')} />
       <CardBody className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
         <div className="flex min-w-0 items-start gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-brand">
             <KeyRound size={17} aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <h3 className="font-semibold text-fg">Reset password</h3>
-            <p className="mt-1 max-w-prose text-sm text-fg-muted">
-              We&apos;ll send a reset link to your verified email. Completing the reset will
-              sign you out on all devices.
-            </p>
+            <h3 className="font-semibold text-fg">{t('profile.resetTitle')}</h3>
+            <p className="mt-1 max-w-prose text-sm text-fg-muted">{t('profile.resetBody')}</p>
 
             {state === 'sent' && (
               <p role="status" className="mt-3 flex items-start gap-2 text-sm text-success-ink">
                 <MailCheck size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
                 <span>
-                  Check <strong className="font-medium">{email}</strong> for the link. It works
-                  once and expires in an hour; asking again replaces it.
+                  <Rich
+                    k="profile.resetSent"
+                    vars={{ email }}
+                    tags={{ b: (text) => <strong className="font-medium">{text}</strong> }}
+                  />
                 </span>
               </p>
             )}
             {error && (
               <p role="alert" className="mt-3 text-sm text-danger">
-                The reset link could not be requested: {error.message}
+                {t('profile.resetFailed', { message: errorText(error) })}
               </p>
             )}
           </div>
@@ -163,7 +154,7 @@ function AccountSecurity({ email }) {
           isLoading={state === 'sending'}
           className="w-full shrink-0 sm:w-auto"
         >
-          {state === 'sending' ? 'Sending…' : state === 'sent' ? 'Send again' : 'Send reset link'}
+          {state === 'sending' ? t('flag.sending') : state === 'sent' ? t('profile.sendAgain') : t('profile.sendReset')}
         </Button>
       </CardBody>
     </Card>
@@ -273,7 +264,7 @@ function ProfileForm({ user, onSaved }) {
 
   return (
     <form ref={formRef} onSubmit={save} className="flex flex-col gap-6">
-      {header}
+      <Header />
 
       {/* One disabled fieldset rather than a second, read-only copy of every
           field. The browser makes every control inside it non-interactive and
@@ -286,26 +277,26 @@ function ProfileForm({ user, onSaved }) {
       <Card>
         <CardHeader
           titleAs="h2"
-          title="Your details"
+          title={t('profile.details')}
           // Read-only, and shaped like it: a badge in the header rather than a
           // line among fields that can all be edited.
           action={
             // fg, not fg-muted: muted ink on surface-muted fails contrast.
             <span className="inline-flex items-center gap-1.5 rounded-pill bg-surface-muted px-3 py-1 text-sm text-fg">
               <ShieldCheck size={14} className="text-fg-muted" aria-hidden="true" />
-              Account type
+              {t('profile.accountType')}
               <span className="font-semibold">{ROLE_LABELS[user.role]}</span>
             </span>
           }
         />
 
         <CardBody className="flex flex-col gap-7">
-          <FieldGroup icon={UserRound} title="Personal information">
+          <FieldGroup icon={UserRound} title={t('profile.personal')}>
             {/* Two fields since the post-defense corrections (migration 008).
                 The database joins them into the name shown everywhere else. */}
             <div className="grid gap-4 sm:grid-cols-2">
               <Input
-                label="First name"
+                label={t('auth.register.firstName')}
                 autoComplete="given-name"
                 value={form.firstName}
                 onChange={(event) => change('firstName', event.target.value)}
@@ -315,7 +306,7 @@ function ProfileForm({ user, onSaved }) {
                 error={fieldErrors.firstName ?? (nameTouched ? firstNameError : undefined)}
               />
               <Input
-                label="Last name"
+                label={t('auth.register.lastName')}
                 autoComplete="family-name"
                 value={form.lastName}
                 onChange={(event) => change('lastName', event.target.value)}
@@ -325,37 +316,37 @@ function ProfileForm({ user, onSaved }) {
                 error={fieldErrors.lastName ?? (nameTouched ? lastNameError : undefined)}
               />
             </div>
-            <p className="-mt-2 text-sm text-fg-muted">Shown on the reports you file.</p>
+            <p className="-mt-2 text-sm text-fg-muted">{t('profile.nameShown')}</p>
 
             <div className="flex flex-col gap-2">
               <Input
-                label="Preferred location"
+                label={t('profile.location')}
                 value={form.preferredLocation}
                 onChange={(event) => change('preferredLocation', event.target.value)}
                 maxLength={80}
-                placeholder="e.g. Makati City, Metro Manila"
+                placeholder={t('profile.locationPlaceholder')}
                 error={fieldErrors.preferredLocation}
               />
               <p className="flex items-center gap-1.5 text-sm font-medium text-fg">
                 <MapPin size={15} className="shrink-0 text-brand" aria-hidden="true" />
-                Private. Where you usually are — only you and Pet Coordinators can see it.
+                {t('profile.locationPrivate')}
               </p>
             </div>
           </FieldGroup>
 
-          <FieldGroup icon={Lock} title="Contact information">
+          <FieldGroup icon={Lock} title={t('profile.contact')}>
             <div className="grid gap-4 sm:grid-cols-2">
               <Input
-                label="Email address"
+                label={t('auth.email')}
                 type="email"
                 value={form.email}
                 onChange={(event) => change('email', event.target.value)}
                 required
-                hint={user.pendingEmail ? 'Your current, verified sign-in email.' : undefined}
+                hint={user.pendingEmail ? t('profile.currentEmail') : undefined}
                 error={fieldErrors.email}
               />
               <Input
-                label="Phone number"
+                label={t('auth.register.phone')}
                 type="tel"
                 value={form.phone}
                 onChange={(event) => change('phone', event.target.value)}
@@ -371,8 +362,7 @@ function ProfileForm({ user, onSaved }) {
             {/* fg, not fg-muted: on brand-soft the muted ink is 4.14:1. */}
             <p className="flex items-start gap-2 rounded-control border border-brand/20 bg-brand-soft px-3 py-2.5 text-sm text-fg">
               <Lock size={15} className="mt-0.5 shrink-0 text-brand-hover" aria-hidden="true" />
-              Your email and phone number are only shown on a report if you choose to share
-              them, and you choose that separately for each report.
+              {t('profile.shareNote')}
             </p>
           </FieldGroup>
         </CardBody>
@@ -381,19 +371,19 @@ function ProfileForm({ user, onSaved }) {
       <Card>
         <CardHeader
           titleAs="h2"
-          title="Notifications"
-          subtitle="Which updates appear in your notifications."
+          title={t('nav.notifications')}
+          subtitle={t('profile.notificationsBody')}
         />
         <CardBody className="p-0">
           <ul className="divide-y divide-border">
             {PREFERENCES.map((pref) => (
               // One setting per row: its name, what it covers, and the box.
-              <li key={pref.field}>
+              <li key={pref}>
                 <Checkbox
-                  label={<span className="font-medium">{pref.label}</span>}
-                  hint={pref.hint}
-                  checked={form[pref.field]}
-                  onChange={(event) => change(pref.field, event.target.checked)}
+                  label={<span className="font-medium">{t(`profile.prefs.${pref}`)}</span>}
+                  hint={t(`profile.prefs.${pref}Hint`)}
+                  checked={form[pref]}
+                  onChange={(event) => change(pref, event.target.checked)}
                   className="px-5 py-3.5"
                 />
               </li>
@@ -410,28 +400,31 @@ function ProfileForm({ user, onSaved }) {
         {isEditing ? (
           <div className="flex flex-wrap gap-3">
             <Button type="submit" isLoading={isSaving}>
-              {isSaving ? 'Saving…' : 'Save changes'}
+              {isSaving ? t('common.saving') : t('reportForm.saveChanges')}
             </Button>
             <Button type="button" variant="ghost" onClick={cancel} disabled={isSaving}>
-              Cancel
+              {t('common.cancel')}
             </Button>
           </div>
         ) : (
           <Button type="button" onClick={() => setIsEditing(true)} className="w-full sm:w-auto">
             <Pencil size={16} aria-hidden="true" />
-            Edit profile
+            {t('profile.edit')}
           </Button>
         )}
 
         {saved && (saved.emailTo && !saved.emailSent ? (
           <p role="alert" className="text-sm text-danger">
-            Profile saved, but the verification email to <strong className="font-medium">{saved.emailTo}</strong> could
-            not be sent. Enter the new address again and save to retry.
+            <Rich
+              k="profile.savedNotSent"
+              vars={{ email: saved.emailTo }}
+              tags={{ b: (text) => <strong className="font-medium">{text}</strong> }}
+            />
           </p>
         ) : (
           <p role="status" className="flex items-center gap-1 text-sm text-success-ink">
             <Check size={16} aria-hidden="true" />
-            {saved.emailTo ? 'Profile saved. Your new email is awaiting verification.' : 'Profile saved'}
+            {saved.emailTo ? t('profile.savedPending') : t('profile.saved')}
           </p>
         ))}
         {saveError && (
@@ -442,8 +435,8 @@ function ProfileForm({ user, onSaved }) {
             className="scroll-mt-24 text-sm text-danger outline-none"
           >
             {saveError.fields
-              ? 'Please check the highlighted fields.'
-              : `Your profile could not be saved: ${saveError.message}`}
+              ? t('api.checkFields')
+              : t('profile.saveFailed', { message: errorText(saveError) })}
           </p>
         )}
       </div>
@@ -461,23 +454,29 @@ function PendingEmail({ current, pending }) {
     <div className="rounded-control border border-lost/30 bg-lost-soft p-4 text-sm text-fg">
       <p className="flex items-center gap-2 font-semibold">
         <MailWarning size={16} className="shrink-0 text-lost" aria-hidden="true" />
-        Email change pending verification
+        {t('profile.pending.title')}
       </p>
       <p className="mt-2">
-        We sent a verification link to <strong className="font-medium break-all">{pending}</strong>.
+        <Rich
+          k="profile.pending.sent"
+          vars={{ email: pending }}
+          tags={{ b: (text) => <strong className="font-medium break-all">{text}</strong> }}
+        />
       </p>
       <p className="mt-1">
-        Your current email <strong className="font-medium break-all">{current}</strong> will remain your
-        sign-in email until the new address is verified. Please check the new email address and
-        confirm the change.
+        <Rich
+          k="profile.pending.current"
+          vars={{ email: current }}
+          tags={{ b: (text) => <strong className="font-medium break-all">{text}</strong> }}
+        />
       </p>
       <dl className="mt-3 grid gap-x-4 gap-y-1.5 sm:grid-cols-[auto_1fr]">
-        <dt className="text-fg-muted">Current verified email</dt>
+        <dt className="text-fg-muted">{t('profile.pending.currentLabel')}</dt>
         <dd className="font-medium break-all">{current}</dd>
-        <dt className="text-fg-muted">New email awaiting verification</dt>
+        <dt className="text-fg-muted">{t('profile.pending.newLabel')}</dt>
         <dd className="font-medium break-all">{pending}</dd>
-        <dt className="text-fg-muted">Status</dt>
-        <dd className="font-medium">Pending verification</dd>
+        <dt className="text-fg-muted">{t('profile.pending.status')}</dt>
+        <dd className="font-medium">{t('profile.pending.statusValue')}</dd>
       </dl>
     </div>
   )

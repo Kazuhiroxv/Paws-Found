@@ -10,6 +10,10 @@ import { matchService, notificationService, petService, userService } from '@/se
 import { PROVIDE_INFORMATION_MAX } from '@/services/matchService'
 import { cn } from '@/utils/cn'
 import emptyNoMatches from '@/assets/empty-no-matches.webp'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
+import { HandoverNotice } from '@/components/HandoverNotice'
+import { Rich } from '@/i18n/Rich'
 
 /**
  * The three stages a pairing moves through, from the owner's side. Built from
@@ -22,13 +26,12 @@ import emptyNoMatches from '@/assets/empty-no-matches.webp'
  * Rejected and dismissed pairings are already left out by the service.
  */
 const GROUPS = [
-  { id: 'attention', label: 'Needs attention', statuses: [MATCH_STATUSES.SUGGESTED] },
+  { id: 'attention', statuses: [MATCH_STATUSES.SUGGESTED] },
   {
     id: 'review',
-    label: 'Under review',
     statuses: [MATCH_STATUSES.VERIFICATION_REQUESTED, MATCH_STATUSES.UNDER_REVIEW],
   },
-  { id: 'confirmed', label: 'Confirmed', statuses: [MATCH_STATUSES.CONFIRMED] },
+  { id: 'confirmed', statuses: [MATCH_STATUSES.CONFIRMED] },
 ]
 
 const groupOf = (match) => GROUPS.find((group) => group.statuses.includes(match.status))?.id
@@ -77,9 +80,9 @@ export function MyMatchesPage() {
 
   const header = (
     <PageHeader
-      title="Possible matches"
-      description="Reports that share characteristics with yours. A possible match is a suggestion, not a confirmation."
-      breadcrumb={[{ label: 'My dashboard', to: '/dashboard' }, { label: 'Possible matches' }]}
+      title={t('dashboard.matchesTitle')}
+      description={t('myMatches.description')}
+      breadcrumb={[{ label: t('dashboard.title'), to: '/dashboard' }, { label: t('dashboard.matchesTitle') }]}
     />
   )
 
@@ -97,7 +100,7 @@ export function MyMatchesPage() {
       <div className="flex flex-col gap-6">
         {header}
         <p role="alert" className="text-sm text-danger">
-          Your matches could not be loaded: {error.message}
+          {t('myMatches.failed', { message: errorText(error) })}
         </p>
       </div>
     )
@@ -110,11 +113,12 @@ export function MyMatchesPage() {
       <div className="flex flex-col gap-6">
         {header}
         <EmptyState
-illustration={emptyNoMatches}          title="No possible matches yet"
-          description="When a report is filed that shares enough characteristics with one of yours, it will appear here with an explanation of what lines up."
+          illustration={emptyNoMatches}
+          title={t('myMatches.none')}
+          description={t('myMatches.noneBody')}
           action={
             <Button as={Link} to="/dashboard/reports" variant="secondary">
-              See my reports
+              {t('myMatches.seeReports')}
             </Button>
           }
         />
@@ -163,7 +167,7 @@ illustration={emptyNoMatches}          title="No possible matches yet"
       <div
         className="flex gap-1 overflow-x-auto shadow-[inset_0_-1px_0_var(--color-border)]"
         role="tablist"
-        aria-label="Match stage"
+        aria-label={t('myMatches.stage')}
       >
         {GROUPS.map((group) => {
           const count = grouped[group.id].length
@@ -191,7 +195,7 @@ illustration={emptyNoMatches}          title="No possible matches yet"
                   : 'border-transparent text-fg-muted hover:text-fg',
               )}
             >
-              {group.label}
+              {t(`myMatches.groups.${group.id}`)}
               <span className="ml-1.5 text-fg-muted tabular-nums">{count}</span>
             </button>
           )
@@ -249,10 +253,10 @@ function OwnerMatchCard({ match, lost, found, userId, question, isBusy, onReques
 
 function StageBadge({ status }) {
   const styles = {
-    [MATCH_STATUSES.SUGGESTED]: ['bg-accent-soft text-lost', 'Needs your review'],
-    [MATCH_STATUSES.VERIFICATION_REQUESTED]: ['bg-brand-soft text-brand-hover', 'Verification requested'],
-    [MATCH_STATUSES.UNDER_REVIEW]: ['bg-brand-soft text-brand-hover', 'More information requested'],
-    [MATCH_STATUSES.CONFIRMED]: ['bg-success-soft text-success-ink', 'Confirmed · Reunited'],
+    [MATCH_STATUSES.SUGGESTED]: ['bg-accent-soft text-lost', t('myMatches.badge.suggested')],
+    [MATCH_STATUSES.VERIFICATION_REQUESTED]: ['bg-brand-soft text-brand-hover', t('myMatches.badge.verification')],
+    [MATCH_STATUSES.UNDER_REVIEW]: ['bg-brand-soft text-brand-hover', t('matching.moreInfoRequested')],
+    [MATCH_STATUSES.CONFIRMED]: ['bg-success-soft text-success-ink', t('myMatches.badge.confirmed')],
   }
   const [style, label] = styles[status] ?? ['bg-surface-muted text-fg-muted', status]
 
@@ -269,27 +273,27 @@ function StageBadge({ status }) {
 function StagePanel({ match, question, iAmFinder, isBusy, onRequestVerification, onDismiss }) {
   const suggestionNote = (
     <p className="rounded-control bg-accent-soft px-3 py-2 text-sm text-fg">
-      This is a suggestion, not a confirmation. A Pet Coordinator helps verify ownership before any
-      handover is arranged.
+      {t('matching.suggestionNote')}
     </p>
   )
 
   if (match.status === MATCH_STATUSES.CONFIRMED) {
     return (
-      <StatusStrip tone="success" icon={HeartHandshake} title="Match confirmed">
-        A Pet Coordinator verified the reports and will help arrange a safe handover. If the other
-        reporter shared contact details, you can find them on their report. Meet in a public place,
-        ideally in daylight, and bring someone you trust.
-      </StatusStrip>
+      <div className="flex flex-col gap-3">
+        <StatusStrip tone="success" icon={HeartHandshake} title={t('myMatches.confirmedTitle')}>
+          {t('myMatches.confirmedBody')}
+        </StatusStrip>
+        {/* Correction 7: where two people are about to meet. */}
+        <HandoverNotice />
+      </div>
     )
   }
 
   if (match.status === MATCH_STATUSES.VERIFICATION_REQUESTED) {
     return (
       <div className="flex flex-col gap-3">
-        <StatusStrip tone="info" icon={Hourglass} title="Verification requested">
-          A Pet Coordinator is reviewing this pairing. You will be notified when its status
-          changes.
+        <StatusStrip tone="info" icon={Hourglass} title={t('myMatches.badge.verification')}>
+          {t('myMatches.verificationBody')}
         </StatusStrip>
         {suggestionNote}
       </div>
@@ -299,20 +303,23 @@ function StagePanel({ match, question, iAmFinder, isBusy, onRequestVerification,
   if (match.status === MATCH_STATUSES.UNDER_REVIEW) {
     return (
       <div className="flex flex-col gap-3">
-        <StatusStrip tone="info" icon={Info} title="A Pet Coordinator asked for more information">
+        <StatusStrip tone="info" icon={Info} title={t('myMatches.askedTitle')}>
           {question ? (
             <>
               <span className="block font-medium text-fg">“{question}”</span>
-              Answer below. The pairing stays under review until they decide.
+              {t('myMatches.answerBelow')}
             </>
           ) : (
-            <>
-              Their note is in your{' '}
-              <Link to="/dashboard/notifications" className="font-medium underline">
-                notifications
-              </Link>
-              . Answer below; the pairing stays under review until they decide.
-            </>
+            <Rich
+              k="myMatches.noteInNotifications"
+              tags={{
+                link: (text) => (
+                  <Link to="/dashboard/notifications" className="font-medium underline">
+                    {text}
+                  </Link>
+                ),
+              }}
+            />
           )}
         </StatusStrip>
         <InformationReply matchId={match.id} />
@@ -332,18 +339,16 @@ function StagePanel({ match, question, iAmFinder, isBusy, onRequestVerification,
       <p className="flex items-start gap-2 rounded-control border border-border bg-sunken/70 p-3 text-sm text-fg-muted">
         <ShieldAlert size={16} className="mt-0.5 shrink-0 text-brand" aria-hidden="true" />
         <span>
-          A Pet Coordinator checks this before anyone meets. Keep photographs, records and
-          anything else that proves the pet is yours between you and them — never on a
-          public page.
+          {t('myMatches.proofPrivate')}
         </span>
       </p>
       <div className="flex flex-wrap gap-2">
         <Button onClick={onRequestVerification} isLoading={isBusy}>
-          {iAmFinder ? 'This could be the same pet' : 'This could be my pet'}
+          {iAmFinder ? t('myMatches.samePet') : t('myMatches.myPet')}
           <ArrowRight size={16} aria-hidden="true" />
         </Button>
         <Button variant="ghost" onClick={onDismiss} disabled={isBusy}>
-          {iAmFinder ? 'Not the same pet' : 'Not my pet'}
+          {iAmFinder ? t('myMatches.notSame') : t('myMatches.notMine')}
         </Button>
       </div>
     </div>
@@ -387,10 +392,10 @@ function InformationReply({ matchId }) {
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-control border border-success/30 bg-success-soft px-3 py-2.5">
         <p role="status" className="flex items-center gap-2 text-sm text-success-ink">
           <CircleCheck size={16} className="shrink-0" aria-hidden="true" />
-          Sent to the Pet Coordinators. Only they can read it.
+          {t('myMatches.sent')}
         </p>
         <Button size="sm" variant="ghost" onClick={() => setState('idle')}>
-          Add more
+          {t('myMatches.addMore')}
         </Button>
       </div>
     )
@@ -399,14 +404,14 @@ function InformationReply({ matchId }) {
   return (
     <form onSubmit={send} className="flex flex-col gap-2 rounded-control border border-border bg-panel p-3">
       <Textarea
-        label="Your answer"
-        hint="Goes to the Pet Coordinators only. The other person in this pairing will not see it."
+        label={t('myMatches.answer')}
+        hint={t('myMatches.answerHint')}
         value={answer}
         onChange={(event) => setAnswer(event.target.value)}
         rows={3}
         error={
           error?.fields?.note
-          ?? (tooLong ? `Keep it to ${PROVIDE_INFORMATION_MAX} characters.` : undefined)
+          ?? (tooLong ? t('myMatches.tooLong', { max: PROVIDE_INFORMATION_MAX }) : undefined)
         }
       />
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -417,12 +422,12 @@ function InformationReply({ matchId }) {
           {answer.length} / {PROVIDE_INFORMATION_MAX}
         </span>
         <Button type="submit" size="sm" isLoading={state === 'sending'} disabled={length === 0 || tooLong}>
-          {state === 'sending' ? 'Sending…' : 'Send information'}
+          {state === 'sending' ? t('flag.sending') : t('myMatches.send')}
         </Button>
       </div>
       {error && !error.fields && (
         <p role="alert" className="text-sm text-danger">
-          It could not be sent: {error.message}
+          {t('myMatches.sendFailed', { message: errorText(error) })}
         </p>
       )}
     </form>
@@ -430,26 +435,14 @@ function InformationReply({ matchId }) {
 }
 
 function StageEmptyState({ stage }) {
-  const copy = {
-    attention: {
-      icon: CircleCheck,
-      title: 'Nothing needs your review',
-      description:
-        'New suggestions appear here when a report lines up with one of yours. You decide whether to ask a Pet Coordinator to verify them.',
-    },
-    review: {
-      icon: Hourglass,
-      title: 'Nothing is being verified right now',
-      description:
-        'When you ask for a pairing to be verified, it waits here while a Pet Coordinator reviews it.',
-    },
-    confirmed: {
-      icon: HeartHandshake,
-      title: 'No confirmed matches yet',
-      description: 'Pairings a Pet Coordinator confirms — pets back home — are kept here.',
-    },
-  }[stage]
+  const icon = { attention: CircleCheck, review: Hourglass, confirmed: HeartHandshake }[stage]
 
-  return <EmptyState icon={copy.icon} title={copy.title} description={copy.description} />
+  return (
+    <EmptyState
+      icon={icon}
+      title={t(`myMatches.empty.${stage}`)}
+      description={t(`myMatches.empty.${stage}Body`)}
+    />
+  )
 }
 

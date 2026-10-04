@@ -1,0 +1,165 @@
+/** Words used across the whole interface, and the shared components. */
+export const common = {
+  back: 'Back',
+  cancel: 'Cancel',
+  chooseOne: 'Choose one',
+  close: 'Close',
+  continue: 'Continue',
+  edit: 'Edit',
+  loading: 'Loading…',
+  nameUnknown: '{species} (name unknown)',
+  no: 'No',
+  notGiven: 'Not given',
+  notSure: 'Not sure',
+  remove: 'Remove',
+  saving: 'Saving…',
+  yes: 'Yes',
+}
+
+export const ui = {
+  breadcrumb: 'Breadcrumb',
+  closeDialog: 'Close dialog',
+  closePanel: 'Close this panel',
+  closePhoto: 'Close full photo',
+  nextPhoto: 'Next photo',
+  previousPhoto: 'Previous photo',
+  photo: 'Photo',
+  noPhoto: 'No photo was provided for this report',
+  notSaved: 'That could not be saved: {message}',
+  required: '(required)',
+  requiredNote: {
+    before: 'Fields marked',
+    asterisk: 'with an asterisk',
+    after: 'are required. Everything else is optional.',
+  },
+  pagination: {
+    label: 'Pagination',
+    previous: 'Previous',
+    next: 'Next',
+    page: 'Page {page}',
+  },
+  chips: {
+    search: 'Search: "{value}"',
+    type: 'Type: {value}',
+    species: 'Species: {value}',
+    size: 'Size: {value}',
+    colour: 'Colour: {value}',
+    city: 'City: {value}',
+    status: 'Status: {value}',
+    from: 'From {value}',
+    to: 'To {value}',
+    remove: 'Remove this filter',
+  },
+  timeline: {
+    active: 'The report is open and being compared with new reports.',
+    possible_match: 'A possible match is being reviewed.',
+    returned: 'Marked as returned home.',
+    closed: 'The report was closed.',
+  },
+  turnstile:
+    'This check keeps automated sign-ups out. It runs in your browser and does not track you across other sites.',
+}
+
+export const dates = {
+  justNow: 'just now',
+  minutesAgo: { one: '{count} minute ago', other: '{count} minutes ago' },
+  hoursAgo: { one: '{count} hour ago', other: '{count} hours ago' },
+  daysAgo: { one: '{count} day ago', other: '{count} days ago' },
+}
+
+export const filters = {
+  title: 'Filters',
+  clearAll: 'Clear all',
+  clearAllFilters: 'Clear all filters',
+  reportType: 'Report type',
+  both: 'Both',
+  species: 'Species',
+  anySpecies: 'Any species',
+  date: 'Date of incident',
+  from: 'From',
+  to: 'To',
+  sizeColour: 'Size and colour',
+  size: 'Size',
+  anySize: 'Any size',
+  colour: 'Colour',
+  anyColour: 'Any colour',
+  colourHint: 'Either colour of the pet.',
+  place: 'Place',
+  anywhere: 'Anywhere',
+  anyCity: 'Any city or municipality',
+  areaFirst: 'Choose the area first',
+  status: 'Status',
+  reportStatus: 'Report status',
+  anyStatus: 'Any status',
+  set: { one: '{count} set', other: '{count} set' },
+}
+
+export const map = {
+  nothing: 'Nothing to show on the map',
+  noResults: 'No reports match your search.',
+  noPins: 'None of these reports have a location pinned yet.',
+  wheelHint: 'Click the map to zoom with the scroll wheel',
+  viewReport: 'View report',
+  approximate: 'Approximate area only.',
+  loading: 'Loading map…',
+  pinTitle: 'Pin the area on a map',
+  removePin: 'Remove pin',
+  pinHelp:
+    'Optional. Tap or click the general area — a nearby corner or landmark is enough. Never pin your own front door: the pin is shown publicly. The pin does not change the province or city you chose.',
+  outside: 'That point is outside the Philippines, so no pin was placed. Tap the area where the pet was.',
+  pinned: 'Pinned at about {lat}, {lng} — shown publicly as an area of roughly {radius} m.',
+  noPin: 'No pin yet. The province, city and your description are still used.',
+}
+
+export const flag = {
+  title: 'Report this listing',
+  thanks: 'Thank you',
+  description:
+    'Tell an administrator what is wrong with this report. Your name is not shown to the person who filed it.',
+  sending: 'Sending…',
+  send: 'Send report',
+  done: 'An administrator will review this listing. Thank you for helping keep Paws&Found useful for people who are actually searching.',
+  reason: 'What is the problem?',
+  details: 'Anything else we should know?',
+  detailsPlaceholder: 'Optional, but it helps an administrator decide quickly.',
+  failed: 'The report could not be sent: {message}',
+}
+
+export const chart = {
+  lost: 'Lost',
+  found: 'Found',
+  leftBar: '(left bar)',
+  rightBar: '(right bar)',
+  caption: 'Reports filed per month, over the last six months',
+  month: 'Month',
+  total: 'Total',
+  totalsNote: 'Month totals under each label.',
+  reports: { one: '{count} report', other: '{count} reports' },
+  filed: 'filed in the last six months.',
+}
+
+export const password = {
+  show: 'Show password',
+  hide: 'Hide password',
+  retype: 'Please retype your password instead of pasting it.',
+  confirm: 'Confirm password',
+  confirmHint: 'Type the same password again, to catch a typing mistake.',
+  requirements: 'Password requirements',
+  met: ' — met',
+  notMet: ' — not yet met',
+  min: 'At least {min} characters',
+  max: 'No more than {max} bytes (accented letters and emoji count as more than one)',
+  common: 'Not a commonly used password',
+  name: 'Does not contain your first or last name',
+  email: 'Not your email address',
+  match: 'Both entries match',
+  strength: {
+    title: 'Strength:',
+    weak: 'Weak',
+    weakAdvice: 'Too easy to guess, or a requirement is not met yet. Try a longer passphrase.',
+    fair: 'Fair',
+    fairAdvice: 'Meets the requirements.',
+    strong: 'Strong',
+    strongAdvice: 'Hard to guess. Good choice.',
+  },
+}

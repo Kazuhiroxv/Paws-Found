@@ -3,6 +3,7 @@ import { Check, Eye, EyeOff, X } from 'lucide-react'
 import { Input } from '@/components/ui'
 import { passwordChecks, passwordStrength } from '@/utils/passwordRules'
 import { cn } from '@/utils/cn'
+import { t } from '@/i18n'
 
 /**
  * A password box that can be read.
@@ -46,7 +47,7 @@ export function PasswordField({
         aria-pressed={revealed}
       >
         {revealed ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
-        <span className="sr-only">{revealed ? 'Hide password' : 'Show password'}</span>
+        <span className="sr-only">{revealed ? t('password.hide') : t('password.show')}</span>
       </button>
     </div>
   )
@@ -66,22 +67,22 @@ export function PasswordField({
  *
  * Typing is untouched, and the show/hide button still works.
  */
-export const RETYPE_MESSAGE = 'Please retype your password instead of pasting it.'
+const retypeMessage = () => t('password.retype')
 
-export function ConfirmPasswordField({ ready, value, onChange, error, label = 'Confirm password' }) {
+export function ConfirmPasswordField({ ready, value, onChange, error, label }) {
   const [notice, setNotice] = useState('')
 
   if (!ready) return null
 
   const refuse = (event) => {
     event.preventDefault()
-    setNotice(RETYPE_MESSAGE)
+    setNotice(retypeMessage())
   }
 
   return (
     <div className="flex flex-col gap-1">
       <PasswordField
-        label={label}
+        label={label ?? t('password.confirm')}
         value={value}
         onChange={(event) => {
           setNotice('')
@@ -90,7 +91,7 @@ export function ConfirmPasswordField({ ready, value, onChange, error, label = 'C
         onPaste={refuse}
         onDrop={refuse}
         error={error}
-        hint={notice || 'Type the same password again, to catch a typing mistake.'}
+        hint={notice || t('password.confirmHint')}
         required
       />
       {/* The hint above is already tied to the box; this says it aloud the
@@ -118,7 +119,7 @@ export function PasswordChecklist({ password, confirmation, confirm = true, iden
   return (
     <div className="flex flex-col gap-1.5">
       <p id={headingId} className="text-sm font-medium text-fg">
-        Password requirements
+        {t('password.requirements')}
       </p>
       <ul aria-labelledby={headingId} aria-live="polite" className="flex flex-col gap-1 text-sm">
         {checks.map((check) => (
@@ -129,7 +130,7 @@ export function PasswordChecklist({ password, confirmation, confirm = true, iden
               <X size={15} className="mt-0.5 shrink-0 text-fg-subtle" aria-hidden="true" />
             )}
             <span className={check.met ? 'text-fg' : 'text-fg-muted'}>{check.label}</span>
-            <span className="sr-only">{check.met ? ' — met' : ' — not yet met'}</span>
+            <span className="sr-only">{check.met ? t('password.met') : t('password.notMet')}</span>
           </li>
         ))}
       </ul>
@@ -147,26 +148,23 @@ export function PasswordChecklist({ password, confirmation, confirm = true, iden
  * brand colour, not as an error.
  */
 const STRENGTH = {
-  weak: {
-    label: 'Weak',
-    advice: 'Too easy to guess, or a requirement is not met yet. Try a longer passphrase.',
-    bars: 1,
-    colour: 'bg-danger',
-  },
-  fair: { label: 'Fair', advice: 'Meets the requirements.', bars: 2, colour: 'bg-brand' },
-  strong: { label: 'Strong', advice: 'Hard to guess. Good choice.', bars: 3, colour: 'bg-success' },
+  weak: { bars: 1, colour: 'bg-danger' },
+  fair: { bars: 2, colour: 'bg-brand' },
+  strong: { bars: 3, colour: 'bg-success' },
 }
 
 export function PasswordStrength({ password, identity = null }) {
   const level = passwordStrength(password, { identity })
   if (!level) return null
 
-  const { label, advice, bars, colour } = STRENGTH[level]
+  const { bars, colour } = STRENGTH[level]
+  const label = t(`password.strength.${level}`)
+  const advice = t(`password.strength.${level}Advice`)
 
   return (
     <div className="flex flex-col gap-1.5" aria-live="polite">
       <p className="text-sm text-fg">
-        <span className="font-medium">Strength: </span>
+        <span className="font-medium">{t('password.strength.title')} </span>
         <span className="font-semibold">{label}</span>
         <span className="text-fg-muted"> — {advice}</span>
       </p>

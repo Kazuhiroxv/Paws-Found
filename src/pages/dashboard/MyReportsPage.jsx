@@ -28,6 +28,8 @@ import { useAsync } from '@/hooks/useAsync'
 import { matchService, petService, userService } from '@/services'
 import { formatDate } from '@/utils/date'
 import { cn } from '@/utils/cn'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
 
 const OPEN_STATUSES = [REPORT_STATUSES.ACTIVE, REPORT_STATUSES.POSSIBLE_MATCH]
 
@@ -42,14 +44,14 @@ const SETTLED_MATCHES = [MATCH_STATUSES.CONFIRMED, MATCH_STATUSES.REJECTED, MATC
 const TABS = [
   // Correction 4: unfinished, and filed but not yet public — each its own
   // place, never mixed into Open or Closed.
-  { id: 'drafts', label: 'Drafts' },
-  { id: 'review', label: 'In review' },
-  { id: 'open', label: 'Open' },
-  { id: 'returned', label: 'Returned' },
-  { id: 'closed', label: 'Closed' },
+  { id: 'drafts' },
+  { id: 'review' },
+  { id: 'open' },
+  { id: 'returned' },
+  { id: 'closed' },
   // Removed by an administrator. Not Closed: the case did not end, the
   // report was taken down. Listed only when there is one.
-  { id: 'removed', label: 'Removed', onlyIfAny: true },
+  { id: 'removed', onlyIfAny: true },
 ]
 
 const PUBLISHED = PUBLICATION_STATUSES.PUBLISHED
@@ -99,7 +101,7 @@ export function MyReportsPage() {
     try {
       await petService.updateReportStatus(closing.id, REPORT_STATUSES.CLOSED, {
         actorId: data.user.id,
-        note: 'Closed by the reporter.',
+        note: 'Closed by the reporter.', // i18n: stored with the report
       })
       setClosing(null)
       reload()
@@ -110,9 +112,9 @@ export function MyReportsPage() {
 
   const header = (
     <PageHeader
-      title="My reports"
-      description="Every lost and found report you have filed, and where each one stands."
-      breadcrumb={[{ label: 'My dashboard', to: '/dashboard' }, { label: 'My reports' }]}
+      title={t('myReports.title')}
+      description={t('myReports.description')}
+      breadcrumb={[{ label: t('dashboard.title'), to: '/dashboard' }, { label: t('myReports.title') }]}
       actions={<NewReportMenu />}
     />
   )
@@ -131,7 +133,7 @@ export function MyReportsPage() {
       <div className="flex flex-col gap-6">
         {header}
         <p role="alert" className="text-sm text-danger">
-          Your reports could not be loaded: {error.message}
+          {t('myReports.failed', { message: errorText(error) })}
         </p>
       </div>
     )
@@ -180,7 +182,7 @@ export function MyReportsPage() {
                 : 'border-transparent text-fg-muted hover:text-fg',
             )}
           >
-            {item.label}
+            {t(`myReports.tabs.${item.id}`)}
             <span className="ml-1.5 text-fg-muted">{grouped[item.id].length}</span>
           </button>
         ))}
@@ -213,15 +215,15 @@ export function MyReportsPage() {
         isOpen={Boolean(deletingDraft)}
         onClose={() => !isDeletingBusy && setDeletingDraft(null)}
         size="sm"
-        title="Delete this draft?"
-        description="The draft is deleted for good. It was never submitted, so nothing else changes."
+        title={t('myReports.deleteTitle')}
+        description={t('myReports.deleteBody')}
         footer={
           <>
             <Button variant="ghost" onClick={() => setDeletingDraft(null)} disabled={isDeletingBusy} data-autofocus>
-              Keep it
+              {t('myReports.keepIt')}
             </Button>
             <Button variant="danger" onClick={confirmDeleteDraft} isLoading={isDeletingBusy}>
-              Delete draft
+              {t('myReports.deleteDraft')}
             </Button>
           </>
         }
@@ -231,15 +233,15 @@ export function MyReportsPage() {
         isOpen={Boolean(closing)}
         onClose={() => !isClosingBusy && setClosing(null)}
         size="sm"
-        title={closing ? `Close ${reportName(closing)}?` : ''}
-        description="Closing marks the case as finished. It will no longer be compared against new reports for possible matches. It stays visible with a Closed status, and you can still open it from the Closed tab."
+        title={closing ? t('detail.closeTitle', { name: reportName(closing) }) : ''}
+        description={t('myReports.closeBody')}
         footer={
           <>
             <Button variant="ghost" onClick={() => setClosing(null)} disabled={isClosingBusy} data-autofocus>
-              Keep it open
+              {t('myReports.keepOpen')}
             </Button>
             <Button variant="danger" onClick={confirmClose} isLoading={isClosingBusy}>
-              Close report
+              {t('detail.closeReport')}
             </Button>
           </>
         }
@@ -260,7 +262,7 @@ function NewReportMenu() {
       label={
         <>
           <FilePlus2 size={16} aria-hidden="true" />
-          New report
+          {t('myReports.newReport')}
         </>
       }
       triggerClassName={cn(outlineTrigger, 'px-3')}
@@ -269,11 +271,11 @@ function NewReportMenu() {
         <>
           <NavDropdownItem as={Link} to="/report/lost" onClick={close}>
             <TriangleAlert size={15} className="text-lost" aria-hidden="true" />
-            Report a lost pet
+            {t('nav.reportLost')}
           </NavDropdownItem>
           <NavDropdownItem as={Link} to="/report/found" onClick={close}>
             <HandHeart size={15} className="text-found" aria-hidden="true" />
-            Report a found pet
+            {t('nav.reportFound')}
           </NavDropdownItem>
         </>
       )}
@@ -311,11 +313,11 @@ function ReportCaseCard({ report, openMatches, onClose }) {
   const primary = firstMatch ? (
     <Button as={Link} to={`/dashboard/matches#match-${firstMatch.id}`} size="sm" className="relative">
       <Heart size={14} aria-hidden="true" />
-      Review match
+      {t('dashboard.reviewMatch')}
     </Button>
   ) : (
     <Button as={Link} to={`/pet/${report.id}`} size="sm" className="relative">
-      View report
+      {t('map.viewReport')}
       <ArrowRight size={14} aria-hidden="true" />
     </Button>
   )
@@ -333,7 +335,7 @@ function ReportCaseCard({ report, openMatches, onClose }) {
             `sm` up. object-cover crops rather than stretching the photo. */}
         <img
           src={photo?.url ?? photoPlaceholder}
-          alt={photo ? photo.alt || '' : 'No photo was provided for this report'}
+          alt={photo ? photo.alt || '' : t('ui.noPhoto')}
           loading="lazy"
           className="aspect-16/9 w-full shrink-0 rounded-control bg-surface-muted object-cover object-[50%_35%] sm:aspect-square sm:size-28"
         />
@@ -365,34 +367,34 @@ function ReportCaseCard({ report, openMatches, onClose }) {
 
           <p className="flex items-center gap-1.5 text-sm text-fg-muted">
             <CalendarDays size={14} className="shrink-0 text-fg-subtle" aria-hidden="true" />
-            {isFound ? 'Found on' : 'Last seen'} {formatDate(report.incidentDate)}
+            {isFound ? t('detail.foundOn') : t('detail.lastSeen')} {formatDate(report.incidentDate)}
           </p>
 
           {openMatches.length > 0 && (
             <p className="mt-1 inline-flex w-fit items-center gap-1.5 rounded-control bg-accent-soft px-2.5 py-1 text-sm font-medium text-lost">
               <Heart size={14} aria-hidden="true" />
-              {openMatches.length} possible {openMatches.length === 1 ? 'match' : 'matches'} available
+              {t('myReports.matchesAvailable', { count: openMatches.length })}
             </p>
           )}
           {report.publicationStatus === PUBLICATION_STATUSES.PENDING_REVIEW && (
             <p className="mt-1 text-sm text-fg">
-              Waiting for a Pet Coordinator to review it. It is not public yet.
+              {t('myReports.pending')}
             </p>
           )}
           {report.publicationStatus === PUBLICATION_STATUSES.REJECTED && (
             <p className="mt-1 text-sm text-fg">
-              Not approved. Open it to see why, edit it, and submit it again.
+              {t('myReports.rejected')}
             </p>
           )}
           {report.publicationStatus === PUBLICATION_STATUSES.REMOVED && (
             <p className="mt-1 text-sm text-fg">
-              Removed by an administrator. Open it to see the reason.
+              {t('myReports.removed')}
             </p>
           )}
           {isPublished && report.status === REPORT_STATUSES.RETURNED && (
             <p className="mt-1 inline-flex w-fit items-center gap-1.5 text-sm font-medium text-success-ink">
               <CircleCheck size={14} aria-hidden="true" />
-              {isFound ? 'Returned to its owner' : 'Back home'}
+              {isFound ? t('myReports.returnedOwner') : t('myReports.backHome')}
             </p>
           )}
         </div>
@@ -416,7 +418,7 @@ function ReportCaseCard({ report, openMatches, onClose }) {
                 size="sm"
               >
                 <Pencil size={14} aria-hidden="true" />
-                Edit
+                {t('common.edit')}
               </Button>
             </span>
           )}
@@ -428,7 +430,7 @@ function ReportCaseCard({ report, openMatches, onClose }) {
           {canClose && !canEdit && (
             <Button variant="secondary" size="sm" onClick={onClose}>
               <XCircle size={14} className="text-danger" aria-hidden="true" />
-              Close report
+              {t('detail.closeReport')}
             </Button>
           )}
 
@@ -442,7 +444,7 @@ function ReportCaseCard({ report, openMatches, onClose }) {
               label={
                 <>
                   <MoreHorizontal size={16} aria-hidden="true" />
-                  <span className="sr-only">More actions for {name}</span>
+                  <span className="sr-only">{t('myReports.moreActions', { name })}</span>
                 </>
               }
               triggerClassName={cn(outlineTrigger, 'px-2.5')}
@@ -457,7 +459,7 @@ function ReportCaseCard({ report, openMatches, onClose }) {
                       className="sm:hidden"
                     >
                       <Pencil size={15} aria-hidden="true" />
-                      Edit report
+                      {t('myReports.editReport')}
                     </NavDropdownItem>
                   )}
                   {canClose && (
@@ -473,7 +475,7 @@ function ReportCaseCard({ report, openMatches, onClose }) {
                           already sets its own text colour. */}
                       <span className="flex items-center gap-2 text-danger">
                         <XCircle size={15} aria-hidden="true" />
-                        Close report
+                        {t('detail.closeReport')}
                       </span>
                     </NavDropdownItem>
                   )}
@@ -492,8 +494,8 @@ function GroupEmptyState({ tab }) {
     return (
       <EmptyState
         icon={FilePen}
-        title="No drafts"
-        description="Start a report and choose Save draft to finish it later, here or on another device."
+        title={t('myReports.empty.drafts')}
+        description={t('myReports.empty.draftsBody')}
       />
     )
   }
@@ -502,29 +504,29 @@ function GroupEmptyState({ tab }) {
     return (
       <EmptyState
         icon={FilePen}
-        title="Nothing waiting for review"
-        description="A report you submit waits here until a Pet Coordinator approves it. Then it is public, and moves to Open."
+        title={t('myReports.empty.review')}
+        description={t('myReports.empty.reviewBody')}
       />
     )
   }
 
   if (tab === 'removed') {
-    return <EmptyState icon={XCircle} title="No removed reports" description="" />
+    return <EmptyState icon={XCircle} title={t('myReports.empty.removed')} description="" />
   }
 
   if (tab === 'open') {
     return (
       <EmptyState
         icon={PawPrint}
-        title="No open reports"
-        description="When you file a lost or found report, it stays here until the pet is returned or you close it."
+        title={t('myReports.empty.open')}
+        description={t('myReports.empty.openBody')}
         action={
           <div className="flex flex-wrap justify-center gap-2">
             <Button as={Link} to="/report/lost" variant="accent">
-              Report a lost pet
+              {t('nav.reportLost')}
             </Button>
             <Button as={Link} to="/report/found">
-              Report a found pet
+              {t('nav.reportFound')}
             </Button>
           </div>
         }
@@ -536,12 +538,12 @@ function GroupEmptyState({ tab }) {
     return (
       <EmptyState
         icon={CircleCheck}
-        title="No returned pets yet"
-        description="When a Pet Coordinator confirms a match, or you mark a pet as returned, the report moves here."
+        title={t('myReports.empty.returned')}
+        description={t('myReports.empty.returnedBody')}
         action={
           <Button as={Link} to="/explore?type=found" variant="secondary">
             <Search size={16} aria-hidden="true" />
-            Browse found pets
+            {t('shell.footer.browseFound')}
           </Button>
         }
       />
@@ -551,8 +553,8 @@ function GroupEmptyState({ tab }) {
   return (
     <EmptyState
       icon={XCircle}
-      title="No closed reports"
-      description="Reports you close are kept here, with their history, for as long as you need them."
+      title={t('myReports.empty.closed')}
+      description={t('myReports.empty.closedBody')}
     />
   )
 }
@@ -560,7 +562,9 @@ function GroupEmptyState({ tab }) {
 function reportName(report) {
   return (
     report.petName ??
-    `${report.reportType === REPORT_TYPES.FOUND ? 'Found' : 'Lost'} ${speciesLabel(report.species).toLowerCase()}`
+    t(report.reportType === REPORT_TYPES.FOUND ? 'matching.sideFound' : 'matching.sideLost', {
+      species: speciesLabel(report.species).toLowerCase(),
+    })
   )
 }
 
@@ -570,7 +574,7 @@ function reportName(report) {
  */
 function DraftCard({ draft, onDelete }) {
   const isFound = draft.reportType === REPORT_TYPES.FOUND
-  const title = draft.petName || `Unfinished ${isFound ? 'found' : 'lost'} pet report`
+  const title = draft.petName || t(isFound ? 'myReports.unfinishedFound' : 'myReports.unfinishedLost')
   const kind = [draft.species && speciesLabel(draft.species), draft.breed].filter(Boolean).join(' · ')
 
   return (
@@ -580,23 +584,23 @@ function DraftCard({ draft, onDelete }) {
           <div className="flex flex-wrap items-center gap-2">
             <ReportTypeBadge reportType={draft.reportType} size="sm" />
             <span className="inline-flex items-center rounded-pill border border-dashed border-border-strong px-2.5 py-0.5 text-xs font-medium text-fg">
-              Draft
+              {t('labels.publication.draft')}
             </span>
           </div>
           <h2 className="text-lg font-semibold text-fg">{title}</h2>
           {kind && <p className="text-sm text-fg-muted">{kind}</p>}
           <p className="text-sm text-fg-muted">
-            Saved {formatDate(draft.updatedAt)}. Not submitted — nobody else can see it.
+            {t('myReports.saved', { date: formatDate(draft.updatedAt) })}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
           <Button as={Link} to={`/report/${draft.reportType}?draft=${draft.id}`} size="sm">
             <FilePen size={14} aria-hidden="true" />
-            Continue editing
+            {t('myReports.continue')}
           </Button>
           <Button variant="ghost" size="sm" onClick={onDelete} className="text-danger">
             <Trash2 size={14} aria-hidden="true" />
-            Delete draft
+            {t('myReports.deleteDraft')}
           </Button>
         </div>
       </article>

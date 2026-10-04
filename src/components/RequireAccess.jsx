@@ -4,6 +4,7 @@ import { EmptyState } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { ROLES } from '@/constants'
 import { can } from '@/utils/permissions'
+import { t } from '@/i18n'
 
 /**
  * Route guard for anything behind a sign-in.
@@ -39,10 +40,12 @@ export function RequireAccess({ role, allowed, children }) {
  * Keeps an administrator in Administration.
  *
  * The administrator manages the system; they do not browse for pets or file
- * reports. So the community pages — Home, Explore, Report a pet, About, Help,
- * Privacy — send them back to /admin. A report's own page (/pet/:id) is not
+ * reports. So the community pages — Home, Explore, Report a pet, About,
+ * Help — send them back to /admin. A report's own page (/pet/:id) is not
  * wrapped: Moderation, Records and the Overview link to it, and it is where
- * an administrator reads the report they are deciding about.
+ * an administrator reads the report they are deciding about. Nor are the
+ * Privacy Notice and the Disclaimer (Correction 7): they describe the system
+ * to everybody who uses it, administrators included.
  *
  * Like RequireAccess, this keeps the interface coherent. It is not what stops
  * anything: the API decides what each role may do.
@@ -80,14 +83,14 @@ export function RequireCapability({ user, capability, children }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader eyebrow="Administrator" title="No access" />
+      <PageHeader eyebrow={t('shell.access.eyebrow')} title={t('shell.access.title')} />
       <EmptyState
         icon={Lock}
-        title="You don't have permission to access this page."
-        description="Your administrator level does not include this part of Administration. If you need it, ask a Super Administrator."
+        title={t('shell.access.denied')}
+        description={t('shell.access.deniedBody')}
         action={
           <Link to="/admin" className="text-sm text-fg underline">
-            Back to the Overview
+            {t('shell.access.back')}
           </Link>
         }
       />

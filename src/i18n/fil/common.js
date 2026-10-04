@@ -1,0 +1,165 @@
+/** Mga salitang ginagamit sa buong interface, at sa mga pinagsasaluhang component. */
+export const common = {
+  back: 'Bumalik',
+  cancel: 'Kanselahin',
+  chooseOne: 'Pumili ng isa',
+  close: 'Isara',
+  continue: 'Magpatuloy',
+  edit: 'I-edit',
+  loading: 'Nilo-load…',
+  nameUnknown: '{species} (hindi alam ang pangalan)',
+  no: 'Hindi',
+  notGiven: 'Hindi ibinigay',
+  notSure: 'Hindi sigurado',
+  remove: 'Alisin',
+  saving: 'Sine-save…',
+  yes: 'Oo',
+}
+
+export const ui = {
+  breadcrumb: 'Breadcrumb',
+  closeDialog: 'Isara ang dialog',
+  closePanel: 'Isara ang panel na ito',
+  closePhoto: 'Isara ang buong larawan',
+  nextPhoto: 'Susunod na larawan',
+  previousPhoto: 'Naunang larawan',
+  photo: 'Larawan',
+  noPhoto: 'Walang larawang ibinigay para sa report na ito',
+  notSaved: 'Hindi ito na-save: {message}',
+  required: '(kailangan)',
+  requiredNote: {
+    before: 'Ang mga field na may',
+    asterisk: 'asterisk',
+    after: 'ay kailangang sagutan. Opsyonal ang lahat ng iba pa.',
+  },
+  pagination: {
+    label: 'Mga pahina',
+    previous: 'Nauna',
+    next: 'Susunod',
+    page: 'Pahina {page}',
+  },
+  chips: {
+    search: 'Hinanap: "{value}"',
+    type: 'Uri: {value}',
+    species: 'Hayop: {value}',
+    size: 'Laki: {value}',
+    colour: 'Kulay: {value}',
+    city: 'Lungsod: {value}',
+    status: 'Status: {value}',
+    from: 'Mula {value}',
+    to: 'Hanggang {value}',
+    remove: 'Alisin ang filter na ito',
+  },
+  timeline: {
+    active: 'Bukas ang report at kinukumpara sa mga bagong report.',
+    possible_match: 'Sinusuri ang isang posibleng tugma.',
+    returned: 'Minarkahang naibalik na sa may-ari.',
+    closed: 'Isinara ang report.',
+  },
+  turnstile:
+    'Pinipigilan ng check na ito ang mga awtomatikong pag-sign up. Tumatakbo ito sa browser mo at hindi ka nito sinusundan sa ibang site.',
+}
+
+export const dates = {
+  justNow: 'ngayon lang',
+  minutesAgo: { one: '{count} minuto ang nakalipas', other: '{count} minuto ang nakalipas' },
+  hoursAgo: { one: '{count} oras ang nakalipas', other: '{count} oras ang nakalipas' },
+  daysAgo: { one: '{count} araw ang nakalipas', other: '{count} araw ang nakalipas' },
+}
+
+export const filters = {
+  title: 'Mga filter',
+  clearAll: 'Alisin lahat',
+  clearAllFilters: 'Alisin ang lahat ng filter',
+  reportType: 'Uri ng report',
+  both: 'Pareho',
+  species: 'Uri ng hayop',
+  anySpecies: 'Kahit anong hayop',
+  date: 'Petsa ng pangyayari',
+  from: 'Mula',
+  to: 'Hanggang',
+  sizeColour: 'Laki at kulay',
+  size: 'Laki',
+  anySize: 'Kahit anong laki',
+  colour: 'Kulay',
+  anyColour: 'Kahit anong kulay',
+  colourHint: 'Alinman sa dalawang kulay ng alaga.',
+  place: 'Lugar',
+  anywhere: 'Kahit saan',
+  anyCity: 'Kahit anong lungsod o bayan',
+  areaFirst: 'Piliin muna ang area',
+  status: 'Status',
+  reportStatus: 'Status ng report',
+  anyStatus: 'Kahit anong status',
+  set: { one: '{count} nakatakda', other: '{count} nakatakda' },
+}
+
+export const map = {
+  nothing: 'Walang maipapakita sa mapa',
+  noResults: 'Walang report na tugma sa paghahanap mo.',
+  noPins: 'Wala pang naka-pin na lokasyon ang mga report na ito.',
+  wheelHint: 'I-click ang mapa para mag-zoom gamit ang scroll wheel',
+  viewReport: 'Tingnan ang report',
+  approximate: 'Tinatayang lugar lang.',
+  loading: 'Nilo-load ang mapa…',
+  pinTitle: 'I-pin ang lugar sa mapa',
+  removePin: 'Alisin ang pin',
+  pinHelp:
+    'Opsyonal. I-tap o i-click ang pangkalahatang lugar — sapat na ang malapit na kanto o palatandaan. Huwag kailanman i-pin ang mismong pintuan ng bahay mo: ipinapakita sa publiko ang pin. Hindi binabago ng pin ang probinsya o lungsod na pinili mo.',
+  outside: 'Nasa labas ng Pilipinas ang puntong iyon, kaya walang inilagay na pin. I-tap ang lugar kung nasaan ang alaga.',
+  pinned: 'Naka-pin sa bandang {lat}, {lng} — ipinapakita sa publiko bilang lugar na mga {radius} m ang lawak.',
+  noPin: 'Wala pang pin. Ginagamit pa rin ang probinsya, lungsod at ang paglalarawan mo.',
+}
+
+export const flag = {
+  title: 'I-report ang listing na ito',
+  thanks: 'Salamat',
+  description:
+    'Sabihin sa isang administrator kung ano ang mali sa report na ito. Hindi ipinapakita ang pangalan mo sa taong nag-file nito.',
+  sending: 'Ipinapadala…',
+  send: 'Ipadala ang report',
+  done: 'Susuriin ng isang administrator ang listing na ito. Salamat sa pagtulong na manatiling kapaki-pakinabang ang Paws&Found para sa mga talagang naghahanap.',
+  reason: 'Ano ang problema?',
+  details: 'May iba pa ba kaming dapat malaman?',
+  detailsPlaceholder: 'Opsyonal, pero nakatutulong ito para mabilis makapagpasya ang administrator.',
+  failed: 'Hindi naipadala ang report: {message}',
+}
+
+export const chart = {
+  lost: 'Nawawala',
+  found: 'Natagpuan',
+  leftBar: '(kaliwang bar)',
+  rightBar: '(kanang bar)',
+  caption: 'Mga report na na-file bawat buwan, sa nakaraang anim na buwan',
+  month: 'Buwan',
+  total: 'Kabuuan',
+  totalsNote: 'Ang kabuuan ng buwan ay nasa ilalim ng bawat label.',
+  reports: { one: '{count} report', other: '{count} report' },
+  filed: 'ang na-file sa nakaraang anim na buwan.',
+}
+
+export const password = {
+  show: 'Ipakita ang password',
+  hide: 'Itago ang password',
+  retype: 'Pakitype ulit ang password mo sa halip na i-paste ito.',
+  confirm: 'Kumpirmahin ang password',
+  confirmHint: 'I-type ulit ang parehong password, para mahuli ang anumang maling pagta-type.',
+  requirements: 'Mga kailangan sa password',
+  met: ' — natugunan',
+  notMet: ' — hindi pa natutugunan',
+  min: 'Hindi bababa sa {min} na character',
+  max: 'Hindi lalampas sa {max} na byte (higit sa isa ang bilang ng mga letrang may tuldik at ng emoji)',
+  common: 'Hindi karaniwang ginagamit na password',
+  name: 'Hindi naglalaman ng pangalan o apelyido mo',
+  email: 'Hindi ang email address mo',
+  match: 'Magkapareho ang dalawang tinype',
+  strength: {
+    title: 'Lakas:',
+    weak: 'Mahina',
+    weakAdvice: 'Masyadong madaling hulaan, o may kailangang hindi pa natutugunan. Subukan ang mas mahabang passphrase.',
+    fair: 'Katamtaman',
+    fairAdvice: 'Natutugunan ang mga kailangan.',
+    strong: 'Malakas',
+    strongAdvice: 'Mahirap hulaan. Magandang pili.',
+  },
+}

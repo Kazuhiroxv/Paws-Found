@@ -9,16 +9,15 @@ import { useAsync } from '@/hooks/useAsync'
 import { logService } from '@/services'
 import { cn } from '@/utils/cn'
 import { parseDateTime } from '@/utils/date'
+import { errorText } from '@/i18n/apiErrors'
+import { hasKey, languageInfo, t } from '@/i18n'
 
 /**
  * The three logs an administrator can read (Correction 5). Each answers one
  * question; docs/security-activity-logging.md says why they are separate.
+ * Their names and hints are `admin.logs.tabs.<id>` and `<id>Hint`.
  */
-const TABS = [
-  { id: 'activity', label: 'Activity', hint: 'Where signed-in people went and what they did.' },
-  { id: 'sessions', label: 'Sessions', hint: 'Each sign-in: the account, its IP address and browser, when it started and ended.' },
-  { id: 'security', label: 'Security events', hint: 'Sign-ins, failed attempts, locks, password resets, role and account changes.' },
-]
+const TABS = ['activity', 'sessions', 'security']
 
 const LOADERS = {
   activity: logService.getActivityLog,
@@ -26,74 +25,30 @@ const LOADERS = {
   security: logService.getAuditLog,
 }
 
-/** What each recorded action means, in words (ACTIVITY_ACTIONS in api/helpers.php). */
-const ACTIVITY_LABELS = {
-  page_view: 'Opened a page',
-  login: 'Signed in',
-  logout: 'Signed out',
-  profile_updated: 'Updated their profile',
-  email_change_requested: 'Asked to change their email',
-  draft_saved: 'Saved a draft',
-  draft_updated: 'Updated a draft',
-  draft_deleted: 'Deleted a draft',
-  report_submitted: 'Submitted a report for review',
-  report_edited: 'Edited a report',
-  report_photos_added: 'Added photographs',
-  report_photos_changed: 'Changed photographs',
-  report_status_changed: 'Changed a report’s status',
-  report_approved: 'Approved a report',
-  report_rejected: 'Did not approve a report',
-  report_resubmitted: 'Submitted a report again',
-  report_removed: 'Removed a report',
-  match_request_verification: 'Asked for a match to be verified',
-  match_dismiss: 'Said a match is not their pet',
-  match_reject: 'Ruled out a match',
-  match_request_information: 'Asked for more information',
-  match_provide_information: 'Provided information',
-  match_confirm: 'Confirmed a match',
-  match_reopen: 'Reopened a match',
-  report_flagged: 'Flagged a report',
-  moderation_decided: 'Decided a moderation case',
-  notification_read: 'Read a notification',
-  notifications_all_read: 'Marked all notifications read',
-  account_status_changed: 'Changed an account’s status',
-  role_changed: 'Changed an account’s role',
-  category_changed: 'Changed a pet category',
-}
+/**
+ * What each recorded action means, in words: `admin.logs.activity.<action>`
+ * (ACTIVITY_ACTIONS in api/helpers.php), `admin.logs.audit.<action>`
+ * (audit_logs.action) and `admin.logs.ended.<reason>` (user_sessions.end_reason).
+ * An action without words is shown as stored.
+ */
+const ACTIVITY_ACTIONS = [
+  'page_view', 'login', 'logout', 'profile_updated', 'email_change_requested', 'privacy_notice_acknowledged',
+  'draft_saved', 'draft_updated', 'draft_deleted', 'report_submitted', 'report_edited',
+  'report_photos_added', 'report_photos_changed', 'report_status_changed', 'report_approved',
+  'report_rejected', 'report_resubmitted', 'report_removed', 'match_request_verification',
+  'match_dismiss', 'match_reject', 'match_request_information', 'match_provide_information',
+  'match_confirm', 'match_reopen', 'report_flagged', 'moderation_decided', 'notification_read',
+  'notifications_all_read', 'account_status_changed', 'role_changed', 'admin_level_changed', 'category_changed',
+]
 
-/** audit_logs.action, in words. */
-const AUDIT_LABELS = {
-  login: 'Signed in',
-  login_failed: 'Failed sign-in',
-  account_locked: 'Account locked',
-  account_unlocked: 'Account unlocked',
-  logout: 'Signed out',
-  register: 'Account created',
-  role_changed: 'Role changed',
-  account_suspended: 'Account suspended',
-  account_reinstated: 'Account reinstated',
-  report_status_changed: 'Report status changed',
-  match_decided: 'Match decided',
-  moderation_resolved: 'Moderation decided',
-  category_changed: 'Category changed',
-  email_verified: 'Email verified',
-  email_change_completed: 'Email changed',
-  password_reset: 'Password reset',
-  report_reviewed: 'Report reviewed',
-  report_removed: 'Report removed',
-}
+const AUDIT_ACTIONS = [
+  'login', 'login_failed', 'account_locked', 'account_unlocked', 'logout', 'register', 'role_changed',
+  'account_suspended', 'account_reinstated', 'report_status_changed', 'match_decided',
+  'moderation_resolved', 'category_changed', 'email_verified', 'email_change_completed',
+  'password_reset', 'report_reviewed', 'report_removed',
+]
 
-/** user_sessions.end_reason, in words. */
-const END_REASONS = {
-  logout: 'Signed out',
-  idle_timeout: 'Expired: inactive',
-  absolute_timeout: 'Expired: time limit',
-  password_reset: 'Password changed',
-  new_privileged_login: 'Signed in on another device',
-  role_promoted: 'Access level changed',
-  account_locked: 'Account locked',
-  account_suspended: 'Account suspended',
-}
+const words = (group, value) => (hasKey(`admin.logs.${group}.${value}`) ? t(`admin.logs.${group}.${value}`) : value)
 
 /** The filters each log takes, as the API names them. */
 const FILTERS = {
@@ -138,20 +93,18 @@ export function AdminLogsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         icon={ScrollText}
-        eyebrow="Administrator"
-        title="Logs"
-        description="Who signed in, from which address, where they went and what they did. Newest first."
-        breadcrumb={[{ label: 'Administration', to: '/admin' }, { label: 'Logs' }]}
+        eyebrow={t('shell.access.eyebrow')}
+        title={t('nav.logs')}
+        description={t('admin.logs.description')}
+        breadcrumb={[{ label: t('shell.workspace.admin'), to: '/admin' }, { label: t('nav.logs') }]}
       />
 
       <p className="rounded-control border border-border bg-sunken/70 px-3 py-2 text-sm text-fg-muted">
-        IP addresses and browser details are personal information. They are shown here for security
-        and administration; avoid putting this page on a projector in front of people it does not
-        concern.
+        {t('admin.logs.privacy')}
       </p>
 
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Log">
-        {TABS.map((item) => (
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label={t('admin.logs.log')}>
+        {TABS.map((id) => ({ id })).map((item) => (
           <button
             key={item.id}
             type="button"
@@ -167,13 +120,13 @@ export function AdminLogsPage() {
                 : 'border-border-strong bg-panel text-fg-muted hover:text-fg',
             )}
           >
-            {item.label}
+            {t(`admin.logs.tabs.${item.id}`)}
           </button>
         ))}
       </div>
 
       <div id="logs-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className="flex flex-col gap-4">
-        <p className="text-sm text-fg-muted">{TABS.find((item) => item.id === tab).hint}</p>
+        <p className="text-sm text-fg-muted">{t(`admin.logs.tabs.${tab}Hint`)}</p>
 
         {/* Keyed on the address, so a filter set by clicking an IP or a
             session in the table shows up in the form too. */}
@@ -183,24 +136,27 @@ export function AdminLogsPage() {
           <LoadingSkeleton lines={6} />
         ) : error ? (
           <p role="alert" className="text-sm text-danger">
-            The log could not be loaded: {error.message}
+            {t('admin.logs.failed', { message: errorText(error) })}
           </p>
         ) : data.rows.length === 0 ? (
           <EmptyState
             icon={ScrollText}
-            title="Nothing recorded matches"
-            description="Try a wider date range, or clear the filters."
+            title={t('admin.logs.noMatch')}
+            description={t('admin.logs.noMatchBody')}
             action={
               <Button variant="secondary" onClick={() => show(tab)}>
-                Clear filters
+                {t('staff.reports.clear')}
               </Button>
             }
           />
         ) : (
           <>
             <p className="text-sm text-fg-muted" aria-live="polite">
-              Showing {(data.page - 1) * data.perPage + 1}–{(data.page - 1) * data.perPage + data.rows.length} of{' '}
-              {data.total}, newest first
+              {t('admin.logs.showing', {
+                from: (data.page - 1) * data.perPage + 1,
+                to: (data.page - 1) * data.perPage + data.rows.length,
+                total: data.total,
+              })}
             </p>
 
             <div className="overflow-x-auto rounded-card border border-border bg-panel">
@@ -222,7 +178,7 @@ export function AdminLogsPage() {
 }
 
 function tabFrom(value) {
-  return TABS.some((item) => item.id === value) ? value : 'activity'
+  return TABS.includes(value) ? value : 'activity'
 }
 
 /** The filters for one log. Applied on submit, not on every keystroke. */
@@ -234,11 +190,11 @@ function FilterForm({ tab, initial, onApply }) {
   const actionOptions =
     tab === 'activity'
       ? [
-          { value: '', label: 'Everything' },
-          { value: 'actions', label: 'Actions only (no page views)' },
-          ...Object.entries(ACTIVITY_LABELS).map(([value, label]) => ({ value, label })),
+          { value: '', label: t('admin.logs.everything') },
+          { value: 'actions', label: t('admin.logs.actionsOnly') },
+          ...ACTIVITY_ACTIONS.map((value) => ({ value, label: words('activity', value) })),
         ]
-      : [{ value: '', label: 'Any event' }, ...Object.entries(AUDIT_LABELS).map(([value, label]) => ({ value, label }))]
+      : [{ value: '', label: t('admin.logs.anyEvent') }, ...AUDIT_ACTIONS.map((value) => ({ value, label: words('audit', value) }))]
 
   return (
     <form
@@ -248,44 +204,44 @@ function FilterForm({ tab, initial, onApply }) {
       }}
       className="grid gap-3 rounded-card border border-border bg-panel p-4 sm:grid-cols-2 lg:grid-cols-4"
     >
-      <Input label="Person" placeholder="Name or email" value={form.user} onChange={set('user')} />
+      <Input label={t('admin.logs.person')} placeholder={t('admin.users.placeholder')} value={form.user} onChange={set('user')} />
       {has('action') && (
-        <Select label={tab === 'activity' ? 'What' : 'Event'} value={form.action} onChange={set('action')} options={actionOptions} />
+        <Select label={tab === 'activity' ? t('admin.logs.what') : t('admin.logs.event')} value={form.action} onChange={set('action')} options={actionOptions} />
       )}
       {has('state') && (
         <Select
-          label="State"
+          label={t('admin.logs.state')}
           value={form.state}
           onChange={set('state')}
           options={[
-            { value: '', label: 'Any' },
-            { value: 'open', label: 'Open' },
-            { value: 'ended', label: 'Ended' },
-            { value: 'expired', label: 'Expired, no sign-out recorded' },
+            { value: '', label: t('admin.logs.any') },
+            { value: 'open', label: t('admin.logs.open') },
+            { value: 'ended', label: t('admin.logs.endedState') },
+            { value: 'expired', label: t('admin.logs.expired') },
           ]}
         />
       )}
       {has('outcome') && (
         <Select
-          label="Outcome"
+          label={t('admin.logs.outcome')}
           value={form.outcome}
           onChange={set('outcome')}
           options={[
-            { value: '', label: 'Any' },
-            { value: 'success', label: 'Succeeded' },
-            { value: 'failure', label: 'Failed' },
+            { value: '', label: t('admin.logs.any') },
+            { value: 'success', label: t('admin.logs.succeeded') },
+            { value: 'failure', label: t('admin.logs.failedOutcome') },
           ]}
         />
       )}
-      <Input label="IP address" placeholder="e.g. 203.0.113.7" value={form.ip} onChange={set('ip')} />
-      {has('route') && <Input label="Page" placeholder="e.g. /pet/12 or /staff" value={form.route} onChange={set('route')} />}
-      {has('session') && <Input label="Session" placeholder="Session reference" value={form.session} onChange={set('session')} />}
-      <Input label="From" type="date" value={form.from} onChange={set('from')} />
-      <Input label="To" type="date" value={form.to} onChange={set('to')} />
+      <Input label={t('admin.logs.ip')} placeholder={t('admin.logs.ipPlaceholder')} value={form.ip} onChange={set('ip')} />
+      {has('route') && <Input label={t('admin.logs.page')} placeholder={t('admin.logs.pagePlaceholder')} value={form.route} onChange={set('route')} />}
+      {has('session') && <Input label={t('admin.logs.session')} placeholder={t('admin.logs.sessionPlaceholder')} value={form.session} onChange={set('session')} />}
+      <Input label={t('filters.from')} type="date" value={form.from} onChange={set('from')} />
+      <Input label={t('filters.to')} type="date" value={form.to} onChange={set('to')} />
       <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-4">
-        <Button type="submit">Apply filters</Button>
+        <Button type="submit">{t('admin.logs.apply')}</Button>
         <Button type="button" variant="ghost" onClick={() => onApply({})}>
-          Clear
+          {t('admin.logs.clear')}
         </Button>
       </div>
     </form>
@@ -312,7 +268,7 @@ function Head({ columns }) {
 function ActivityTable({ rows, narrow, show }) {
   return (
     <table className="w-full min-w-[56rem] text-sm">
-      <Head columns={['When', 'Person', 'What', 'Page or item', 'IP address', 'Session']} />
+      <Head columns={[t('admin.logs.when'), t('admin.logs.person'), t('admin.logs.what'), t('admin.logs.pageOrItem'), t('admin.logs.ip'), t('admin.logs.session')]} />
       <tbody className="divide-y divide-border">
         {rows.map((row) => (
           <tr key={row.activity_id}>
@@ -321,7 +277,7 @@ function ActivityTable({ rows, narrow, show }) {
               <Person person={row.user} onPick={() => narrow('user', row.user.email)} />
             </td>
             <td className={td}>
-              <span className="text-fg">{ACTIVITY_LABELS[row.action] ?? row.action}</span>
+              <span className="text-fg">{words('activity', row.action)}</span>
               {row.detail && <span className="block text-xs text-fg-muted">{row.detail}</span>}
             </td>
             <td className={cn(td, 'text-fg-muted')}>
@@ -343,7 +299,17 @@ function ActivityTable({ rows, narrow, show }) {
 function SessionTable({ rows, narrow, show }) {
   return (
     <table className="w-full min-w-[64rem] text-sm">
-      <Head columns={['Person', 'Session', 'IP address', 'Browser', 'Started', 'Last seen', 'Ended']} />
+      <Head
+        columns={[
+          t('admin.logs.person'),
+          t('admin.logs.session'),
+          t('admin.logs.ip'),
+          t('admin.logs.browser'),
+          t('admin.logs.started'),
+          t('detail.lastSeen'),
+          t('admin.logs.endedState'),
+        ]}
+      />
       <tbody className="divide-y divide-border">
         {rows.map((row) => (
           <tr key={row.session_reference}>
@@ -353,7 +319,7 @@ function SessionTable({ rows, narrow, show }) {
             <td className={td}>
               <Reference value={row.session_reference} onPick={() => show('activity', { session: row.session_reference })} />
               <span className="block text-xs text-fg-muted">
-                {row.activity_count} {row.activity_count === 1 ? 'entry' : 'entries'}
+                {t('admin.logs.entries', { count: row.activity_count })}
               </span>
             </td>
             <td className={td}>
@@ -361,7 +327,7 @@ function SessionTable({ rows, narrow, show }) {
             </td>
             <td className={cn(td, 'max-w-[16rem] text-xs text-fg-muted')}>
               <span className="line-clamp-2 break-words" title={row.user_agent ?? ''}>
-                {row.user_agent ?? 'Not given'}
+                {row.user_agent ?? t('common.notGiven')}
               </span>
             </td>
             <td className={cn(td, 'whitespace-nowrap text-fg-muted')}>{formatLogTime(row.started_at)}</td>
@@ -369,13 +335,13 @@ function SessionTable({ rows, narrow, show }) {
             <td className={td}>
               {row.state === 'ended' ? (
                 <>
-                  <span className="text-fg">{END_REASONS[row.end_reason] ?? 'Ended'}</span>
+                  <span className="text-fg">{row.end_reason ? words('ended', row.end_reason) : t('admin.logs.endedState')}</span>
                   <span className="block text-xs whitespace-nowrap text-fg-muted">{formatLogTime(row.ended_at)}</span>
                 </>
               ) : row.state === 'expired' ? (
-                <span className="text-fg-muted">Expired, no sign-out recorded</span>
+                <span className="text-fg-muted">{t('admin.logs.expired')}</span>
               ) : (
-                <span className="font-medium text-brand-hover">Open</span>
+                <span className="font-medium text-brand-hover">{t('admin.logs.open')}</span>
               )}
             </td>
           </tr>
@@ -388,16 +354,25 @@ function SessionTable({ rows, narrow, show }) {
 function SecurityTable({ rows, narrow }) {
   return (
     <table className="w-full min-w-[56rem] text-sm">
-      <Head columns={['When', 'Event', 'Account', 'Concerning', 'Detail', 'IP address']} />
+      <Head
+        columns={[
+          t('admin.logs.when'),
+          t('admin.logs.event'),
+          t('admin.users.account'),
+          t('admin.logs.concerning'),
+          t('admin.logs.detail'),
+          t('admin.logs.ip'),
+        ]}
+      />
       <tbody className="divide-y divide-border">
         {rows.map((row) => (
           <tr key={row.audit_id}>
             <td className={cn(td, 'whitespace-nowrap text-fg-muted')}>{formatLogTime(row.created_at)}</td>
             <td className={td}>
               <span className={row.outcome === 'failure' ? 'font-medium text-danger' : 'text-fg'}>
-                {AUDIT_LABELS[row.action] ?? row.action}
+                {words('audit', row.action)}
               </span>
-              {row.outcome === 'failure' && <span className="block text-xs text-fg-muted">Failed</span>}
+              {row.outcome === 'failure' && <span className="block text-xs text-fg-muted">{t('admin.logs.failedOutcome')}</span>}
             </td>
             <td className={td}>
               {row.actor.full_name || row.actor.email ? (
@@ -406,11 +381,11 @@ function SecurityTable({ rows, narrow }) {
                   onClick={() => narrow('user', row.actor.email ?? row.actor.full_name)}
                   className="text-left hover:underline"
                 >
-                  <span className="block text-fg">{row.actor.full_name ?? 'Not signed in'}</span>
+                  <span className="block text-fg">{row.actor.full_name ?? t('admin.logs.notSignedIn')}</span>
                   {row.actor.email && <span className="block text-xs text-fg-muted">{row.actor.email}</span>}
                 </button>
               ) : (
-                <span className="text-fg-muted">Nobody signed in</span>
+                <span className="text-fg-muted">{t('admin.logs.nobody')}</span>
               )}
             </td>
             <td className={cn(td, 'text-fg-muted')}>
@@ -430,7 +405,7 @@ function SecurityTable({ rows, narrow }) {
 /** A name that filters the log to that person when pressed. */
 function Person({ person, onPick }) {
   return (
-    <button type="button" onClick={onPick} className="text-left hover:underline" title="Show only this person">
+    <button type="button" onClick={onPick} className="text-left hover:underline" title={t('admin.logs.onlyPerson')}>
       <span className="block text-fg">{person.full_name}</span>
       <span className="block text-xs text-fg-muted">
         {person.email} · {ROLE_LABELS[person.role] ?? person.role}
@@ -440,10 +415,10 @@ function Person({ person, onPick }) {
 }
 
 function Ip({ value, onPick }) {
-  if (!value) return <span className="text-fg-muted">Not recorded</span>
+  if (!value) return <span className="text-fg-muted">{t('admin.logs.notRecorded')}</span>
 
   return (
-    <button type="button" onClick={onPick} className="font-mono text-xs text-fg hover:underline" title="Show only this address">
+    <button type="button" onClick={onPick} className="font-mono text-xs text-fg hover:underline" title={t('admin.logs.onlyAddress')}>
       {value}
     </button>
   )
@@ -451,7 +426,7 @@ function Ip({ value, onPick }) {
 
 /** A session reference, shortened as it is read aloud: the first eight characters. */
 function Reference({ value, onPick }) {
-  if (!value) return <span className="text-xs text-fg-muted">Before session records</span>
+  if (!value) return <span className="text-xs text-fg-muted">{t('admin.logs.beforeSessions')}</span>
 
   return (
     <button type="button" onClick={onPick} className="font-mono text-xs text-brand hover:underline" title={value}>
@@ -467,13 +442,13 @@ function Target({ route, type, id }) {
       <span>
         {route && <span className="block font-mono text-xs">{route}</span>}
         <Link to={`/pet/${id}`} className="text-brand hover:underline">
-          Report {id}
+          {t('admin.logs.reportId', { id })}
         </Link>
       </span>
     )
   }
   if (route) return <span className="font-mono text-xs">{route}</span>
-  if (type && id) return <span>{`${type.replace('_', ' ')} ${id}`}</span>
+  if (type && id) return <span>{`${words('target', type)} ${id}`}</span>
   return <span>—</span>
 }
 
@@ -482,7 +457,7 @@ function formatLogTime(value) {
   if (!value) return ''
   const date = parseDateTime(value)
   if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleString('en-PH', {
+  return date.toLocaleString(languageInfo().locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

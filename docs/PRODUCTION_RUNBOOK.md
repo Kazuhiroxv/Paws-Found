@@ -93,6 +93,39 @@ Six `[paws]` lines from the entrypoint, then Apache:
 previous 502 turned out to be, and the Dockerfile now fails the build rather
 than shipping it.
 
+### What is waiting to deploy (post-defense corrections)
+
+Production runs **`2947a43`**. Derive what is waiting — never count it by hand:
+
+```bash
+git log --oneline 2947a43..HEAD
+```
+
+At Correction 7 (4 October 2026) that is **12 commits** on
+`post-defense/revisions`, newest first: Correction 7 (localization,
+disclaimer, report export), `e87b0b9` 6A, `0731b26` 6, `29c8aa8` 5A,
+`75e67b5` 5, `31e87b3` 4, `42b802c` 3A, `31bbcab` 3, `ad3f622` (feedback
+documents), `3cce5ea` 2, `5da6aee` 1, `6abdb56` (checkpoint). The table with
+subjects is in `CURRENT_STATE.md` §1.
+
+**Migrations they need, in this order, before the push:** `008` (first and
+last name) → `009` (report reference data) → `010` (publication workflow and
+drafts) → `011` (session and activity records) → `012` (administrator
+levels). **Correction 7 adds none.** The order, with the preview query before
+each, is in `CURRENT_STATE.md` §4a:
+
+1. back up the Railway database (§4 below)
+2. preview and run 008, 009, 010, 011, 012 — official MySQL client,
+   `--default-character-set=utf8mb4`, one at a time
+3. push `post-defense/revisions` to `portfolio`'s `team/current` (Kyle's
+   decision, not before)
+4. `/api/health`, then `npm run verify:deploy <url>`
+5. check the recorded IP from two networks (`security-activity-logging.md`)
+6. Correction 7 on the live site: the language control, `/disclaimer`, a
+   printout from Explore, and — signed in as a seeded account — the "Privacy
+   Notice updated" message (every account that agreed before 2026-10-03 sees
+   it until they acknowledge)
+
 ### Database changes
 
 If the change touches the schema, read

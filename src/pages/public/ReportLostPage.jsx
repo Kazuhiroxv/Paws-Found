@@ -5,6 +5,7 @@ import { NewReportForm } from '@/components/report-form/ReportForm'
 import { ReportGuidance } from '@/components/report-form/ReportGuidance'
 import { REPORT_TYPES } from '@/constants'
 import landscapeStrip from '@/assets/img-021-landscape-strip.webp'
+import { t } from '@/i18n'
 
 export function ReportLostPage() {
   return (
@@ -33,7 +34,7 @@ export function ReportLostPage() {
       {/* The wizard owns its own two-column layout, so the step indicator can
           run the full width above the fields and the guidance. */}
       <Container width="page" className="flex flex-col gap-8">
-        <title>Report a lost pet · Paws&Found</title>
+        <title>{`${t('nav.reportLost')} · Paws&Found`}</title>
 
         {/* On its own surface rather than straight on the artwork. The text
             used to sit on IMG-021 in muted ink, and what was behind any one
@@ -42,26 +43,26 @@ export function ReportLostPage() {
         <div className="flex max-w-3xl flex-col gap-3 rounded-card border border-border border-l-4 border-l-accent bg-panel/95 p-5 shadow-raised backdrop-blur-sm sm:p-7">
           <p className="inline-flex w-fit items-center gap-2 rounded-pill bg-lost-soft px-3 py-1 text-sm font-semibold text-lost">
             <TriangleAlert size={15} aria-hidden="true" />
-            Report lost
+            {t('reportPage.lostBadge')}
           </p>
 
           <h1 className="text-3xl font-semibold tracking-tight text-balance text-fg sm:text-4xl">
-            Report a <span className="text-lost">lost</span> pet
+            {t('reportPage.lostTitleBefore')} <span className="text-lost">{t('reportPage.lostWord')}</span>{' '}
+            {t('reportPage.titleAfter')}
           </h1>
-          <p className="text-lg text-fg">Help the community know what to look for.</p>
+          <p className="text-lg text-fg">{t('reportPage.lostLead')}</p>
           <p className="max-w-prose text-fg">
-            We&apos;ll compare these details with pets found nearby. It takes a few minutes,
-            and you can edit anything afterwards.
+            {t('reportPage.lostBody')}
           </p>
 
           <ul className="mt-1 flex flex-col gap-1.5 text-sm">
             <li className="flex items-center gap-2 font-medium text-lost">
               <Clock size={15} className="shrink-0" aria-hidden="true" />
-              The first hours matter most. File now and add details later.
+              {t('reportPage.lostUrgent')}
             </li>
             <li className="flex items-center gap-2 text-fg-muted">
               <Lock size={14} className="shrink-0 text-fg-subtle" aria-hidden="true" />
-              Exact addresses are never shown publicly.
+              {t('reportPage.noAddress')}
             </li>
           </ul>
         </div>

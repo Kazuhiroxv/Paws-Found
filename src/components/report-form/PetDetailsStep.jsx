@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react'
 import { Input, Select, Textarea } from '@/components/ui'
-import { PET_SEX_LABELS, PET_SIZE_LABELS, REPORT_TYPES } from '@/constants'
+import { PET_SEX_LABELS, PET_SIZE_LABELS, REPORT_TYPES, colourLabel } from '@/constants'
 import { referenceService } from '@/services'
 import { useAsync } from '@/hooks/useAsync'
 import { optionsFromLabels } from '@/utils/options'
 import { LIMITS, OTHER_SPECIES } from './reportFormModel'
+import { t } from '@/i18n'
 
 const loadColours = () => referenceService.getColours()
 
@@ -24,41 +25,40 @@ export function PetDetailsStep({ values, errors, onChange, speciesOptions = [] }
   // Colours and breeds come from the database through the API (Correction 3),
   // never from a list in this file.
   const { data: colours } = useAsync(loadColours)
-  const colourOptions = (colours ?? []).map((colour) => ({ value: colour.name, label: colour.name }))
+  const colourOptions = (colours ?? []).map((colour) => ({ value: colour.name, label: colourLabel(colour.name) }))
   const saysOther = values.primaryColor === 'Other' || values.secondaryColor === 'Other'
 
   return (
     <div className="flex flex-col gap-8">
       {!isFound && (
         <Input
-          label="Pet name"
+          label={t('reportForm.details.petName')}
           required
           value={values.petName}
           onChange={(event) => onChange('petName', event.target.value)}
           error={errors.petName}
           maxLength={LIMITS.petName}
-          placeholder="e.g. Milo"
-          hint="What you call out when looking for them."
+          placeholder={t('reportForm.details.petNamePlaceholder')}
+          hint={t('reportForm.details.petNameHint')}
         />
       )}
 
       <FieldGroup
-        title="What kind of animal"
-        hint="Species and size are the first things the system compares, so get these right even if you have to guess the breed."
+        title={t('reportForm.details.kindTitle')}
+        hint={t('reportForm.details.kindHint')}
       >
       {/* The one rule that spans two fields, said before it can fail: an
           asterisk on either would be untrue, since either one satisfies it.
           Not shown for "Other", where naming the animal already does. */}
       {values.species !== OTHER_SPECIES && (
         <p className="text-sm text-fg">
-          Give a breed, or at least one distinctive feature further down. Colour alone is
-          rarely enough to identify a pet.
+          {t('reportForm.details.breedOrFeature')}
         </p>
       )}
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Select
-          label="Species"
+          label={t('reportForm.details.species')}
           required
           value={values.species}
           onChange={(event) => {
@@ -70,7 +70,7 @@ export function PetDetailsStep({ values, errors, onChange, speciesOptions = [] }
             onChange('species', next)
           }}
           error={errors.species}
-          placeholder="Choose one"
+          placeholder={t('common.chooseOne')}
           options={speciesOptions}
         />
 
@@ -78,12 +78,12 @@ export function PetDetailsStep({ values, errors, onChange, speciesOptions = [] }
             (the API stores it under the Other category just like a breed). */}
         {values.species === OTHER_SPECIES ? (
           <Input
-            label="Please specify animal"
+            label={t('reportForm.details.specify')}
             required
             value={values.breed}
             onChange={(event) => onChange('breed', event.target.value)}
             maxLength={LIMITS.breed}
-            placeholder="e.g. Rabbit, Parrot, Turtle"
+            placeholder={t('reportForm.details.specifyPlaceholder')}
             error={errors.breed}
           />
         ) : (
@@ -99,12 +99,12 @@ export function PetDetailsStep({ values, errors, onChange, speciesOptions = [] }
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Select
-          label="Size"
+          label={t('reportForm.details.size')}
           required
           value={values.size}
           onChange={(event) => onChange('size', event.target.value)}
           error={errors.size}
-          placeholder="Choose one"
+          placeholder={t('common.chooseOne')}
           options={optionsFromLabels(PET_SIZE_LABELS)}
         />
 
@@ -112,39 +112,39 @@ export function PetDetailsStep({ values, errors, onChange, speciesOptions = [] }
             a real answer (a finder often cannot tell), not something to
             assume for someone who skipped the field. */}
         <Select
-          label="Sex"
+          label={t('reportForm.details.sex')}
           required
           value={values.sex}
           onChange={(event) => onChange('sex', event.target.value)}
           error={errors.sex}
-          placeholder="Choose one"
+          placeholder={t('common.chooseOne')}
           options={optionsFromLabels(PET_SEX_LABELS)}
         />
       </div>
       </FieldGroup>
 
       <FieldGroup
-        title="How they look"
-        hint="Colour plus one distinguishing feature is usually enough to tell a pet apart from every other pet of the same breed."
+        title={t('reportForm.details.lookTitle')}
+        hint={t('reportForm.details.lookHint')}
       >
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Select
-          label="Main colour"
+          label={t('reportForm.details.mainColour')}
           required
           value={values.primaryColor}
           onChange={(event) => onChange('primaryColor', event.target.value)}
           error={errors.primaryColor}
-          placeholder="Choose one"
+          placeholder={t('common.chooseOne')}
           options={colourOptions}
         />
 
         <Select
-          label="Other colour"
+          label={t('reportForm.details.otherColour')}
           value={values.secondaryColor}
           onChange={(event) => onChange('secondaryColor', event.target.value)}
-          options={[{ value: '', label: 'None' }, ...colourOptions]}
-          hint="Optional — a second colour, if there is one."
+          options={[{ value: '', label: t('reportForm.details.none') }, ...colourOptions]}
+          hint={t('reportForm.details.otherColourHint')}
         />
       </div>
 
@@ -152,47 +152,46 @@ export function PetDetailsStep({ values, errors, onChange, speciesOptions = [] }
           form asks for the words. It never counts as two reports agreeing. */}
       {saysOther && (
         <p className="text-sm text-fg">
-          You chose Other: describe the colour in Distinctive features below, for example
-          "silver with black stripes".
+          {t('reportForm.details.otherColourNote')}
         </p>
       )}
 
       <Textarea
-        label="Distinctive features"
+        label={t('reportForm.details.features')}
         value={values.distinctiveMarkings}
         onChange={(event) => onChange('distinctiveMarkings', event.target.value)}
         error={errors.distinctiveMarkings}
         maxLength={LIMITS.distinctiveMarkings}
         rows={3}
-        placeholder="e.g. White patch on the chest, one ear does not stand up, red collar with a bell."
-        hint="The details that tell this pet apart from every other pet of the same colour."
+        placeholder={t('reportForm.details.featuresPlaceholder')}
+        hint={t('reportForm.details.featuresHint')}
       />
       </FieldGroup>
 
       {isFound && (
-        <FieldGroup title="When you found them" hint="Anything you could observe on the spot.">
+        <FieldGroup title={t('reportForm.details.foundTitle')} hint={t('reportForm.details.foundHint')}>
         <div className="grid gap-5 sm:grid-cols-2">
           <Select
-            label="Was it wearing a collar?"
+            label={t('reportForm.details.collar')}
             required
             value={values.hasCollar}
             onChange={(event) => onChange('hasCollar', event.target.value)}
-            placeholder="Choose one"
+            placeholder={t('common.chooseOne')}
             error={errors.hasCollar}
             options={[
-              { value: 'yes', label: 'Yes' },
-              { value: 'no', label: 'No' },
-              { value: 'unknown', label: 'Not sure' },
+              { value: 'yes', label: t('common.yes') },
+              { value: 'no', label: t('common.no') },
+              { value: 'unknown', label: t('common.notSure') },
             ]}
           />
 
           <Input
-            label="Condition"
+            label={t('reportForm.details.condition')}
             value={values.condition}
             onChange={(event) => onChange('condition', event.target.value)}
             maxLength={LIMITS.condition}
-            placeholder="e.g. Alert, no visible injuries"
-            hint="How the pet seemed when you found it."
+            placeholder={t('reportForm.details.conditionPlaceholder')}
+            hint={t('reportForm.details.conditionHint')}
           />
         </div>
         </FieldGroup>
@@ -242,7 +241,7 @@ function BreedField({ species, value, onChange }) {
   return (
     <div className="flex flex-col gap-3">
       <Select
-        label="Breed"
+        label={t('reportForm.details.breed')}
         value={showsTyped ? TYPED_BREED : value}
         onChange={(event) => {
           const next = event.target.value
@@ -250,21 +249,21 @@ function BreedField({ species, value, onChange }) {
           onChange(next === TYPED_BREED ? '' : next)
         }}
         disabled={!species}
-        hint={species ? 'An honest guess is fine. Not sure? Leave it as it is.' : 'Choose the species first.'}
+        hint={species ? t('reportForm.details.breedHint') : t('reportForm.details.speciesFirst')}
         options={[
-          { value: '', label: 'Not sure' },
+          { value: '', label: t('common.notSure') },
           ...listed.map((name) => ({ value: name, label: name })),
-          { value: TYPED_BREED, label: 'Not in the list — type it' },
+          { value: TYPED_BREED, label: t('reportForm.details.notListed') },
         ]}
       />
       {showsTyped && (
         <Input
-          label="Type the breed"
+          label={t('reportForm.details.typeBreed')}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           maxLength={LIMITS.breed}
-          placeholder="e.g. Shiba Inu"
-          hint="Kept on this report only; it is not added to the list."
+          placeholder={t('reportForm.details.typeBreedPlaceholder')}
+          hint={t('reportForm.details.typeBreedHint')}
         />
       )}
     </div>

@@ -703,13 +703,14 @@ check asked for during another runs right after it (at most one extra), and a
 check that began before this tab signed in or out cannot apply its answer.
 Tested by holding the server's answer at the network, not by loading the CPU.
 
-### No forced re-consent (Correction 5)
+### No forced re-consent (Correction 5) — resolved by Correction 7
 
 Consent is recorded per notice version at registration. Asking existing
 members to agree again at their next sign-in is not built; the notice no
 longer promises it, and the record shows which version each person agreed to.
-**Decision for the team:** build a "please review the updated notice" step, or
-accept the current position.
+**Correction 7 settled the open decision** with a non-blocking
+acknowledgement rather than a forced re-consent — see "Privacy Notice
+updates: acknowledged, not re-consented" below.
 
 ### Administrator levels: three, as capabilities (Correction 6)
 
@@ -773,6 +774,118 @@ before it is refused, and says why.
 session, activity and security records; that is still true — it is now only
 the Super Administrators — and narrowing access does not alter what anybody
 agreed to, so the version stays 2026-10-03.
+
+### English and Filipino: one dictionary per language, in the browser (Correction 7)
+
+Ma'am said only "you can also consider" other languages, such as Tagalog.
+**The scope is the team's decision:** the whole interface — public,
+customer, Pet Coordinator and Administration — because a language switch
+that stops at the workspace door is not a coherent feature, and the
+coordinators and administrators are the people most likely to use it all day.
+
+- **No library.** `t(key, vars)` in `src/i18n/index.js` with `{name}`
+  placeholders and `{ one, other }` plurals is about a hundred lines; react-i18next
+  would add a dependency and concepts (namespaces, backends, suspense) the
+  project does not need. Dictionaries are plain JavaScript objects split by
+  area, so the build checks them like any other module.
+- **The choice is stored in the browser** (`localStorage`), not on the
+  account: no migration in a correction that did not need one, it works
+  before sign-in, and it costs only that the language does not follow a
+  person to another device.
+- **Switching re-renders in place** (`useSyncExternalStore` in `App`); the
+  language is not part of the session key, so a form, a dialog or a session
+  survives the switch. Labels for stored values are getters, read when shown,
+  so no module keeps a stale copy.
+- **Stored values never change.** `pending_review` stays `pending_review` in
+  the database, the API and every request; only its label is translated.
+  Notes the system writes into the database ("Closed by the reporter.") stay
+  English, because what is stored must not depend on who stored it.
+- **API messages: mapped by exact text, not rewritten as codes.** Changing
+  every endpoint to send codes would touch the whole API for no change in
+  behaviour. `src/i18n/apiErrors.js` maps the sentences people meet in the
+  normal workflow; anything else is shown in English as the server wrote it —
+  a reworded server message falls back to English rather than to a wrong
+  translation.
+- **Not translated:** what people typed, notifications and match reasons
+  (server-written English, stored, marked `lang="en"`), emails, reference
+  names, role and level names. `docs/localization.md` has the table and the
+  glossary.
+
+### The Disclaimer: measured words, informational notices (Correction 7)
+
+The written note asks for "no money involved, not affiliated, not
+responsible for false information". The page says those things as facts
+about the system — academic and non-commercial; "Paws&Found does not process
+payments or financial transactions."; not affiliated with any shelter,
+clinic, LGU or authority; information comes from users and may be wrong;
+nothing is guaranteed — plus meeting and handover safety. **It does not claim
+immunity**: no "not liable for anything", waiver or hold-harmless wording
+(DISC-08), because a student project cannot promise that and saying so would
+be misleading. The short versions sit where they matter: the footer of every
+page, the report form's review step, and a confirmed match's handover.
+
+**No acknowledgement checkbox on submission.** The review-step notice is
+informational. A checkbox would add a click to every report and a stored
+agreement the system never uses; the spec made it optional.
+
+**Rewards.** The interface has no reward, fee or price field, and the
+disclaimer says no payment passes through the system. A reporter may still
+type "reward offered" in a description; that is their text, and moderation
+already covers scams.
+
+### Privacy Notice updates: acknowledged, not re-consented (Correction 7)
+
+An account whose latest `privacy_consents` row is for an older notice version
+sees a message at the top of its pages: what changed, "Review Privacy Notice"
+and "Acknowledge". It blocks nothing. Acknowledging writes one more
+`privacy_consents` row for the current version (`POST
+/auth/privacy-acknowledgement`, the session's own account only) and a
+`privacy_notice_acknowledged` activity row.
+
+- **Not a re-consent.** The records the notice describes (sessions, activity,
+  security events) are kept for security whether or not a person
+  acknowledges; offering "Decline" would pretend otherwise. So the words are
+  Review and Acknowledge, never Agree or Decline.
+- **Not blocking.** A forced step at sign-in would stop a pet owner from
+  reaching their own report at the worst moment, over a change that does not
+  alter what they agreed to share.
+- **The same table, no migration.** `privacy_consents` already records a
+  version per account; `user_activity_logs.action` is a VARCHAR, so the new
+  action needed no schema change.
+- **The version was not bumped.** Correction 7 changes no processing, so
+  `PRIVACY_NOTICE_VERSION` stays 2026-10-03 (the notice's "If this notice
+  changes" section now describes the acknowledgement). Every seeded account,
+  which agreed to 2026-09-23, sees the message — which is also what makes it
+  demonstrable.
+
+### The printed report list: the browser's print, the filters on screen (Correction 7)
+
+Ma'am asked (rec 2) to print or save the report list as a PDF, on Explore.
+
+- **`window.print()`, no PDF library.** Every browser's print dialog has
+  "Save as PDF"; a library (jsPDF, pdfmake) would add hundreds of kilobytes
+  and its own layout code for something the browser does. The printed sheet
+  is a portal outside the app's root; the print stylesheet hides the app and
+  shows only the sheet — A4 portrait, black on white, rows never split, the
+  heading repeated on every page, a page counter and the disclaimer's short
+  form at the foot.
+- **Where:** Explore (her example), the Pet Coordinator's Report queue and
+  Administration's Reports — the three lists of reports. Not My reports (a
+  person's own handful) and not the Logs (security data stays on screen).
+- **What prints is what the filters select, all of it.** Explore fetches every
+  page of the current search with the same filters (50 a page, at most 20
+  pages: 1,000 reports) — the filters are named at the top. It goes through
+  the same API, so a guest's printout cannot hold a report a guest could not
+  list.
+- **Columns:** reference, Lost/Found (in words), pet name, species, breed,
+  colour, area, city, incident date, publication state (coordinators and
+  administrators only), status, and the date filed (signed-in viewers; the
+  list API now returns `created_at` to them, as it already did
+  `updated_at`). **Never:** a contact detail, an email, a phone number, an IP
+  address, a session, a note or a description — a printout leaves the system
+  and cannot be taken back.
+- **Escaping:** the sheet is React text, so a name like
+  `<img src=x onerror=…>` prints as those characters (PRINT-07).
 
 ### No automatic retention (Correction 5)
 

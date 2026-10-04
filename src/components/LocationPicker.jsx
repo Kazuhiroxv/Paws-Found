@@ -11,6 +11,7 @@ import {
   iconForReport,
   isInsidePhilippines,
 } from './mapSetup'
+import { t } from '@/i18n'
 
 /**
  * Click the map to mark roughly where a pet went missing or was found.
@@ -50,7 +51,7 @@ export function LocationPicker({ reportType, lat, lng, onChange }) {
   return (
     <div className="flex flex-col gap-2" data-location-picker>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-medium text-fg">Pin the area on a map</p>
+        <p className="text-sm font-medium text-fg">{t('map.pinTitle')}</p>
         {/* Removing the pin throws away where the pet was, so it looks like the
             destructive action it is: a pale red fill, red text and a red border,
             stronger on hover. Clearly not harmless, and clearly milder than the
@@ -65,15 +66,13 @@ export function LocationPicker({ reportType, lat, lng, onChange }) {
             className="border-danger/50 bg-danger-soft! text-danger-hover! hover:border-danger! hover:bg-danger/15!"
           >
             <X size={14} aria-hidden="true" />
-            Remove pin
+            {t('map.removePin')}
           </Button>
         )}
       </div>
 
       <p className="text-sm text-fg-muted">
-        Optional. Tap or click the general area — a nearby corner or landmark is enough. Never
-        pin your own front door: the pin is shown publicly. The pin does not change the
-        province or city you chose.
+        {t('map.pinHelp')}
       </p>
 
       <div className="h-64 overflow-hidden rounded-card border border-border sm:h-72">
@@ -107,16 +106,15 @@ export function LocationPicker({ reportType, lat, lng, onChange }) {
 
       {outside && (
         <p role="alert" className="text-sm font-medium text-danger">
-          That point is outside the Philippines, so no pin was placed. Tap the area where the
-          pet was.
+          {t('map.outside')}
         </p>
       )}
 
       <p className="flex items-center gap-1.5 text-sm text-fg-muted">
         <MapPin size={14} className="shrink-0 text-fg-subtle" aria-hidden="true" />
         {hasPin
-          ? `Pinned at about ${lat.toFixed(3)}, ${lng.toFixed(3)} — shown publicly as an area of roughly ${APPROXIMATE_RADIUS_M} m.`
-          : 'No pin yet. The province, city and your description are still used.'}
+          ? t('map.pinned', { lat: lat.toFixed(3), lng: lng.toFixed(3), radius: APPROXIMATE_RADIUS_M })
+          : t('map.noPin')}
       </p>
     </div>
   )

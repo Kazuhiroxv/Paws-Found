@@ -13,6 +13,8 @@ import {
 import { passwordChecks, passwordRequirementsMet } from '@/utils/passwordRules'
 import { reveal, useRevealWhen } from '@/utils/reveal'
 import { userService } from '@/services'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
 
 /**
  * Setting a new password from an emailed link.
@@ -86,11 +88,11 @@ export function ResetPasswordPage() {
         <Card>
           <CardBody className="flex flex-col items-center gap-4 text-center">
             <PageHeader
-              title="This page needs your link"
-              description="Open it from the email we sent, so it arrives with the one-time code attached."
+              title={t('auth.reset.needsLink')}
+              description={t('auth.reset.needsLinkBody')}
             />
             <Button as={Link} to="/forgot-password">
-              Ask for a new link
+              {t('auth.reset.newLink')}
             </Button>
           </CardBody>
         </Card>
@@ -109,15 +111,15 @@ export function ResetPasswordPage() {
           >
             <CircleCheck size={40} className="text-success" aria-hidden="true" />
             <PageHeader
-              title="Password changed"
-              description="You can sign in with it now."
+              title={t('auth.reset.done')}
+              description={t('auth.reset.doneBody')}
             />
             {/* Said plainly, because it is surprising if it is not: anywhere
                 still signed in as this account has been signed out. */}
             <p className="text-sm text-fg-muted">
-              Any other device signed in to this account has been signed out.
+              {t('auth.reset.others')}
             </p>
-            <Button onClick={() => navigate('/login')}>Sign in</Button>
+            <Button onClick={() => navigate('/login')}>{t('auth.login.title')}</Button>
           </CardBody>
         </Card>
       </AuthShell>
@@ -129,7 +131,7 @@ export function ResetPasswordPage() {
       <Card>
         <CardBody>
           <form ref={formRef} onSubmit={submit} className="flex flex-col gap-5">
-            <PageHeader title="Set a new password" />
+            <PageHeader title={t('auth.reset.title')} />
 
             {error && (
               <p
@@ -138,12 +140,12 @@ export function ResetPasswordPage() {
                 tabIndex={-1}
                 className="scroll-mt-24 text-sm text-danger outline-none"
               >
-                {error.message}
+                {errorText(error)}
               </p>
             )}
 
             <PasswordField
-              label="New password"
+              label={t('auth.reset.newPassword')}
               value={password}
               onChange={(event) => changePassword(event.target.value)}
               error={passwordError}
@@ -163,10 +165,10 @@ export function ResetPasswordPage() {
 
             <div className="flex flex-wrap items-center gap-3">
               <Button type="submit" isLoading={isSubmitting} disabled={!ready}>
-                {isSubmitting ? 'Saving…' : 'Save the new password'}
+                {isSubmitting ? t('common.saving') : t('auth.reset.save')}
               </Button>
               <Button as={Link} to="/login" variant="ghost" disabled={isSubmitting}>
-                Cancel
+                {t('common.cancel')}
               </Button>
             </div>
           </form>

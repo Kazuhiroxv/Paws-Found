@@ -27,18 +27,43 @@ git log --oneline portfolio/team/current..HEAD   # local commits not yet deploye
 curl.exe -s https://paws-found-production.up.railway.app/api/health
 ```
 
-Expected at the time of writing (2 October): on branch
-**`post-defense/revisions`**, local commits ahead of `portfolio/team/current`
-= **`2947a43`** (what production runs) — the §4 checkpoint, Correction 1, the
-instructor-feedback documents, Corrections 2, 3, 3A, 4, 5, 5A and 6; see §4a. None is
-pushed or deployed. Health `{"status":"ok","database":"ok"}`. Untracked:
-`docs/dbeaver-defense-queries.pdf`.
+Expected at the time of writing (4 October, Correction 7): on branch
+**`post-defense/revisions`**; production (`portfolio/team/current`) runs
+**`2947a43`**. **Do not count the commits by hand — derive them:**
+
+```bash
+git log --oneline 2947a43..HEAD
+```
+
+At Correction 7 that lists **12 commits**, none pushed or deployed (newest
+first):
+
+| # | Commit | Subject |
+| --- | --- | --- |
+| 12 | *(the Correction 7 commit)* | Correction 7: add localization, disclaimer, and report export |
+| 11 | `e87b0b9` | Correction 6A: enforce coordinator-only publication review |
+| 10 | `0731b26` | Correction 6: add administrator privilege levels |
+| 9 | `29c8aa8` | Correction 5A: harden Railway client IP resolution |
+| 8 | `75e67b5` | Correction 5: add session and activity audit logging |
+| 7 | `31e87b3` | Correction 4: add reviewed publication workflow and report drafts |
+| 6 | `42b802c` | Correction 3A: verify current PSGC reference data |
+| 5 | `31bbcab` | Correction 3: improve report data quality and PH location controls |
+| 4 | `ad3f622` | docs: instructor feedback, transcribed, and the correction register |
+| 3 | `3cce5ea` | Correction 2: strengthen identity, password, and form feedback |
+| 2 | `5da6aee` | Correction 1: no mock data in anything that ships |
+| 1 | `6abdb56` | WIP checkpoint: reopen after "Not my pet", and the administrator stays in Administration |
+
+(An earlier report said "four commits ahead"; that was wrong — it was eleven
+before Correction 7. This table is the corrected inventory; re-run the command
+rather than trusting it.) Health `{"status":"ok","database":"ok"}`.
+Untracked: `docs/dbeaver-defense-queries.pdf`.
 
 **The local database has migrations `008` to `012` applied** (first and last
 name; the report reference data; reviewed publication and drafts; session
 records and the activity trail; administrator levels). The production database
 has none of them, and must get all five, in order, immediately before the code
-is pushed — see §4a.
+is pushed — see §4a. **Correction 7 adds no migration**; the deploy order is
+unchanged.
 
 ---
 
@@ -118,7 +143,9 @@ queue already labels them: a withdrawn pairing has a finished report
 A signed-in admin opening `/`, `/explore`, `/report/lost|found`, `/about`,
 `/help` or `/privacy` is redirected to `/admin`. `/pet/:id` stays open (admin
 pages link to it), as do `/login`, `/register` and the email-link pages.
-Interface only — the API is unchanged.
+Interface only — the API is unchanged. *(Since Correction 7, `/privacy` and
+`/disclaimer` are no longer redirected: the Privacy Notice update message
+links to the notice, so an administrator must be able to read it.)*
 
 - `src/components/RequireAccess.jsx`: new `AdminStaysInWorkspace` layout route.
 - `src/App.jsx`: the community routes are nested under it.
@@ -178,8 +205,31 @@ an XL size, presentation flow, and a date filter that exists but was not found).
 | 4 | Drafts, Pet Coordinator review before publication, Removed apart from Closed | **Done** (Cancel awaiting clarification) — see below |
 | 5 | Session and IP logging, page/action history, login/logout, "signed out" messages, the sign-out race | **Done** — see below |
 | 6 | Different levels of administrator privilege | **Done** (the three levels are the team's design) — see below |
+| 7 | Disclaimer, English/Filipino, print / PDF of the report list, Privacy Notice acknowledgement | **Done** — see below |
 | 10 | Breed / colour / city / province: suggested values | **Done in Correction 3** |
-| others | | Not started — the register in `docs/feedback/` is the list (Reset: awaiting clarification) |
+| others | | Reset and Cancel: **AWAITING CLARIFICATION**; contact number: **AWAITING INSTRUCTOR-INTENT CONFIRMATION**; final ERD: **PENDING FINAL SCHEMA PASS**; final presentation: **PENDING** — the register in `docs/feedback/` is the list |
+
+**Correction 7.** A `/disclaimer` page (academic and non-commercial, no
+payments — "Paws&Found does not process payments or financial
+transactions." — no affiliation, information from users may be inaccurate,
+no guarantee, meeting and handover safety), with short notices in the footer,
+on the report form's review step and on a confirmed match's handover; worded
+without any claim of immunity. **English and Filipino** for the whole
+interface (`src/i18n/`, `docs/localization.md`): a labelled language control,
+kept in this browser's `localStorage`, English by default, no database
+change; stored values keep their codes and only their labels are translated;
+what people typed, notifications, match reasons and emails stay as written.
+**Print / Save as PDF** of the report list on Explore, the Pet Coordinator's
+Report queue and Administration's Reports — the browser's own print dialog,
+every report the current filters select, public fields only, a disclaimer
+footer. **Privacy Notice acknowledgement**: an account whose latest consent is
+for an older notice version sees a message that does not block anything,
+with "Review Privacy Notice" and "Acknowledge"; acknowledging writes a
+`privacy_consents` row and a `privacy_notice_acknowledged` activity row
+(`POST /api/auth/privacy-acknowledgement`). The notice version stays
+2026-10-03. The report list API now also returns `created_at` to signed-in
+viewers (not to guests), for the printed "Filed" column. **No migration.**
+Administrators can now open `/privacy` and `/disclaimer`.
 
 **Correction 3.** The place is chosen from PSA's PSGC — an *area* (one of
 PSA's 82 provinces, or Metro Manila, or BARMM's Special Geographic Area: 84 in
@@ -270,8 +320,9 @@ demotions). Existing administrators became Super Administrators. The matrix
 and every role's limits: `docs/role-permissions.md` §0–§0a. Found on the way:
 the Users page's Suspend never sent the reason the server requires, so it
 always failed; fixed.
-**Deploying Corrections 2–6 — the database goes first, all five migrations,
-in the same sitting.** New code reads `ph_cities`, `pet_colours`,
+**Deploying Corrections 2–7 — the database goes first, all five migrations,
+in the same sitting** (Correction 7 adds none; the order below is unchanged,
+and `docs/PRODUCTION_RUNBOOK.md` §2 has the full inventory). New code reads `ph_cities`, `pet_colours`,
 `publication_status`, `publication_logs`, `report_drafts`, `user_sessions`,
 `user_activity_logs` and `users.admin_level`, none of which exist before
 009–012; and each migration assumes the one before. Use the official MySQL client with
@@ -427,15 +478,19 @@ PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:report-ui # 47
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:workflow-ui # 33
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:session-ui  # 26 (reseeds)
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:admin-levels-ui # 33 (reseeds)
-PAWS_BASE=http://localhost:5173 npm run a11y                      # 40 pages
+PAWS_BASE=http://localhost:5173 npm run a11y                      # 50 pages
 C:\xampp\php\php.exe scripts/city_fallback.php                # 11
 C:\xampp\php\php.exe scripts/calendar_today.php               # 8
 C:\xampp\php\php.exe scripts/matching_log.php                 # 6
+npm run test:i18n                                             # 22  (Correction 7; needs nothing running)
+npm run test:disclaimer                                       # 21  (Correction 7; needs nothing running)
+python scripts/privacy_ack.py                                 # 29  (Correction 7; reseeds)
+PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:i18n-ui  # 57 (Correction 7; reseed first)
 ```
 
-**1,374 checks in total, in twenty-three suites** on `post-defense/revisions`
-(1,353 after Correction 6; 1,246 after Correction 5A; 1,238 after Correction 5; 1,112 in eighteen after Correction 4; 1,006 in sixteen after 3A; 972 after 3;
-802 after 2; 689 in production). a11y: 40 pages. Plain `npm run lint` is the
+**1,503 checks in total, in twenty-seven suites** on `post-defense/revisions`
+(1,374 after Correction 6A; 1,353 after Correction 6; 1,246 after Correction 5A; 1,238 after Correction 5; 1,112 in eighteen after Correction 4; 1,006 in sixteen after 3A; 972 after 3;
+802 after 2; 689 in production). a11y: 50 pages, nine of them in Filipino. Plain `npm run lint` is the
 gate again: the four `PawsAndFound_*` folders that had appeared in the
 repository root were moved to `C:\Projects\_archives\paws-and-found\` on
 3 October (Kyle's decision; nothing deleted).
@@ -512,17 +567,26 @@ Rolling back and operating the live site: [PRODUCTION_RUNBOOK.md](PRODUCTION_RUN
 | Visitor IP | `client_ip()` (`api/helpers.php`), `BEHIND_RAILWAY_EDGE` (`api/config.php`) |
 | Administrator levels | `ADMIN_CAPABILITIES`, `require_capability()`, `user_can()` (`api/helpers.php`); `user_update()` (`api/users.php`); `can()` (`src/utils/permissions.js`), `RequireCapability` (`src/components/RequireAccess.jsx`) |
 | Session re-check | `useSession()` (`src/hooks/useSession.js`); `SESSION_CHECK_EVENT` in `src/services/api.js` |
+| Words on screen (Correction 7) | `t()` in `src/i18n/index.js`; dictionaries `src/i18n/en/`, `src/i18n/fil/`; `useLanguage()` subscribed in `App.jsx`; `LanguageSwitcher.jsx`; enum labels via `translatedLabels()` in `src/constants/index.js`; API sentences `src/i18n/apiErrors.js` |
+| Disclaimer | `src/pages/public/DisclaimerPage.jsx`; `FooterNotice` in `Footer.jsx`; `data-submit-notice` in `ReviewStep.jsx`; `HandoverNotice.jsx` |
+| Privacy Notice acknowledgement | `privacy_notice_acknowledged()`, `auth_acknowledge_privacy_notice()` in `api/auth.php` (`PRIVACY_NOTICE_VERSION`); `PrivacyUpdateNotice.jsx` |
+| Printed report list | `PrintReportList.jsx` (portal, `window.print()`); the print stylesheet at the end of `src/index.css`; triggers on `ExplorePage`, `StaffReportsPage`, `AdminReportsPage` |
 
 ---
 
 ## 10. Still open
 
-- **Section 4 and Corrections 1–6 are committed locally, not deployed.**
-  Shipping them is Kyle's call, and they need migrations `008` to `012`
-  on Railway first (§4a), then the IP check.
-- **Cancel (register 16) — AWAITING INSTRUCTOR-INTENT CLARIFICATION.**
-- **No automatic log retention, and no re-consent step** for members who
-  agreed to an older Privacy Notice (`docs/security-activity-logging.md`).
+- **Section 4 and Corrections 1–7 are committed locally, not deployed**
+  (12 commits; §1). Shipping them is Kyle's call, and they need migrations
+  `008` to `012` on Railway first (§4a), then the IP check.
+- **Cancel (register 16) and Reset (11) — AWAITING CLARIFICATION.**
+- **No automatic log retention** (`docs/security-activity-logging.md`). The
+  re-consent gap is closed by Correction 7's non-blocking acknowledgement.
+- **The Filipino has not had a native-speaker review**; recommended before the
+  final presentation (`docs/localization.md` §7).
+- **Feature freeze after Correction 7**: nothing new unless a clarification
+  arrives; then the final schema freeze, final ERD, role scope and
+  limitations, a deployment rehearsal and the final presentation.
 - **The ERD figure still shows `full_name` and lacks the three 009 tables.**
   `docs/erd-defense.md` describes them in text; the figure is redrawn once, in
   the final ERD pass.

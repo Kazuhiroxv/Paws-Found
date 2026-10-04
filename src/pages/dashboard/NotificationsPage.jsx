@@ -9,6 +9,8 @@ import { notificationService, userService } from '@/services'
 import { formatRelativeTime, parseDateTime } from '@/utils/date'
 import { cn } from '@/utils/cn'
 import emptyNoNotifications from '@/assets/empty-no-notifications.webp'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
 
 /**
  * An icon and a tone per kind of event, so the list can be scanned without
@@ -50,7 +52,7 @@ async function loadNotifications() {
  */
 export function NotificationsPage({
   workspacePath = '/dashboard',
-  workspaceLabel = 'My dashboard',
+  workspaceLabel,
   // Where "See the match" goes. A coordinator acts on pairings in the
   // verification workspace; a user reviews them on their matches page.
   matchPath = '/dashboard/matches',
@@ -61,9 +63,12 @@ export function NotificationsPage({
 
   const header = (
     <PageHeader
-      title="Notifications"
-      description="Updates on your reports, possible matches and verification requests."
-      breadcrumb={[{ label: workspaceLabel, to: workspacePath }, { label: 'Notifications' }]}
+      title={t('nav.notifications')}
+      description={t('notifications.description')}
+      breadcrumb={[
+        { label: workspaceLabel ?? t('dashboard.title'), to: workspacePath },
+        { label: t('nav.notifications') },
+      ]}
     />
   )
 
@@ -81,7 +86,7 @@ export function NotificationsPage({
       <div className="flex flex-col gap-6">
         {header}
         <p role="alert" className="text-sm text-danger">
-          Your notifications could not be loaded: {error.message}
+          {t('notifications.failed', { message: errorText(error) })}
         </p>
       </div>
     )
@@ -113,10 +118,10 @@ export function NotificationsPage({
       {/* Underlined tabs, like My Reports and Possible Matches. The action sits
           on the same rule, lifted clear of it. */}
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border">
-        <div className="flex gap-1" role="tablist" aria-label="Show">
+        <div className="flex gap-1" role="tablist" aria-label={t('notifications.show')}>
           {[
-            { id: 'all', label: 'All', count: notifications.length, unreadOnly: false },
-            { id: 'unread', label: 'Unread', count: unreadCount, unreadOnly: true },
+            { id: 'all', label: t('notifications.all'), count: notifications.length, unreadOnly: false },
+            { id: 'unread', label: t('notifications.unread'), count: unreadCount, unreadOnly: true },
           ].map((tab) => {
             const selected = showUnreadOnly === tab.unreadOnly
 
@@ -149,19 +154,15 @@ export function NotificationsPage({
           disabled={unreadCount === 0}
           isLoading={isBusy}
         >
-          Mark all as read
+          {t('notifications.markAll')}
         </Button>
       </div>
 
       {visible.length === 0 ? (
         <EmptyState
-illustration={emptyNoNotifications}
-          title={showUnreadOnly ? "You're all caught up" : 'No notifications yet'}
-          description={
-            showUnreadOnly
-              ? 'Every notification has been read. Earlier ones are still under All.'
-              : 'When a possible match is found, or one of your reports changes, you will hear about it here.'
-          }
+          illustration={emptyNoNotifications}
+          title={showUnreadOnly ? t('notifications.caughtUp') : t('notifications.none')}
+          description={showUnreadOnly ? t('notifications.caughtUpBody') : t('notifications.noneBody')}
         />
       ) : (
         // Grouped by age and packed into divided rows rather than a stack of
@@ -169,8 +170,8 @@ illustration={emptyNoNotifications}
         // pass; twelve bordered panels made that a scroll.
         <div className="flex flex-col gap-6">
           {groupByAge(visible).map((group) => (
-            <section key={group.label} className="flex flex-col gap-2">
-              <h2 className="text-sm font-semibold text-fg-muted">{group.label}</h2>
+            <section key={group.key} className="flex flex-col gap-2">
+              <h2 className="text-sm font-semibold text-fg-muted">{t(`notifications.groups.${group.key}`)}</h2>
 
               <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-card border border-border bg-panel">
                 {group.items.map((notification) => {
@@ -213,12 +214,17 @@ illustration={emptyNoNotifications}
 
                       <div className="flex min-w-0 flex-1 flex-col gap-1">
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <h3 className={cn('text-fg', unread ? 'font-semibold' : 'font-medium')}>
+                          {/* The notification's own words, written by the
+                              server in English when it happened and stored
+                              that way (Correction 7): marked as English, so a
+                              screen reader reading the Filipino page says
+                              them right. */}
+                          <h3 lang="en" className={cn('text-fg', unread ? 'font-semibold' : 'font-medium')}>
                             {notification.title}
                           </h3>
                           {unread && (
                             <span className="rounded-pill bg-brand px-2 py-0.5 text-[0.6875rem] font-semibold text-fg-inverted">
-                              New
+                              {t('notifications.new')}
                             </span>
                           )}
                           {/* Beside the title from `sm` up; on a phone it
@@ -227,7 +233,7 @@ illustration={emptyNoNotifications}
                         </div>
 
                         {notification.body && (
-                          <p className="text-sm text-fg-muted">{notification.body}</p>
+                          <p lang="en" className="text-sm text-fg-muted">{notification.body}</p>
                         )}
 
                         <span className="sm:hidden">{date}</span>
@@ -239,7 +245,7 @@ illustration={emptyNoNotifications}
                               onClick={readOnFollow}
                               className="py-1 text-sm font-medium text-brand hover:underline"
                             >
-                              View report
+                              {t('map.viewReport')}
                             </Link>
                           )}
                           {notification.matchId && (
@@ -248,7 +254,7 @@ illustration={emptyNoNotifications}
                               onClick={readOnFollow}
                               className="py-1 text-sm font-medium text-brand hover:underline"
                             >
-                              See match
+                              {t('notifications.seeMatch')}
                             </Link>
                           )}
                           {unread && (
@@ -257,7 +263,7 @@ illustration={emptyNoNotifications}
                               onClick={() => markOne(notification.id)}
                               className="py-1 text-sm text-fg-muted hover:text-fg hover:underline"
                             >
-                              Mark as read
+                              {t('notifications.markRead')}
                               <span className="sr-only">: {notification.title}</span>
                             </button>
                           )}
@@ -285,9 +291,9 @@ illustration={emptyNoNotifications}
 function groupByAge(notifications, now = new Date()) {
   const dayInMs = 24 * 60 * 60 * 1000
   const groups = [
-    { label: 'Today', items: [] },
-    { label: 'This week', items: [] },
-    { label: 'Earlier', items: [] },
+    { key: 'today', items: [] },
+    { key: 'week', items: [] },
+    { key: 'earlier', items: [] },
   ]
 
   for (const notification of notifications) {

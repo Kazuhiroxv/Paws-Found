@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Check, CircleCheck, Save, X } from 'lucide-react'
 import { Button, Card, CardBody, CardFooter, RequiredNote } from '@/components/ui'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
-import { REPORT_TYPES } from '@/constants'
+import { REPORT_TYPE_LABELS, REPORT_TYPES, speciesLabel } from '@/constants'
 import { categoryService, userService, petService } from '@/services'
 import { useAsync } from '@/hooks/useAsync'
 import { cn } from '@/utils/cn'
@@ -19,6 +19,9 @@ import {
   validateStep,
   valuesFromReport,
 } from './reportFormModel'
+import { t } from '@/i18n'
+import { useLanguage } from '@/i18n/useLanguage'
+import { errorText } from '@/i18n/apiErrors'
 
 const loadActiveCategories = () => categoryService.getActiveCategories()
 
@@ -100,10 +103,26 @@ export function ReportForm({ reportType, report, draft = null, guidance }) {
   // a category an administrator adds is immediately fileable against.
   const { data: categories } = useAsync(loadActiveCategories)
 
+  // The five seeded kinds in the language showing; one an administrator
+  // added keeps its stored name (Correction 7).
   const speciesOptions = (categories ?? []).map((category) => ({
     value: category.id,
-    label: category.label,
+    label: speciesLabel(category.id, category.label),
   }))
+
+  // The messages beside the fields are written when a step is checked. When
+  // the language changes while some are showing, the same fields are checked
+  // again so the messages come back in the new language (Correction 7) —
+  // during render, as React recommends for state that follows another value.
+  const { language } = useLanguage()
+  const [errorsLanguage, setErrorsLanguage] = useState(language)
+  if (errorsLanguage !== language) {
+    setErrorsLanguage(language)
+    if (Object.keys(errors).length > 0) {
+      const fresh = validateStep(STEPS[stepIndex].id, values)
+      setErrors(Object.fromEntries(Object.keys(errors).filter((key) => fresh[key]).map((key) => [key, fresh[key]])))
+    }
+  }
 
   const headingRef = useRef(null)
   const step = STEPS[stepIndex]
@@ -212,7 +231,7 @@ export function ReportForm({ reportType, report, draft = null, guidance }) {
 
   const handleCancel = () => {
     const untouched = JSON.stringify(values) === JSON.stringify(startingValues.current)
-    if (untouched || window.confirm('Discard this report? Nothing will be saved.')) {
+    if (untouched || window.confirm(t('reportForm.discard'))) {
       navigate(isEditing ? `/pet/${report.id}` : '/')
     }
   }
@@ -226,24 +245,20 @@ export function ReportForm({ reportType, report, draft = null, guidance }) {
    * report itself — and the confirmation says so when there are some.
    */
   const handleSaveDraft = async () => {
-    setDraftState({ kind: 'saving', message: 'Saving…' })
+    // Kinds, not sentences: the words are chosen when shown, in the
+    // language showing.
+    setDraftState({ kind: 'saving' })
     try {
       const saved = await petService.saveDraft(values, draftId)
       setDraftId(saved.id)
       // So a reload, or the link, opens this draft again. Not a navigation:
       // the form, its step and its photographs stay as they are.
       window.history.replaceState(window.history.state, '', `?draft=${saved.id}`)
-      setDraftState({
-        kind: 'saved',
-        message:
-          values.photos.length > 0
-            ? 'Draft saved. Photos are not kept with a draft — add them again before you submit.'
-            : 'Draft saved. You can finish it later from My reports.',
-      })
+      setDraftState({ kind: 'saved', withPhotos: values.photos.length > 0 })
     } catch (caught) {
       setDraftState({
         kind: 'failed',
-        message: `The draft could not be saved: ${caught instanceof Error ? caught.message : String(caught)}`,
+        detail: errorText(caught),
       })
     }
   }
@@ -275,7 +290,7 @@ export function ReportForm({ reportType, report, draft = null, guidance }) {
         try {
           await petService.saveEditedPhotos(report.id, report.photos, values.photos)
         } catch (photoFailed) {
-          photoWarning = photoFailed instanceof Error ? photoFailed.message : String(photoFailed)
+          photoWarning = errorText(photoFailed)
         }
 
         // Straight back to the report — an "edited!" screen would just be an
@@ -296,7 +311,7 @@ export function ReportForm({ reportType, report, draft = null, guidance }) {
         await petService.uploadReportPhotos(created.id, values.photos)
       } catch (uploadFailed) {
         setPhotoWarning(
-          uploadFailed instanceof Error ? uploadFailed.message : String(uploadFailed),
+          errorText(uploadFailed),
         )
       }
 
@@ -326,7 +341,7 @@ export function ReportForm({ reportType, report, draft = null, guidance }) {
       <Card>
         <div className="border-b border-border px-6 py-5">
           <p className="text-xs font-medium tracking-wide text-fg-muted uppercase">
-            Step {stepIndex + 1} of {STEPS.length}
+            {t('reportForm.stepOf', { step: stepIndex + 1, total: STEPS.length })}
           </p>
           <h2
             ref={headingRef}
@@ -335,7 +350,7 @@ export function ReportForm({ reportType, report, draft = null, guidance }) {
           >
             {step.label}
           </h2>
-          <p className="mt-1.5 text-fg-muted">{STEP_HINTS[step.id]}</p>
+          <p className="mt-1.5 text-fg-muted">{t(`reportForm.hints.${step.id}`)}</p>
 
           {/* Only on the steps that actually have a required field. Saying it
               above the photographs step, which has none, would teach the
@@ -374,14 +389,13 @@ export function ReportForm({ reportType, report, draft = null, guidance }) {
             <p role="alert" className="text-sm text-danger">
               {/* "Check", not "fix" or "fill in": some of these are a date in
                   the future or not enough to identify the pet, not blanks. */}
-              Please check the highlighted {Object.keys(errors).length === 1 ? 'field' : 'fields'}{' '}
-              before continuing.
+              {t('reportForm.checkFields', { count: Object.keys(errors).length })}
             </p>
           )}
 
           {submitError && (
             <p role="alert" className="text-sm text-danger">
-              The report could not be submitted: {submitError.message}
+              {t('reportForm.submitFailed', { message: errorText(submitError) })}
             </p>
           )}
         </CardBody>
@@ -395,7 +409,7 @@ export function ReportForm({ reportType, report, draft = null, guidance }) {
           {stepIndex === 0 ? (
             <Button variant="ghost" onClick={handleCancel} disabled={isSubmitting}>
               <X size={16} aria-hidden="true" />
-              Cancel
+              {t('common.cancel')}
             </Button>
           ) : (
             <Button
@@ -404,7 +418,7 @@ export function ReportForm({ reportType, report, draft = null, guidance }) {
               disabled={isSubmitting}
             >
               <ArrowLeft size={16} aria-hidden="true" />
-              Back
+              {t('common.back')}
             </Button>
           )}
 
@@ -419,7 +433,7 @@ export function ReportForm({ reportType, report, draft = null, guidance }) {
                 isLoading={draftState?.kind === 'saving'}
               >
                 <Save size={16} aria-hidden="true" />
-                Save draft
+                {t('reportForm.saveDraft')}
               </Button>
             )}
 
@@ -434,7 +448,7 @@ export function ReportForm({ reportType, report, draft = null, guidance }) {
               </Button>
             ) : (
               <Button onClick={handleNext}>
-                Continue
+                {t('common.continue')}
                 <ArrowRight size={16} aria-hidden="true" />
               </Button>
             )}
@@ -450,7 +464,7 @@ export function ReportForm({ reportType, report, draft = null, guidance }) {
               !draftState && 'sr-only',
             )}
           >
-            {draftState?.message ?? ''}
+            {draftMessage(draftState)}
           </p>
         </CardFooter>
       </Card>
@@ -463,25 +477,32 @@ export function ReportForm({ reportType, report, draft = null, guidance }) {
           coordinator checking a claim, recognise the pet. */}
       <ConfirmDialog
         isOpen={isAskingAboutPhoto}
-        title="Continue without a photo?"
-        confirmLabel="Skip for now"
-        cancelLabel="Add a photo"
+        title={t('reportForm.noPhoto.title')}
+        confirmLabel={t('reportForm.noPhoto.skip')}
+        cancelLabel={t('reportForm.noPhoto.add')}
         cancelVariant="primary"
         tone="secondary"
         onCancel={() => setIsAskingAboutPhoto(false)}
         onConfirm={continueWithoutPhoto}
       >
-        You can add one later. A clear photo makes it easier for people and Pet
-        Coordinators to recognise and verify your pet.
+        {t('reportForm.noPhoto.body')}
       </ConfirmDialog>
     </div>
   )
 }
 
 function submitLabel(isEditing, isSubmitting) {
-  if (isEditing) return isSubmitting ? 'Saving…' : 'Save changes'
+  if (isEditing) return isSubmitting ? t('common.saving') : t('reportForm.saveChanges')
   // Not "Post": a Pet Coordinator reviews it before anyone else sees it.
-  return isSubmitting ? 'Submitting…' : 'Submit for review'
+  return isSubmitting ? t('reportForm.submitting') : t('reportForm.submit')
+}
+
+/** What the draft line says, in the language showing. */
+function draftMessage(state) {
+  if (!state) return ''
+  if (state.kind === 'saving') return t('common.saving')
+  if (state.kind === 'saved') return state.withPhotos ? t('reportForm.draftSavedPhotos') : t('reportForm.draftSaved')
+  return t('reportForm.draftFailed', { message: state.detail })
 }
 
 /**
@@ -498,14 +519,14 @@ export function NewReportForm({ reportType, guidance }) {
   const { data: draft, error, isLoading } = useAsync(loadDraft)
 
   if (requested && isLoading) {
-    return <p className="text-fg-muted">Opening your draft…</p>
+    return <p className="text-fg-muted">{t('reportForm.openingDraft')}</p>
   }
   if (requested && (error || !draft)) {
     return (
       <p role="alert" className="text-fg">
-        That draft could not be opened — it may have been submitted or deleted.{' '}
+        {t('reportForm.draftGone')}{' '}
         <Link to="/dashboard/reports" className="font-medium text-brand underline">
-          See My reports
+          {t('reportForm.seeMyReports')}
         </Link>
         .
       </p>
@@ -514,9 +535,9 @@ export function NewReportForm({ reportType, guidance }) {
   if (draft && draft.reportType !== reportType) {
     return (
       <p role="alert" className="text-fg">
-        That draft is a {draft.reportType} report.{' '}
+        {t('reportForm.draftOtherType', { type: REPORT_TYPE_LABELS[draft.reportType] ?? draft.reportType })}{' '}
         <Link to={`/report/${draft.reportType}?draft=${draft.id}`} className="font-medium text-brand underline">
-          Open it there
+          {t('reportForm.openThere')}
         </Link>
         .
       </p>
@@ -528,19 +549,7 @@ export function NewReportForm({ reportType, guidance }) {
 
 /** One line of context per step, shown under its heading. */
 /** Four words under the step you are on, so the progress says what it wants. */
-const STEP_SUBLABELS = {
-  details: 'What the animal looks like',
-  incident: 'Where and when',
-  photos: 'Add clear photographs',
-  review: 'Check and submit',
-}
 
-const STEP_HINTS = {
-  details: 'What the animal looks like. These are the details the system compares against other reports.',
-  incident: 'When and where it happened, and how people can reach you.',
-  photos: 'A clear photo is the single most useful thing you can add.',
-  review: 'Check everything. A Pet Coordinator reviews the report before it is published.',
-}
 
 /**
  * Progress indicator.
@@ -554,7 +563,7 @@ function Stepper({ steps, currentIndex }) {
   return (
     // A tinted rail, so the progress reads as the frame around the form
     // rather than another row of content floating on the canvas.
-    <nav aria-label="Report progress" className="rounded-card border border-border bg-layer px-4 py-4 sm:px-6">
+    <nav aria-label={t('reportForm.progress')} className="rounded-card border border-border bg-layer px-4 py-4 sm:px-6">
       <ol className="flex items-start">
         {steps.map((step, index) => {
           const isCurrent = index === currentIndex
@@ -586,7 +595,7 @@ function Stepper({ steps, currentIndex }) {
                     !isDone && !isCurrent && 'border-border bg-panel text-fg-muted',
                   )}
                 >
-                  <span className="sr-only">Step {index + 1} of {steps.length}: </span>
+                  <span className="sr-only">{t('reportForm.stepOfSr', { step: index + 1, total: steps.length })}</span>
                   {isDone ? <Check size={18} aria-hidden="true" /> : index + 1}
                 </span>
 
@@ -613,7 +622,7 @@ function Stepper({ steps, currentIndex }) {
                     paragraph of small print holding the progress apart. */}
                 {isCurrent && (
                   <span className="max-w-40 text-xs leading-snug text-fg-muted">
-                    {STEP_SUBLABELS[step.id]}
+                    {t(`reportForm.sublabels.${step.id}`)}
                   </span>
                 )}
               </span>
@@ -643,7 +652,7 @@ function SubmissionSuccess({ report, photoWarning }) {
       >
         <CircleCheck size={40} className="text-success" aria-hidden="true" />
 
-        <h2 className="text-xl font-semibold text-fg">Submitted for review</h2>
+        <h2 className="text-xl font-semibold text-fg">{t('reportForm.success.title')}</h2>
 
         {/* The report saved; only the photographs did not. Said plainly, with
             what to do about it, rather than hidden behind a generic error. */}
@@ -652,29 +661,24 @@ function SubmissionSuccess({ report, photoWarning }) {
             role="alert"
             className="max-w-prose rounded-control border border-border bg-accent-soft px-3 py-2 text-sm text-fg"
           >
-            Your report was saved, but the photographs could not be uploaded:{' '}
-            {photoWarning} You can add them by editing the report once it has been
-            reviewed.
+            {t('reportForm.success.photoWarning', { message: photoWarning })}
           </p>
         )}
 
         {/* Never "your report is now live": it is not (Correction 4). */}
         <p className="max-w-prose text-fg">
-          Your report was submitted for review. A Pet Coordinator must approve it before it
-          appears publicly.
+          {t('reportForm.success.body')}
         </p>
         <p className="max-w-prose text-sm text-fg-muted">
-          {isLost
-            ? 'You will be notified when it is published. From then on it is compared with found reports, and any possible match appears in Possible Matches.'
-            : 'Thank you for reporting this pet. You will be notified when the report is published; from then on it is compared with lost reports.'}
+          {isLost ? t('reportForm.success.lost') : t('reportForm.success.found')}
         </p>
 
         <div className="mt-2 flex flex-wrap justify-center gap-2">
           <Button as={Link} to={`/pet/${report.id}`}>
-            View your report
+            {t('reportForm.success.view')}
           </Button>
           <Button as={Link} to="/dashboard/reports" variant="secondary">
-            My reports
+            {t('reportForm.success.myReports')}
           </Button>
         </div>
       </CardBody>

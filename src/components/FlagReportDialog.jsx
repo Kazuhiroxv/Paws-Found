@@ -3,6 +3,8 @@ import { Button, Modal, Select, Textarea } from '@/components/ui'
 import { MODERATION_REASONS, MODERATION_REASON_LABELS } from '@/constants'
 import { moderationService } from '@/services'
 import { optionsFromLabels } from '@/utils/options'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
 
 /**
  * "Report this listing" — raises a moderation case for an administrator to
@@ -56,22 +58,22 @@ export function FlagReportDialog({ isOpen, onClose, reportId }) {
     <Modal
       isOpen={isOpen}
       onClose={close}
-      title={isDone ? 'Thank you' : 'Report this listing'}
+      title={isDone ? t('flag.thanks') : t('flag.title')}
       description={
         isDone
           ? undefined
-          : 'Tell an administrator what is wrong with this report. Your name is not shown to the person who filed it.'
+          : t('flag.description')
       }
       footer={
         isDone ? (
-          <Button onClick={close}>Close</Button>
+          <Button onClick={close}>{t('common.close')}</Button>
         ) : (
           <>
             <Button variant="secondary" onClick={close} disabled={isSubmitting}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button variant="danger" onClick={submit} isLoading={isSubmitting}>
-              {isSubmitting ? 'Sending…' : 'Send report'}
+              {isSubmitting ? t('flag.sending') : t('flag.send')}
             </Button>
           </>
         )
@@ -79,30 +81,29 @@ export function FlagReportDialog({ isOpen, onClose, reportId }) {
     >
       {isDone ? (
         <p className="text-sm text-fg-muted">
-          An administrator will review this listing. Thank you for helping keep Paws&amp;Found
-          useful for people who are actually searching.
+          {t('flag.done')}
         </p>
       ) : (
         <div className="flex flex-col gap-4">
           <Select
-            label="What is the problem?"
+            label={t('flag.reason')}
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             options={optionsFromLabels(MODERATION_REASON_LABELS)}
           />
 
           <Textarea
-            label="Anything else we should know?"
+            label={t('flag.details')}
             value={details}
             onChange={(event) => setDetails(event.target.value)}
             maxLength={500}
             rows={3}
-            placeholder="Optional, but it helps an administrator decide quickly."
+            placeholder={t('flag.detailsPlaceholder')}
           />
 
           {error && (
             <p role="alert" className="text-sm text-danger">
-              The report could not be sent: {error.message}
+              {t('flag.failed', { message: errorText(error) })}
             </p>
           )}
         </div>

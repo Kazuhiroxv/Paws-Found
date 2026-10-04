@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { List, Map as MapIcon, Search, SlidersHorizontal } from 'lucide-react'
+import { List, Map as MapIcon, Printer, Search, SlidersHorizontal } from 'lucide-react'
 import emptyReportsImage from '@/assets/empty-no-reports.png'
 import exploreHero from '@/assets/img-030-explore-hero.webp'
 import { Button, Container, EmptyState, LoadingSkeleton, Modal } from '@/components/ui'
@@ -12,8 +12,13 @@ import { hasCoordinates } from '@/utils/location'
 import { FilterPanel } from '@/components/FilterPanel'
 import { RadarOrnament } from '@/components/Ornament'
 import { ActiveFilters } from '@/components/ActiveFilters'
+import { PrintReportList } from '@/components/PrintReportList'
+import { speciesLabel } from '@/constants'
+import { describeFilters } from '@/utils/filterDescriptions'
+import { errorText } from '@/i18n/apiErrors'
 import { useAsync } from '@/hooks/useAsync'
 import { categoryService, petService, referenceService } from '@/services'
+import { t } from '@/i18n'
 
 /** Every filter, empty. Also the shape used to detect "nothing is filtered". */
 const EMPTY_FILTERS = {
@@ -42,6 +47,9 @@ const PAGE_SIZE = 9
  */
 const MAP_RESULT_LIMIT = 50
 
+/** At most this many pages of 50 go on one printout (1,000 reports). */
+const PRINT_PAGE_LIMIT = 20
+
 const loadActiveCategories = () => categoryService.getActiveCategories()
 const loadColours = () => referenceService.getColours()
 const loadAreas = () => referenceService.getAreas()
@@ -53,7 +61,7 @@ const loadAreas = () => referenceService.getAreas()
  */
 function chipForArea(area) {
   if (!area) return undefined
-  return area.type === 'province' ? `Province: ${area.name}` : area.name
+  return area.type === 'province' ? t('explore.province', { name: area.name }) : area.name
 }
 
 /**
@@ -67,11 +75,12 @@ function chipForArea(area) {
  * No "markings" in the hint: a guest's search does not look in them.
  */
 const PLACEHOLDERS = [
-  ['(min-width: 640px)', 'Search by pet name, breed, colour or place'],
-  ['(min-width: 360px)', 'Search reports'],
+  ['(min-width: 640px)', 'explore.placeholderWide'],
+  ['(min-width: 360px)', 'explore.placeholderMedium'],
 ]
-const PLACEHOLDER_NARROWEST = 'Search'
+const PLACEHOLDER_NARROWEST = 'explore.placeholderNarrow'
 
+// A key, not the words: they are read when shown, in the language showing.
 function currentPlaceholder() {
   const match = PLACEHOLDERS.find(([query]) => window.matchMedia(query).matches)
   return match ? match[1] : PLACEHOLDER_NARROWEST
@@ -157,8 +166,33 @@ export function ExplorePage({ role }) {
 
   const speciesOptions = (categories ?? []).map((category) => ({
     value: category.id,
-    label: category.label,
+    label: speciesLabel(category.id, category.label),
   }))
+
+  // Print / Save as PDF (Correction 7). Every matching report, not only this
+  // page of cards: the same search, the same order, asked for in the API's
+  // largest pages. What prints is what this person could page through.
+  const [printRows, setPrintRows] = useState(null)
+  const [isPreparingPrint, setIsPreparingPrint] = useState(false)
+  const [printError, setPrintError] = useState(null)
+  const endPrint = useCallback(() => setPrintRows(null), [])
+  const preparePrint = async () => {
+    setIsPreparingPrint(true)
+    setPrintError(null)
+    try {
+      const rows = []
+      for (let next = 1, pages = 1; next <= pages && next <= PRINT_PAGE_LIMIT; next += 1) {
+        const result = await petService.getReportsPage({ ...filters, sort, page: next, perPage: MAP_RESULT_LIMIT })
+        rows.push(...result.reports)
+        pages = result.totalPages
+      }
+      setPrintRows(rows)
+    } catch (caught) {
+      setPrintError(caught)
+    } finally {
+      setIsPreparingPrint(false)
+    }
+  }
 
   // The colour and place lists come from the database, like the report form's.
   const { data: colours } = useAsync(loadColours)
@@ -245,7 +279,7 @@ export function ExplorePage({ role }) {
           title, the description and the search all sit together on one tinted
           band, which is what makes this read as a discovery page rather than a
           heading above a form. */}
-      <title>Explore reports · Paws&Found</title>
+      <title>{`${t('explore.title')} · Paws&Found`}</title>
 
       {/* A contained panel, lined up with the filters and the map below it, so
           the hero and the results read as one working surface. About and Help
@@ -283,19 +317,19 @@ export function ExplorePage({ role }) {
         <div className="relative flex flex-col gap-4 px-6 py-6 sm:px-8 sm:py-7 lg:min-h-60 lg:justify-center">
           <div className="flex flex-col gap-1.5 lg:max-w-[54%]">
             <h1 className="text-[2rem] leading-[1.1] font-semibold tracking-tight text-balance text-fg sm:text-[2.25rem]">
-              Explore reports
+              {t('explore.title')}
             </h1>
             {/* Full-strength ink, not `fg-muted`: on the tinted band muted text
                 measures 4.31:1, and no usable tint strength gets it to AA. */}
             <p className="text-lg text-fg">
-              Search lost and found pets reported across the Philippines.
+              {t('explore.lead')}
             </p>
           </div>
 
           <form onSubmit={submitSearch} className="flex gap-2 lg:max-w-[58%]">
             <div className="relative flex-1">
               <label htmlFor="explore-search" className="sr-only">
-                Search reports
+                {t('explore.searchLabel')}
               </label>
               <Search
                 size={18}
@@ -309,14 +343,14 @@ export function ExplorePage({ role }) {
                 aria-keyshortcuts="/"
                 value={searchDraft}
                 onChange={(event) => setSearchDraft(event.target.value)}
-                placeholder={placeholder}
+                placeholder={t(placeholder)}
                 className="h-13 w-full rounded-control border border-border-strong bg-panel pr-4 pl-11 text-base text-fg shadow-raised placeholder:text-fg-muted"
               />
             </div>
             {/* The field is 52px, the large button's height, so the two meet
                 edge to edge; it was 48px beside a 52px button. */}
             <Button type="submit" size="lg" className="sm:min-w-30">
-              Search
+              {t('explore.search')}
             </Button>
           </form>
         </div>
@@ -352,17 +386,17 @@ export function ExplorePage({ role }) {
             <p className="text-lg font-semibold text-fg" aria-live="polite">
               {/* The whole result set, not this page: "9 pets found" beside a
                   four-page pager would contradict itself. */}
-              {isLoading ? 'Searching…' : `${total} ${total === 1 ? 'pet' : 'pets'} found`}
+              {isLoading ? t('explore.searching') : t('explore.found', { count: total })}
             </p>
 
             {/* Wraps: at 390px the view toggle, the Filters button and the sort
                 control do not fit on one line, and without this the sort
                 control pushed the page 16px wider than the screen. */}
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex rounded-control border border-border-strong bg-panel p-1" role="group" aria-label="View">
+              <div className="flex rounded-control border border-border-strong bg-panel p-1" role="group" aria-label={t('explore.view')}>
                 {[
-                  { id: 'map', label: 'Map', icon: MapIcon },
-                  { id: 'list', label: 'List', icon: List },
+                  { id: 'map', label: t('explore.map'), icon: MapIcon },
+                  { id: 'list', label: t('explore.list'), icon: List },
                 ].map((option) => {
                   const Icon = option.icon
 
@@ -393,7 +427,7 @@ export function ExplorePage({ role }) {
                 onClick={() => setIsFilterDialogOpen(true)}
               >
                 <SlidersHorizontal size={16} aria-hidden="true" />
-                Filters
+                {t('filters.title')}
                 {activeFilterCount > 0 && (
                   <span className="ml-0.5 rounded-pill bg-brand px-1.5 text-xs text-fg-inverted">
                     {activeFilterCount}
@@ -404,7 +438,7 @@ export function ExplorePage({ role }) {
               {/* Always offered now: the cards are on screen in both views,
                   so sorting always has something visible to act on. */}
               <label htmlFor="explore-sort" className="sr-only">
-                Sort reports
+                {t('explore.sortLabel')}
               </label>
               <select
                 id="explore-sort"
@@ -412,9 +446,23 @@ export function ExplorePage({ role }) {
                 onChange={(event) => changeSort(event.target.value)}
                 className="h-10 rounded-control border border-border-strong bg-panel px-3 text-sm text-fg"
               >
-                <option value="newest">Newest first</option>
-                <option value="oldest">Oldest first</option>
+                <option value="newest">{t('explore.newest')}</option>
+                <option value="oldest">{t('explore.oldest')}</option>
               </select>
+
+              {/* Correction 7: the instructor's "iprint sa PDF". The browser's
+                  own print dialog, which offers Save as PDF. */}
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={preparePrint}
+                isLoading={isPreparingPrint}
+                disabled={isLoading || total === 0}
+                data-print-trigger=""
+              >
+                <Printer size={16} aria-hidden="true" />
+                {t('print.button')}
+              </Button>
             </div>
           </div>
 
@@ -426,7 +474,7 @@ export function ExplorePage({ role }) {
 
           {isLoading && (
             <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true">
-              <span className="sr-only">Loading reports…</span>
+              <span className="sr-only">{t('explore.loading')}</span>
               {Array.from({ length: 6 }, (_, index) => (
                 <div key={index} className="rounded-card border border-border bg-panel p-4">
                   <LoadingSkeleton className="mb-4 aspect-4/3 w-full" />
@@ -438,27 +486,29 @@ export function ExplorePage({ role }) {
 
           {error && (
             <p role="alert" className="text-sm text-danger">
-              Reports could not be loaded: {error.message}
+              {t('explore.failed', { message: errorText(error) })}
+            </p>
+          )}
+
+          {printError && (
+            <p role="alert" className="text-sm text-danger">
+              {t('print.failed', { message: errorText(printError) })}
             </p>
           )}
 
           {!isLoading && !error && visibleReports.length === 0 && (
             <EmptyState
               illustration={emptyReportsImage}
-              title={hasActiveFilters ? 'No reports match those filters' : 'No reports yet'}
-              description={
-                hasActiveFilters
-                  ? 'Try removing a filter or searching for a broader term — for example a colour rather than a breed.'
-                  : 'When someone files a lost or found report, it will appear here.'
-              }
+              title={hasActiveFilters ? t('explore.noMatch') : t('explore.none')}
+              description={hasActiveFilters ? t('explore.noMatchBody') : t('explore.noneBody')}
               action={
                 hasActiveFilters ? (
                   <Button variant="secondary" onClick={clearFilters}>
-                    Clear all filters
+                    {t('filters.clearAllFilters')}
                   </Button>
                 ) : (
                   <Button as={Link} to="/report/lost" variant="accent">
-                    Report a lost pet
+                    {t('nav.reportLost')}
                   </Button>
                 )
               }
@@ -497,23 +547,21 @@ export function ExplorePage({ role }) {
                       aria-hidden="true"
                       className="size-2.5 rounded-full bg-lost ring-2 ring-lost-soft"
                     />
-                    <span className="text-fg">Lost</span>
+                    <span className="text-fg">{t('labels.reportType.lost')}</span>
                   </li>
                   <li className="flex items-center gap-1.5">
                     <span
                       aria-hidden="true"
                       className="size-2.5 rounded-full bg-found ring-2 ring-found-soft"
                     />
-                    <span className="text-fg">Found</span>
+                    <span className="text-fg">{t('labels.reportType.found')}</span>
                   </li>
                 </ul>
               </div>
 
               {unpinnedCount > 0 && (
                 <p className="-mt-1 text-sm text-fg-muted">
-                  {unpinnedCount} of these {visibleReports.length} reports{' '}
-                  {unpinnedCount === 1 ? 'has' : 'have'} no map pin and{' '}
-                  {unpinnedCount === 1 ? 'is' : 'are'} only in the list below.
+                  {t('explore.unpinned', { count: unpinnedCount, total: visibleReports.length })}
                 </p>
               )}
             </>
@@ -534,8 +582,13 @@ export function ExplorePage({ role }) {
                   {/* Announced, because after pressing a page number the count
                       is the only thing that confirms the list moved. */}
                   <p role="status" className="text-sm text-fg-muted">
-                    Showing {(page - 1) * PAGE_SIZE + 1}–{(page - 1) * PAGE_SIZE + visibleReports.length}{' '}
-                    of {total} · page {page} of {totalPages}
+                    {t('explore.showing', {
+                      from: (page - 1) * PAGE_SIZE + 1,
+                      to: (page - 1) * PAGE_SIZE + visibleReports.length,
+                      total,
+                      page,
+                      pages: totalPages,
+                    })}
                   </p>
                   <Pagination page={page} totalPages={totalPages} onChange={setPage} />
                 </div>
@@ -551,10 +604,10 @@ export function ExplorePage({ role }) {
         isOpen={isFilterDialogOpen}
         onClose={() => setIsFilterDialogOpen(false)}
         placement="sheet"
-        title="Filters"
+        title={t('filters.title')}
         footer={
           <Button onClick={() => setIsFilterDialogOpen(false)}>
-            Show {total} results
+            {t('explore.showResults', { count: total })}
           </Button>
         }
       >
@@ -567,6 +620,15 @@ export function ExplorePage({ role }) {
           {...listOptions}
         />
       </Modal>
+
+      {printRows && (
+        <PrintReportList
+          title={t('print.exploreTitle')}
+          filters={[...describeFilters(filters, placeNames), t('print.sortedBy', { sort: t(`explore.${sort}`) })]}
+          reports={printRows}
+          onDone={endPrint}
+        />
+      )}
     </Container>
   )
 }

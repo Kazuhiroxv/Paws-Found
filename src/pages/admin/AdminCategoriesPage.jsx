@@ -7,6 +7,8 @@ import { useAsync } from '@/hooks/useAsync'
 import { categoryService } from '@/services'
 import { cn } from '@/utils/cn'
 import { CategoryStatusBadge } from './AdminBadges'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
 
 async function loadCategories() {
   const [categories, usage] = await Promise.all([
@@ -41,10 +43,10 @@ export function AdminCategoriesPage() {
   const header = (
     <PageHeader
       icon={FolderTree}
-      eyebrow="Administrator"
-      title="Pet categories"
-      description="The species list that reports, filters and matching are built from."
-      breadcrumb={[{ label: 'Administration', to: '/admin' }, { label: 'Pet categories' }]}
+      eyebrow={t('shell.access.eyebrow')}
+      title={t('nav.categories')}
+      description={t('admin.categories.description')}
+      breadcrumb={[{ label: t('shell.workspace.admin'), to: '/admin' }, { label: t('nav.categories') }]}
     />
   )
 
@@ -62,7 +64,7 @@ export function AdminCategoriesPage() {
       <div className="flex flex-col gap-6">
         {header}
         <p role="alert" className="text-sm text-danger">
-          The categories could not be loaded: {error.message}
+          {t('admin.categories.failed', { message: errorText(error) })}
         </p>
       </div>
     )
@@ -122,7 +124,7 @@ export function AdminCategoriesPage() {
         <CardBody>
           <form onSubmit={add} className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <Input
-              label="Add a category"
+              label={t('admin.categories.add')}
               value={newLabel}
               onChange={(event) => {
                 setNewLabel(event.target.value)
@@ -130,13 +132,13 @@ export function AdminCategoriesPage() {
                 setActionError(null)
               }}
               maxLength={40}
-              placeholder="e.g. Turtle"
-              hint="Two characters or more. It becomes available to new reports immediately."
+              placeholder={t('admin.categories.addPlaceholder')}
+              hint={t('admin.categories.addHint')}
               className="sm:flex-1"
             />
             <Button type="submit" disabled={newLabel.trim().length < 2 || isBusy}>
               <Plus size={16} aria-hidden="true" />
-              Add category
+              {t('admin.categories.addButton')}
             </Button>
           </form>
 
@@ -144,12 +146,12 @@ export function AdminCategoriesPage() {
               beside the field it is about, not at the top of the page. */}
           {actionError && !asking && (
             <p role="alert" className="mt-3 text-sm text-danger">
-              {actionError.message}
+              {errorText(actionError)}
             </p>
           )}
           {added && !actionError && (
             <p role="status" className="mt-3 text-sm text-success-ink">
-              &ldquo;{added}&rdquo; was added.
+              {t('admin.categories.added', { name: added })}
             </p>
           )}
         </CardBody>
@@ -158,8 +160,8 @@ export function AdminCategoriesPage() {
       {categories.length === 0 ? (
         <EmptyState
           icon={FolderTree}
-          title="No categories yet"
-          description="Add the first species above. Reports cannot be filed until at least one exists."
+          title={t('admin.categories.none')}
+          description={t('admin.categories.noneBody')}
         />
       ) : (
         <>
@@ -190,8 +192,8 @@ export function AdminCategoriesPage() {
                         <CategoryStatusBadge isActive={category.isActive} />
                       </div>
                       <p className="text-sm text-fg-muted">
-                        Stored as <code>{category.id}</code> · {inUse}{' '}
-                        {inUse === 1 ? 'report' : 'reports'}
+                        {t('admin.categories.storedAs')} <code>{category.id}</code> ·{' '}
+                        {t('chart.reports', { count: inUse })}
                       </p>
                       <CategoryActions
                         category={category}
@@ -220,16 +222,16 @@ export function AdminCategoriesPage() {
               <thead className="sticky top-[55px] z-10 lg:top-0 border-b border-border bg-surface-muted text-fg shadow-[0_1px_0_var(--color-border)] [&>tr>th:first-child]:rounded-tl-card [&>tr>th:last-child]:rounded-tr-card">
                 <tr>
                   <th scope="col" className="px-4 py-2.5 font-medium">
-                    Category
+                    {t('admin.categories.category')}
                   </th>
                   <th scope="col" className="px-2 py-2.5 font-medium">
-                    Reports
+                    {t('nav.reports')}
                   </th>
                   <th scope="col" className="px-2 py-2.5 font-medium">
-                    Status
+                    {t('filters.status')}
                   </th>
                   <th scope="col" className="px-4 py-2.5 text-right font-medium">
-                    Actions
+                    {t('detail.actions')}
                   </th>
                 </tr>
               </thead>
@@ -260,7 +262,7 @@ export function AdminCategoriesPage() {
                       <td className="px-4 py-3">
                         <p className="font-medium text-fg">{category.label}</p>
                         <p className="text-fg-muted">
-                          Stored as <code>{category.id}</code>
+                          {t('admin.categories.storedAs')} <code>{category.id}</code>
                         </p>
                       </td>
 
@@ -296,9 +298,7 @@ export function AdminCategoriesPage() {
       )}
 
       <p className="text-sm text-fg-muted">
-        Renaming is always safe — reports store the category id, not its name. A category in
-        use cannot be deleted; deactivate it instead, which hides it from new reports without
-        touching the ones already filed.
+        {t('admin.categories.note')}
       </p>
 
       {asking && (
@@ -306,10 +306,10 @@ export function AdminCategoriesPage() {
           isOpen
           title={
             asking.kind === 'delete'
-              ? `Delete ${asking.category.label}?`
-              : `Deactivate ${asking.category.label}?`
+              ? t('admin.categories.deleteTitle', { name: asking.category.label })
+              : t('admin.categories.deactivateTitle', { name: asking.category.label })
           }
-          confirmLabel={asking.kind === 'delete' ? 'Delete category' : 'Deactivate category'}
+          confirmLabel={asking.kind === 'delete' ? t('admin.categories.deleteButton') : t('admin.categories.deactivateButton')}
           tone={asking.kind === 'delete' ? 'danger' : 'primary'}
           isBusy={isBusy}
           error={actionError}
@@ -321,16 +321,12 @@ export function AdminCategoriesPage() {
         >
           {asking.kind === 'delete' ? (
             <p>
-              <span className="font-medium">{asking.category.label}</span> is not used by any
-              report, so it can be removed completely. This cannot be undone — you would have to
-              add it again.
+              <span className="font-medium">{asking.category.label}</span> {t('admin.categories.deleteBody')}
             </p>
           ) : (
             <p>
-              <span className="font-medium">{asking.category.label}</span> will no longer be
-              offered on new reports. The {usage[asking.category.id] ?? 0}{' '}
-              {(usage[asking.category.id] ?? 0) === 1 ? 'report' : 'reports'} already filed under
-              it are untouched, and it can be reactivated at any time.
+              <span className="font-medium">{asking.category.label}</span>{' '}
+              {t('admin.categories.deactivateBody', { count: usage[asking.category.id] ?? 0 })}
             </p>
           )}
         </ConfirmDialog>
@@ -344,7 +340,7 @@ function RenameForm({ category, value, onChange, onSave, onCancel, isBusy }) {
   return (
     <div className="flex flex-wrap items-end gap-2">
       <Input
-        label={`Rename ${category.label}`}
+        label={t('admin.categories.renameLabel', { name: category.label })}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         maxLength={40}
@@ -352,11 +348,11 @@ function RenameForm({ category, value, onChange, onSave, onCancel, isBusy }) {
       />
       <Button size="sm" onClick={onSave} disabled={isBusy || value.trim().length < 2}>
         <Check size={14} aria-hidden="true" />
-        Save
+        {t('admin.categories.save')}
       </Button>
       <Button size="sm" variant="ghost" onClick={onCancel} disabled={isBusy}>
         <X size={14} aria-hidden="true" />
-        Cancel
+        {t('common.cancel')}
       </Button>
     </div>
   )
@@ -372,7 +368,7 @@ function CategoryActions({ category, inUse, isBusy, align, onRename, onReactivat
     <div className={cn('flex flex-wrap gap-2', align === 'end' && 'justify-end')}>
       <Button size="sm" variant="secondary" disabled={isBusy} onClick={onRename}>
         <Pencil size={14} aria-hidden="true" />
-        Rename
+        {t('admin.categories.rename')}
         <span className="sr-only"> {category.label}</span>
       </Button>
 
@@ -383,12 +379,12 @@ function CategoryActions({ category, inUse, isBusy, align, onRename, onReactivat
           disabled={isBusy}
           onClick={() => onAsk({ category, kind: 'deactivate' })}
         >
-          Deactivate
+          {t('admin.categories.deactivate')}
           <span className="sr-only"> {category.label}</span>
         </Button>
       ) : (
         <Button size="sm" variant="ghost" disabled={isBusy} onClick={onReactivate}>
-          Reactivate
+          {t('admin.categories.reactivate')}
           <span className="sr-only"> {category.label}</span>
         </Button>
       )}
@@ -401,7 +397,7 @@ function CategoryActions({ category, inUse, isBusy, align, onRename, onReactivat
           onClick={() => onAsk({ category, kind: 'delete' })}
         >
           <Trash2 size={14} aria-hidden="true" />
-          Delete
+          {t('admin.categories.delete')}
           <span className="sr-only"> {category.label}</span>
         </Button>
       )}

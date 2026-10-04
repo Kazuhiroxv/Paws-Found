@@ -5,6 +5,8 @@ import { Button, Container } from '@/components/ui'
 import { WovenVeil } from '@/components/PatternVeil'
 import { RouteOrnament } from '@/components/Ornament'
 import footerHorizon from '@/assets/img-019-footer-horizon.webp'
+import { t } from '@/i18n'
+import { Rich } from '@/i18n/Rich'
 
 /**
  * Site footer.
@@ -14,36 +16,60 @@ import footerHorizon from '@/assets/img-019-footer-horizon.webp'
  */
 const COLUMNS = [
   {
-    heading: 'Explore',
+    key: 'explore',
     links: [
-      { to: '/explore?type=lost', label: 'Browse lost pets' },
-      { to: '/explore?type=found', label: 'Browse found pets' },
-      { to: '/explore', label: 'Search all reports' },
+      { to: '/explore?type=lost', key: 'browseLost' },
+      { to: '/explore?type=found', key: 'browseFound' },
+      { to: '/explore', key: 'searchAll' },
     ],
   },
   {
-    heading: 'Report',
+    key: 'report',
     links: [
-      { to: '/report/lost', label: 'Report a lost pet' },
-      { to: '/report/found', label: 'Report a found pet' },
+      { to: '/report/lost', key: 'reportLost' },
+      { to: '/report/found', key: 'reportFound' },
     ],
   },
   {
-    heading: 'About',
+    key: 'about',
     links: [
-      { to: '/about', label: 'About Paws&Found' },
-      { to: '/about', label: 'How it works' },
+      { to: '/about', key: 'aboutUs' },
+      { to: '/about', key: 'howItWorks' },
     ],
   },
   {
-    heading: 'Help',
+    key: 'help',
     links: [
-      { to: '/help', label: 'Help & safety' },
-      { to: '/help', label: 'Safe handovers' },
-      { to: '/privacy', label: 'Privacy Notice' },
+      { to: '/help', key: 'helpSafety' },
+      { to: '/help', key: 'safeHandovers' },
+      { to: '/privacy', key: 'privacy' },
+      // Correction 7: what Paws&Found is not, in full.
+      { to: '/disclaimer', key: 'disclaimer' },
     ],
   },
 ]
+
+/**
+ * The short form of the disclaimer, under every public page. Academic, no
+ * money, no affiliation — the three things the instructor asked to be said —
+ * and a link to the full page rather than all of it here.
+ */
+function FooterNotice({ className }) {
+  return (
+    <p className={className} data-footer-notice="">
+      <Rich
+        k="shell.footer.notice"
+        tags={{
+          link: (text) => (
+            <Link to="/disclaimer" className="font-medium underline underline-offset-4">
+              {text}
+            </Link>
+          ),
+        }}
+      />
+    </p>
+  )
+}
 
 export function Footer() {
   return (
@@ -63,24 +89,21 @@ export function Footer() {
           <Link to="/" className="flex w-fit items-center">
             <img src={logoLockup} alt="Paws&Found" className="h-10 w-auto" />
           </Link>
-          <p className="text-sm text-fg-muted">
-            A community platform that helps lost pets and the people looking for them find
-            each other.
-          </p>
+          <p className="text-sm text-fg-muted">{t('shell.footer.tagline')}</p>
 
         </div>
 
         {COLUMNS.map((column) => (
-          <nav key={column.heading} aria-label={column.heading}>
-            <h2 className="text-sm font-semibold text-fg">{column.heading}</h2>
+          <nav key={column.key} aria-label={t(`shell.footer.${column.key}`)}>
+            <h2 className="text-sm font-semibold text-fg">{t(`shell.footer.${column.key}`)}</h2>
             <ul className="mt-2 flex flex-col gap-0.5">
               {column.links.map((link) => (
-                <li key={link.to + link.label}>
+                <li key={link.to + link.key}>
                   <Link
                     to={link.to}
                     className="inline-block py-1 text-sm text-fg-muted underline decoration-border-strong underline-offset-4 transition-colors hover:text-brand hover:decoration-brand"
                   >
-                    {link.label}
+                    {t(`shell.footer.${link.key}`)}
                   </Link>
                 </li>
               ))}
@@ -93,19 +116,21 @@ export function Footer() {
         <div className="col-span-2 self-start rounded-card border border-brand/15 bg-brand-soft p-4 shadow-card sm:col-span-4 lg:col-span-1">
           <p className="flex items-start gap-2 text-sm font-semibold text-fg">
             <Users size={18} className="mt-0.5 shrink-0 text-brand" aria-hidden="true" />
-            Together, we can bring them home.
+            {t('shell.footer.ctaTitle')}
           </p>
           {/* `fg` rather than `fg-muted`: this card sits on `brand-soft`,
               where the muted ink measures 4.14:1 — the lowest reading in the
               interface and the furthest under AA. */}
-          <p className="mt-1.5 text-sm text-fg">
-            Every report helps somebody find the pet they are looking for.
-          </p>
+          <p className="mt-1.5 text-sm text-fg">{t('shell.footer.ctaBody')}</p>
           <Button as={Link} to="/explore" size="sm" className="mt-3">
-            Report or search now
+            {t('shell.footer.ctaButton')}
             <ArrowRight size={14} aria-hidden="true" />
           </Button>
         </div>
+      </Container>
+
+      <Container className="relative pb-6">
+        <FooterNotice className="max-w-3xl border-t border-border pt-4 text-sm text-fg-muted" />
       </Container>
 
       {/* The horizon, and the copyright line sitting on it.
@@ -134,20 +159,14 @@ export function Footer() {
           className="pointer-events-none w-full select-none"
         />
         <Container className="absolute inset-x-0 bottom-0 pb-4">
-          <p className="text-sm text-fg-inverted/75">
-            &copy; 2026 Paws&amp;Found. Academic project for Web Systems and Technologies 2.
-            All pets, people and reports shown are fictional demonstration data.
-          </p>
+          <p className="text-sm text-fg-inverted/75">{t('shell.footer.copyright')}</p>
         </Container>
       </div>
 
       {/* Phones get the same words on the plain warm ground. */}
       <div className="border-t border-border sm:hidden">
         <Container className="py-4">
-          <p className="text-sm text-fg-muted">
-            &copy; 2026 Paws&amp;Found. Academic project for Web Systems and Technologies 2.
-            All pets, people and reports shown are fictional demonstration data.
-          </p>
+          <p className="text-sm text-fg-muted">{t('shell.footer.copyright')}</p>
         </Container>
       </div>
     </footer>

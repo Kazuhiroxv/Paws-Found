@@ -9,6 +9,8 @@
 import { REPORT_STATUSES, REPORT_TYPES } from '@/constants'
 import { NotFoundError } from './errors'
 import { apiFetch, assetUrl, queryString } from './api'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
 
 /**
  * Turn an API report into the shape the components already use.
@@ -111,6 +113,8 @@ function fromApi(row) {
       actorName: entry.actor_name ?? null,
     })),
     updatedAt: row.updated_at,
+    // When it was filed. Like updatedAt, sent only to a signed-in viewer.
+    createdAt: row.created_at ?? null,
   }
 }
 
@@ -381,7 +385,7 @@ export async function saveEditedPhotos(reportId, before, after) {
     try {
       await editReportPhotos(reportId, { remove, alt, primary })
     } catch (error) {
-      throw new Error(`Your details were saved, but the photo changes were not: ${error.message}`, { cause: error })
+      throw new Error(t('reportForm.photosNotChanged', { message: errorText(error) }), { cause: error })
     }
   }
 
@@ -392,7 +396,7 @@ export async function saveEditedPhotos(reportId, before, after) {
   try {
     stored = await uploadReportPhotos(reportId, fresh)
   } catch (error) {
-    throw new Error(`Your details were saved, but the new photos did not upload: ${error.message}`, { cause: error })
+    throw new Error(t('reportForm.photosNotUploaded', { message: errorText(error) }), { cause: error })
   }
 
   if (chosen?.file) {
@@ -405,7 +409,7 @@ export async function saveEditedPhotos(reportId, before, after) {
       try {
         await editReportPhotos(reportId, { primary: target.image_id })
       } catch (error) {
-        throw new Error(`The new photos uploaded, but the main photo was not changed: ${error.message}`, { cause: error })
+        throw new Error(t('reportForm.mainNotChanged', { message: errorText(error) }), { cause: error })
       }
     }
   }

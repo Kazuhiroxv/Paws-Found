@@ -12,6 +12,8 @@ import { MATCH_STATUSES, MATCH_STATUSES_AWAITING_STAFF, REPORT_STATUS_BARS, REPO
 import { useAsync } from '@/hooks/useAsync'
 import { matchService, petService } from '@/services'
 import { formatRelativeTime } from '@/utils/date'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
 
 async function loadStaffOverview() {
   const [reports, suggested, awaiting] = await Promise.all([
@@ -31,9 +33,9 @@ export function StaffOverviewPage() {
   const header = (
     <PageHeader
       icon={ShieldCheck}
-      eyebrow="Pet Coordinator"
-      title="Staff workspace"
-      description="Reports and possible matches waiting on a Pet Coordinator."
+      eyebrow={t('staff.eyebrow')}
+      title={t('shell.workspace.staff')}
+      description={t('staff.overview.description')}
     />
   )
 
@@ -51,7 +53,7 @@ export function StaffOverviewPage() {
       <div className="flex flex-col gap-6">
         {header}
         <p role="alert" className="text-sm text-danger">
-          The workspace could not be loaded: {error.message}
+          {t('staff.overview.failed', { message: errorText(error) })}
         </p>
       </div>
     )
@@ -73,29 +75,29 @@ export function StaffOverviewPage() {
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatTile
           icon={ShieldCheck}
-          label="Verification requests"
+          label={t('staff.overview.verification')}
           value={awaiting.length}
           to="/staff/verification"
           emphasis
         />
         <StatTile
           icon={Heart}
-          label="Possible matches"
+          label={t('dashboard.matchesTitle')}
           value={suggested.length}
           to="/staff/matches"
           emphasis
         />
-        <StatTile icon={FileText} label="Active reports" value={active.length} to="/staff/reports" />
-        <StatTile icon={PawPrint} label="Pets returned" value={returned.length} />
+        <StatTile icon={FileText} label={t('dashboard.activeReports')} value={active.length} to="/staff/reports" />
+        <StatTile icon={PawPrint} label={t('dashboard.petsReturned', { count: 2 })} value={returned.length} />
       </div>
 
       <NeedsAttention awaiting={awaiting} suggested={suggested} />
 
       <section className="flex flex-col gap-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="text-xl font-semibold text-fg">Recent cases</h2>
+          <h2 className="text-xl font-semibold text-fg">{t('staff.overview.recent')}</h2>
           <Button as={Link} to="/staff/reports" variant="ghost" size="sm">
-            See the queue
+            {t('staff.overview.seeQueue')}
           </Button>
         </div>
 
@@ -112,7 +114,7 @@ export function StaffOverviewPage() {
                 to={`/pet/${report.id}`}
                 className="text-sm font-medium text-fg after:absolute after:inset-0 hover:underline"
               >
-                {report.petName ?? `Found ${speciesLabel(report.species).toLowerCase()}`}
+                {report.petName ?? t('matching.sideFound', { species: speciesLabel(report.species).toLowerCase() })}
               </Link>
               <StatusBadge status={report.status} variant="pill" />
               <span className="ml-auto text-sm whitespace-nowrap text-fg-muted">
@@ -138,18 +140,18 @@ function NeedsAttention({ awaiting, suggested }) {
   return (
     <section className="flex flex-col gap-4">
       <h2 className="flex items-center gap-2 text-xl font-semibold text-fg">
-        Needs your attention
+        {t('staff.overview.attention')}
         {total > 0 && (
           <span className="rounded-pill bg-accent-soft px-2.5 py-0.5 text-sm font-semibold text-lost tabular-nums">
             {total}
-            <span className="sr-only"> {total === 1 ? 'item' : 'items'}</span>
+            <span className="sr-only"> {t('shell.workspace.item', { count: total })}</span>
           </span>
         )}
       </h2>
 
       {total === 0 ? (
         <p className="rounded-card border border-border bg-panel px-4 py-5 text-fg-muted">
-          Nothing is waiting on a coordinator right now.
+          {t('staff.overview.nothing')}
         </p>
       ) : (
         <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-card border border-border bg-panel">
@@ -160,7 +162,7 @@ function NeedsAttention({ awaiting, suggested }) {
               key={item.match.id}
               {...item}
               to={`/staff/verification#match-${item.match.id}`}
-              actionLabel="Verify"
+              actionLabel={t('staff.overview.verify')}
               primary
             />
           ))}
@@ -169,7 +171,7 @@ function NeedsAttention({ awaiting, suggested }) {
               key={item.match.id}
               {...item}
               to={`/staff/matches#match-${item.match.id}`}
-              actionLabel="Review"
+              actionLabel={t('staff.overview.review')}
             />
           ))}
         </ul>
@@ -198,7 +200,7 @@ function AttentionRow({ match, lostReport, foundReport, to, actionLabel, primary
             className="px-2.5 py-0.5 text-xs"
           />
           <span className="text-sm text-fg-muted">
-            <span className="font-semibold text-fg tabular-nums">{match.score}%</span> compatibility
+            <span className="font-semibold text-fg tabular-nums">{match.score}%</span> {t('matching.compatibility')}
           </span>
         </div>
         <p className="font-medium text-fg">
@@ -253,7 +255,7 @@ function StatusBreakdown({ reports }) {
 
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="text-xl font-semibold text-fg">Reports by status</h2>
+      <h2 className="text-xl font-semibold text-fg">{t('staff.overview.byStatus')}</h2>
       <BreakdownBars rows={rows} total={reports.length} className="rounded-card border border-border bg-panel p-5" />
     </section>
   )

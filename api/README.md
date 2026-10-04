@@ -48,6 +48,7 @@ POST   /api/auth/register        { full_name, email, password, contact_number? }
 POST   /api/auth/login           { email, password } -> user, sets a session cookie
 POST   /api/auth/logout          ends the session
 GET    /api/auth/me              the signed-in user, or { user: null }
+POST   /api/auth/privacy-acknowledgement   the signed-in account has read the current Privacy Notice (Correction 7)
 
 GET    /api/reports              list; see the parameters below
 POST   /api/reports              file a report            (signed in)
@@ -95,6 +96,24 @@ GET    /api/logs/activity        pages and actions        (administrators)
 GET    /api/logs/sessions        sign-ins: IP, browser, start, last seen, end and why
 GET    /api/logs/audit           security and administrative events
 ```
+
+**Privacy Notice acknowledgement (Correction 7).** `GET /api/auth/me` adds
+`user.privacy_notice: { version, acknowledged }` for a signed-in account: whether
+its latest `privacy_consents` row is for `PRIVACY_NOTICE_VERSION`.
+`POST /api/auth/privacy-acknowledgement` (CSRF token, signed in, no body read)
+records the current version for the session's own account, once, and writes a
+`privacy_notice_acknowledged` activity row; it answers
+`{ ok: true, privacy_notice: { version, acknowledged: true } }`. It never
+blocks anything else.
+
+**The list's `created_at` (Correction 7).** `GET /api/reports` rows carry
+`created_at` for a signed-in viewer (the printed list's "Filed" column); a
+guest's rows omit it, as they omit `updated_at`.
+
+**Messages stay English.** The API's `error` sentences are English; the
+interface translates the ones people meet in the normal workflow by exact
+text (`src/i18n/apiErrors.js`). Rewording one of those sentences here means
+updating that map, or the Filipino interface shows it in English.
 
 **Sessions and the activity trail (Correction 5).** `GET /api/auth/me`
 answers `{ user: null, session_ended: "<reason>" }` when the server ended this

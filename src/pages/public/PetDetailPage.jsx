@@ -57,14 +57,22 @@ import {
   REPORT_STATUSES,
   REPORT_TYPES,
   SPECIES,
+  colourLabel,
   speciesLabel,
 } from '@/constants'
 import { useAsync } from '@/hooks/useAsync'
 import { NotFoundError, matchService, petService, userService } from '@/services'
 import { formatDate, formatTime12Hour } from '@/utils/date'
 import { cn } from '@/utils/cn'
+import { t } from '@/i18n'
+import { HandoverNotice } from '@/components/HandoverNotice'
+import { Rich } from '@/i18n/Rich'
 
-/** What the history says when a reporter closes a report without a reason. */
+/**
+ * What the history says when a reporter closes a report without a reason.
+ * Stored with the report, so it stays in English whatever the language
+ * showing (Correction 7): what is saved does not depend on who saved it.
+ */
 const DEFAULT_CLOSE_REASON = 'Closed by the reporter.'
 
 /**
@@ -116,7 +124,7 @@ export function PetDetailPage({ role }) {
     // report itself. The API decides what of a reporter's contact details may
     // be shown, so the page must not look them up separately — that would
     // route around the privacy rule (CLAUDE.md §14).
-    const reporter = report.reporter ?? { full_name: 'Unknown', phone: null, email: null }
+    const reporter = report.reporter ?? { full_name: t('detail.unknown'), phone: null, email: null }
     const actorNames = Object.fromEntries(
       report.statusHistory
         .filter((entry) => entry.actorName)
@@ -149,23 +157,19 @@ export function PetDetailPage({ role }) {
 
     return (
       <Container width="prose" className="flex flex-col gap-6">
-        <PageHeader title={missing ? 'Report not found' : 'This report could not be loaded'} />
+        <PageHeader title={missing ? t('detail.notFound') : t('detail.loadFailed')} />
         <EmptyState
           icon={missing ? SearchX : TriangleAlert}
-          title={missing ? 'This report does not exist' : 'Something went wrong at our end'}
-          description={
-            missing
-              ? 'It may have been removed, or the address may be wrong.'
-              : 'The report is still there — we just could not fetch it. Please try again in a moment.'
-          }
+          title={missing ? t('detail.missing') : t('detail.ourEnd')}
+          description={missing ? t('detail.missingBody') : t('detail.ourEndBody')}
           action={
             missing ? (
               <Button as={Link} to="/explore" variant="secondary">
-                Browse all reports
+                {t('detail.browseAll')}
               </Button>
             ) : (
               <Button onClick={reload} variant="secondary">
-                Try again
+                {t('detail.tryAgain')}
               </Button>
             )
           }
@@ -183,7 +187,7 @@ export function PetDetailPage({ role }) {
   // Set by the edit form when the details saved but a photo change did not.
   const photoWarning = location.state?.photoWarning
   const isFound = report.reportType === REPORT_TYPES.FOUND
-  const heading = report.petName ?? `${speciesLabel(report.species)} (name unknown)`
+  const heading = report.petName ?? t('common.nameUnknown', { species: speciesLabel(report.species) })
 
   // Passing a report around is how a search actually spreads, so this uses
   // the phone's own share sheet where there is one — into a group chat, which
@@ -238,14 +242,18 @@ export function PetDetailPage({ role }) {
         title={
           finishing === 'returned'
             ? isFound
-              ? 'Mark this pet as returned to its owner?'
-              : `Mark ${heading} as returned?`
-            : `Close ${heading}?`
+              ? t('detail.returnFoundTitle')
+              : t('detail.returnTitle', { name: heading })
+            : t('detail.closeTitle', { name: heading })
         }
         confirmLabel={
-          finishing === 'returned' ? (isFound ? 'Mark as returned to owner' : 'Mark as returned') : 'Close report'
+          finishing === 'returned'
+            ? isFound
+              ? t('detail.markReturnedOwner')
+              : t('detail.markReturned')
+            : t('detail.closeReport')
         }
-        cancelLabel="Go back"
+        cancelLabel={t('publication.goBack')}
         tone={finishing === 'returned' ? 'primary' : 'danger'}
         isBusy={isFinishing}
         error={finishError}
@@ -259,31 +267,20 @@ export function PetDetailPage({ role }) {
                 not a pairing's: nothing here says which owner, and a pairing a
                 coordinator ruled out stays ruled out. */}
             {isFound && (
-              <p>
-                Use this once the pet is back with its owner, through Paws&amp;Found or any other
-                way. It does not confirm any possible match.
-              </p>
+              <p>{t('detail.returnFoundBody')}</p>
             )}
-            <p>
-              The report will show Returned. That is a finished state: it can no longer be edited
-              or reopened, it stops being compared with new reports, and any possible match still
-              open on it is withdrawn.
-            </p>
+            <p>{t('detail.returnBody')}</p>
           </>
         ) : (
           <>
-            <p>
-              The report will show Closed. That is a finished state: it can no longer be edited or
-              reopened, it stops being compared with new reports, and any possible match still
-              open on it is withdrawn. It stays visible, with its history.
-            </p>
+            <p>{t('detail.closeBody')}</p>
             <Textarea
-              label="Reason (optional)"
+              label={t('detail.reasonOptional')}
               value={closeReason}
               onChange={(event) => setCloseReason(event.target.value)}
               rows={2}
               maxLength={255}
-              hint={`Added to the report's history. Left blank, it says “${DEFAULT_CLOSE_REASON}”`}
+              hint={t('detail.reasonHint', { reason: DEFAULT_CLOSE_REASON })}
             />
           </>
         )}
@@ -291,7 +288,7 @@ export function PetDetailPage({ role }) {
 
       {photoWarning && isOwner && (
         <p role="alert" className="rounded-control border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-fg">
-          {photoWarning} Edit the report again to retry.
+          {t('detail.photoWarning', { message: photoWarning })}
         </p>
       )}
       {/* The case header environment: the breadcrumb, the name and the
@@ -329,8 +326,8 @@ export function PetDetailPage({ role }) {
       <div className="flex flex-col gap-5 pb-2">
         <Breadcrumb
           items={[
-            { label: 'Home', to: '/' },
-            { label: 'Explore', to: '/explore' },
+            { label: t('nav.home'), to: '/' },
+            { label: t('nav.explore'), to: '/explore' },
             { label: heading },
           ]}
         />
@@ -386,11 +383,11 @@ export function PetDetailPage({ role }) {
                 )}
               >
                 {isFound
-                  ? `Help ${report.petName ?? 'this pet'} get home`
-                  : `Help bring ${report.petName ?? 'them'} home`}
+                  ? t('detail.helpFound', { name: report.petName ?? t('detail.thisPet') })
+                  : t('detail.helpLost', { name: report.petName ?? t('detail.them') })}
               </p>
               <p className="mt-1 text-sm text-fg-muted">
-                Last updated {formatDate(report.updatedAt)}
+                {t('detail.lastUpdated', { date: formatDate(report.updatedAt) })}
               </p>
             </div>
           </div>
@@ -404,7 +401,7 @@ export function PetDetailPage({ role }) {
           <section className="flex flex-col gap-3">
             <h2 className="flex items-center gap-2.5 text-2xl font-semibold tracking-tight text-fg">
               <MessageSquare size={22} className="shrink-0 text-brand" aria-hidden="true" />
-              {isFound ? 'What the finder said' : 'What happened'}
+              {isFound ? t('detail.finderSaid') : t('detail.whatHappened')}
             </h2>
             <p className="text-lg leading-relaxed text-fg-muted">{report.description}</p>
           </section>
@@ -412,7 +409,7 @@ export function PetDetailPage({ role }) {
           <section className="flex flex-col gap-4">
             <h2 className="flex items-center gap-2.5 text-2xl font-semibold tracking-tight text-fg">
               <PawPrint size={22} className="shrink-0 text-brand" aria-hidden="true" />
-              Pet details
+              {t('reportForm.steps.details')}
             </h2>
 
             {/* Chips rather than a definition list: these are short facts, and
@@ -420,13 +417,13 @@ export function PetDetailPage({ role }) {
                 carries its own label for screen readers. */}
             <ul className="flex flex-wrap gap-2">
               {[
-                ['Species', speciesLabel(report.species)],
-                ['Breed', report.breed],
-                ['Size', PET_SIZE_LABELS[report.size]],
-                ['Sex', PET_SEX_LABELS[report.sex]],
-                ['Main colour', report.primaryColor],
-                ['Other colour', report.secondaryColor],
-                isFound && ['Collar', collarLabel(report.hasCollar)],
+                [t('reportForm.details.species'), speciesLabel(report.species)],
+                [t('reportForm.details.breed'), report.breed],
+                [t('reportForm.details.size'), PET_SIZE_LABELS[report.size]],
+                [t('reportForm.details.sex'), PET_SEX_LABELS[report.sex]],
+                [t('reportForm.details.mainColour'), colourLabel(report.primaryColor)],
+                [t('reportForm.details.otherColour'), colourLabel(report.secondaryColor)],
+                isFound && [t('reportForm.review.collar'), collarLabel(report.hasCollar)],
               ]
                 .filter((row) => row && row[1])
                 .map(([label, value]) => (
@@ -444,7 +441,7 @@ export function PetDetailPage({ role }) {
               <div className="rounded-card border border-border bg-accent-soft/60 p-5">
                 <h3 className="flex items-center gap-2 font-semibold text-fg">
                   <Star size={17} className="shrink-0 text-accent-hover" aria-hidden="true" />
-                  Distinctive features
+                  {t('reportForm.details.features')}
                 </h3>
                 <p className="mt-1.5 text-fg-muted">{report.distinctiveMarkings}</p>
               </div>
@@ -454,7 +451,7 @@ export function PetDetailPage({ role }) {
               <div className="rounded-card border border-border bg-panel p-5 shadow-card">
                 <h3 className="flex items-center gap-2 font-semibold text-fg">
                   <Heart size={17} className="shrink-0 text-brand" aria-hidden="true" />
-                  Condition when found
+                  {t('detail.conditionFound')}
                 </h3>
                 <p className="mt-1.5 text-fg-muted">{report.condition}</p>
               </div>
@@ -466,7 +463,7 @@ export function PetDetailPage({ role }) {
           <section className="flex flex-col gap-4">
             <h2 className="flex items-center gap-2.5 text-2xl font-semibold tracking-tight text-fg">
               <MapPin size={22} className="shrink-0 text-brand" aria-hidden="true" />
-              {isFound ? 'Where they were found' : 'Where they went missing'}
+              {isFound ? t('detail.whereFound') : t('reportForm.review.whereLost')}
             </h2>
 
             {/* The map leads edge to edge here rather than sitting inside a
@@ -486,7 +483,7 @@ export function PetDetailPage({ role }) {
                       aria-hidden="true"
                     />
                     <div>
-                      <p className="text-sm text-fg-muted">Area</p>
+                      <p className="text-sm text-fg-muted">{t('detail.area')}</p>
                       <p className="font-medium text-fg">{report.location.label}</p>
                       <p className="text-sm text-fg-muted">
                         {report.location.city}, {report.location.province}
@@ -501,7 +498,7 @@ export function PetDetailPage({ role }) {
                       aria-hidden="true"
                     />
                     <div>
-                      <p className="text-sm text-fg-muted">{isFound ? 'Found on' : 'Last seen'}</p>
+                      <p className="text-sm text-fg-muted">{isFound ? t('detail.foundOn') : t('detail.lastSeen')}</p>
                       <p className="font-medium text-fg">{formatDate(report.incidentDate)}</p>
                     </div>
                   </div>
@@ -510,7 +507,7 @@ export function PetDetailPage({ role }) {
                     <div className="flex items-start gap-2.5">
                       <Clock size={18} className="mt-0.5 shrink-0 text-brand" aria-hidden="true" />
                       <div>
-                        <p className="text-sm text-fg-muted">Around</p>
+                        <p className="text-sm text-fg-muted">{t('detail.around')}</p>
                         <p className="font-medium text-fg">{formatTime12Hour(report.incidentTime)}</p>
                       </div>
                     </div>
@@ -518,7 +515,7 @@ export function PetDetailPage({ role }) {
                 </div>
 
                 <p className="border-t border-border pt-4 text-sm text-fg-muted">
-                  The shaded circle is an approximate area, not an exact location.
+                  {t('detail.circle')}
                 </p>
               </div>
             </div>
@@ -527,8 +524,8 @@ export function PetDetailPage({ role }) {
           <Card>
             <CardHeader
               titleAs="h2"
-              title={<HeadingWithIcon icon={History}>Case history</HeadingWithIcon>}
-              subtitle="Every change to this report, oldest first."
+              title={<HeadingWithIcon icon={History}>{t('detail.history')}</HeadingWithIcon>}
+              subtitle={t('detail.historyHint')}
             />
             <CardBody>
               <Timeline entries={report.statusHistory} actorNames={actorNames} />
@@ -572,7 +569,7 @@ export function PetDetailPage({ role }) {
           {/* The summary is the quieter surface beside the report: tinted, so
               the photographs and the description stay the white ones. */}
           <Card tone="layer">
-            <CardHeader titleAs="h2" title={<HeadingWithIcon icon={ClipboardList}>Report summary</HeadingWithIcon>} />
+            <CardHeader titleAs="h2" title={<HeadingWithIcon icon={ClipboardList}>{t('detail.summary')}</HeadingWithIcon>} />
             <CardBody className="flex flex-col gap-4">
               {/* A `dl` may contain `dt`/`dd` directly, or wrapped one level
                   deep in a `div` — not two. The icon used to force a second
@@ -587,7 +584,7 @@ export function PetDetailPage({ role }) {
                     className="row-span-2 mt-0.5 shrink-0 text-fg-subtle"
                     aria-hidden="true"
                   />
-                  <dt className="text-fg-muted">{isFound ? 'Found on' : 'Last seen'}</dt>
+                  <dt className="text-fg-muted">{isFound ? t('detail.foundOn') : t('detail.lastSeen')}</dt>
                   <dd className="font-medium text-fg">{formatDate(report.incidentDate)}</dd>
                 </div>
 
@@ -597,7 +594,7 @@ export function PetDetailPage({ role }) {
                     className="row-span-2 mt-0.5 shrink-0 text-fg-subtle"
                     aria-hidden="true"
                   />
-                  <dt className="text-fg-muted">Area</dt>
+                  <dt className="text-fg-muted">{t('detail.area')}</dt>
                   <dd className="font-medium text-fg">
                     {report.location.city}, {report.location.province}
                   </dd>
@@ -609,7 +606,7 @@ export function PetDetailPage({ role }) {
                     className="row-span-2 mt-0.5 shrink-0 text-fg-subtle"
                     aria-hidden="true"
                   />
-                  <dt className="text-fg-muted">Reported by</dt>
+                  <dt className="text-fg-muted">{t('detail.reportedBy')}</dt>
                   <dd className="font-medium text-fg">{reporter.full_name}</dd>
                 </div>
               </dl>
@@ -635,12 +632,12 @@ export function PetDetailPage({ role }) {
                     className="mt-0.5 shrink-0 text-fg-subtle"
                     aria-hidden="true"
                   />
-                  Prefers to be reached through a Pet Coordinator.
+                  {t('detail.viaCoordinator')}
                 </p>
               ) : (
                 !report.contactPreferences.showEmail && (
                   <p className="text-fg-muted">
-                    This reporter has not shared any contact details.
+                    {t('detail.noContact')}
                   </p>
                 )
               )}
@@ -650,23 +647,22 @@ export function PetDetailPage({ role }) {
 
           {isPublished && isOwner && report.status !== REPORT_STATUSES.CLOSED && (
             <Card>
-              <CardHeader titleAs="h2" title="Your report" />
+              <CardHeader titleAs="h2" title={t('detail.yourReport')} />
               <CardBody className="flex flex-col gap-2">
                 {report.status !== REPORT_STATUSES.RETURNED && (
                   <Button onClick={() => openFinish('returned')} fullWidth>
                     <Check size={16} aria-hidden="true" />
-                    {isFound ? 'Mark as returned to owner' : 'Mark as returned'}
+                    {isFound ? t('detail.markReturnedOwner') : t('detail.markReturned')}
                   </Button>
                 )}
                 <Button variant="secondary" fullWidth onClick={() => openFinish('closed')}>
-                  Close this report
+                  {t('detail.closeThis')}
                 </Button>
                 <p className="text-sm text-fg-muted">
-                  Closing stops it being compared against new reports. It stays visible
-                  with a Closed status.{' '}
+                  {t('detail.closeNote')}{' '}
                   {report.status === REPORT_STATUSES.POSSIBLE_MATCH
-                    ? 'Its details cannot be changed while a possible match is open.'
-                    : 'To change the details, use Edit on My Reports.'}
+                    ? t('detail.lockedWhileMatch')
+                    : t('detail.editOnMyReports')}
                 </p>
               </CardBody>
             </Card>
@@ -674,28 +670,33 @@ export function PetDetailPage({ role }) {
 
           {isPublished && (
           <Card>
-            <CardHeader titleAs="h2" title={<HeadingWithIcon icon={Link2}>Actions</HeadingWithIcon>} />
+            <CardHeader titleAs="h2" title={<HeadingWithIcon icon={Link2}>{t('detail.actions')}</HeadingWithIcon>} />
             <CardBody className="flex flex-col gap-2">
               <Button variant="secondary" fullWidth onClick={shareLink}>
                 <LinkIcon size={16} aria-hidden="true" />
-                {copied ? 'Link copied' : 'Share this report'}
+                {copied ? t('detail.copied') : t('detail.share')}
               </Button>
               <p className="-mt-1 text-sm text-fg-muted">
-                The more people who have seen {report.petName ?? 'this report'}, the better
-                the chances.
+                {t('detail.shareNote', { name: report.petName ?? t('detail.thisReport') })}
               </p>
 
               {role ? (
                 <Button variant="ghost" fullWidth onClick={() => setIsFlagOpen(true)}>
                   <Flag size={16} aria-hidden="true" />
-                  Report this listing
+                  {t('flag.title')}
                 </Button>
               ) : (
                 <p className="text-sm text-fg-muted">
-                  <Link to="/login" className="text-brand underline">
-                    Sign in
-                  </Link>{' '}
-                  to report a problem with this listing.
+                  <Rich
+                    k="detail.signInToFlag"
+                    tags={{
+                      link: (text) => (
+                        <Link to="/login" className="text-brand underline">
+                          {text}
+                        </Link>
+                      ),
+                    }}
+                  />
                 </p>
               )}
             </CardBody>
@@ -727,19 +728,19 @@ export function PetDetailPage({ role }) {
 function SignInGate({ from }) {
   return (
     <Container width="prose" className="flex flex-col gap-6">
-      <PageHeader title="Sign in to see this report" />
+      <PageHeader title={t('detail.gateTitle')} />
       <EmptyState
         icon={Lock}
-        title="Full reports are for members"
-        description="Anyone can browse the map and the list. Signing in shows the full description, every photo, the case history and any contact details the reporter chose to share. It is free, and it keeps the people and pets involved from being laid out for anyone passing by."
+        title={t('detail.gateHeading')}
+        description={t('detail.gateBody')}
         action={
           <div className="flex flex-wrap justify-center gap-3">
             {/* `from` is what LoginPage returns to after a successful sign-in. */}
             <Button as={Link} to="/login" state={{ from }}>
-              Sign in
+              {t('auth.login.title')}
             </Button>
             <Button as={Link} to="/register" variant="secondary">
-              Create an account
+              {t('auth.register.title')}
             </Button>
           </div>
         }
@@ -748,7 +749,7 @@ function SignInGate({ from }) {
         to="/explore"
         className="self-center text-sm font-medium text-brand hover:underline"
       >
-        Back to all reports
+        {t('detail.backToAll')}
       </Link>
     </Container>
   )
@@ -760,7 +761,7 @@ function PhotoGallery({ photos, petLabel }) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const active = ordered[activeIndex]
-  const altText = active?.alt ?? `No photo was provided for this report about ${petLabel}`
+  const altText = active?.alt ?? t('detail.noPhotoAbout', { name: petLabel })
 
   return (
     <div className="flex flex-col gap-3">
@@ -794,7 +795,7 @@ function PhotoGallery({ photos, petLabel }) {
               className="relative size-full object-contain"
             />
           </span>
-          <span className="sr-only">View full photo</span>
+          <span className="sr-only">{t('matching.viewFullPhoto')}</span>
         </button>
 
         {/* A hint that the photograph opens, without a caption over the pet:
@@ -839,7 +840,7 @@ function PhotoGallery({ photos, petLabel }) {
                   alt=""
                   className="size-16 rounded-control object-cover"
                 />
-                <span className="sr-only">Show photo {index + 1}</span>
+                <span className="sr-only">{t('detail.showPhoto', { number: index + 1 })}</span>
               </button>
             </li>
           ))}
@@ -876,13 +877,10 @@ function PossibleMatches({ report, matches, counterparts }) {
       <div>
         <h2 className="flex items-center gap-2.5 text-lg font-semibold text-fg">
           <Heart size={18} className="shrink-0 text-brand" aria-hidden="true" />
-          Possible matches
+          {t('detail.possibleMatches')}
         </h2>
-        <p className="text-sm text-fg-muted">
-          These reports share characteristics with this one. A possible match is a
-          suggestion, not a confirmation — a Pet Coordinator helps verify ownership before
-          anything is arranged.
-        </p>
+        <p className="text-sm text-fg-muted">{t('detail.possibleMatchesBody')}</p>
+        <HandoverNotice className="mt-2" />
       </div>
 
       <ul className="flex flex-col gap-4">
@@ -903,7 +901,7 @@ function PossibleMatches({ report, matches, counterparts }) {
       </ul>
 
       {report.status === REPORT_STATUSES.RETURNED && (
-        <p className="text-sm text-success">This pet has been reunited with its owner.</p>
+        <p className="text-sm text-success">{t('detail.reunited')}</p>
       )}
     </section>
   )
@@ -912,7 +910,7 @@ function PossibleMatches({ report, matches, counterparts }) {
 function DetailSkeleton() {
   return (
     <Container className="flex flex-col gap-6">
-      <span className="sr-only">Loading report…</span>
+      <span className="sr-only">{t('detail.loading')}</span>
       <LoadingSkeleton className="h-8 w-64" />
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
         <div className="flex-1 flex-col gap-4">
@@ -928,9 +926,9 @@ function DetailSkeleton() {
 }
 
 function collarLabel(value) {
-  if (value === true) return 'Yes'
-  if (value === false) return 'No'
-  return 'Not sure'
+  if (value === true || value === 'yes') return t('common.yes')
+  if (value === false || value === 'no') return t('common.no')
+  return t('common.notSure')
 }
 
 /** Lucide has one icon per species we support; anything else gets a paw. */
@@ -974,31 +972,31 @@ function HeadingWithIcon({ icon: Icon, children }) {
  */
 function NextStepCard({ report }) {
   const isLost = report.reportType === REPORT_TYPES.LOST
-  const name = report.petName ?? 'this pet'
+  const name = report.petName ?? t('detail.thisPet')
 
   return (
     <Card>
       <CardBody className="flex flex-col gap-3">
         <h2 className="font-semibold text-fg">
-          {isLost ? `Have you seen ${name}?` : `Is this your pet?`}
+          {isLost ? t('detail.seenTitle', { name }) : t('detail.yoursTitle')}
         </h2>
 
         <p className="text-sm text-fg-muted">
           {isLost
-            ? 'File a found report with what you saw and where. It is compared against this one straight away, and a Pet Coordinator checks any pairing before anyone is put in touch.'
-            : 'File a lost report describing your pet. It is compared against this one straight away, and a Pet Coordinator verifies ownership before arranging a handover.'}
+            ? t('detail.seenBody')
+            : t('detail.yoursBody')}
         </p>
 
         <Button as={Link} to={isLost ? '/report/found' : '/report/lost'} fullWidth>
           {isLost ? (
             <>
               <HandHeart size={16} aria-hidden="true" />
-              Report a found pet
+              {t('nav.reportFound')}
             </>
           ) : (
             <>
               <SearchX size={16} aria-hidden="true" />
-              Report a lost pet
+              {t('nav.reportLost')}
             </>
           )}
         </Button>

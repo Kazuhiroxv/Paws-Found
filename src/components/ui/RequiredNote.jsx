@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 /**
  * Says what the asterisk means.
  *
@@ -13,11 +14,11 @@
 export function RequiredNote({ className }) {
   return (
     <p className={className}>
-      Fields marked{' '}
+      {t('ui.requiredNote.before')}{' '}
       <span className="font-medium text-danger" aria-hidden="true">
         *
       </span>
-      <span className="sr-only">with an asterisk</span> are required. Everything else is optional.
+      <span className="sr-only">{t('ui.requiredNote.asterisk')}</span> {t('ui.requiredNote.after')}
     </p>
   )
 }

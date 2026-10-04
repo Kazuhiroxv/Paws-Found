@@ -88,6 +88,20 @@ const PAGES = [
   [MODERATOR, '/admin/logs', 'No access — Moderator on Logs'],
   [MANAGER, '/admin/users', 'Accounts — Manager'],
   ['grace.bautista@example.com', '/admin/users', 'Accounts — role and level dialog', openRoleDialog],
+  // Correction 7: the Disclaimer, and Filipino versions of representative
+  // pages — public, customer (with the Privacy Notice update message and the
+  // report wizard), coordinator and administrator, with the language control
+  // showing "Filipino" in each. The fifth column is the language.
+  ['guest', '/disclaimer', 'Disclaimer'],
+  ['guest', '/disclaimer', 'Disclaimer — Filipino', null, 'fil'],
+  ['guest', '/', 'Homepage — Filipino', null, 'fil'],
+  ['guest', '/explore?type=lost', 'Explore — Filipino, print control', null, 'fil'],
+  ['maria.santos@example.com', '/dashboard', 'Customer dashboard — Filipino, privacy update', null, 'fil'],
+  ['maria.santos@example.com', '/report/lost', 'Report a lost pet — Filipino', null, 'fil'],
+  ['patricia.lim@example.com', '/staff/review', 'Report review — Filipino', null, 'fil'],
+  ['grace.bautista@example.com', '/admin/users', 'Accounts — Filipino', null, 'fil'],
+  ['grace.bautista@example.com', '/admin/logs', 'Logs — Filipino', null, 'fil'],
+  [MODERATOR, '/admin/logs', 'No access — Filipino', null, 'fil'],
 ]
 
 const browser = await puppeteer.launch({
@@ -123,9 +137,27 @@ const all = new Map()   // rule id -> { impact, help, count, pages:Set, sample }
 console.log('page'.padEnd(34) + 'critical  serious  moderate    minor')
 console.log('-'.repeat(74))
 
-for (const [who, route, label, prepare] of PAGES) {
+async function signOut() {
+  if (signedInAs === null) return
+  await page.evaluate(async (api) => {
+    const me = await (await fetch(api + '/auth/me', { credentials: 'include' })).json()
+    await fetch(api + '/auth/logout', { method: 'POST', credentials: 'include', headers: { 'X-CSRF-Token': me.csrf_token ?? '' } })
+  }, API)
+  signedInAs = null
+}
+
+for (const [who, route, label, prepare, language = 'en'] of PAGES) {
   if (who !== 'guest') await signIn(who)
+  else await signOut()
   await page.goto(BASE + route, { waitUntil: 'networkidle2' })
+  // The language is this browser's own setting (Correction 7): set it, and
+  // load the page again in it when it was showing the other one.
+  const showing = await page.evaluate((l) => {
+    const before = document.documentElement.lang
+    localStorage.setItem('paws:language', l)
+    return before
+  }, language)
+  if (showing !== language) await page.reload({ waitUntil: 'networkidle2' })
   await new Promise((r) => setTimeout(r, 1400))
   if (prepare) await prepare(page)
 

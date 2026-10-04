@@ -6,6 +6,7 @@ import { formatCardDate } from '@/utils/date'
 import { cn } from '@/utils/cn'
 import { ReportTypeBadge } from './ReportTypeBadge'
 import { StatusBadge } from './StatusBadge'
+import { t } from '@/i18n'
 
 /**
  * THE card for a pet report. Use it everywhere a report appears in a list —
@@ -28,7 +29,7 @@ export function PetCard({ report, statusVariant = 'dot', className }) {
 
   // A found report has no name — the finder does not know it — so the species
   // stands in as the headline.
-  const heading = report.petName ?? `${speciesLabel(report.species)} (name unknown)`
+  const heading = report.petName ?? t('common.nameUnknown', { species: speciesLabel(report.species) })
 
   return (
     <article
@@ -46,7 +47,7 @@ export function PetCard({ report, statusVariant = 'dot', className }) {
           src={hasPhoto ? primaryPhoto.url : photoPlaceholder}
           // The placeholder says nothing about this particular pet, so it is
           // announced as such rather than reusing the report's own alt text.
-          alt={hasPhoto ? primaryPhoto.alt : 'No photo was provided for this report'}
+          alt={hasPhoto ? primaryPhoto.alt : t('ui.noPhoto')}
           // Cropped a little above centre: a pet's face is usually in the
           // upper half of the frame, and a dead-centre crop of a portrait
           // phone photo takes the ears off. Same bias on every card thumbnail.

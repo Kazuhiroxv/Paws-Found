@@ -59,6 +59,12 @@ page offers them no button. ³ The
 server accepts an administrator for these (§3a); the Administration workspace
 does not offer them.
 
+**Language (Correction 7).** Every account, and a guest, can switch the
+interface between English and Filipino; it is a browser setting, not a
+permission. Role and level names stay in English in both languages
+(`docs/localization.md` §4), so "Super Administrator" means the same thing
+on every screen.
+
 **Why the logs are the Super Administrator's alone.** Correction 5 made them
 hold IP addresses, browsers, session history and every page each person
 opened. A content moderator needs none of that to decide about a flagged
@@ -221,6 +227,7 @@ behaviour, not the interface's.
 | `PATCH /reports/{id}/publication` `resubmit` | **Their own** report, only after a rejection | `PUBLICATION_ACTIONS` |
 | `GET`/`POST`/`PUT`/`DELETE /drafts` | **Their own** drafts only; anybody else's is 404 — coordinators and administrators included | `draft_own_or_404()` |
 | `POST /activity/page-view` | Report a page they opened — recorded against **their own** session; nothing in the body can name another account, an action or an address (Correction 5) | `activity_page_view()` |
+| `POST /auth/privacy-acknowledgement` | Acknowledge the current Privacy Notice for **their own** account (the session's), any role; a guest is refused (401, or 403 without a CSRF token); the body is not read (Correction 7) | `auth_acknowledge_privacy_notice()` |
 
 **The one to be able to quote:** `profile_update()` takes the account id **from
 the session, never from the request**, so it cannot be pointed at somebody
@@ -324,7 +331,7 @@ deliberate. Each is marked † on the printed roles sheet
 | "This could be mine" / "Not my pet" | The two reporters, and staff or admin acting for one | The two reporters |
 | List every pairing | Staff and Admin | Staff (Match Queue) |
 | Edit a report | Its owner, whatever the role | The owner, from the customer dashboard |
-| Browse, search and file reports | Any role (browsing is public; filing needs any sign-in) | Everyone but the administrator: Home, Explore, About, Help, Privacy and Report a pet send them to `/admin` (`AdminStaysInWorkspace`). A report's own page stays open to them |
+| Browse, search and file reports | Any role (browsing is public; filing needs any sign-in) | Everyone but the administrator: Home, Explore, About, Help and Report a pet send them to `/admin` (`AdminStaysInWorkspace`). A report's own page, the Privacy Notice and the Disclaimer stay open to them (Correction 7) |
 
 The accurate sentence: *the interface assigns match verification to Pet
 Coordinators; the backend also recognises an Administrator as privileged for

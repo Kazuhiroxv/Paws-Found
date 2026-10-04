@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 /**
  * The password rule, as the server states it (api/helpers.php,
  * `password_policy_error()`), said sooner.
@@ -105,25 +106,25 @@ function containsName(password, identity) {
 export function passwordChecks(password, confirmation, { confirm = true, identity = null } = {}) {
   const typed = password !== ''
   const checks = [
-    { id: 'min', label: `At least ${PASSWORD_RULES.min} characters`, met: [...password].length >= PASSWORD_RULES.min },
+    { id: 'min', label: t('password.min', { min: PASSWORD_RULES.min }), met: [...password].length >= PASSWORD_RULES.min },
     {
       id: 'max',
-      label: `No more than ${PASSWORD_RULES.maxBytes} bytes (accented letters and emoji count as more than one)`,
+      label: t('password.max', { max: PASSWORD_RULES.maxBytes }),
       met: typed && utf8Bytes(password) <= PASSWORD_RULES.maxBytes,
     },
-    { id: 'common', label: 'Not a commonly used password', met: typed && !isCommonPassword(password) },
+    { id: 'common', label: t('password.common'), met: typed && !isCommonPassword(password) },
   ]
 
   if (identity) {
     checks.push({
       id: 'name',
-      label: 'Does not contain your first or last name',
+      label: t('password.name'),
       met: typed && !containsName(password, identity),
     })
-    checks.push({ id: 'email', label: 'Not your email address', met: typed && !isEmail(password, identity) })
+    checks.push({ id: 'email', label: t('password.email'), met: typed && !isEmail(password, identity) })
   }
   if (confirm) {
-    checks.push({ id: 'match', label: 'Both entries match', met: typed && password === confirmation })
+    checks.push({ id: 'match', label: t('password.match'), met: typed && password === confirmation })
   }
 
   return checks

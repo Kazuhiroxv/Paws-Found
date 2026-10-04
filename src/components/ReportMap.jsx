@@ -17,6 +17,7 @@ import {
   TILE_LAYER,
   iconForReport,
 } from './mapSetup'
+import { t } from '@/i18n'
 
 /**
  * Map of one or more reports.
@@ -57,11 +58,11 @@ export function ReportMap({ reports, showApproximateArea = false, height = 'h-96
         )}
       >
         <MapPinOff size={28} className="text-fg-subtle" aria-hidden="true" />
-        <p className="font-medium text-fg">Nothing to show on the map</p>
+        <p className="font-medium text-fg">{t('map.nothing')}</p>
         <p className="max-w-prose text-sm text-fg-muted">
           {reports.length === 0
-            ? 'No reports match your search.'
-            : 'None of these reports have a location pinned yet.'}
+            ? t('map.noResults')
+            : t('map.noPins')}
         </p>
       </div>
     )
@@ -191,7 +192,7 @@ export function WheelZoomWhenChosen() {
       className="pointer-events-none absolute inset-0 z-[1000] flex items-center justify-center bg-fg/25"
     >
       <p className="rounded-pill bg-panel px-4 py-2 text-sm font-medium text-fg shadow-raised">
-        Click the map to zoom with the scroll wheel
+        {t('map.wheelHint')}
       </p>
     </div>
   )
@@ -227,7 +228,7 @@ function FitToReports({ positions }) {
  * what tells someone whether this is worth opening.
  */
 function ReportPopup({ report }) {
-  const heading = report.petName ?? `${speciesLabel(report.species)} (name unknown)`
+  const heading = report.petName ?? t('common.nameUnknown', { species: speciesLabel(report.species) })
   const photo = report.photos.find((item) => item.isPrimary) ?? report.photos[0]
 
   return (
@@ -258,11 +259,11 @@ function ReportPopup({ report }) {
         to={`/pet/${report.id}`}
         className="inline-flex items-center gap-1 font-medium text-brand hover:underline"
       >
-        View report
+        {t('map.viewReport')}
         <ArrowRight size={14} aria-hidden="true" />
       </Link>
 
-      <p className="text-fg-muted">Approximate area only.</p>
+      <p className="text-fg-muted">{t('map.approximate')}</p>
     </div>
   )
 }

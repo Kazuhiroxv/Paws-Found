@@ -36,6 +36,8 @@ import { categoryService, petService } from '@/services'
 import { optionsFromLabels } from '@/utils/options'
 import { formatDate, parseDateTime } from '@/utils/date'
 import { cn } from '@/utils/cn'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
 
 /**
  * Public homepage.
@@ -53,7 +55,7 @@ import { cn } from '@/utils/cn'
 export function HomePage() {
   return (
     <>
-      <title>Paws&Found — Lost and Found Pets</title>
+      <title>{`Paws&Found — ${t('home.documentTitle')}`}</title>
 
       {/* RootLayout pads <main>; the homepage runs its own full-bleed bands
           right up to the header and footer, so that padding is cancelled. */}
@@ -145,12 +147,11 @@ function UrgentLine() {
       <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-card bg-surface/95 px-4 py-2 text-sm text-fg backdrop-blur-sm sm:w-fit sm:rounded-pill">
         <span className="inline-flex items-center gap-2 rounded-pill bg-accent-soft px-3 py-1 font-medium text-lost">
           <span className="size-1.5 rounded-full bg-accent-hover" aria-hidden="true" />
-          Lost a pet today?
+          {t('home.urgentBadge')}
         </span>
-        Filing a report takes a few minutes, and it starts being compared against found
-        reports straight away.
+        {t('home.urgentBody')}
         <Link to="/report/lost" className="font-medium text-brand hover:underline">
-          Report a lost pet
+          {t('nav.reportLost')}
         </Link>
       </p>
     </Container>
@@ -170,21 +171,9 @@ const loadHeroStats = async () => {
 
 /** Three things the system actually does, over the photograph. */
 const PROMISES = [
-  {
-    icon: Scale,
-    title: 'Every match explains itself',
-    body: 'You see which details lined up and which did not.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'A coordinator checks first',
-    body: 'Ownership is verified before a handover is arranged.',
-  },
-  {
-    icon: Lock,
-    title: 'Your details stay private',
-    body: 'Contact information is never on a public report.',
-  },
+  { icon: Scale, key: 'explains' },
+  { icon: ShieldCheck, key: 'coordinator' },
+  { icon: Lock, key: 'private' },
 ]
 
 /**
@@ -204,8 +193,8 @@ function Hero() {
         {/* Left: the claim, then the one object that does something about it. */}
         <div className="flex min-w-0 flex-col gap-6">
           <h1 className="text-[2.75rem] leading-[1.03] font-semibold tracking-tight text-balance text-fg sm:text-[3.4rem] xl:text-[3.75rem]">
-            Every lost pet has{' '}
-            <span className="text-brand">someone looking for them.</span>
+            {t('home.headline')}{' '}
+            <span className="text-brand">{t('home.headlineAccent')}</span>
           </h1>
 
           {/* `fg`, not `fg-muted`. Measured over the scrimmed photograph at
@@ -213,8 +202,7 @@ function Hero() {
               which is not a rounding error, it is a fail. A darker neutral
               costs nothing here and does not depend on where the crop lands. */}
           <p className="max-w-lg text-lg leading-relaxed text-fg">
-            Lost and found reports in one place, compared on the details that identify a pet —
-            so the search stops depending on who saw which post.
+            {t('home.lead')}
           </p>
 
           {/* The action card. Everything somebody might have arrived to do is
@@ -228,11 +216,11 @@ function Hero() {
             <div className="grid gap-3 sm:grid-cols-2">
               <Button as={Link} to="/report/lost" variant="accent" size="lg" fullWidth>
                 <TriangleAlert size={18} aria-hidden="true" />
-                Report a lost pet
+                {t('nav.reportLost')}
               </Button>
               <Button as={Link} to="/report/found" variant="primary" size="lg" fullWidth>
                 <PawPrint size={18} aria-hidden="true" />
-                I found a pet
+                {t('home.foundPet')}
               </Button>
             </div>
 
@@ -241,9 +229,9 @@ function Hero() {
                 ones, and a real 32 is worth more than an invented 1,284. */}
             {stats && (
               <dl className="grid grid-cols-3 gap-2 border-t border-border/70 pt-4">
-                <HeroFigure value={stats.total} label="reports filed" />
-                <HeroFigure value={stats.reunited} label="pets back home" />
-                <HeroFigure value={stats.cities} label="cities covered" />
+                <HeroFigure value={stats.total} label={t('home.statFiled')} />
+                <HeroFigure value={stats.reunited} label={t('home.statHome')} />
+                <HeroFigure value={stats.cities} label={t('home.statCities')} />
               </dl>
             )}
           </div>
@@ -260,7 +248,7 @@ function Hero() {
         <div className="relative order-first lg:order-none">
           <img
             src={heroImage}
-            alt="A brown Aspin leaning into the hands of its owner, who is crouched beside it on a Philippine residential street in late-afternoon light"
+            alt={t('home.heroAlt')}
             className="h-64 w-full rounded-[1.5rem] object-cover object-[52%_42%] shadow-raised ring-1 ring-black/5 sm:h-80 lg:h-[30rem]"
             fetchPriority="high"
           />
@@ -299,13 +287,13 @@ function Promises() {
             const Icon = promise.icon
 
             return (
-              <li key={promise.title} className="flex items-start gap-3">
+              <li key={promise.key} className="flex items-start gap-3">
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-brand">
                   <Icon size={17} aria-hidden="true" />
                 </span>
                 <span className="flex min-w-0 flex-col">
-                  <span className="text-sm font-semibold text-fg">{promise.title}</span>
-                  <span className="text-sm text-fg-muted">{promise.body}</span>
+                  <span className="text-sm font-semibold text-fg">{t(`home.promise.${promise.key}`)}</span>
+                  <span className="text-sm text-fg-muted">{t(`home.promise.${promise.key}Body`)}</span>
                 </span>
               </li>
             )
@@ -351,15 +339,15 @@ function SpeciesRow() {
     'inline-flex h-11 shrink-0 items-center gap-2 rounded-pill border px-4 text-sm font-medium whitespace-nowrap transition-colors'
 
   return (
-    <nav aria-label="Browse reports by pet" className="flex flex-col gap-2.5">
-      <h3 className="text-sm font-medium text-fg-muted">Browse by pet</h3>
+    <nav aria-label={t('home.browseByPetLabel')} className="flex flex-col gap-2.5">
+      <h3 className="text-sm font-medium text-fg-muted">{t('home.browseByPet')}</h3>
       {/* Scrolls rather than wraps on a phone: five chips on two lines pushed
           the first report card off the fold, and none of them may disappear. */}
       <ul className="-mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
         <li className="snap-start">
           <Link to="/explore" className={cn(chip, 'border-brand/30 bg-brand-soft text-brand-hover')}>
             <Search size={16} aria-hidden="true" />
-            All reports
+            {t('home.allReports')}
           </Link>
         </li>
         {shown.map((category) => {
@@ -372,7 +360,7 @@ function SpeciesRow() {
                 className={cn(chip, 'border-border-strong bg-panel text-fg hover:bg-surface-muted')}
               >
                 <Icon size={16} className="text-brand" aria-hidden="true" />
-                {category.label}
+                {speciesLabel(category.id, category.label)}
               </Link>
             </li>
           )
@@ -394,12 +382,9 @@ function ClosingCall() {
       <Container className="flex flex-col items-start gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="max-w-xl">
           <h2 className="text-[1.75rem] leading-tight font-semibold text-balance sm:text-[2rem]">
-            A report is the fastest thing you can do right now.
+            {t('home.closingTitle')}
           </h2>
-          <p className="mt-2 text-[1.0625rem] text-fg-inverted">
-            Lost or found, it goes into the same place and starts being compared against
-            everything else that has been reported.
-          </p>
+          <p className="mt-2 text-[1.0625rem] text-fg-inverted">{t('home.closingBody')}</p>
         </div>
 
         {/* The site-wide focus ring is brand teal, which is this band's own
@@ -413,7 +398,7 @@ function ClosingCall() {
             className="focus-visible:outline-white"
           >
             <TriangleAlert size={18} aria-hidden="true" />
-            Report a lost pet
+            {t('nav.reportLost')}
           </Button>
           <Button
             as={Link}
@@ -422,7 +407,7 @@ function ClosingCall() {
             className="border border-white/70 bg-white/10 text-fg-inverted hover:bg-white/20 focus-visible:outline-white"
           >
             <PawPrint size={18} aria-hidden="true" />
-            I found a pet
+            {t('home.foundPet')}
           </Button>
         </div>
       </Container>
@@ -464,13 +449,13 @@ function SearchBand() {
     <form onSubmit={submit} className="flex flex-col gap-3">
       <div className="flex items-center gap-2.5">
         <SearchCheck size={18} className="shrink-0 text-brand" aria-hidden="true" />
-        <h2 className="font-semibold text-fg">Find a pet near you</h2>
+        <h2 className="font-semibold text-fg">{t('home.findNear')}</h2>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="home-city" className="text-sm font-medium text-fg">
-            Location
+            {t('home.location')}
           </label>
           <div className="relative">
             <MapPin
@@ -482,30 +467,30 @@ function SearchBand() {
               id="home-city"
               value={city}
               onChange={(event) => setCity(event.target.value)}
-              placeholder="City or barangay"
+              placeholder={t('home.cityPlaceholder')}
               className="h-11 w-full rounded-control border border-border-strong bg-panel pr-3 pl-10 text-base text-fg placeholder:text-fg-muted"
             />
           </div>
         </div>
 
         <Select
-          label="Species"
+          label={t('filters.species')}
           value={species}
           onChange={(event) => setSpecies(event.target.value)}
           options={[
-            { value: '', label: 'All species' },
-            ...(categories ?? []).map((c) => ({ value: c.id, label: c.label })),
+            { value: '', label: t('home.allSpecies') },
+            ...(categories ?? []).map((c) => ({ value: c.id, label: speciesLabel(c.id, c.label) })),
           ]}
         />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
         <Select
-          label="Report type"
+          label={t('filters.reportType')}
           value={type}
           onChange={(event) => setType(event.target.value)}
           options={[
-            { value: '', label: 'Lost & found' },
+            { value: '', label: t('home.lostAndFound') },
             ...optionsFromLabels(REPORT_TYPE_LABELS),
           ]}
         />
@@ -514,7 +499,7 @@ function SearchBand() {
             large one stood 8px taller than the select on its row. */}
         <Button type="submit" size="md" className="sm:min-w-32">
           <Search size={18} aria-hidden="true" />
-          Search
+          {t('explore.search')}
         </Button>
       </div>
     </form>
@@ -532,14 +517,14 @@ function RecentReports() {
           and the group reads as one collection without another card around it. */}
       <Container className="flex flex-col gap-6">
         <SectionHeading
-          title="Recently reported"
-          description="The newest lost and found reports from the community."
+          title={t('home.recent')}
+          description={t('home.recentBody')}
           action={
             <Link
               to="/explore"
               className="inline-flex items-center gap-1.5 font-medium text-brand hover:text-brand-hover hover:underline"
             >
-              View all reports
+              {t('home.viewAll')}
               <ArrowRight size={16} aria-hidden="true" />
             </Link>
           }
@@ -549,7 +534,7 @@ function RecentReports() {
 
         {isLoading && (
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4" aria-busy="true">
-            <span className="sr-only">Loading recent reports…</span>
+            <span className="sr-only">{t('home.loadingRecent')}</span>
             {Array.from({ length: 4 }, (_, index) => (
               <div key={index} className="rounded-card border border-border bg-panel p-4">
                 <LoadingSkeleton className="mb-4 aspect-4/3 w-full" />
@@ -561,18 +546,18 @@ function RecentReports() {
 
         {error && (
           <p role="alert" className="text-danger">
-            Recent reports could not be loaded: {error.message}
+            {t('home.recentFailed', { message: errorText(error) })}
           </p>
         )}
 
         {!isLoading && !error && reports?.length === 0 && (
           <EmptyState
             illustration={emptyReportsImage}
-            title="No reports yet"
-            description="When someone files a lost or found report, it will appear here."
+            title={t('explore.none')}
+            description={t('explore.noneBody')}
             action={
               <Button as={Link} to="/report/lost" variant="accent">
-                Report a lost pet
+                {t('nav.reportLost')}
               </Button>
             }
           />
@@ -596,26 +581,10 @@ function RecentReports() {
 }
 
 const STEPS = [
-  {
-    icon: ClipboardList,
-    title: 'File a report',
-    body: 'Share the species, breed, colour, size and markings, plus the date and area.',
-  },
-  {
-    icon: SearchCheck,
-    title: 'Get possible matches',
-    body: 'Lost and found reports are compared on characteristics and location to find leads.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Verify with a coordinator',
-    body: 'A Pet Coordinator reviews both reports and helps confirm ownership securely.',
-  },
-  {
-    icon: Handshake,
-    title: 'Bring them home',
-    body: 'Once verified, both reports are closed and another reunion story begins.',
-  },
+  { icon: ClipboardList, key: 'file' },
+  { icon: SearchCheck, key: 'match' },
+  { icon: ShieldCheck, key: 'verify' },
+  { icon: Handshake, key: 'home' },
 ]
 
 function HowItWorks() {
@@ -634,8 +603,8 @@ function HowItWorks() {
           between the two chapters. */}
       <Container className="flex flex-col gap-8 pb-12 sm:pb-16">
         <SectionHeading
-          title="How Paws&Found works"
-          description="Four steps from a missing pet to a confirmed reunion."
+          title={t('home.howTitle')}
+          description={t('home.howBody')}
           centered
         />
 
@@ -665,7 +634,7 @@ function HowItWorks() {
             const Icon = step.icon
 
             return (
-              <li key={step.title} className="relative flex flex-col items-center text-center">
+              <li key={step.key} className="relative flex flex-col items-center text-center">
 
                 <span className="relative z-10 flex size-20 items-center justify-center rounded-full border border-border bg-panel text-brand shadow-card">
                   <Icon size={32} aria-hidden="true" />
@@ -675,10 +644,10 @@ function HowItWorks() {
                   <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand text-xs text-fg-inverted">
                     {STEPS.indexOf(step) + 1}
                   </span>
-                  {step.title}
+                  {t(`home.steps.${step.key}`)}
                 </h3>
 
-                <p className="mt-1.5 max-w-56 text-fg-muted">{step.body}</p>
+                <p className="mt-1.5 max-w-56 text-fg-muted">{t(`home.steps.${step.key}Body`)}</p>
               </li>
             )
           })}
@@ -730,31 +699,29 @@ function Reunions() {
               title={
                 <span className="inline-flex items-center gap-2.5">
                   <Heart size={26} className="shrink-0 text-success" aria-hidden="true" />
-                  Reunited
+                  {t('home.reunited')}
                 </span>
               }
-              description="Cases that ended the way everybody wanted."
+              description={t('home.reunitedBody')}
               action={
                 <Link
                   to="/explore?status=returned"
                   className="inline-flex items-center gap-1.5 font-medium text-brand hover:text-brand-hover hover:underline"
                 >
-                  See all reunions
+                  {t('home.seeReunions')}
                   <ArrowRight size={16} aria-hidden="true" />
                 </Link>
               }
             />
 
             <p className="mt-4 max-w-prose text-fg-muted">
-              Every one of these began as two separate reports — a lost pet and a found one —
-              that the system paired on their characteristics and a Pet Coordinator verified
-              before anybody met.
+              {t('home.reunitedNote')}
             </p>
           </div>
 
           <img
             src={reunionImage}
-            alt="A dog back home, lying on the floor while somebody kneels beside it."
+            alt={t('home.reunionAlt')}
             width="1400"
             height="1050"
             loading="lazy"
@@ -790,8 +757,8 @@ function ReunionStory({ report }) {
   // home", which looks like the same story told twice. The city separates
   // them, and it is the next thing anybody wants to know anyway.
   const heading = report.petName
-    ? `${report.petName} is home`
-    : `A ${speciesLabel(report.species).toLowerCase()} in ${report.location.city} is home`
+    ? t('home.storyNamed', { name: report.petName })
+    : t('home.storyUnnamed', { species: speciesLabel(report.species).toLowerCase(), city: report.location.city })
   const days = daysToReunion(report)
 
   return (
@@ -813,9 +780,11 @@ function ReunionStory({ report }) {
         </p>
 
         <p className="text-sm text-fg-muted">
-          Reported {REPORT_TYPE_LABELS[report.reportType].toLowerCase()} in{' '}
-          {report.location.city} on {formatDate(report.incidentDate)}, and reunited after a
-          coordinator confirmed the match.
+          {t('home.storyBody', {
+            type: REPORT_TYPE_LABELS[report.reportType].toLowerCase(),
+            city: report.location.city,
+            date: formatDate(report.incidentDate),
+          })}
         </p>
 
         {/* `mt-auto` is what keeps this row on the same line across all three
@@ -823,11 +792,11 @@ function ReunionStory({ report }) {
         <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 pt-3">
           {days !== null && (
             <span className="rounded-pill bg-success-soft px-2.5 py-0.5 text-sm font-medium text-success-ink">
-              Reunited in {days} {days === 1 ? 'day' : 'days'}
+              {t('home.reunitedIn', { count: days })}
             </span>
           )}
           <span className="inline-flex items-center gap-1 text-sm font-medium text-brand group-hover:underline">
-            Read {report.petName ? `${report.petName}'s` : 'the'} story
+            {report.petName ? t('home.readStoryNamed', { name: report.petName }) : t('home.readStory')}
             <ArrowRight size={14} aria-hidden="true" />
           </span>
         </div>
@@ -853,21 +822,9 @@ function daysToReunion(report) {
 }
 
 const SAFETY = [
-  {
-    icon: Lock,
-    title: 'Keep one detail private',
-    body: 'Hold back one detail you did not publish. It is the simplest way to check a claimant is really the owner.',
-  },
-  {
-    icon: MapPin,
-    title: 'Meet somewhere public',
-    body: 'Arrange handovers in daylight, in a public place, and bring someone with you.',
-  },
-  {
-    icon: Eye,
-    title: 'Trust your instincts',
-    body: 'If something feels off, stop and contact a Pet Coordinator rather than pressing ahead.',
-  },
+  { icon: Lock, key: 'private' },
+  { icon: MapPin, key: 'public' },
+  { icon: Eye, key: 'instincts' },
 ]
 
 function Safety() {
@@ -879,8 +836,8 @@ function Safety() {
       <RadarOrnament tone="teal" size={560} className="-top-28 -right-44" />
       <Container className="flex flex-col gap-8">
         <SectionHeading
-          title="Helping is easier when everyone stays safe"
-          description="A few simple precautions keep this working for the people who need it."
+          title={t('home.safetyTitle')}
+          description={t('home.safetyBody')}
         />
 
         <ul className="grid gap-5 md:grid-cols-3">
@@ -889,14 +846,14 @@ function Safety() {
 
             return (
               <li
-                key={point.title}
+                key={point.key}
                 className="rounded-card border border-border bg-panel p-7 shadow-card"
               >
                 <span className="flex size-13 items-center justify-center rounded-control bg-brand-soft text-brand">
                   <Icon size={24} aria-hidden="true" />
                 </span>
-                <h3 className="mt-5 text-xl font-semibold text-fg">{point.title}</h3>
-                <p className="mt-2 text-fg-muted">{point.body}</p>
+                <h3 className="mt-5 text-xl font-semibold text-fg">{t(`home.safety.${point.key}`)}</h3>
+                <p className="mt-2 text-fg-muted">{t(`home.safety.${point.key}Body`)}</p>
               </li>
             )
           })}
@@ -906,7 +863,7 @@ function Safety() {
           to="/help"
           className="inline-flex items-center gap-1.5 self-start font-medium text-brand hover:text-brand-hover hover:underline"
         >
-          Read the full safety guidance
+          {t('home.safetyLink')}
           <ArrowRight size={16} aria-hidden="true" />
         </Link>
       </Container>

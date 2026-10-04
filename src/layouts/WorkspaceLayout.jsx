@@ -5,6 +5,7 @@ import { Container } from '@/components/ui'
 import { useAsync } from '@/hooks/useAsync'
 import { can } from '@/utils/permissions'
 import { WorkspaceShell } from './WorkspaceShell'
+import { t } from '@/i18n'
 
 /**
  * Sidebar + content shell shared by the three workspaces: the user dashboard,
@@ -72,8 +73,7 @@ export function WorkspaceLayout({ label, items, loadCounts, standalone = false, 
               the server cannot tell whether another one was open. */}
           {state?.sessionNotice && (
             <p role="status" className="mb-6 rounded-control border border-brand/20 bg-brand-soft px-4 py-3 text-sm text-fg">
-              Signed in on this device. For security, any previous session for this account is no
-              longer valid.
+              {t('shell.workspace.signedInHere')}
             </p>
           )}
           {/* The pages read the signed-in account from here

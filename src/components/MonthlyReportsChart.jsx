@@ -1,3 +1,5 @@
+import { t } from '@/i18n'
+import { formatMonthShort } from '@/utils/date'
 /**
  * Reports filed per month, lost beside found.
  *
@@ -29,11 +31,11 @@ export function MonthlyReportsChart({ months }) {
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <span className="flex items-center gap-1.5 text-fg-muted">
           <span aria-hidden="true" className="size-2.5 rounded-xs bg-lost" />
-          Lost <span className="text-fg-muted">(left bar)</span>
+          {t('chart.lost')} <span className="text-fg-muted">{t('chart.leftBar')}</span>
         </span>
         <span className="flex items-center gap-1.5 text-fg-muted">
           <span aria-hidden="true" className="size-2.5 rounded-xs bg-found" />
-          Found <span className="text-fg-muted">(right bar)</span>
+          {t('chart.found')} <span className="text-fg-muted">{t('chart.rightBar')}</span>
         </span>
       </div>
 
@@ -53,7 +55,7 @@ export function MonthlyReportsChart({ months }) {
       <div aria-hidden="true" className="-mt-2 flex gap-1 sm:gap-4">
         {months.map((month) => (
           <div key={month.month} className="flex flex-1 flex-col items-center">
-            <span className="text-xs text-fg-muted">{month.label}</span>
+            <span className="text-xs text-fg-muted">{formatMonthShort(month.month) || month.label}</span>
             <span className="text-sm font-semibold text-fg tabular-nums">{month.total}</span>
           </div>
         ))}
@@ -64,13 +66,13 @@ export function MonthlyReportsChart({ months }) {
           wider than the screen. */}
       <div className="sr-only">
       <table>
-        <caption>Reports filed per month, over the last six months</caption>
+        <caption>{t('chart.caption')}</caption>
         <thead>
           <tr>
-            <th scope="col">Month</th>
-            <th scope="col">Lost</th>
-            <th scope="col">Found</th>
-            <th scope="col">Total</th>
+            <th scope="col">{t('chart.month')}</th>
+            <th scope="col">{t('chart.lost')}</th>
+            <th scope="col">{t('chart.found')}</th>
+            <th scope="col">{t('chart.total')}</th>
           </tr>
         </thead>
         <tbody>
@@ -87,11 +89,9 @@ export function MonthlyReportsChart({ months }) {
       </div>
 
       <p className="text-sm text-fg-muted">
-        Month totals under each label.{' '}
-        <span className="font-medium text-fg">
-          {filed} {filed === 1 ? 'report' : 'reports'}
-        </span>{' '}
-        filed in the last six months.
+        {t('chart.totalsNote')}{' '}
+        <span className="font-medium text-fg">{t('chart.reports', { count: filed })}</span>{' '}
+        {t('chart.filed')}
       </p>
     </div>
   )

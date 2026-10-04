@@ -25,6 +25,8 @@ import { categoryService, moderationService, petService, userService } from '@/s
 import { can } from '@/utils/permissions'
 import { formatCardDate } from '@/utils/date'
 import { AccountStatusBadge } from './AdminBadges'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
 
 async function loadAdminOverview() {
   const [users, reports, openCases, categories, stats] = await Promise.all([
@@ -61,9 +63,9 @@ export function AdminOverviewPage() {
   const header = (
     <PageHeader
       icon={ShieldHalf}
-      eyebrow="Administrator"
-      title="Administration"
-      description="Accounts, records, categories and moderation."
+      eyebrow={t('shell.access.eyebrow')}
+      title={t('shell.workspace.admin')}
+      description={t('admin.overview.description')}
     />
   )
 
@@ -81,7 +83,7 @@ export function AdminOverviewPage() {
       <div className="flex flex-col gap-6">
         {header}
         <p role="alert" className="text-sm text-danger">
-          The overview could not be loaded: {error.message}
+          {t('admin.overview.failed', { message: errorText(error) })}
         </p>
       </div>
     )
@@ -100,7 +102,7 @@ export function AdminOverviewPage() {
   // Already sorted most-reported-first by the API.
   const speciesRows = stats.bySpecies.map((row) => ({
     key: row.code,
-    label: row.label,
+    label: speciesLabel(row.code, row.label),
     value: row.total,
     barClassName: 'bg-brand',
   }))
@@ -120,35 +122,35 @@ export function AdminOverviewPage() {
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5">
         <StatTile
           icon={Flag}
-          label="Flags awaiting review"
+          label={t('admin.overview.flags')}
           value={openCases.length}
           to="/admin/moderation"
           emphasis={openCases.length > 0}
         />
-        {mayManageAccounts && <StatTile icon={Users} label="Accounts" value={users.length} to="/admin/users" />}
-        <StatTile icon={ListChecks} label="Active reports" value={stats.totals.active} to="/admin/reports" />
+        {mayManageAccounts && <StatTile icon={Users} label={t('admin.overview.accounts')} value={users.length} to="/admin/users" />}
+        <StatTile icon={ListChecks} label={t('dashboard.activeReports')} value={stats.totals.active} to="/admin/reports" />
         {/* Correction 4: reports filed but not yet published. Coordinators
             review them; the administrator sees how many are waiting. */}
         <StatTile
           icon={ListChecks}
-          label="Waiting for review"
+          label={t('admin.overview.waitingReview')}
           value={stats.publication?.pending_review ?? 0}
           to="/admin/reports"
         />
         <StatTile
           icon={Heart}
-          label="Pets back home"
+          label={t('admin.overview.petsHome')}
           value={reports.filter((report) => report.status === REPORT_STATUSES.RETURNED).length}
           to="/admin/reports"
         />
         {mayManageCategories && (
-          <StatTile icon={FolderTree} label="Pet categories" value={categories.length} to="/admin/categories" />
+          <StatTile icon={FolderTree} label={t('nav.categories')} value={categories.length} to="/admin/categories" />
         )}
       </div>
 
       <section aria-labelledby="attention-heading" className="flex flex-col gap-4">
         <h2 id="attention-heading" className="text-xl font-semibold text-fg">
-          Needs your attention
+          {t('staff.overview.attention')}
         </h2>
 
         <div className={mayManageAccounts ? 'grid gap-6 lg:grid-cols-2' : 'grid gap-6'}>
@@ -164,13 +166,13 @@ export function AdminOverviewPage() {
         className="flex flex-col gap-4 rounded-card bg-sunken/60 p-4 sm:p-5"
       >
         <h2 id="activity-heading" className="text-xl font-semibold text-fg">
-          Activity
+          {t('admin.overview.activity')}
         </h2>
 
         <Card>
           <CardHeader
-            title="Reports filed"
-            subtitle="The last six months, counted by when each report was filed."
+            title={t('admin.overview.filed')}
+            subtitle={t('admin.overview.filedBody')}
           />
           <CardBody>
             <MonthlyReportsChart months={stats.monthly} />
@@ -179,7 +181,7 @@ export function AdminOverviewPage() {
 
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
-            <CardHeader title="Reports by status" subtitle={`${stats.totals.total} reports in total.`} />
+            <CardHeader title={t('staff.overview.byStatus')} subtitle={t('admin.overview.total', { count: stats.totals.total })} />
             <CardBody>
               <BreakdownBars rows={statusRows} total={stats.totals.total} />
             </CardBody>
@@ -187,8 +189,8 @@ export function AdminOverviewPage() {
 
           <Card>
             <CardHeader
-              title="Most reported animals"
-              subtitle={`${stats.totals.lost} lost, ${stats.totals.found} found.`}
+              title={t('admin.overview.animals')}
+              subtitle={t('admin.overview.lostFound', { lost: stats.totals.lost, found: stats.totals.found })}
             />
             <CardBody>
               <BreakdownBars rows={speciesRows} total={stats.totals.total} />
@@ -211,7 +213,7 @@ function FlagsCard({ openCases }) {
       <CardHeader
         title={
           <span className="flex items-center gap-2">
-            Flags awaiting review
+            {t('admin.overview.flags')}
             {count > 0 && (
               <span className="rounded-pill bg-accent-soft px-2.5 py-0.5 text-sm font-semibold text-lost tabular-nums">
                 {count}
@@ -221,19 +223,19 @@ function FlagsCard({ openCases }) {
         }
         subtitle={
           count > 0
-            ? `${count === 1 ? 'A report was' : 'Reports were'} flagged by the community. Each needs a decision.`
+            ? t('admin.overview.flagged', { count })
             : undefined
         }
         action={
           <Button as={Link} to="/admin/moderation" size="sm" variant={count > 0 ? 'primary' : 'secondary'}>
-            Open moderation
+            {t('admin.overview.openModeration')}
             <ArrowRight size={14} aria-hidden="true" />
           </Button>
         }
       />
       <CardBody className="py-2">
         {count === 0 ? (
-          <p className="py-3 text-sm text-fg-muted">No flags are waiting. Nothing needs a decision.</p>
+          <p className="py-3 text-sm text-fg-muted">{t('admin.overview.noFlags')}</p>
         ) : (
           <ul className="flex flex-col divide-y divide-border">
             {openCases.slice(0, 4).map(({ moderationCase, report, reportedBy }) => (
@@ -242,13 +244,13 @@ function FlagsCard({ openCases }) {
                   <span className="font-semibold text-fg">
                     {MODERATION_REASON_LABELS[moderationCase.reason]}
                   </span>
-                  <span className="text-fg-muted">on</span>
+                  <span className="text-fg-muted">{t('admin.overview.on')}</span>
                   <Link to={`/pet/${report.id}`} className="font-medium text-brand hover:underline">
-                    {report.petName ?? 'Found pet report'}
+                    {report.petName ?? t('editReport.foundReport')}
                   </Link>
                 </p>
                 <p className="text-fg-muted">
-                  Flagged by {reportedBy.fullName} · {formatCardDate(moderationCase.createdAt)}
+                  {t('admin.overview.flaggedBy', { name: reportedBy.fullName })} · {formatCardDate(moderationCase.createdAt)}
                 </p>
               </li>
             ))}
@@ -263,16 +265,12 @@ function SuspendedCard({ suspended }) {
   return (
     <Card>
       <CardHeader
-        title="Suspended accounts"
-        subtitle={
-          suspended.length > 0
-            ? 'These people cannot sign in until an administrator reinstates them.'
-            : undefined
-        }
+        title={t('admin.overview.suspended')}
+        subtitle={suspended.length > 0 ? t('admin.overview.suspendedBody') : undefined}
       />
       <CardBody className="py-2">
         {suspended.length === 0 ? (
-          <p className="py-3 text-sm text-fg-muted">No accounts are suspended.</p>
+          <p className="py-3 text-sm text-fg-muted">{t('admin.overview.noSuspended')}</p>
         ) : (
           <ul className="flex flex-col divide-y divide-border">
             {suspended.map((user) => (
@@ -290,9 +288,9 @@ function SuspendedCard({ suspended }) {
                   to="/admin/users?status=suspended"
                   variant="secondary"
                   size="sm"
-                  aria-label={`Manage ${user.fullName}`}
+                  aria-label={t('admin.overview.manageName', { name: user.fullName })}
                 >
-                  Manage
+                  {t('admin.overview.manage')}
                 </Button>
               </li>
             ))}
@@ -308,16 +306,16 @@ function RecentlyClosed({ reports }) {
   return (
     <Card>
       <CardHeader
-        title="Recently closed cases"
+        title={t('admin.overview.closed')}
         action={
           <Button as={Link} to="/admin/reports?status=closed" variant="ghost" size="sm">
-            All closed reports
+            {t('admin.overview.allClosed')}
           </Button>
         }
       />
       {reports.length === 0 ? (
         <CardBody>
-          <p className="text-sm text-fg-muted">No cases have been closed yet.</p>
+          <p className="text-sm text-fg-muted">{t('admin.overview.noClosed')}</p>
         </CardBody>
       ) : (
         <ul className="flex flex-col divide-y divide-border">
@@ -341,7 +339,7 @@ function RecentlyClosed({ reports }) {
                   to={`/pet/${report.id}`}
                   className="text-sm font-medium text-fg after:absolute after:inset-0 hover:underline"
                 >
-                  {report.petName ?? `Found ${speciesLabel(report.species).toLowerCase()}`}
+                  {report.petName ?? t('matching.sideFound', { species: speciesLabel(report.species).toLowerCase() })}
                 </Link>
                 <StatusBadge status={report.status} variant="pill" />
                 <span className="ml-auto text-sm whitespace-nowrap text-fg-muted">

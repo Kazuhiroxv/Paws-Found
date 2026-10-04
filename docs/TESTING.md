@@ -812,12 +812,83 @@ level of every account and the CHECK constraint count as well. `a11y` adds the
 Moderator's Overview, the permission-denied page, the Manager's Users page and
 the role-and-level dialog: 40 pages.
 
+### Correction 7 suites
+
+**`npm run test:i18n` — 22 checks** (`scripts/i18n_check.mjs`, needs nothing
+running; after `npm run build` for the bundle check). `I18N-18` every key
+path in English exists in Filipino and the other way round, compared as
+normalised paths; `I18N-P` no empty value, the same `{placeholders}`, `<tags>`
+and plural forms in both; `I18N-K` every key the source asks for exists
+(`t('…')`, `tList('…')`, `<Rich k="…">`, and the families built at run time);
+`I18N-H` no hard-coded interface text left in the components
+(`scripts/i18n-scan.mjs`; `i18n-ignore` and `i18n: stored` markers are the
+only exceptions, each a stored value or development scaffolding); `I18N-16`
+the stored values — report types, statuses, publication states, species,
+sizes, roles, levels — equal the ENUMs in `schema.sql`, and switching
+language changes their words, never the values; `I18N-T` one Filipino word
+per status; `I18N-B` the bundle carries both languages; `I18N-D` no duplicate
+keys.
+
+**`npm run test:disclaimer` — 21 checks** (`scripts/disclaimer_check.mjs`,
+needs nothing running). `DISC-01` a public route, not bounced for an
+administrator, linked from the footer; `DISC-02`…`07` academic and
+non-commercial, no payments, no affiliation (and none claimed), information
+may be inaccurate, nothing guaranteed, safety guidance; `DISC-08` no waiver,
+immunity or hold-harmless wording in either language; `DISC-09` English and
+Filipino have the same sections, paragraphs and safety points.
+
+**`npm run test:privacy-ack` — 29 checks** (`scripts/privacy_ack.py`, local
+API, reseeds at the start and the end). `PRIV-01`/`02` `/auth/me` says
+whether the account has acknowledged the current notice version; `PRIV-04`
+acknowledging writes the version into `privacy_consents` (the one consent
+table) and `/auth/me` agrees; `PRIV-05` it is not a consent to optional
+processing — no body is read, nothing to decline, the security and activity
+records are kept either way; `PRIV-06` an unacknowledged account works as
+usual; `PRIV-07` nobody acknowledges for another account, a guest cannot, no
+CSRF token is refused; `PRIV-08` one activity row, with the version, the
+address and the session.
+
+**`npm run test:i18n-ui` — 57 checks** (`scripts/i18n_ui.mjs`, Chrome, dev
+server, reseeds). `I18N-01`…`17` in the browser: English by default; Filipino
+chosen from the header; remembered across pages and a reload; `<html lang>`
+follows; switching keeps the page, the session and a half-filled report form,
+re-renders its field messages, and sends nothing; the public site, a
+customer's dashboard and the wizard, the coordinator's review queue (a
+coordinator approving in Filipino stores `published`), Administration, a
+session-end message and the permission-denied page all in Filipino; what a
+reporter typed is shown unchanged. `PRIV-01`…`06` and `PRIV-A` the update
+message: shown to an older agreement, blocks nothing, offers Review and
+Acknowledge (never Agree/Decline), Review opens the notice (also for an
+administrator), Acknowledge records it and it is gone. `DISC-01`, `DISC-F`,
+`DISC-H` the page signed out in both languages, the footer notice, the
+handover notice. `PRINT-01`…`12` on Explore, Administration's Reports and the
+coordinator's queue: the browser's print opens; the filters are named and
+every matching report prints (all pages, not only the one on screen); only
+what that account may list (a guest gets no pending report); no session, IP,
+email or phone; Lost/Found in words; script-like text printed as text; in
+print only the list shows, black on white; A4 portrait; a row never splits
+and the heading repeats; Chrome's Save as PDF produces a PDF; headings in the
+language showing.
+
+`a11y` adds the Disclaimer in both languages and eight more pages in Filipino
+(public, customer with the update message, the wizard, review queue,
+Administration, Logs, permission denied): **50 pages, 0 violations**, with
+`<html lang="fil">` accepted. `test:ui` ADMIN-SITE-1 now expects `/privacy`
+and `/disclaimer` to stay open to an administrator.
+
+**Responsive check (not a suite; run once for Correction 7):** 22 pages —
+public, customer, coordinator and administrator — at 390, 820 and 1280 px in
+English and in Filipino, 132 combinations: no horizontal page overflow, and
+`<html lang>` correct on each. The header with the language control was
+first measured overflowing at 1280 px in development (the development role
+selector beside it) and fixed with a compact EN/FIL control.
+
 ## 3. Last verified results
 
-4 October 2026 (Correction 6A), on the development laptop unless stated, on
-branch `post-defense/revisions`. **1,374 checks in twenty-three suites, all
+4 October 2026 (Correction 7), on the development laptop unless stated, on
+branch `post-defense/revisions`. **1,503 checks in twenty-seven suites, all
 passing, on a quiet tree with a reseed before each browser suite;
-a11y 40 pages** (1,353 at Correction 6; 1,246 at Correction 5A; 1,238 at Correction 5). Plain `npm run lint` again: the `PawsAndFound_*`
+a11y 50 pages** (1,374 at Correction 6A; 1,353 at Correction 6; 1,246 at Correction 5A; 1,238 at Correction 5). Plain `npm run lint` again: the `PawsAndFound_*`
 folders were moved out of the repository.
 
 **Two lessons from this gate.** (1) Do not edit any file in the repository
@@ -859,13 +930,20 @@ test:signout                             24/24
 test:ui                                  66/66
 test:city                                11/11
 test:matching-log                         6/6
-a11y                                     40 pages, 0 violations (+ Moderator overview, permission denied, Manager users, role-and-level dialog)
-docker build --pull --no-cache           clean, one MPM, Syntax OK  (4 October, Correction 6A)
+a11y                                     50 pages, 0 violations (+ Disclaimer in both languages, eight more pages in Filipino)
+test:i18n                                22/22   (Correction 7: key parity, placeholders, plurals, no hard-coded text, stored values = schema ENUMs)
+test:disclaimer                          21/21   (Correction 7: required points in both languages, no immunity wording)
+test:privacy-ack                         29/29   (Correction 7: acknowledgement in privacy_consents, non-blocking, own account only, activity row)
+test:i18n-ui                             57/57   (Correction 7: language switch in Chrome, privacy message, disclaimer, print/PDF on three pages)
+responsive sweep, Correction 7           132/132 (22 pages x 390/820/1280 px x English/Filipino, no horizontal overflow)
+docker build --pull --no-cache           clean, one MPM, Syntax OK  (4 October, Correction 7)
+image on MySQL 9.4 strict, Correction 7  migrations 001-012, health ok; /disclaimer deep link; bundle carries Filipino and the payment sentence; seeded customer not acknowledged -> acknowledge 200 -> acknowledged; guest refused; list created_at signed in only; Super Admin approve 403, coordinator approve 200; coordinator logs 403; Super Admin logs show the acknowledgement with its version; super_admin capabilities: 15/15
+image in Chrome, Correction 7            English by default, no development selector, Filipino from the header, Disclaimer in Filipino, Explore print (Lost only, NAWAWALA, no email/phone), privacy message shown and acknowledged, review queue in Filipino, Super Admin Logs and Privacy Notice, Administration print, Moderator refused Logs (page and API 403): 22/22 (Administration print first read before the 50 ms print delay; re-checked directly: 33 rows, print called)
 image on MySQL 9.4 strict, Correction 6A customer files (pending); Super Admin approve 403, reject 403, may open it 200; Pet Coordinator approves 200; Super Admin logs 200: 6/6
 image on MySQL 9.4 strict, Correction 6  migrations to 012, seed admin = super_admin; Moderator moderates, logs/suspend 403; Manager suspends/reinstates, logs/levels 403; Super Admin logs and level change 200, own level 422: 13/13
 image on MySQL 9.4 strict, Correction 5  health ok; sign-in writes a session record (IP, UA, 32-hex ref); page view 201; filed = pending, guest refused, approved = public; admin reads all three logs, staff 403; sign-out recorded: 14/14
 verify:deploy vs production              25/25 + 3 skipped (read-only default; production untouched since)
-verify:deploy vs local production image 24/25 + 3 skipped  (7.1, correctly, on plain HTTP; image on MySQL 9.4, fresh schema + seed; 4 October, Correction 6A)
+verify:deploy vs local production image 24/25 + 3 skipped  (7.1, correctly, on plain HTTP; image on MySQL 9.4, fresh schema + seed; 4 October, Correction 7)
 verify:deploy --upload, local only       24/27   (7.1 as above; 5.1-5.2 409 — the verifier picks report 1, which the seed has as Possible Match; register D2)
 2947a43 schema + seed -> 008 -> 009 -> 009, MySQL 9.4 strict and MariaDB   clean, idempotent
 migrated vs fresh schema.sql + seed.sql   identical structure (24 tables, 35 FKs, 3 CHECKs) and reference data, on both engines

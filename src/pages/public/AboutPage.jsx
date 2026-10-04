@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import {
   ArrowDown,
   ArrowRight,
@@ -14,6 +15,7 @@ import { Container } from '@/components/ui'
 import { PatternVeil } from '@/components/PatternVeil'
 import { RouteOrnament } from '@/components/Ornament'
 import { SectionHeading } from '@/components/SectionHeading'
+import { t } from '@/i18n'
 
 export function AboutPage() {
   return (
@@ -78,18 +80,16 @@ function AboutHero() {
       <Container className="relative flex flex-col justify-center py-14 sm:py-16 lg:min-h-[24rem] lg:py-20">
         <div className="flex flex-col gap-5 lg:max-w-[52%]">
           <p className="text-sm font-semibold tracking-[0.14em] text-brand uppercase">
-            About Paws&amp;Found
+            {t('about.eyebrow')}
           </p>
           <h1 className="text-[2.25rem] leading-[1.1] font-semibold tracking-tight text-balance text-fg sm:text-[2.75rem] lg:text-[3.25rem]">
-            Helping lost pets find their way home.
+            {t('about.title')}
           </h1>
           {/* `fg`, not `fg-muted`: the right end of this paragraph reaches the
               foliage at the left of IMG-029, which the scrim lightens but does
               not erase. Muted ink measured 3.02:1 there at 1366px. */}
           <p className="max-w-prose text-lg leading-relaxed text-fg">
-            Paws&amp;Found brings lost and found reports into one structured community system,
-            so they can be searched, compared and verified instead of scrolled past. It is
-            built by five students for the neighbourhoods they live in.
+            {t('about.lead')}
           </p>
         </div>
       </Container>
@@ -109,24 +109,20 @@ function WhyItExists() {
               page's only `h1` now, and two of them is the heading-order fault
               axe was catching before the redesign. */}
           <SectionHeading
-            title="Why Paws&Found exists"
-            description="A missing pet is an emergency with no obvious place to go."
+            title={t('about.whyTitle')}
+            description={t('about.whyBody')}
           />
           <p className="text-lg leading-relaxed text-fg-muted">
-            When a pet goes missing, the search usually happens across scattered social media
-            posts. Information is written differently every time, searching by characteristics
-            is difficult, location is rarely structured, and a lost report and a matching found
-            report can sit on two different platforms without anyone noticing.
+            {t('about.whyP1')}
           </p>
           <p className="text-lg leading-relaxed text-fg-muted">
-            Paws&amp;Found puts those reports in one place, in one shape, so they can actually
-            be compared.
+            {t('about.whyP2')}
           </p>
         </div>
 
         <img
           src={aboutIntro}
-          alt="Someone crouching to greet a tan Aspin on a narrow residential street, with houses and a tricycle behind them."
+          alt={t('about.introAlt')}
           // Capped at the width the source can actually fill. Left uncapped it
           // stretched to the full container between `sm` and `lg` and was being
           // upscaled past its 800px source.
@@ -137,42 +133,14 @@ function WhyItExists() {
   )
 }
 
-const PROBLEMS = [
-  {
-    title: 'Scattered posts',
-    body: 'A lost pet is posted to several community pages, then buried by the next day of posts.',
-  },
-  {
-    title: 'Incomplete information',
-    body: 'Every post describes a pet differently, and the details that identify one are often missing.',
-  },
-  {
-    title: 'Hard-to-find matches',
-    body: 'A lost report and the found report that answers it can sit on two platforms, unnoticed.',
-  },
-]
+// Keys, not words: each is read from `about.*` when the page renders.
+const PROBLEMS = ['scattered', 'incomplete', 'hidden']
 
 const CHANGES = [
-  {
-    icon: Scale,
-    title: 'Centralised reports',
-    body: 'One structured form for lost and found reports: species, breed, colour, size, distinctive features, date and area.',
-  },
-  {
-    icon: MapPin,
-    title: 'Location search',
-    body: 'Reports carry an approximate area, so they can be filtered and browsed on a map instead of read one by one.',
-  },
-  {
-    icon: Sparkles,
-    title: 'Possible matches',
-    body: 'When a lost and a found report share enough details, the system raises a possible match and shows exactly what lined up.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Coordinator verification',
-    body: 'A possible match is a suggestion, never a conclusion. A Pet Coordinator helps verify ownership before a handover is arranged.',
-  },
+  { icon: Scale, key: 'central' },
+  { icon: MapPin, key: 'location' },
+  { icon: Sparkles, key: 'matches' },
+  { icon: ShieldCheck, key: 'verify' },
 ]
 
 function ProblemAndChange() {
@@ -181,8 +149,8 @@ function ProblemAndChange() {
       <PatternVeil />
       <Container className="flex flex-col gap-10">
         <SectionHeading
-          title="What changes"
-          description="The same community effort, given a structure it can be searched with."
+          title={t('about.changesTitle')}
+          description={t('about.changesBody')}
           centered
         />
 
@@ -191,22 +159,22 @@ function ProblemAndChange() {
               problems and four answers, and top-aligning both left a column of
               nothing under the last problem. */}
           <div className="flex flex-1 flex-col gap-4 lg:justify-center">
-            <h3 className="text-lg font-semibold text-fg-muted">Today</h3>
+            <h3 className="text-lg font-semibold text-fg-muted">{t('about.today')}</h3>
             <ul className="flex flex-col gap-3">
               {PROBLEMS.map((item) => (
                 <li
-                  key={item.title}
+                  key={item}
                   // Dashed and unlifted, against the solid, shadowed cards
                   // opposite. The two stacks were the same weight before, so
                   // nothing said which one was the problem and which was the
                   // answer.
                   className="rounded-card border border-dashed border-border-strong bg-surface-muted p-5"
                 >
-                  <p className="font-medium text-fg">{item.title}</p>
+                  <p className="font-medium text-fg">{t(`about.problems.${item}`)}</p>
                   {/* `fg` rather than `fg-muted`: on `surface-muted` the muted
                       ink measures 4.30:1, under AA. Same fix the table header
                       labels already carry (design-system.md). */}
-                  <p className="mt-1 text-fg">{item.body}</p>
+                  <p className="mt-1 text-fg">{t(`about.problems.${item}Body`)}</p>
                 </li>
               ))}
             </ul>
@@ -229,22 +197,22 @@ function ProblemAndChange() {
           </div>
 
           <div className="flex flex-1 flex-col gap-4">
-            <h3 className="text-lg font-semibold text-fg">With Paws&amp;Found</h3>
+            <h3 className="text-lg font-semibold text-fg">{t('about.withUs')}</h3>
             <ul className="flex flex-col gap-3">
               {CHANGES.map((item) => {
                 const Icon = item.icon
 
                 return (
                   <li
-                    key={item.title}
+                    key={item.key}
                     className="flex gap-4 rounded-card border border-border bg-panel p-5 shadow-card"
                   >
                     <span className="flex size-10 shrink-0 items-center justify-center rounded-control bg-brand-soft text-brand">
                       <Icon size={20} aria-hidden="true" />
                     </span>
                     <div>
-                      <p className="font-medium text-fg">{item.title}</p>
-                      <p className="mt-1 text-fg-muted">{item.body}</p>
+                      <p className="font-medium text-fg">{t(`about.changes.${item.key}`)}</p>
+                      <p className="mt-1 text-fg-muted">{t(`about.changes.${item.key}Body`)}</p>
                     </div>
                   </li>
                 )
@@ -266,37 +234,15 @@ function ProblemAndChange() {
  * what sat under it were describing different subjects.
  */
 const LOCAL_DESIGN = [
-  {
-    icon: MapPin,
-    title: 'Barangay-level areas',
-    body: 'A location is a city and an approximate area, never an address — which is how people describe where a pet was last seen, and it keeps a home off a public page.',
-  },
-  {
-    icon: PawPrint,
-    title: 'Local pet terminology',
-    body: 'Breed is an open field, not a fixed list, so Aspin and Puspin are as reportable as any pedigree. Nobody has to pick the nearest foreign breed.',
-  },
-  {
-    icon: Smartphone,
-    title: 'Mobile-first reporting',
-    body: 'Every page is built for a phone first, because that is where a report gets filed — usually outdoors, usually in a hurry, usually one-handed.',
-  },
+  { icon: MapPin, key: 'barangay' },
+  { icon: PawPrint, key: 'terms' },
+  { icon: Smartphone, key: 'mobile' },
 ]
 
-const ROLES = [
-  {
-    title: 'Owners and finders',
-    body: 'File reports, follow them, review possible matches, and mark a pet returned.',
-  },
-  {
-    title: 'Pet Coordinators',
-    body: 'Review reports and possible matches, and help verify ownership before a handover.',
-  },
-  {
-    title: 'Administrators',
-    body: 'Manage accounts, pet categories, and moderation of false or misleading reports.',
-  },
-]
+const ROLES = ['members', 'coordinators', 'administrators']
+
+/** How a report moves, in the order it happens (Correction 7). */
+const FLOW = ['submit', 'review', 'publish', 'verify']
 
 function BuiltForHere() {
   return (
@@ -308,8 +254,8 @@ function BuiltForHere() {
       <RouteOrnament tone="teal" size={620} className="-top-24 -right-40 rotate-6" />
       <Container className="flex flex-col gap-10">
         <SectionHeading
-          title="Built for the Philippine community"
-          description="Three decisions that are specific to where this is used, rather than a theme applied over a generic system."
+          title={t('about.localTitle')}
+          description={t('about.localBody')}
           centered
         />
 
@@ -318,12 +264,12 @@ function BuiltForHere() {
             const Icon = item.icon
 
             return (
-              <li key={item.title} className="flex flex-col items-center gap-3 text-center">
+              <li key={item.key} className="flex flex-col items-center gap-3 text-center">
                 <span className="flex size-14 items-center justify-center rounded-full bg-brand-soft text-brand">
                   <Icon size={26} aria-hidden="true" strokeWidth={1.75} />
                 </span>
-                <h3 className="text-lg font-semibold text-fg">{item.title}</h3>
-                <p className="max-w-xs leading-relaxed text-fg-muted">{item.body}</p>
+                <h3 className="text-lg font-semibold text-fg">{t(`about.local.${item.key}`)}</h3>
+                <p className="max-w-xs leading-relaxed text-fg-muted">{t(`about.local.${item.key}Body`)}</p>
               </li>
             )
           })}
@@ -338,18 +284,34 @@ function WhoUsesIt() {
     <section className="border-t border-border/60 bg-surface-alt py-10 sm:py-12">
       <Container className="flex flex-col gap-6">
         <SectionHeading
-          title="Who uses Paws&Found"
-          description="Three roles, with different things to do and different things they are allowed to see."
+          title={t('about.rolesTitle')}
+          description={t('about.rolesBody')}
         />
 
         <ul className="grid gap-3 sm:grid-cols-3">
           {ROLES.map((role) => (
-            <li key={role.title} className="rounded-card border border-border bg-panel p-5 shadow-card">
-              <p className="font-medium text-fg">{role.title}</p>
-              <p className="mt-1 text-fg-muted">{role.body}</p>
+            <li key={role} className="rounded-card border border-border bg-panel p-5 shadow-card">
+              <p className="font-medium text-fg">{t(`about.roles.${role}`)}</p>
+              <p className="mt-1 text-fg-muted">{t(`about.roles.${role}Body`)}</p>
             </li>
           ))}
         </ul>
+
+        {/* Correction 7: the order a report moves in, now that the review
+            belongs to the Pet Coordinator alone. */}
+        <div className="flex flex-col gap-3" data-about-flow="">
+          <h3 className="text-lg font-semibold text-fg">{t('about.flowTitle')}</h3>
+          <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {FLOW.map((step, index) => (
+              <li key={step} className="flex gap-3 rounded-card border border-border bg-panel p-4">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-semibold text-fg-inverted">
+                  {index + 1}
+                </span>
+                <span className="text-fg">{t(`about.flow.${step}`)}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
       </Container>
     </section>
   )
@@ -360,10 +322,19 @@ function StudentProject() {
     <section className="closing-ground relative isolate bg-surface-alt py-9 sm:py-10">
       <PatternVeil />
       <Container width="prose" className="flex flex-col gap-3 text-center">
-        <h2 className="text-xl font-semibold text-fg">About this build</h2>
-        <p className="text-fg-muted">
-          Paws&amp;Found is a student project for Web Systems and Technologies 2. Every pet,
-          person, report and reunion shown in it is fictional demonstration data.
+        <h2 className="text-xl font-semibold text-fg">{t('about.buildTitle')}</h2>
+        <p className="text-fg-muted">{t('about.buildBody')}</p>
+        {/* Correction 7: academic, non-commercial, no money, no affiliation —
+            and where to read the rest. */}
+        <p className="text-fg-muted" data-about-academic="">
+          {t('about.academic')}{' '}
+          <Link to="/disclaimer" className="font-medium text-brand underline">
+            {t('about.readDisclaimer')}
+          </Link>
+          {' · '}
+          <Link to="/help" className="font-medium text-brand underline">
+            {t('about.readSafety')}
+          </Link>
         </p>
       </Container>
     </section>

@@ -1,4 +1,5 @@
 import { cn } from '@/utils/cn'
+import { t } from '@/i18n'
 
 /**
  * The Administration workspace's state pills — accounts, flags and
@@ -8,29 +9,31 @@ import { cn } from '@/utils/cn'
  */
 const STATES = {
   account: {
-    active: ['Active', 'bg-success-soft text-success-ink', 'bg-status-returned'],
-    suspended: ['Suspended', 'bg-danger-soft text-danger-hover', 'bg-danger'],
+    active: ['admin.state.account.active', 'bg-success-soft text-success-ink', 'bg-status-returned'],
+    suspended: ['admin.state.account.suspended', 'bg-danger-soft text-danger-hover', 'bg-danger'],
     // Locked is not suspended, and must not look like it. Suspended is a
     // decision an administrator made about a person; locked is what happened
     // to an account after three failed sign-in attempts. Amber, the colour
     // this system already uses for "needs attention", rather than red.
-    locked: ['Locked', 'bg-accent-soft text-lost', 'bg-status-match'],
+    locked: ['admin.state.account.locked', 'bg-accent-soft text-lost', 'bg-status-match'],
   },
   moderation: {
-    open: ['Awaiting review', 'bg-accent-soft text-lost', 'bg-status-match'],
-    actioned: ['Actioned', 'bg-brand-soft text-brand-hover', 'bg-brand'],
-    dismissed: ['Dismissed', 'bg-status-closed-soft text-fg', 'bg-status-closed'],
+    open: ['admin.state.moderation.open', 'bg-accent-soft text-lost', 'bg-status-match'],
+    actioned: ['admin.state.moderation.actioned', 'bg-brand-soft text-brand-hover', 'bg-brand'],
+    dismissed: ['admin.state.moderation.dismissed', 'bg-status-closed-soft text-fg', 'bg-status-closed'],
   },
   category: {
-    available: ['Available', 'bg-success-soft text-success-ink', 'bg-status-returned'],
-    deactivated: ['Deactivated', 'bg-status-closed-soft text-fg', 'bg-status-closed'],
+    available: ['admin.state.category.available', 'bg-success-soft text-success-ink', 'bg-status-returned'],
+    deactivated: ['admin.state.category.deactivated', 'bg-status-closed-soft text-fg', 'bg-status-closed'],
   },
 }
 
 function StatePill({ kind, state, className }) {
   const entry = STATES[kind][state]
   if (!entry) return null
-  const [label, colours, dot] = entry
+  // The first item is a dictionary key: the word is read in the language showing.
+  const [labelKey, colours, dot] = entry
+  const label = t(labelKey)
 
   return (
     <span

@@ -5,6 +5,7 @@ import { AuthShell } from '@/components/AuthShell'
 import { PageHeader } from '@/components/PageHeader'
 import { Button, Card, CardBody } from '@/components/ui'
 import { userService } from '@/services'
+import { t } from '@/i18n'
 
 /**
  * Where the link in the verification email lands.
@@ -49,7 +50,7 @@ export function VerifyEmailPage() {
           {state === 'verifying' && (
             <div className="flex flex-col items-center gap-3 py-6 text-center" aria-busy="true">
               <LoaderCircle size={28} className="animate-spin text-brand" aria-hidden="true" />
-              <p className="text-fg-muted">Checking your link…</p>
+              <p className="text-fg-muted">{t('auth.verify.checking')}</p>
             </div>
           )}
 
@@ -58,16 +59,16 @@ export function VerifyEmailPage() {
               <div className="flex flex-col items-center gap-3 text-center">
                 <CircleCheck size={40} className="text-success" aria-hidden="true" />
                 <PageHeader
-                  title="Email verified"
+                  title={t('auth.verify.done')}
                   description={
                     email
-                      ? `${email} is confirmed. You can sign in now.`
-                      : 'Your address is confirmed. You can sign in now.'
+                      ? t('auth.verify.doneEmail', { email })
+                      : t('auth.verify.doneBody')
                   }
                 />
               </div>
               <Button as={Link} to="/login" className="self-center">
-                Sign in
+                {t('auth.login.title')}
               </Button>
             </>
           )}
@@ -77,20 +78,20 @@ export function VerifyEmailPage() {
               <div className="flex flex-col items-center gap-3 text-center">
                 <CircleX size={40} className="text-danger" aria-hidden="true" />
                 <PageHeader
-                  title="That link did not work"
+                  title={t('auth.verify.failed')}
                   description={
                     state === 'missing'
-                      ? 'This page needs the link from your email — open it from the message itself.'
-                      : 'Verification links work once and expire after a day. Ask for a new one and it will be sent straight away.'
+                      ? t('auth.verify.missing')
+                      : t('auth.verify.expired')
                   }
                 />
               </div>
               <div className="flex flex-wrap justify-center gap-3">
                 <Button as={Link} to="/login">
-                  Go to sign in
+                  {t('auth.verify.goSignIn')}
                 </Button>
                 <Button as={Link} to="/" variant="ghost">
-                  Back to home
+                  {t('auth.verify.home')}
                 </Button>
               </div>
             </>

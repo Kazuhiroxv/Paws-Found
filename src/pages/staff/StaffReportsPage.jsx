@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CalendarDays, ChevronDown, ChevronUp, FileText, Heart, MapPin, PawPrint, Search } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronUp, FileText, Heart, MapPin, PawPrint, Printer, Search } from 'lucide-react'
 import photoPlaceholder from '@/assets/pet-photo-placeholder.png'
 import { Button, EmptyState, LoadingSkeleton, Select } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { ReportTypeBadge } from '@/components/ReportTypeBadge'
 import { StatusBadge } from '@/components/StatusBadge'
+import { PrintReportList } from '@/components/PrintReportList'
 import {
   REPORT_STATUSES,
   REPORT_STATUS_LABELS,
@@ -17,6 +18,9 @@ import { useAsync } from '@/hooks/useAsync'
 import { matchService, petService } from '@/services'
 import { formatDate, formatRelativeTime } from '@/utils/date'
 import { cn } from '@/utils/cn'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
+import { describeFilters } from '@/utils/filterDescriptions'
 
 /**
  * Queue tabs.
@@ -26,9 +30,10 @@ import { cn } from '@/utils/cn'
  * and inventing one to fill a tab would be the wrong way round. If the team
  * wants an explicit review state, it should be added deliberately.
  */
+// Labels are read when the tabs render, in the language showing.
 const TABS = [
-  { id: 'all', label: 'All' },
-  ...REPORT_STATUS_ORDER.map((status) => ({ id: status, label: REPORT_STATUS_LABELS[status] })),
+  { id: 'all', get label() { return t('staff.reports.all') } },
+  ...REPORT_STATUS_ORDER.map((status) => ({ id: status, get label() { return REPORT_STATUS_LABELS[status] } })),
 ]
 
 async function loadQueue() {
@@ -46,6 +51,9 @@ export function StaffReportsPage() {
   // rather than asking the server again.
   const [filters, setFilters] = useState({ text: '', type: '', species: '' })
   const navigate = useNavigate()
+  // Print / Save as PDF (Correction 7): the queue exactly as it is narrowed.
+  const [printRows, setPrintRows] = useState(null)
+  const endPrint = useCallback(() => setPrintRows(null), [])
 
   // Clicking the active column flips it; clicking a new one starts ascending.
   const toggleSort = (key) =>
@@ -58,10 +66,10 @@ export function StaffReportsPage() {
   const header = (
     <PageHeader
       icon={FileText}
-      eyebrow="Pet Coordinator"
-      title="Report queue"
-      description="Every lost and found report in the system, grouped by where it stands."
-      breadcrumb={[{ label: 'Staff workspace', to: '/staff' }, { label: 'Report queue' }]}
+      eyebrow={t('staff.eyebrow')}
+      title={t('staff.reports.title')}
+      description={t('staff.reports.description')}
+      breadcrumb={[{ label: t('shell.workspace.staff'), to: '/staff' }, { label: t('staff.reports.title') }]}
     />
   )
 
@@ -79,7 +87,7 @@ export function StaffReportsPage() {
       <div className="flex flex-col gap-6">
         {header}
         <p role="alert" className="text-sm text-danger">
-          The queue could not be loaded: {error.message}
+          {t('staff.reports.failed', { message: errorText(error) })}
         </p>
       </div>
     )
@@ -186,9 +194,9 @@ export function StaffReportsPage() {
       </div>
 
       {/* Utility row: search and two filters over the loaded queue. */}
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem_10rem]">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem_12.5rem]">
         <label className="relative">
-          <span className="sr-only">Search reports</span>
+          <span className="sr-only">{t('explore.searchLabel')}</span>
           <Search
             size={16}
             className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-fg-subtle"
@@ -198,43 +206,64 @@ export function StaffReportsPage() {
             type="search"
             value={filters.text}
             onChange={(event) => setFilters((f) => ({ ...f, text: event.target.value }))}
-            placeholder="Name, breed, colour or city"
+            placeholder={t('staff.reports.placeholder')}
             className="h-10 w-full rounded-control border border-border-strong bg-panel pr-3 pl-9 text-sm text-fg placeholder:text-fg-muted"
           />
         </label>
         <Select
-          label="Type"
+          label={t('print.type')}
           hideLabel
           value={filters.type}
           onChange={(event) => setFilters((f) => ({ ...f, type: event.target.value }))}
           options={[
-            { value: '', label: 'Lost & found' },
-            { value: REPORT_TYPES.LOST, label: 'Lost only' },
-            { value: REPORT_TYPES.FOUND, label: 'Found only' },
+            { value: '', label: t('home.lostAndFound') },
+            { value: REPORT_TYPES.LOST, label: t('staff.reports.lostOnly') },
+            { value: REPORT_TYPES.FOUND, label: t('staff.reports.foundOnly') },
           ]}
         />
         <Select
-          label="Species"
+          label={t('filters.species')}
           hideLabel
           value={filters.species}
           onChange={(event) => setFilters((f) => ({ ...f, species: event.target.value }))}
-          options={[{ value: '', label: 'Any species' }, ...speciesOptions]}
+          options={[{ value: '', label: t('filters.anySpecies') }, ...speciesOptions]}
         />
       </div>
+
+      <div className="flex justify-end">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setPrintRows(sorted)}
+          disabled={sorted.length === 0}
+          data-print-trigger=""
+        >
+          <Printer size={16} aria-hidden="true" />
+          {t('print.button')}
+        </Button>
+      </div>
+
+      {printRows && (
+        <PrintReportList
+          title={t('print.staffTitle')}
+          filters={[
+            tab !== 'all' && t('ui.chips.status', { value: REPORT_STATUS_LABELS[tab] }),
+            ...describeFilters({ text: filters.text.trim(), reportType: filters.type, species: filters.species }),
+          ].filter(Boolean)}
+          reports={printRows}
+          onDone={endPrint}
+        />
+      )}
 
       {visible.length === 0 ? (
         <EmptyState
           icon={PawPrint}
-          title={isFiltering ? 'No reports match these filters' : 'Nothing in this queue'}
-          description={
-            isFiltering
-              ? 'Try another word, or clear the filters.'
-              : 'Reports will appear here as they reach this status.'
-          }
+          title={isFiltering ? t('staff.reports.noMatch') : t('staff.reports.empty')}
+          description={isFiltering ? t('staff.reports.noMatchBody') : t('staff.reports.emptyBody')}
           action={
             isFiltering && (
               <Button variant="secondary" onClick={() => setFilters({ text: '', type: '', species: '' })}>
-                Clear filters
+                {t('staff.reports.clear')}
               </Button>
             )
           }
@@ -258,14 +287,14 @@ export function StaffReportsPage() {
               <thead className="sticky top-0 z-10 border-b border-border bg-surface-muted text-fg shadow-[0_1px_0_var(--color-border)] [&>tr>th:first-child]:rounded-tl-card [&>tr>th:last-child]:rounded-tr-card">
                 <tr>
                   <th scope="col" className="w-16 py-2.5 pl-4">
-                    <span className="sr-only">Photo</span>
+                    <span className="sr-only">{t('ui.photo')}</span>
                   </th>
-                  <SortableHeader label="Report" sortKey="report" {...headerProps} />
-                  <SortableHeader label="Location" sortKey="location" {...headerProps} />
-                  <SortableHeader label="Incident" sortKey="date" {...headerProps} />
-                  <SortableHeader label="Status" sortKey="status" {...headerProps} />
-                  <SortableHeader label="Matches" sortKey="match" {...headerProps} />
-                  <SortableHeader label="Updated" sortKey="updated" className="pr-4" {...headerProps} />
+                  <SortableHeader label={t('staff.reports.colReport')} sortKey="report" {...headerProps} />
+                  <SortableHeader label={t('home.location')} sortKey="location" {...headerProps} />
+                  <SortableHeader label={t('staff.reports.colIncident')} sortKey="date" {...headerProps} />
+                  <SortableHeader label={t('filters.status')} sortKey="status" {...headerProps} />
+                  <SortableHeader label={t('staff.reports.colMatches')} sortKey="match" {...headerProps} />
+                  <SortableHeader label={t('staff.reports.colUpdated')} sortKey="updated" className="pr-4" {...headerProps} />
                 </tr>
               </thead>
 
@@ -362,7 +391,7 @@ function QueueCard({ report, matchCount }) {
         </p>
         <div className="relative mt-0.5 flex flex-wrap items-center gap-x-3 text-sm text-fg-muted">
           <MatchLink count={matchCount} />
-          <span>Updated {formatRelativeTime(report.updatedAt)}</span>
+          <span>{t('staff.reports.updated', { time: formatRelativeTime(report.updatedAt) })}</span>
         </div>
       </div>
     </li>
@@ -373,7 +402,7 @@ function MatchLink({ count }) {
   if (count === 0) {
     return (
       <span className="text-fg-muted">
-        —<span className="sr-only">No matches</span>
+        —<span className="sr-only">{t('staff.reports.noMatches')}</span>
       </span>
     )
   }
@@ -384,7 +413,7 @@ function MatchLink({ count }) {
       className="relative inline-flex items-center gap-1 font-medium whitespace-nowrap text-lost hover:underline"
     >
       <Heart size={14} aria-hidden="true" />
-      {count} {count === 1 ? 'match' : 'matches'}
+      {t('staff.reports.matchCount', { count })}
     </Link>
   )
 }
@@ -403,7 +432,7 @@ function Thumb({ report, className }) {
 }
 
 function reportName(report) {
-  return report.petName ?? `${speciesLabel(report.species)} (name unknown)`
+  return report.petName ?? t('common.nameUnknown', { species: speciesLabel(report.species) })
 }
 
 /**

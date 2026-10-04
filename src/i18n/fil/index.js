@@ -1,0 +1,23 @@
+// Every namespace of this language. Generated list; keep it in step with the files.
+import * as shared from './common.js'
+import * as misc from './misc.js'
+import * as account from './account.js'
+import about from './about.js'
+import admin from './admin.js'
+import auth from './auth.js'
+import detail from './detail.js'
+import disclaimer from './disclaimer.js'
+import explore from './explore.js'
+import help from './help.js'
+import home from './home.js'
+import labels from './labels.js'
+import matching from './matching.js'
+import nav from './nav.js'
+import print from './print.js'
+import privacy from './privacy.js'
+import publication from './publication.js'
+import reportForm from './reportForm.js'
+import shell from './shell.js'
+import staff from './staff.js'
+
+export default { ...shared, ...misc, ...account, about, admin, auth, detail, disclaimer, explore, help, home, labels, matching, nav, print, privacy, publication, reportForm, shell, staff }

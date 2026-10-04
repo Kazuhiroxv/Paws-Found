@@ -1,4 +1,5 @@
 import { cn } from '@/utils/cn'
+import { t } from '@/i18n'
 
 /**
  * Label + hint + error wrapper shared by every form control.
@@ -43,7 +44,7 @@ export function Field({
             <span className="text-danger" aria-hidden="true">
               *
             </span>
-            <span className="sr-only">(required)</span>
+            <span className="sr-only">{t('ui.required')}</span>
           </>
         )}
       </label>

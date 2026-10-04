@@ -1,5 +1,6 @@
 import { PET_SEXES, REPORT_TYPES } from '@/constants'
 import { parseDateTime, todayAsInputValue } from '@/utils/date'
+import { t } from '@/i18n'
 
 /**
  * The shape, limits and rules of a lost/found report form.
@@ -39,12 +40,13 @@ export const PHOTO_RULES = {
   accept: 'image/jpeg,image/png,image/webp',
 }
 
-export const STEPS = [
-  { id: 'details', label: 'Pet details' },
-  { id: 'incident', label: 'Location & date' },
-  { id: 'photos', label: 'Photos' },
-  { id: 'review', label: 'Review' },
-]
+// Each label is read when shown, in the language showing (Correction 7).
+export const STEPS = ['details', 'incident', 'photos', 'review'].map((id) => ({
+  id,
+  get label() {
+    return t(`reportForm.steps.${id}`)
+  },
+}))
 
 /**
  * A blank form. Found reports have no pet name — the finder does not know it —
@@ -150,12 +152,12 @@ export function meaningfulText(value) {
  */
 export function petNameProblem(value, isRequired) {
   const name = meaningfulText(value)
-  if (!name) return isRequired ? "Enter your pet's name, so people know what to call out." : null
+  if (!name) return isRequired ? t('reportForm.errors.petName') : null
   if (!/^[\p{L}\p{M}\p{N} '\u2019.-]+$/u.test(name)) {
-    return 'Use letters, numbers, spaces, apostrophes, periods and hyphens only.'
+    return t('reportForm.errors.petNameCharacters')
   }
   if ((name.match(/[\p{L}\p{N}]/gu) ?? []).length < PET_NAME_MIN) {
-    return 'Enter a name with at least 2 letters or numbers.'
+    return t('reportForm.errors.petNameShort')
   }
   return null
 }
@@ -168,9 +170,9 @@ export function descriptionLength(value) {
 /** What is wrong with a description, or null. The same rule as the server's. */
 export function descriptionProblem(value) {
   const length = descriptionLength(value)
-  if (length === 0) return 'Add a short description — behaviour, temperament, anything that helps.'
+  if (length === 0) return t('reportForm.errors.description')
   if (length < DESCRIPTION_MIN) {
-    return `Write at least ${DESCRIPTION_MIN} characters (you have ${length}): what happened, and how the pet behaves around strangers.`
+    return t('reportForm.errors.descriptionShort', { min: DESCRIPTION_MIN, length })
   }
   return null
 }
@@ -197,55 +199,55 @@ export function validateStep(stepId, values) {
   if (stepId === 'details') {
     const nameProblem = petNameProblem(values.petName, !isFound)
     if (!isFound && nameProblem) errors.petName = nameProblem
-    if (required(values.species)) errors.species = 'Choose the kind of animal.'
+    if (required(values.species)) errors.species = t('reportForm.errors.species')
     // "Other" names no animal, so the breed field becomes "Please specify
     // animal" and is required: the report has to say what it is about.
     if (values.species === OTHER_SPECIES && required(values.breed)) {
-      errors.breed = 'Tell us what kind of animal this is.'
+      errors.breed = t('reportForm.errors.otherKind')
     }
     if (isFound && !COLLAR_ANSWERS.includes(values.hasCollar)) {
-      errors.hasCollar = 'Choose Yes, No, or Not sure.'
+      errors.hasCollar = t('reportForm.errors.collar')
     }
-    if (required(values.size)) errors.size = 'Choose a size.'
-    if (!SEX_ANSWERS.includes(values.sex)) errors.sex = 'Choose Male, Female, or Unknown.'
+    if (required(values.size)) errors.size = t('reportForm.errors.size')
+    if (!SEX_ANSWERS.includes(values.sex)) errors.sex = t('reportForm.errors.sex')
     if (required(values.primaryColor)) {
-      errors.primaryColor = 'Choose the main colour — it is one of the first things people notice.'
+      errors.primaryColor = t('reportForm.errors.colour')
     }
 
     // "At least one useful characteristic": colour alone matches hundreds of
     // animals, so a report needs a breed or a distinguishing feature too.
     if (required(values.breed) && required(values.distinctiveMarkings)) {
       errors.distinctiveMarkings =
-        'Add a breed or at least one distinctive feature — a scar, a collar, an unusual marking. Colour on its own is rarely enough to identify a pet.'
+        t('reportForm.errors.identify')
     }
   }
 
   if (stepId === 'incident') {
     if (required(values.incidentDate)) {
-      errors.incidentDate = isFound ? 'Enter the date you found the pet.' : 'Enter the date your pet went missing.'
+      errors.incidentDate = isFound ? t('reportForm.errors.dateFound') : t('reportForm.errors.dateLost')
     } else {
       const date = parseDateTime(values.incidentDate)
       if (Number.isNaN(date.getTime())) {
-        errors.incidentDate = 'Enter a valid date.'
+        errors.incidentDate = t('reportForm.errors.dateInvalid')
       } else if (values.incidentDate > todayAsInputValue()) {
         // Calendar day against calendar day, the same "today" as the date
         // input's own max. Read as a moment it was UTC midnight, 8 AM in the
         // Philippines, so a report dated today was refused every morning.
-        errors.incidentDate = 'The date cannot be in the future.'
+        errors.incidentDate = t('reportForm.errors.dateFuture')
       }
     }
 
     if (values.incidentTimeIncomplete) {
-      errors.incidentTime = 'Choose the hour, the minutes and AM or PM — or leave all three empty.'
+      errors.incidentTime = t('reportForm.errors.time')
     }
 
     if (required(values.locationLabel)) {
       errors.locationLabel = isFound
-        ? 'Describe where you found the pet.'
-        : 'Describe where your pet was last seen.'
+        ? t('reportForm.errors.placeFound')
+        : t('reportForm.errors.placeLost')
     }
-    if (required(values.areaCode)) errors.province = 'Choose the province, or Metro Manila.'
-    if (required(values.cityCode)) errors.city = 'Choose the city or municipality.'
+    if (required(values.areaCode)) errors.province = t('reportForm.errors.area')
+    if (required(values.cityCode)) errors.city = t('reportForm.errors.city')
 
     const problem = descriptionProblem(values.description)
     if (problem) errors.description = problem
@@ -254,7 +256,7 @@ export function validateStep(stepId, values) {
     // the reporter's choice. A phone number is never shown on a report
     // (Correction 3), so it is not one of them.
     if (!values.allowPlatformContact && !values.showEmail) {
-      errors.contact = 'Choose at least one way people or Pet Coordinators can reach you.'
+      errors.contact = t('reportForm.errors.contact')
     }
   }
 
@@ -324,7 +326,11 @@ export function toReportInput(values, reporterId) {
   }
 }
 
-/** Fallback alt text when the reporter did not describe a photo. */
+/**
+ * Fallback alt text when the reporter did not describe a photo. Stored with
+ * the photograph, so it stays in English whatever the language showing: what
+ * is saved does not depend on who saved it (Correction 7).
+ */
 export function defaultPhotoAlt(values) {
   const parts = [values.primaryColor, values.breed || values.species].filter(Boolean)
   return parts.length > 0 ? `Photo of a ${parts.join(' ')}` : 'Photo of the reported pet'

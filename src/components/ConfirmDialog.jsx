@@ -1,4 +1,6 @@
 import { Button, Modal } from '@/components/ui'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
 
 /**
  * "Are you sure?" for an action that is hard to take back.
@@ -30,7 +32,7 @@ export function ConfirmDialog({
   onConfirm,
   title,
   confirmLabel,
-  cancelLabel = 'Cancel',
+  cancelLabel,
   cancelVariant = 'ghost',
   tone = 'danger',
   isBusy = false,
@@ -47,7 +49,7 @@ export function ConfirmDialog({
       footer={
         <>
           <Button variant={cancelVariant} onClick={onCancel} disabled={isBusy} data-autofocus>
-            {cancelLabel}
+            {cancelLabel ?? t('common.cancel')}
           </Button>
           <Button variant={tone} isLoading={isBusy} disabled={confirmDisabled} onClick={onConfirm}>
             {confirmLabel}
@@ -59,7 +61,7 @@ export function ConfirmDialog({
         {children}
         {error && (
           <p role="alert" className="text-danger">
-            That could not be saved: {error.message}
+            {t('ui.notSaved', { message: errorText(error) })}
           </p>
         )}
       </div>

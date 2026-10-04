@@ -1,0 +1,51 @@
+/** A report's publication: review by a Pet Coordinator, resubmission, removal. */
+export default {
+  title: 'Publication',
+  event: {
+    submitted: 'Submitted for review',
+    resubmitted: 'Submitted for review again',
+    published: 'Approved and published',
+    rejected: 'Not approved',
+    removed: 'Removed from public view',
+  },
+  noteReject: 'Write why it is not approved. The reporter is told this, so they can fix it.',
+  noteRemove: 'Write why it is being removed. The reporter is told this.',
+  done: {
+    approve: 'Approved. The report is now public, and it is being compared with other reports.',
+    reject: 'Marked as not approved. The reporter has been told why.',
+    resubmit: 'Submitted for review again. A Pet Coordinator will check it before it appears publicly.',
+    remove: 'Removed from public view. The reporter has been told why.',
+  },
+  pendingOwner:
+    'Waiting for a Pet Coordinator to review it. Nobody else can see it until it is approved, and it is not compared with other reports yet.',
+  pendingCoordinator: 'Waiting for review. Check it is a genuine, appropriate report before it goes public.',
+  pendingOther:
+    'Waiting for a Pet Coordinator’s review. Only a Pet Coordinator can approve it or not; it is not public and not compared with other reports yet.',
+  rejectedOwner: 'Not approved, so it is not public. Edit it to address the reason below, then submit it again.',
+  rejectedOther: 'Not approved. The reporter can edit it and submit it again.',
+  removed:
+    'Removed by an administrator. It is not public and is no longer compared with other reports. It is kept, with its history.',
+  publicLegacy: 'Public. Filed before reports were reviewed, so it has no review record.',
+  public: 'Public, and compared with other reports.',
+  reasonLabel: 'Reason:',
+  approve: 'Approve and publish',
+  rejectOpen: 'Not approved…',
+  edit: 'Edit the report',
+  resubmit: 'Submit for review again',
+  removeOpen: 'Remove from public view…',
+  failed: 'That did not work: {message}',
+  history: 'Review history',
+  rejectTitle: 'Not approve this report?',
+  removeTitle: 'Remove this report from public view?',
+  resubmitTitle: 'Submit this report for review again?',
+  rejectConfirm: 'Not approved',
+  removeConfirm: 'Remove from public view',
+  resubmitConfirm: 'Submit again',
+  goBack: 'Go back',
+  resubmitBody: 'A Pet Coordinator will review it again before it appears publicly.',
+  rejectBody: 'The report stays private. The reporter is told the reason and can edit and submit it again.',
+  removeBody:
+    'The report stops being public and stops being compared with other reports. It is not Closed: it is kept, with its history, and the reporter is told the reason.',
+  reason: 'Reason',
+  reasonHint: 'The reporter sees this.',
+}

@@ -1,6 +1,7 @@
 import { REPORT_STATUSES, REPORT_STATUS_LABELS } from '@/constants'
 import { formatDateTime } from '@/utils/date'
 import { cn } from '@/utils/cn'
+import { t } from '@/i18n'
 
 const DOT_COLOURS = {
   [REPORT_STATUSES.ACTIVE]: 'bg-status-active',
@@ -17,12 +18,7 @@ const DOT_COLOURS = {
  * is for the reporter, not the neighbourhood). The line is derived from the
  * status alone, so it can never say more than the status does.
  */
-const STATUS_COPY = {
-  [REPORT_STATUSES.ACTIVE]: 'The report is open and being compared with new reports.',
-  [REPORT_STATUSES.POSSIBLE_MATCH]: 'A possible match is being reviewed.',
-  [REPORT_STATUSES.RETURNED]: 'Marked as returned home.',
-  [REPORT_STATUSES.CLOSED]: 'The report was closed.',
-}
+const STATUS_COPY = Object.values(REPORT_STATUSES)
 
 /**
  * A report's history, oldest first.
@@ -63,7 +59,7 @@ export function Timeline({ entries, actorNames = {} }) {
               <p className="text-sm font-medium text-fg">
                 {REPORT_STATUS_LABELS[entry.status] ?? entry.status}
               </p>
-              <p className="text-sm text-fg-muted">{entry.note || STATUS_COPY[entry.status]}</p>
+              <p className="text-sm text-fg-muted">{entry.note || (STATUS_COPY.includes(entry.status) ? t(`ui.timeline.${entry.status}`) : '')}</p>
               <p className="text-sm text-fg-muted">
                 {formatDateTime(entry.createdAt)}
                 {actorNames[entry.actorId] && ` · ${actorNames[entry.actorId]}`}

@@ -256,7 +256,7 @@ by the server, so "who opened report 43" can be asked.
 
 | Area | Actions |
 | --- | --- |
-| Account | `login`, `logout`, `profile_updated`, `email_change_requested` |
+| Account | `login`, `logout`, `profile_updated`, `email_change_requested`, `privacy_notice_acknowledged` (Correction 7; detail = the notice version) |
 | Reports | `draft_saved`, `draft_updated`, `draft_deleted`, `report_submitted`, `report_edited`, `report_photos_added`, `report_photos_changed`, `report_status_changed` (close, returned) |
 | Review | `report_approved`, `report_rejected`, `report_resubmitted`, `report_removed` |
 | Matching | `match_request_verification`, `match_dismiss` (not my pet), `match_reject`, `match_request_information`, `match_provide_information`, `match_confirm`, `match_reopen` |
@@ -377,4 +377,6 @@ enforced, not claimed.
   can avoid sending them. Actions cannot be avoided — the server writes them.
 * A session that predates 011 has no record; its activity rows have no session
   until it next signs in (at most 8 hours).
-* No automatic retention; no re-consent step.
+* No automatic retention. (The re-consent gap is closed by Correction 7: an
+  account on an older notice version is asked, without being blocked, to
+  review and acknowledge the current one — `docs/DECISIONS.md`.)

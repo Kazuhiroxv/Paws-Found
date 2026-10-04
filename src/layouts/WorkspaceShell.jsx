@@ -4,6 +4,8 @@ import { ArrowLeft, LogOut, Menu, X } from 'lucide-react'
 import logoLockup from '@/assets/pawsfound-logo-horizontal.webp'
 import { ROLES, roleLabel } from '@/constants'
 import { cn } from '@/utils/cn'
+import { t } from '@/i18n'
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 
 const linkClasses = ({ isActive }) =>
   cn(
@@ -62,7 +64,7 @@ export function WorkspaceShell({ label, items, counts, user, onSignOut, children
         return (
           <li key={item.to}>
             <NavLink to={item.to} end={item.end} className={linkClasses} onClick={onNavigate}>
-              <Icon size={16} aria-hidden="true" />
+              <Icon size={16} className="shrink-0" aria-hidden="true" />
               <span className="whitespace-nowrap">{item.label}</span>
               {count > 0 && (
                 <span className="ml-auto min-w-6 rounded-pill bg-surface-muted px-2 py-0.5 text-center text-xs font-medium text-fg tabular-nums">
@@ -73,7 +75,7 @@ export function WorkspaceShell({ label, items, counts, user, onSignOut, children
                     <span className="font-normal text-fg-muted">{item.countLabel} </span>
                   )}
                   {count}
-                  <span className="sr-only"> {count === 1 ? 'item' : 'items'}</span>
+                  <span className="sr-only"> {t('shell.workspace.item', { count })}</span>
                 </span>
               )}
             </NavLink>
@@ -101,7 +103,7 @@ export function WorkspaceShell({ label, items, counts, user, onSignOut, children
           className="flex items-center gap-2.5 rounded-control px-3 py-2 text-sm text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
         >
           <ArrowLeft size={16} aria-hidden="true" />
-          Back to the public site
+          {t('shell.workspace.backToPublic')}
         </Link>
       )}
 
@@ -111,8 +113,12 @@ export function WorkspaceShell({ label, items, counts, user, onSignOut, children
         className="flex items-center gap-2.5 rounded-control px-3 py-2 text-left text-sm text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg"
       >
         <LogOut size={16} aria-hidden="true" />
-        Sign out
+        {t('shell.workspace.signOut')}
       </button>
+
+      {/* English or Filipino (Correction 7): the public bar is not shown in
+          a workspace, so the control comes along in the rail. */}
+      <LanguageSwitcher className="mx-3 mt-1 self-start" />
     </div>
   )
 

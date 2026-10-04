@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 /**
  * The name rule, as the server states it (api/helpers.php,
  * `validate_name_part()`), said sooner. Used by registration and the profile.
@@ -22,13 +23,13 @@ export const cleanName = (raw) => raw.replace(/\s+/g, ' ').trim()
  * @param {'first' | 'last'} which
  */
 export function nameProblem(raw, which = 'first') {
-  const label = which === 'last' ? 'last name' : 'first name'
+  const part = which === 'last' ? 'last' : 'first'
   const name = cleanName(raw)
 
-  if (name === '') return `Enter your ${label}.`
-  if ([...name].length > NAME_PART_MAX) return `That ${label} is too long (${NAME_PART_MAX} characters maximum).`
-  if ((name.match(/\p{L}/gu) ?? []).length < 2) return `Enter a real ${label} with at least 2 letters.`
-  if (!/^[\p{L}\p{M} '’.-]+$/u.test(name)) return 'Use letters, spaces, apostrophes, hyphens and periods only.'
+  if (name === '') return t(`auth.name.${part}Empty`)
+  if ([...name].length > NAME_PART_MAX) return t(`auth.name.${part}Long`, { max: NAME_PART_MAX })
+  if ((name.match(/\p{L}/gu) ?? []).length < 2) return t(`auth.name.${part}Short`)
+  if (!/^[\p{L}\p{M} '’.-]+$/u.test(name)) return t('auth.name.characters')
 
   return null
 }

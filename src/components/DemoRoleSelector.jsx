@@ -45,7 +45,7 @@ export function DemoRoleSelector({ role, onRoleChange, hideLabel = false }) {
           onChange={(event) =>
             onRoleChange(event.target.value === GUEST ? null : event.target.value)
           }
-          className="w-48 appearance-none rounded-control border border-border bg-panel py-1.5 pr-8 pl-2.5 text-sm text-fg-muted"
+          className="w-40 appearance-none rounded-control border border-border bg-panel py-1.5 pr-8 pl-2.5 text-sm text-fg-muted"
         >
           <option value={GUEST}>Signed out</option>
           {Object.values(ROLES).map((value) => (

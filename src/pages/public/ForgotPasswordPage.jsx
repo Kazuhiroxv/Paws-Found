@@ -5,6 +5,8 @@ import { AuthShell } from '@/components/AuthShell'
 import { PageHeader } from '@/components/PageHeader'
 import { Button, Card, CardBody, Input } from '@/components/ui'
 import { userService } from '@/services'
+import { t } from '@/i18n'
+import { errorText } from '@/i18n/apiErrors'
 
 /**
  * Asking for a password reset.
@@ -46,15 +48,14 @@ export function ForgotPasswordPage() {
           <CardBody className="flex flex-col items-center gap-4 text-center">
             <MailCheck size={40} className="text-brand" aria-hidden="true" />
             <PageHeader
-              title="Check your email"
-              description="If an account uses that address, instructions for setting a new password are on their way."
+              title={t('auth.register.checkEmail')}
+              description={t('auth.forgot.sent')}
             />
             <p className="text-sm text-fg-muted">
-              The link works once and expires in an hour. If nothing arrives, check the spam
-              folder before asking again — a second request replaces the first link.
+              {t('auth.forgot.linkNote')}
             </p>
             <Button as={Link} to="/login" variant="ghost">
-              Back to sign in
+              {t('auth.backToSignIn')}
             </Button>
           </CardBody>
         </Card>
@@ -68,18 +69,18 @@ export function ForgotPasswordPage() {
         <CardBody>
           <form onSubmit={submit} className="flex flex-col gap-5">
             <PageHeader
-              title="Forgot your password?"
-              description="Type the address on your account and we will send a link for setting a new one."
+              title={t('auth.login.forgot')}
+              description={t('auth.forgot.description')}
             />
 
             {error && (
               <p role="alert" className="text-sm text-danger">
-                {error.message}
+                {errorText(error)}
               </p>
             )}
 
             <Input
-              label="Email address"
+              label={t('auth.email')}
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
@@ -89,10 +90,10 @@ export function ForgotPasswordPage() {
 
             <div className="flex flex-wrap items-center gap-3">
               <Button type="submit" isLoading={isSubmitting}>
-                {isSubmitting ? 'Sending…' : 'Send the link'}
+                {isSubmitting ? t('flag.sending') : t('auth.forgot.send')}
               </Button>
               <Button as={Link} to="/login" variant="ghost" disabled={isSubmitting}>
-                Cancel
+                {t('common.cancel')}
               </Button>
             </div>
           </form>

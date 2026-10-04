@@ -15,6 +15,24 @@ States: **done** (committed on `post-defense/revisions`), **in progress**,
 **deferred** (recorded on purpose, not built in the correction that met it),
 **AWAITING CLARIFICATION** (cannot be built until its meaning is confirmed).
 
+**Where things stand after Correction 7 (4 October 2026):**
+
+| Item | State |
+| --- | --- |
+| Disclaimer (8) | **DONE** |
+| Filipino (18) | **DONE** |
+| Print / PDF of the report list (N5) | **DONE** |
+| Privacy Notice acknowledgement (team item) | **DONE** |
+| Reset (11) | **AWAITING CLARIFICATION** |
+| Cancel (16) | **AWAITING CLARIFICATION** |
+| Contact number (N1) | **AWAITING INSTRUCTOR-INTENT CONFIRMATION** |
+| Final ERD | **PENDING FINAL SCHEMA PASS** |
+| Final presentation (17, N7) | **PENDING** |
+
+No further features are added unless one of the clarifications arrives. Then:
+the final schema freeze, the final ERD, the role scope and limitations, a
+deployment rehearsal, and the final presentation and live demonstration.
+
 ---
 
 ## The register
@@ -28,7 +46,7 @@ States: **done** (committed on `post-defense/revisions`), **in progress**,
 | 5 | Log every page, action and time, and every sign-in and sign-out | NOTES | **done (Correction 5)** — `user_activity_logs`: each page a signed-in person opens (the path only), every meaningful action written by the endpoint that did it, sign-in and sign-out, each with time, IP and session. Logs → Activity, filtered and paged | Correction 5 |
 | 6 | Different levels of administrator privilege | NOTES | **done (Correction 6)** — Ma'am asked for *different admin levels*; she did not specify how many or which. **Team design:** three levels of the one Administrator role (`users.admin_level`): Moderator (moderation), Manager (+ accounts, categories), Super Administrator (+ roles, levels, administrators, Logs). Enforced on the server by capability; matrix and each role's limits in `docs/role-permissions.md` | Correction 6 |
 | 7 | The site does not say you have been signed out | NOTES | **done (Correction 5)** — the server says why a session ended (`session_ended`) and the page says it in words: signed out, inactivity, time limit, signed in on another device, password changed, access changed, locked, suspended | Correction 5 |
-| 8 | Disclaimer: no money involved, not affiliated, not responsible for false information | NOTES | open | |
+| 8 | Disclaimer: no money involved, not affiliated, not responsible for false information | NOTES | **DONE (Correction 7)** — a full `/disclaimer` page (academic and non-commercial; "Paws&Found does not process payments or financial transactions."; no affiliation with shelters, clinics, LGUs or authorities; information comes from users and may be inaccurate; no guarantee of recovery or of a match; meeting and handover safety), in measured words — no claim of immunity. Short notices where they matter: every page's footer, the report form's review step (informational; no checkbox), and a confirmed match's handover. Rewards: the interface has no reward or fee field and the disclaimer says no payment is handled; text a reporter types is theirs. **Privacy Notice acknowledgement (team item, same correction): DONE** — accounts that agreed to an older notice version see a non-blocking "Review Privacy Notice / Acknowledge" message; the acknowledgement is a `privacy_consents` row (no migration) | Correction 7 |
 | 9 | Pet name accepts one character | NOTES | **done (Correction 3)** — a lost pet's name needs 2 letters or digits ("Bo", "CJ", "R2"); letters, digits, spaces, `'` `.` `-` only; same rule in the form and the API | Correction 3 |
 | 10 | Breed, colour, city, province: contained or suggested values | NOTES + AUDIO (colours, rec 1 14:27–15:09) | **done (Correction 3, 3A)** — breed: the species' listed breeds (typed ones kept, never suggested); colour: a list of 17; place: PSA's PSGC as of 30 June 2026 — a list of 84 *areas* (PSA's 82 provinces, Metro Manila, BARMM's Special Geographic Area; never "84 provinces") then the city or municipality, depending on it. All from MySQL through `/api/reference` | Correction 3, 3A |
 | 11 | Reset button | NOTES | **AWAITING CLARIFICATION — exact Reset behavior not established.** Not built: reset the report form, a filter, or a password? | |
@@ -37,8 +55,8 @@ States: **done** (committed on `post-defense/revisions`), **in progress**,
 | 14 | Map focused on the Philippines | NOTES | **done (Correction 3)** — opens on the whole country, cannot be dragged far off it, refuses a pin outside it (in the browser and the API); a pin never changes the province or city | Correction 3 |
 | 15 | Description of at least 30 characters | NOTES + AUDIO (rec 1 02:01) | **done (Correction 3)** — counted after trimming, runs of spaces counted once; a live "18 / 30 minimum" | Correction 3 |
 | 16 | Pet Coordinator approves a report before it is posted | NOTES + AUDIO (rec 1 03:48–07:31) | **done (Correction 4) — except Cancel.** A filed report waits for review (`publication_status = pending_review`), is not public and not matched; a Pet Coordinator approves (published, then matched) or marks it not approved with a reason (the reporter edits and resubmits). Since Correction 6A **only a Pet Coordinator** makes this decision: every administrator level gets 403 and no button. **Cancel: AWAITING CLARIFICATION** — see below | Correction 4 |
-| 17 | Presentation order: scope and limitations by role, then the ERD, then the demo | NOTES | open | |
-| 18 | Other languages, such as Filipino | NOTES + AUDIO (rec 1 16:57, "you can also consider") | open | |
+| 17 | Presentation order: scope and limitations by role, then the ERD, then the demo | NOTES | **PENDING** — final presentation not started (after the final schema pass and the final ERD, which is **PENDING FINAL SCHEMA PASS**) | |
+| 18 | Other languages, such as Filipino | NOTES + AUDIO (rec 1 16:57, "you can also consider") | **DONE (Correction 7)** — English and Filipino across the whole interface, public, customer, Pet Coordinator and Administration (the scope is the team's decision, not Ma'am's words); a labelled language control in the header, the phone menu and the workspace rail; kept in this browser (`localStorage`), English by default, no database change; `<html lang>` `en`/`fil`. What people typed, notifications and match reasons (server-written), emails and stored values are not translated — see `docs/localization.md` | Correction 7 |
 | 19 | Removed reports must not appear as Closed | NOTES + AUDIO (rec 1 18:58–19:21) | **done (Correction 4)** — removal is its own publication state (`removed`), never `status = closed`; no Closed entry is written; legacy removals (seeded report 9) converted by migration 010 on evidence | Correction 4 |
 
 ### Raised in the recordings, not in the written notes
@@ -49,7 +67,7 @@ States: **done** (committed on `post-defense/revisions`), **in progress**,
 | N2 | No guidance on how many photos to add | AUDIO (rec 1 01:32–01:52) | **done (Correction 3)** — optional, up to 5, JPEG/PNG/WebP, 5 MB, first is the main photo: stated before choosing; "2 of 5 photos added" |
 | N3 | No feedback after Submit | AUDIO (rec 1 03:28–03:29) | **done (Correction 2)** — corroborated by T1; see T1 |
 | N4 | Date filter not found — "lalabas lahat… kahit 5 years apart" | AUDIO (rec 2 00:33–00:50) | **done (Correction 2)** — it existed but was the last group and closed, so one click deep on a laptop and two below 1024px. Now under Species and open: visible on arrival from 1024px, one click (Filters) below |
-| N5 | Print or export the report list to PDF | AUDIO (rec 2 01:28–01:53) | **deferred** — recorded, not implemented in Correction 3 |
+| N5 | Print or export the report list to PDF | AUDIO (rec 2 01:28–01:53) | **DONE (Correction 7)** — "Print / Save as PDF" on Explore (Ma'am's example), the Pet Coordinator's Report queue and Administration's Reports: the browser's own print dialog, so "Save as PDF" needs no library. Prints every report the current filters select (not only the page showing), the filters themselves, and only public report fields (no contact details, IPs or security data); headings follow the language showing |
 | N6 | No XL size for a very large dog | AUDIO (rec 1 18:29–18:32) | **done (Correction 3)** — `xl`, "Extra Large (XL)", in the form, Explore, cards and matching; size weight unchanged |
 | N7 | Presentation logistics: two laptops, everyone waits | AUDIO (rec 1 10:47–10:56) | open — belongs with 17 |
 
@@ -92,6 +110,8 @@ fixed deliberately rather than remembered.
 | D7 | **Suspend on the Users page always failed.** The dialog never sent a reason, and the server has required one for a suspension since the hardening pass; the page showed the 422. | Correction 6 audit | **fixed (Correction 6)** — the dialog asks for the reason and waits for one (admin-levels UI MAN-UI-5/6) |
 | D8 | **An administrator could publish a report without a Pet Coordinator.** Correction 4's server rule accepted a coordinator *or* an administrator for approve and reject, and Correction 6 kept it, so any administrator level could approve a pending report from its page — bypassing Ma'am's coordinator review. | Kyle's review of Correction 6 | **fixed (Correction 6A)** — `role = 'staff'` only; administrators 403 and no button; REV-ROLE-01…12, REV-UI-1…6 |
 | D9 | **A session idle through a suspension revived on reinstatement.** Correction 5 ended the session records, but not the session generation. | Correction 6A audit | **fixed (Correction 6A)** — suspension and lock bump `session_version` (admin-levels MAN-05b) |
+| D10 | **The Report review page showed the stored size code** (`xl`, `medium`) instead of its label, and the colour as stored. | Correction 7 translation pass | **fixed (Correction 7)** — the same labels as everywhere else, in either language |
+| D11 | **An administrator could not open the Privacy Notice** (`AdminStaysInWorkspace` sent `/privacy` to `/admin`), so the new notice-update message would have linked nowhere. | Correction 7 | **fixed (Correction 7)** — `/privacy` and `/disclaimer` stay open to administrators; the rest of the public site still sends them to `/admin` (UI ADMIN-SITE-1) |
 
 ---
 
@@ -118,7 +138,9 @@ The recordings do not cover these, so they rest on the written notes alone:
   these did she mean: A collected, B required, C shown publicly, or D a clear
   way to reach the reporter? Built for now: never published, coordinators see
   it.
-- **Filipino (18)** — the whole site, or the community pages only?
+- **Filipino (18)** — built (Correction 7) for the whole interface, the team's
+  choice for a coherent feature; Ma'am's words were only "you can also
+  consider".
 - **Cancel (16)** — AWAITING INSTRUCTOR-INTENT CLARIFICATION. Ma'am's three
   actions are accept, reject and cancel; accept and reject are built
   (Correction 4). Cancel could mean: A closing the decision dialog with no

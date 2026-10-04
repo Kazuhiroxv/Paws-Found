@@ -537,6 +537,8 @@ const ACTIVITY_ACTIONS = [
     'page_view',
     // Account
     'login', 'logout', 'profile_updated', 'email_change_requested',
+    // Correction 7: shown the Privacy Notice as it now reads.
+    'privacy_notice_acknowledged',
     // Reports and drafts
     'draft_saved', 'draft_updated', 'draft_deleted',
     'report_submitted', 'report_edited', 'report_photos_added', 'report_photos_changed',

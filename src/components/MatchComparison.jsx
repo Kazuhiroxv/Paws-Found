@@ -7,6 +7,7 @@ import { ReportTypeBadge } from '@/components/ReportTypeBadge'
 import { MATCH_STATUSES, MATCH_STATUS_LABELS, PET_SIZE_LABELS, REPORT_TYPES, isRuledOut, speciesLabel } from '@/constants'
 import { cn } from '@/utils/cn'
 import { formatDate, formatShortDate } from '@/utils/date'
+import { t } from '@/i18n'
 
 /**
  * One lost-and-found pairing, drawn the same way everywhere it is decided on:
@@ -53,10 +54,13 @@ export function MatchPairCard({ match, lost, found, badge, headingAs: Heading = 
           <div className="flex flex-col items-center gap-1 text-center md:w-40">
             <span className="text-3xl font-semibold text-fg tabular-nums">{match.score}%</span>
             <span className="text-sm font-medium text-fg">
-              {isHistory ? 'compatibility when paired' : 'compatibility'}
+              {isHistory ? t('matching.compatibilityWhenPaired') : t('matching.compatibility')}
             </span>
             <span className="text-sm text-fg-muted">
-              {aligned} of {match.signals.length} characteristics {isHistory ? 'aligned' : 'align'}
+              {t(isHistory ? 'matching.alignedPast' : 'matching.align', {
+                aligned,
+                total: match.signals.length,
+              })}
             </span>
             <span
               className={cn(
@@ -68,7 +72,11 @@ export function MatchPairCard({ match, lost, found, badge, headingAs: Heading = 
                     : 'bg-accent-soft text-lost',
               )}
             >
-              {isConfirmed ? 'Confirmed match' : isHistory ? 'Historical comparison' : 'Possible match'}
+              {isConfirmed
+                ? t('matching.confirmedMatch')
+                : isHistory
+                  ? t('matching.historical')
+                  : t('matching.possibleMatch')}
             </span>
           </div>
 
@@ -95,8 +103,7 @@ export function HistoricalNote({ className }) {
     <p className={cn('flex items-start gap-2 rounded-control bg-status-closed-soft px-3 py-2 text-sm text-fg', className)}>
       <History size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
       <span>
-        <span className="font-semibold">Historical comparison.</span> The score and details below were
-        recorded when this pairing was created. One or both reports may have changed since then.
+        <span className="font-semibold">{t('matching.historicalTitle')}</span> {t('matching.historicalBody')}
       </span>
     </p>
   )
@@ -107,22 +114,23 @@ export function HistoricalNote({ className }) {
  * outcome, and always in words. Rejected and dismissed both read "Ruled out"
  * with who ruled it out, matching the Match Queue's tab.
  */
-const STAFF_STAGES = {
+// A function, not a constant: the words are read in the language showing.
+const staffStages = () => ({
   [MATCH_STATUSES.SUGGESTED]: ['bg-accent-soft text-lost', MATCH_STATUS_LABELS[MATCH_STATUSES.SUGGESTED]],
   [MATCH_STATUSES.VERIFICATION_REQUESTED]: [
     'bg-brand-soft text-brand-hover',
     MATCH_STATUS_LABELS[MATCH_STATUSES.VERIFICATION_REQUESTED],
   ],
-  [MATCH_STATUSES.UNDER_REVIEW]: ['bg-brand-soft text-brand-hover', 'More information requested'],
+  [MATCH_STATUSES.UNDER_REVIEW]: ['bg-brand-soft text-brand-hover', t('matching.moreInfoRequested')],
   [MATCH_STATUSES.CONFIRMED]: ['bg-success-soft text-success-ink', MATCH_STATUS_LABELS[MATCH_STATUSES.CONFIRMED]],
-  [MATCH_STATUSES.REJECTED]: ['bg-status-closed-soft text-fg', 'Ruled out · by a coordinator'],
-  [MATCH_STATUSES.DISMISSED]: ['bg-status-closed-soft text-fg', 'Ruled out · by the reporter'],
-}
+  [MATCH_STATUSES.REJECTED]: ['bg-status-closed-soft text-fg', t('matching.ruledOutCoordinator')],
+  [MATCH_STATUSES.DISMISSED]: ['bg-status-closed-soft text-fg', t('matching.ruledOutReporter')],
+})
 
 export function MatchStatusBadge({ status, withdrawn = false, className }) {
   const [style, label] = withdrawn
-    ? ['bg-status-closed-soft text-fg', 'Withdrawn · a report was finished']
-    : (STAFF_STAGES[status] ?? ['bg-surface-muted text-fg-muted', status])
+    ? ['bg-status-closed-soft text-fg', t('matching.withdrawn')]
+    : (staffStages()[status] ?? ['bg-surface-muted text-fg-muted', status])
   return (
     <span className={cn('rounded-pill px-3 py-1 text-sm font-medium', style, className)}>{label}</span>
   )
@@ -137,7 +145,7 @@ export function PairingName({ lost, found }) {
         {' '}
         ↔{' '}
       </span>
-      <span className="sr-only"> and </span>
+      <span className="sr-only"> {t('matching.and')} </span>
       {sideName(found)}
     </>
   )
@@ -146,7 +154,7 @@ export function PairingName({ lost, found }) {
 function PairSide({ report }) {
   const [isOpen, setIsOpen] = useState(false)
   const photo = report.photos.find((item) => item.isPrimary) ?? report.photos[0]
-  const alt = photo?.alt || `Photo of ${sideName(report).toLowerCase()}`
+  const alt = photo?.alt || t('matching.photoOf', { name: sideName(report).toLowerCase() })
   const isFound = report.reportType === REPORT_TYPES.FOUND
 
   return (
@@ -179,12 +187,12 @@ function PairSide({ report }) {
                 loading="lazy"
               />
             </span>
-            <span className="sr-only">View full photo</span>
+            <span className="sr-only">{t('matching.viewFullPhoto')}</span>
           </button>
         ) : (
           <img
             src={photoPlaceholder}
-            alt="No photo was provided for this report"
+            alt={t('ui.noPhoto')}
             className="h-56 w-full rounded-card bg-surface-muted object-contain sm:h-72 lg:h-80"
           />
         )}
@@ -207,7 +215,8 @@ function PairSide({ report }) {
           {[speciesLabel(report.species), report.breed].filter(Boolean).join(' · ')}
         </p>
         <p className="text-sm text-fg-muted">
-          {report.location.city} · {isFound ? 'Found' : 'Last seen'} {formatDate(report.incidentDate)}
+          {report.location.city} ·{' '}
+          {t(isFound ? 'matching.foundOn' : 'matching.lastSeenOn', { date: formatDate(report.incidentDate) })}
         </p>
       </div>
 
@@ -239,8 +248,8 @@ function Evidence({ match, lost, found, isHistory = false }) {
   )
 
   return (
-    <section aria-label="Comparison evidence" className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold text-fg">Why these were paired</h3>
+    <section aria-label={t('matching.evidence')} className="flex flex-col gap-2">
+      <h3 className="text-sm font-semibold text-fg">{t('matching.whyPaired')}</h3>
       <ul className="divide-y divide-border rounded-card border border-border">
         {signals.map((signal) => {
           const values = isHistory ? null : compareValues(signal.key, lost, found)
@@ -272,8 +281,8 @@ function Evidence({ match, lost, found, isHistory = false }) {
                   )}
                 >
                   {isHistory
-                    ? signal.matched ? 'Aligned when paired' : 'Did not align'
-                    : signal.matched ? 'Aligns' : 'Does not align'}
+                    ? signal.matched ? t('matching.alignedWhenPaired') : t('matching.didNotAlign')
+                    : signal.matched ? t('matching.aligns') : t('matching.doesNotAlign')}
                 </span>
               </span>
 
@@ -285,11 +294,12 @@ function Evidence({ match, lost, found, isHistory = false }) {
                       {' '}
                       ↔{' '}
                     </span>
-                    <span className="sr-only"> compared with </span>
+                    <span className="sr-only"> {t('matching.comparedWith')} </span>
                     {values[1]}
                   </span>
                 )}
-                <span className="text-fg-muted">{signal.detail}</span>
+                {/* Written by the server when the pairing was scored, in English. */}
+                <span lang="en" className="text-fg-muted">{signal.detail}</span>
               </span>
             </li>
           )
@@ -346,6 +356,8 @@ export function StatusStrip({ tone, icon: Icon, title, children }) {
 function sideName(report) {
   return (
     report.petName ??
-    `${report.reportType === REPORT_TYPES.FOUND ? 'Found' : 'Lost'} ${speciesLabel(report.species).toLowerCase()}`
+    t(report.reportType === REPORT_TYPES.FOUND ? 'matching.sideFound' : 'matching.sideLost', {
+      species: speciesLabel(report.species).toLowerCase(),
+    })
   )
 }

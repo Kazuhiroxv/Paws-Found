@@ -59,8 +59,17 @@ are checked by what the file actually is; administrators add, rename, retire and
 delete pet categories. Nothing the app shows comes from mock data any more. See
 [`docs/feature-status.md`](docs/feature-status.md) for the item-by-item picture.
 
-**It is tested.** 1,374 automated checks in twenty-three suites, all passing, and
-axe-core over 40 pages — see [`docs/TESTING.md`](docs/TESTING.md) §3.
+**English or Filipino, and a printable list.** Every screen — public,
+customer, Pet Coordinator and Administration — is available in English and
+Filipino from the language control in the header; what people typed is shown
+as they wrote it (see [`docs/localization.md`](docs/localization.md)). The
+report lists on Explore, the coordinator's queue and Administration print, or
+save as PDF, with the filters applied. A [Disclaimer](src/pages/public/DisclaimerPage.jsx)
+says plainly that this is an academic, non-commercial project that handles no
+payments and guarantees nothing.
+
+**It is tested.** 1,503 automated checks in twenty-seven suites, all passing, and
+axe-core over 50 pages — see [`docs/TESTING.md`](docs/TESTING.md) §3.
 
 ## Getting started
 
@@ -189,7 +198,11 @@ with the password itself. On a built site everyone signs in through the form.
 | `npm run test:client-ip` | 18 checks of which address is logged: `REMOTE_ADDR`, or Railway's `X-Real-IP` only when the deployment is Railway (needs `php` on PATH) |
 | `npm run test:admin-levels` | 93 checks of the administrator levels by direct API call, including two Super Administrators demoting each other at once, and that only a Pet Coordinator approves or rejects a report before it is published (**reseeds**) |
 | `npm run test:admin-levels-ui` | 33 browser checks of what each administrator level sees and can do, including no review buttons on a pending report (**reseeds**) |
-| `npm run a11y` | axe-core over all 40 pages in every role (`PAWS_BASE=http://localhost:5173` for the dev build) |
+| `npm run test:i18n` | 22 checks that English and Filipino have the same keys, placeholders and plurals, that no interface text is hard-coded, and that stored values stay the database's codes — needs nothing running |
+| `npm run test:disclaimer` | 21 checks that the Disclaimer says what it must in both languages, and claims no immunity — needs nothing running |
+| `npm run test:privacy-ack` | 29 checks of the Privacy Notice acknowledgement: stored in `privacy_consents`, blocks nothing, only for your own account (**reseeds**) |
+| `npm run test:i18n-ui` | 57 browser checks: the language switch, the Privacy Notice message, the Disclaimer, and Print / Save as PDF on three pages (**reseeds**) |
+| `npm run a11y` | axe-core over all 50 pages in every role, nine of them in Filipino (`PAWS_BASE=http://localhost:5173` for the dev build) |
 | `npm run verify:deploy <url>` | 28 checks that only fail on a real host |
 
 See [`docs/TESTING.md`](docs/TESTING.md) for prerequisites and what each one

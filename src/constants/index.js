@@ -4,7 +4,26 @@
  * Every list here is intentionally data-driven so that new values (extra
  * statuses, extra species) can be added without hunting through JSX.
  * See CLAUDE.md §6.7 — the status workflow must stay extensible.
+ *
+ * The `*_LABELS` maps answer in the language now showing (Correction 7):
+ * each entry reads `labels.*` from the dictionaries in `@/i18n`. Read them
+ * while rendering, never into a module-level constant, or the words stay in
+ * whichever language was showing when the module loaded.
  */
+import { hasKey, t } from '@/i18n'
+
+/**
+ * A map from stored value to the words for it, in the current language.
+ * The values are the keys; the words are read each time, so the same map
+ * says "Pending review" or "Hinihintay ang pagsusuri".
+ */
+function translatedLabels(group, values) {
+  const labels = {}
+  for (const value of values) {
+    Object.defineProperty(labels, value, { enumerable: true, get: () => t(`labels.${group}.${value}`) })
+  }
+  return Object.freeze(labels)
+}
 
 /** Application roles. A user has exactly one. */
 export const ROLES = {
@@ -13,11 +32,7 @@ export const ROLES = {
   ADMIN: 'admin',
 }
 
-export const ROLE_LABELS = {
-  [ROLES.USER]: 'Customer/User',
-  [ROLES.STAFF]: 'Staff / Pet Coordinator',
-  [ROLES.ADMIN]: 'Administrator',
-}
+export const ROLE_LABELS = translatedLabels('role', Object.values(ROLES))
 
 /**
  * Administrator levels (Correction 6). A refinement of the Administrator role,
@@ -30,11 +45,7 @@ export const ADMIN_LEVELS = {
   SUPER_ADMIN: 'super_admin',
 }
 
-export const ADMIN_LEVEL_LABELS = {
-  [ADMIN_LEVELS.MODERATOR]: 'Administrator — Moderator',
-  [ADMIN_LEVELS.MANAGER]: 'Administrator — Manager',
-  [ADMIN_LEVELS.SUPER_ADMIN]: 'Super Administrator',
-}
+export const ADMIN_LEVEL_LABELS = translatedLabels('adminLevel', Object.values(ADMIN_LEVELS))
 
 /**
  * What an administrator may do. The server derives these from the level and
@@ -63,10 +74,7 @@ export const REPORT_TYPES = {
   FOUND: 'found',
 }
 
-export const REPORT_TYPE_LABELS = {
-  [REPORT_TYPES.LOST]: 'Lost',
-  [REPORT_TYPES.FOUND]: 'Found',
-}
+export const REPORT_TYPE_LABELS = translatedLabels('reportType', Object.values(REPORT_TYPES))
 
 /**
  * Report statuses. More may be required once the instructor finalises the
@@ -79,12 +87,7 @@ export const REPORT_STATUSES = {
   CLOSED: 'closed',
 }
 
-export const REPORT_STATUS_LABELS = {
-  [REPORT_STATUSES.ACTIVE]: 'Active',
-  [REPORT_STATUSES.POSSIBLE_MATCH]: 'Possible Match',
-  [REPORT_STATUSES.RETURNED]: 'Returned',
-  [REPORT_STATUSES.CLOSED]: 'Closed',
-}
+export const REPORT_STATUS_LABELS = translatedLabels('caseStatus', Object.values(REPORT_STATUSES))
 
 /**
  * Bar fill for each status, used by the breakdowns on the staff and
@@ -116,14 +119,7 @@ export const MATCH_STATUSES = {
   DISMISSED: 'dismissed',
 }
 
-export const MATCH_STATUS_LABELS = {
-  [MATCH_STATUSES.SUGGESTED]: 'Possible Match',
-  [MATCH_STATUSES.VERIFICATION_REQUESTED]: 'Verification Requested',
-  [MATCH_STATUSES.UNDER_REVIEW]: 'Under Staff Review',
-  [MATCH_STATUSES.CONFIRMED]: 'Confirmed Match',
-  [MATCH_STATUSES.REJECTED]: 'Rejected',
-  [MATCH_STATUSES.DISMISSED]: 'Dismissed by User',
-}
+export const MATCH_STATUS_LABELS = translatedLabels('matchStatus', Object.values(MATCH_STATUSES))
 
 /** Match states that are sitting on a Pet Coordinator's desk. */
 export const MATCH_STATUSES_AWAITING_STAFF = [
@@ -140,25 +136,23 @@ export const SPECIES = {
   OTHER: 'other',
 }
 
-export const SPECIES_LABELS = {
-  [SPECIES.DOG]: 'Dog',
-  [SPECIES.CAT]: 'Cat',
-  [SPECIES.BIRD]: 'Bird',
-  [SPECIES.RABBIT]: 'Rabbit',
-  [SPECIES.OTHER]: 'Other',
-}
+export const SPECIES_LABELS = translatedLabels('species', Object.values(SPECIES))
 
 /**
  * Display name for a species value.
  *
  * Falls back to the stored value when an administrator has added a category
  * beyond the seeded five, so a new category renders sensibly everywhere instead
- * of showing "undefined". The full list lives in `categoryService`.
+ * of showing "undefined". The full list lives in `categoryService`. A category
+ * an administrator added is shown by its stored name in either language: it
+ * is data, and data is not translated (Correction 7).
  *
  * @param {string} value
+ * @param {string} [storedName]  The category's name from the database.
  */
-export function speciesLabel(value) {
-  if (SPECIES_LABELS[value]) return SPECIES_LABELS[value]
+export function speciesLabel(value, storedName) {
+  if (value && hasKey(`labels.species.${value}`)) return t(`labels.species.${value}`)
+  if (storedName) return storedName
   if (!value) return ''
   return value.charAt(0).toUpperCase() + value.slice(1).replace(/-/g, ' ')
 }
@@ -168,9 +162,21 @@ export function speciesLabel(value) {
  * provinces plus Metro Manila (NCR, a region with no provinces) and BARMM's
  * Special Geographic Area, so it is not "Province": Metro Manila is not one.
  */
-export const AREA_LABEL = 'Province or Metro Manila'
-export const AREA_HINT =
-  'Metro Manila has no provinces, so it is listed as one area; so is BARMM’s Special Geographic Area.'
+/**
+ * A listed colour's name in the language showing (Correction 7). The stored
+ * value is always the English name from `pet_colours`; anything not on the
+ * list — an older report's free text — is shown as stored.
+ *
+ * @param {string} name  e.g. "Brown".
+ */
+export function colourLabel(name) {
+  if (!name) return ''
+  const key = `labels.colour.${name.toLowerCase()}`
+  return hasKey(key) ? t(key) : name
+}
+
+export const areaLabel = () => t('labels.area')
+export const areaHint = () => t('labels.areaHint')
 
 /** 'xl' added after the defense (Correction 3): a very large dog had no size. */
 export const PET_SIZES = {
@@ -180,12 +186,7 @@ export const PET_SIZES = {
   XL: 'xl',
 }
 
-export const PET_SIZE_LABELS = {
-  [PET_SIZES.SMALL]: 'Small',
-  [PET_SIZES.MEDIUM]: 'Medium',
-  [PET_SIZES.LARGE]: 'Large',
-  [PET_SIZES.XL]: 'Extra Large (XL)',
-}
+export const PET_SIZE_LABELS = translatedLabels('size', Object.values(PET_SIZES))
 
 export const PET_SEXES = {
   MALE: 'male',
@@ -193,11 +194,7 @@ export const PET_SEXES = {
   UNKNOWN: 'unknown',
 }
 
-export const PET_SEX_LABELS = {
-  [PET_SEXES.MALE]: 'Male',
-  [PET_SEXES.FEMALE]: 'Female',
-  [PET_SEXES.UNKNOWN]: 'Unknown',
-}
+export const PET_SEX_LABELS = translatedLabels('sex', Object.values(PET_SEXES))
 
 /** Reasons a report can be flagged for moderation (Phase 11). */
 export const MODERATION_REASONS = {
@@ -210,15 +207,7 @@ export const MODERATION_REASONS = {
   OTHER: 'other',
 }
 
-export const MODERATION_REASON_LABELS = {
-  [MODERATION_REASONS.FALSE_REPORT]: 'False report',
-  [MODERATION_REASONS.SPAM]: 'Spam',
-  [MODERATION_REASONS.SCAM]: 'Scam',
-  [MODERATION_REASONS.HARASSMENT]: 'Harassment',
-  [MODERATION_REASONS.INAPPROPRIATE]: 'Inappropriate content',
-  [MODERATION_REASONS.DUPLICATE]: 'Duplicate report',
-  [MODERATION_REASONS.OTHER]: 'Other',
-}
+export const MODERATION_REASON_LABELS = translatedLabels('moderationReason', Object.values(MODERATION_REASONS))
 
 /** Kinds of notification the system can raise (Phase 9). */
 export const NOTIFICATION_TYPES = {
@@ -254,12 +243,7 @@ export const PUBLICATION_STATUSES = {
   REMOVED: 'removed',
 }
 
-export const PUBLICATION_STATUS_LABELS = {
-  [PUBLICATION_STATUSES.PENDING_REVIEW]: 'Pending review',
-  [PUBLICATION_STATUSES.PUBLISHED]: 'Published',
-  [PUBLICATION_STATUSES.REJECTED]: 'Not approved',
-  [PUBLICATION_STATUSES.REMOVED]: 'Removed',
-}
+export const PUBLICATION_STATUS_LABELS = translatedLabels('publication', Object.values(PUBLICATION_STATUSES))
 
 /**
  * How precisely a report's coordinates may be shown publicly.

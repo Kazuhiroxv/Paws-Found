@@ -1,0 +1,23 @@
+/** Listahan ng mga report sa papel, o naka-save bilang PDF (Correction 7). */
+export default {
+  button: 'I-print / I-save bilang PDF',
+  failed: 'Hindi maihanda ang listahan para i-print: {message}',
+  exploreTitle: 'Mga report ng nawawala at natagpuang alaga',
+  adminTitle: 'Mga rekord ng report',
+  staffTitle: 'Pila ng mga report',
+  printed: 'Inilimbag noong {date}',
+  filters: 'Mga filter na ginamit:',
+  noFilters: 'wala — lahat ng report sa listahan',
+  sortedBy: 'Pagkakasunod: {sort}',
+  count: { one: '{count} report', other: '{count} report' },
+  reference: 'Blg.',
+  type: 'Uri',
+  pet: 'Pangalan ng alaga',
+  species: 'Hayop',
+  breed: 'Lahi',
+  colour: 'Kulay',
+  incident: 'Petsa ng pangyayari',
+  publication: 'Paglalathala',
+  status: 'Status ng kaso',
+  filed: 'Na-file',
+}

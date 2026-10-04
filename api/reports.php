@@ -1936,7 +1936,7 @@ function reports_list(): never
     $sql = "SELECT r.report_id, r.report_type, r.status, r.publication_status, r.pet_name, r.pet_size, r.pet_sex,
                    r.primary_color, r.secondary_color, r.distinct_features, r.description,
                    r.has_collar, r.pet_condition, r.incident_date, r.incident_time,
-                   r.updated_at, r.user_id AS reporter_id,
+                   r.updated_at, r.created_at, r.user_id AS reporter_id,
                    c.category_code AS species, c.category_name AS species_label,
                    b.breed_name AS breed,
                    l.label AS location_label, l.city, l.province, l.latitude, l.longitude,
@@ -2183,7 +2183,7 @@ function shape_for_viewer(array $report, int $reporterId, ?array $viewer): array
     if ($viewer === null) {
         unset(
             $report['description'], $report['distinct_features'], $report['has_collar'],
-            $report['condition'], $report['incident_time'], $report['updated_at'],
+            $report['condition'], $report['incident_time'], $report['updated_at'], $report['created_at'],
             $report['reporter_id'], $report['location']['label'],
             // A guest only ever sees published reports, so saying so is noise.
             $report['publication_status']
@@ -2235,6 +2235,8 @@ function shape_report_row(array $row): array
         'incident_date' => $row['incident_date'],
         'incident_time' => $row['incident_time'],
         'updated_at' => $row['updated_at'] ?? null,
+        // When it was filed (Correction 7: the printed report list says so).
+        'created_at' => $row['created_at'] ?? null,
         'location' => [
             'label' => $row['location_label'],
             'city' => $row['city'],

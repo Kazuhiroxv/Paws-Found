@@ -4,6 +4,7 @@ import {
   Flag,
   HandHeart,
   Handshake,
+  Info,
   KeyRound,
   Lock,
   MessageSquareOff,
@@ -19,139 +20,41 @@ import { PatternVeil } from '@/components/PatternVeil'
 import { PageHeader } from '@/components/PageHeader'
 import { SectionHeading } from '@/components/SectionHeading'
 import { PROJECT_ADMINISTRATOR_NAME, PROJECT_CONTACT_EMAIL } from '@/constants'
+import { t, tList } from '@/i18n'
 
 /**
- * Every help topic, with its questions.
+ * Every help topic: its id and icon. The words — title, summary and each
+ * question with its answer — are `help.topics.<id>` in the dictionaries
+ * (Correction 7), read when the page renders.
  *
  * Kept as data rather than markup so the topic cards at the top and the
  * sections below cannot fall out of step — they are built from the same list.
  */
-const TOPICS = [
-  {
-    id: 'reporting-lost',
-    icon: TriangleAlert,
-    title: 'Reporting a lost pet',
-    summary: 'What to include so a stranger can recognise your pet.',
-    faqs: [
-      {
-        q: 'What details actually help?',
-        a: 'The ones a stranger could check on the spot: colour and markings, size, collar, and anything unusual such as a scar, a bent ear or a short tail. Give the area rather than an exact address, plus the date and approximate time.',
-      },
-      {
-        q: 'Do I need a photo?',
-        a: 'No, but it is the single most useful thing you can add. A clear, well-lit picture of the whole animal is what people recognise, and what a coordinator compares against a found report.',
-      },
-      {
-        q: 'Can I edit a report after filing it?',
-        a: 'Yes. Your reports are listed in My Reports, and you can update the details or mark the pet returned at any time.',
-      },
-    ],
-  },
-  {
-    id: 'reporting-found',
-    icon: HandHeart,
-    title: 'Reporting a found pet',
-    summary: 'Filing a sighting, even with nothing to go on.',
-    faqs: [
-      {
-        q: 'The pet has no collar and no name. Can I still report it?',
-        a: 'Yes. A found report never asks for a pet name — the finder is not expected to know it. Species, colour, size and where you found it are enough to be useful.',
-      },
-      {
-        q: 'Should I include everything I noticed?',
-        a: 'Almost. Keep one identifying detail to yourself — something only the real owner would know — so ownership can be checked later. Everything else helps.',
-      },
-    ],
-  },
-  {
-    id: 'possible-matches',
-    icon: Search,
-    title: 'Possible matches',
-    summary: 'What a match suggestion is, and what it is not.',
-    faqs: [
-      {
-        q: 'How does the system find a match?',
-        a: 'It compares structured details between a lost and a found report: species, breed, colour, size, how close the two locations are, how close the dates are, and distinctive characteristics. There is no image recognition and no AI involved.',
-      },
-      {
-        q: 'Does a possible match mean you found my pet?',
-        a: 'No. A possible match is a suggestion, never a conclusion. Every match shows exactly which details lined up and which did not, so you can judge it yourself.',
-      },
-    ],
-  },
-  {
-    id: 'verifying-ownership',
-    icon: ShieldCheck,
-    title: 'Verifying ownership',
-    summary: 'How a claim is checked before anything is arranged.',
-    faqs: [
-      {
-        q: 'What happens after I respond to a match?',
-        a: 'The match goes to a Pet Coordinator, who compares both reports and helps confirm ownership before a handover is coordinated. Confirming a match closes both reports as returned.',
-      },
-      {
-        q: 'What counts as proof of ownership?',
-        a: 'Earlier photographs, veterinary records, or a description of a detail that was never published — which is why finders are asked to hold one back.',
-      },
-      {
-        q: 'Who can see verification information?',
-        a: 'Only the coordinator handling the case. It is never shown on a public report page.',
-      },
-    ],
-  },
-  {
-    id: 'safe-handovers',
-    icon: Handshake,
-    title: 'Safe handovers',
-    summary: 'Meeting someone to return or collect a pet.',
-    faqs: [
-      {
-        q: 'Where should we meet?',
-        a: 'A public place, during daylight, with someone else along. There is no reason a handover needs to happen at anybody’s home.',
-      },
-      {
-        q: 'What should make me cautious?',
-        a: 'Anyone who claims a pet without being able to describe it, who cannot answer a question about a detail that was never published, or who pushes to move the conversation off the platform.',
-      },
-    ],
-  },
-  {
-    id: 'privacy',
-    icon: Lock,
-    title: 'Privacy',
-    summary: 'What a public report page shows about you.',
-    faqs: [
-      {
-        q: 'Is my phone number or email shown?',
-        a: 'Your phone number never is — not on a report, a card or the map. A Pet Coordinator can see it when checking a possible match. Your email address is shown only if you choose to share it, report by report, and only to signed-in members. Otherwise the report says you prefer to be reached through a Pet Coordinator. There is no messaging between members.',
-      },
-      {
-        q: 'Does the map show where I live?',
-        a: 'No. Report locations are approximate areas, not addresses, and the detail page draws a circle around the pin so the imprecision is visible rather than implied.',
-      },
-    ],
-  },
-  {
-    id: 'reporting-abuse',
-    icon: Flag,
-    title: 'Reporting abuse',
-    summary: 'Flagging a listing that should not be there.',
-    faqs: [
-      {
-        q: 'How do I report a listing?',
-        a: 'Every report page has a “Report this listing” action. You will be asked to pick a reason: false report, spam, scam, harassment, inappropriate content, duplicate report, or other.',
-      },
-      {
-        q: 'What happens to a flag?',
-        a: 'It goes to an administrator for review. They can dismiss it, remove the content, warn the user, or suspend the account.',
-      },
-      {
-        q: 'My account is locked or suspended. What now?',
-        a: `Locked means three wrong passwords in a row; suspended means an administrator stopped the account. Either way only the Paws&Found Administrator, ${PROJECT_ADMINISTRATOR_NAME}, can restore it, and a password reset does not. Contact them at ${PROJECT_CONTACT_EMAIL} from the address you sign in with. You can still browse reports without signing in.`,
-      },
-    ],
-  },
+const TOPIC_ICONS = [
+  { id: 'reporting-lost', icon: TriangleAlert },
+  { id: 'reporting-found', icon: HandHeart },
+  { id: 'possible-matches', icon: Search },
+  { id: 'verifying-ownership', icon: ShieldCheck },
+  { id: 'safe-handovers', icon: Handshake },
+  { id: 'privacy', icon: Lock },
+  { id: 'reporting-abuse', icon: Flag },
+  // Correction 7: what Paws&Found is — academic, no money, no affiliation.
+  { id: 'about-service', icon: Info },
 ]
+
+/** The topics in the language showing. */
+function helpTopics() {
+  return TOPIC_ICONS.map(({ id, icon }) => ({
+    id,
+    icon,
+    title: t(`help.topics.${id}.title`),
+    summary: t(`help.topics.${id}.summary`),
+    faqs: tList(`help.topics.${id}.faqs`).map((faq) => ({
+      q: faq.q,
+      a: faq.a.replace('{name}', PROJECT_ADMINISTRATOR_NAME).replace('{email}', PROJECT_CONTACT_EMAIL),
+    })),
+  }))
+}
 
 /**
  * The four rules that matter most, lifted out of the FAQ.
@@ -162,26 +65,10 @@ const TOPICS = [
  * accordion halfway down.
  */
 const SAFETY_RULES = [
-  {
-    icon: Users,
-    title: 'Meet in public, and bring someone',
-    body: 'A barangay hall, a vet clinic, a busy café. There is no reason a handover has to happen at anybody’s home.',
-  },
-  {
-    icon: Sun,
-    title: 'Daylight only',
-    body: 'Arrange it for a time when the place you have chosen is open and there are other people around.',
-  },
-  {
-    icon: KeyRound,
-    title: 'Hold one detail back',
-    body: 'If you found a pet, keep one identifying mark to yourself. The real owner will be able to name it.',
-  },
-  {
-    icon: MessageSquareOff,
-    title: 'Keep it on Paws&Found',
-    body: 'Anyone pushing to move the conversation somewhere private before ownership is settled is a reason to slow down.',
-  },
+  { icon: Users, key: 'public' },
+  { icon: Sun, key: 'daylight' },
+  { icon: KeyRound, key: 'holdBack' },
+  { icon: MessageSquareOff, key: 'onPlatform' },
 ]
 
 /**
@@ -200,6 +87,7 @@ const TOPIC_GROUNDS = {
   'safe-handovers': 'bg-warm-band',
   privacy: 'bg-surface-alt',
   'reporting-abuse': '',
+  'about-service': 'bg-warm-band',
 }
 
 /**
@@ -215,6 +103,7 @@ const TOPIC_TINTS = {
   'safe-handovers': 'bg-status-returned-soft text-success-ink',
   privacy: 'bg-status-returned-soft text-success-ink',
   'reporting-abuse': 'bg-danger-soft text-danger-hover',
+  'about-service': 'bg-brand-soft text-brand',
 }
 
 /**
@@ -231,6 +120,7 @@ const TOPIC_ICON_INK = {
   'safe-handovers': 'text-success-ink',
   privacy: 'text-success-ink',
   'reporting-abuse': 'text-danger-hover',
+  'about-service': 'text-brand',
 }
 
 /**
@@ -240,8 +130,8 @@ const TOPIC_ICON_INK = {
  * 640px is Tailwind's `sm`, where the field is wide enough for the long one.
  */
 const WIDE_ENOUGH = '(min-width: 640px)'
-const PLACEHOLDER_LONG = 'Search help topics, e.g. collar, match or handover'
-const PLACEHOLDER_SHORT = 'Search help topics'
+const PLACEHOLDER_LONG = 'help.placeholderLong'
+const PLACEHOLDER_SHORT = 'help.placeholderShort'
 
 function useSearchPlaceholder() {
   const [isWide, setIsWide] = useState(() => window.matchMedia(WIDE_ENOUGH).matches)
@@ -270,7 +160,8 @@ export function HelpPage() {
       .toLowerCase()
       .includes(needle)
 
-  const topics = TOPICS.filter(matches)
+  const allTopics = helpTopics()
+  const topics = allTopics.filter(matches)
 
   return (
     <div className="-my-8 flex flex-col">
@@ -310,16 +201,16 @@ export function HelpPage() {
         <Container className="relative flex flex-col justify-center gap-8 py-10 sm:py-12 lg:min-h-[26rem] lg:py-14 xl:min-h-[30rem]">
           <div className="flex min-w-0 flex-col gap-6 lg:max-w-[40%]">
             <p className="text-sm font-semibold tracking-[0.14em] text-brand uppercase">
-              Guidance &amp; safety
+              {t('help.eyebrow')}
             </p>
             <PageHeader
-              title="Help & community safety"
-              description="How to file a report that helps, how a match is checked, and how to stay safe arranging a handover."
+              title={t('help.title')}
+              description={t('help.description')}
               onArtwork
             />
 
             <label className="relative block">
-              <span className="sr-only">Search help</span>
+              <span className="sr-only">{t('help.searchLabel')}</span>
               <Search
                 size={18}
                 className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-fg-muted"
@@ -329,7 +220,7 @@ export function HelpPage() {
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder={placeholder}
+                placeholder={t(placeholder)}
                 className="h-14 w-full rounded-control border border-border-strong bg-panel pr-4 pl-12 text-base text-fg shadow-raised placeholder:text-fg-muted"
               />
             </label>
@@ -351,11 +242,11 @@ export function HelpPage() {
         <Container className="flex flex-col gap-10">
           {/* Jump links rather than a search box: with seven topics, scanning
               them is faster than typing, and there is no index to search. */}
-          <nav aria-label="Help topics">
+          <nav aria-label={t('help.topicsLabel')}>
             <p className="sr-only" aria-live="polite">
               {needle
-                ? `${topics.length} ${topics.length === 1 ? 'topic' : 'topics'} match ${query}`
-                : `${TOPICS.length} topics`}
+                ? t('help.topicsMatch', { count: topics.length, query })
+                : t('help.topicsCount', { count: allTopics.length })}
             </p>
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {topics.map((topic) => {
@@ -390,8 +281,8 @@ export function HelpPage() {
         <PatternVeil />
         <Container className="flex flex-col gap-8">
           <SectionHeading
-            title="Before you meet anyone"
-            description="Four things worth settling before a handover is arranged. They apply whether you are collecting a pet or returning one."
+            title={t('help.safetyTitle')}
+            description={t('help.safetyBody')}
           />
 
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -400,23 +291,21 @@ export function HelpPage() {
 
               return (
                 <li
-                  key={rule.title}
+                  key={rule.key}
                   className="flex flex-col gap-3 rounded-card border border-border bg-panel p-5 shadow-card"
                 >
                   <span className="flex size-11 items-center justify-center rounded-control bg-status-returned-soft text-success-ink">
                     <Icon size={22} aria-hidden="true" />
                   </span>
-                  <h3 className="leading-snug font-semibold text-fg">{rule.title}</h3>
-                  <p className="text-sm leading-relaxed text-fg-muted">{rule.body}</p>
+                  <h3 className="leading-snug font-semibold text-fg">{t(`help.rules.${rule.key}`)}</h3>
+                  <p className="text-sm leading-relaxed text-fg-muted">{t(`help.rules.${rule.key}Body`)}</p>
                 </li>
               )
             })}
           </ul>
 
           <p className="max-w-prose text-sm leading-relaxed text-fg-muted">
-            Paws&amp;Found does not take custody of any animal and does not attend handovers. A Pet
-            Coordinator helps confirm ownership before contact details are exchanged, but the
-            meeting itself is between the two of you — which is why these four are worth reading.
+            {t('help.custody')}
           </p>
         </Container>
       </section>
@@ -428,7 +317,7 @@ export function HelpPage() {
           Now the section title, its sentence and its icon hold the left third
           and the questions have the rest. The height comes from the questions:
           `py-12` and nothing fixed beyond it, so a short topic is short. */}
-      {TOPICS.map((topic) => {
+      {allTopics.map((topic) => {
         const Icon = topic.icon
 
         return (
