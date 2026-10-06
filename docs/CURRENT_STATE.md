@@ -422,9 +422,10 @@ RACE-1, RACE-3 and RACE-4 fail every time; with the fix all pass.
   settled; nobody repairs `match_signals` by hand. Reopening it is correctly
   refused (`comparison_changed`).
 - **Keep `origin`'s push URL disabled.**
-- The project rules in `CLAUDE.md` still govern code: student-scale (§15), no new
-  abstractions or dependencies without need, check `docs/ui-inventory.md`
-  before adding a component, report changes in the §24 format.
+- The project rules in `CLAUDE.md` still govern code: student-scale (§6), no new
+  abstractions or dependencies without need, report each Correction in the §7
+  format. Check `docs/ui-inventory.md` before adding a component
+  (`.claude/rules/frontend.md`).
 
 ---
 
