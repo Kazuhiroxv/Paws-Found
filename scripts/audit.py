@@ -8,9 +8,11 @@ demonstration data at the end, so it can be run again after the UI revisions.
 Stdlib only, so there is nothing to install.
 """
 import http.cookiejar
+import ipaddress
 import json
 import mimetypes
 import os
+import socket
 import ssl
 import subprocess
 import sys
@@ -19,11 +21,10 @@ import urllib.parse
 import urllib.request
 import uuid
 
-# Where to point the suite. The default is the local XAMPP deployment; set
-# PAWS_API to run the same cases against the LAN address or the hosted site:
-#
-#   PAWS_API=https://<domain>/api python scripts/audit_cases.py
-#
+# Where to point the suite: the local XAMPP deployment. The suites built on this
+# module reseed and rewrite the database they reach, so they only ever run
+# against this machine; see "Target safety" below. multi_device.py may still
+# point PAWS_API at the LAN address, against this machine's database.
 API = os.environ.get('PAWS_API', 'http://localhost/pawsandfound/api').rstrip('/')
 
 # The repository root, derived from this file's own location. A fixed path
@@ -56,18 +57,145 @@ results = []          # (category, id, description, expected, actual, ok)
 _sessions = {}
 
 
+# ------------------------------------------------------------- Target safety
+# reseed() replaces the whole database and many cases UPDATE or DELETE rows, so
+# these suites must never reach production (CLAUDE.md, Production safety). The
+# check uses the destination the tools will actually use, not the variable
+# that happened to be set:
+#
+#   * MySQL, before connecting: the client's own option resolution
+#     (`mysql --print-defaults`, which reads my.ini as well as PAWS_MYSQL_ARGS
+#     and does not connect) must name a loopback host or a local socket/pipe.
+#   * MySQL, once connected and before any statement but a SELECT: the server
+#     must report this machine's hostname. That catches a local port that is
+#     really a tunnel to another server.
+#   * The API (audit_cases.py only): the URL's host must resolve to loopback
+#     addresses only.
+#
+# Anything else is refused, including LAN addresses and local containers,
+# because nobody has decided yet that those count as local.
+
+LOCAL_IPC = {'socket', 'pipe', 'memory'}
+# Options that load other option files or credentials; the check cannot see
+# through them, so it refuses rather than guess.
+OPAQUE_OPTIONS = ('--defaults-file', '--defaults-extra-file', '--login-path',
+                  '--no-defaults', '--defaults-group-suffix')
+
+_db_checked_for = None   # the (MYSQL, MYSQL_ARGS) the database check last passed
+
+
+class UnsafeTarget(SystemExit):
+    """Raised before any mutation when a target is not this machine."""
+
+    def __init__(self, what):
+        super().__init__(
+            f'\n  REFUSED: {what}\n'
+            '  This suite reseeds and rewrites the database it reaches, so it only\n'
+            '  runs against this machine (localhost, 127.0.0.1 or ::1). Nothing was\n'
+            '  changed. See CLAUDE.md, Production safety.\n')
+
+
+def is_loopback(host):
+    """True only if every address `host` resolves to is a loopback address."""
+    if not host:
+        return False
+    host = host.strip('[]')
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        pass
+    try:
+        addresses = {info[4][0] for info in socket.getaddrinfo(host, None)}
+    except OSError:
+        return False
+    return bool(addresses) and all(
+        ipaddress.ip_address(a.split('%')[0]).is_loopback for a in addresses)
+
+
+def mysql_destination():
+    """(host, protocol) the MySQL client will use, as the client resolves it."""
+    if any(arg.split('=')[0] in OPAQUE_OPTIONS for arg in MYSQL_ARGS):
+        raise UnsafeTarget('PAWS_MYSQL_ARGS loads another option file, so its '
+                           'database host cannot be checked.')
+    try:
+        out = subprocess.run([MYSQL, '--print-defaults', *MYSQL_ARGS],
+                             capture_output=True, text=True, encoding='utf-8',
+                             errors='replace', timeout=20)
+    except (OSError, subprocess.SubprocessError) as e:
+        raise UnsafeTarget(f'could not ask the MySQL client where it would connect ({e}).')
+    lines = out.stdout.strip().splitlines()
+    if out.returncode != 0 or not lines or 'would have been started' not in lines[0]:
+        raise UnsafeTarget('could not ask the MySQL client where it would connect.')
+    args = ' '.join(lines[1:]).split()
+
+    host = protocol = None
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        value = args[i + 1] if i + 1 < len(args) else None
+        if arg in ('-h', '--host'):
+            host, i = value, i + 1
+        elif arg.startswith('--host='):
+            host = arg.split('=', 1)[1]
+        elif arg.startswith('-h') and len(arg) > 2:
+            host = arg[2:]
+        elif arg == '--protocol':
+            protocol, i = (value or '').lower(), i + 1
+        elif arg.startswith('--protocol='):
+            protocol = arg.split('=', 1)[1].lower()
+        elif arg in ('-W', '--pipe'):
+            protocol = 'pipe'
+        i += 1
+    if host is None:
+        host = os.environ.get('MYSQL_HOST') or 'localhost'   # the client's own fallback
+    return host, protocol
+
+
+def require_local_database():
+    """Refuse, before connecting, unless the client would reach this machine."""
+    host, protocol = mysql_destination()
+    # A socket, pipe or shared memory is only local when it names this machine:
+    # on Windows `--pipe -h otherhost` opens a named pipe on otherhost.
+    if host == '.' and protocol in LOCAL_IPC:
+        return
+    if not is_loopback(host):
+        raise UnsafeTarget(f'the MySQL client would connect to {host!r}, '
+                           'which is not this machine.')
+
+
+def require_local_api():
+    """Refuse unless the API URL points at this machine."""
+    host = urllib.parse.urlsplit(API).hostname
+    if not is_loopback(host):
+        raise UnsafeTarget(f'PAWS_API points at {host!r} ({API}), which is not this machine.')
+
+
 def db_reachable():
-    """Can this machine query the database the API is using?"""
-    global DB_REACHABLE
+    """Can this machine query the database the API is using? Refuses (raises
+    UnsafeTarget) when that database is not on this machine."""
+    global DB_REACHABLE, _db_checked_for
+    target = (MYSQL, tuple(MYSQL_ARGS))
+    if _db_checked_for != target:
+        require_local_database()
+        _db_checked_for, DB_REACHABLE = target, None
     if DB_REACHABLE is None:
+        fields = []
         try:
             out = subprocess.run(
-                [MYSQL, *MYSQL_ARGS, '-B', '-N', 'pawsandfound', '-e', 'SELECT 1'],
+                [MYSQL, *MYSQL_ARGS, '-B', '-N', 'pawsandfound', '-e',
+                 'SELECT 1, @@hostname'],
                 capture_output=True, text=True, encoding='utf-8',
                 errors='replace', timeout=20)
-            DB_REACHABLE = out.stdout.strip() == '1'
+            fields = out.stdout.strip().split('\t')
+            DB_REACHABLE = fields[0] == '1'
         except (OSError, subprocess.SubprocessError):
             DB_REACHABLE = False
+        if DB_REACHABLE:
+            server = fields[1].strip() if len(fields) > 1 else ''
+            if server.lower() != socket.gethostname().lower():
+                DB_REACHABLE = None
+                raise UnsafeTarget(f'the MySQL server reports hostname {server!r}, but '
+                                   f'this machine is {socket.gethostname()!r}.')
     return DB_REACHABLE
 
 

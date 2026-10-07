@@ -427,6 +427,10 @@ it is already serving.
     `X-Forwarded-Proto`, which `request_is_https()` already reads.
 11. Run the full suites against the live site:
 
+> **Superseded (6 October 2026):** `scripts/audit.py` now refuses any API or
+> database that is not this machine, because the suite reseeds what it
+> reaches. Run it locally; never against production (CLAUDE.md, Production safety).
+
 ```bash
 PAWS_API=https://<domain>/api PAWS_MYSQL_ARGS="-u root -p<password> -h <proxy-host> -P <proxy-port>" python scripts/audit_cases.py
 
@@ -773,6 +777,10 @@ Everything it finds is something that only goes wrong on a host. Fix all of it
 before step 14.
 
 **14. Run the 170-case suite against production.**
+
+> **Superseded (6 October 2026):** `scripts/audit.py` now refuses any API or
+> database that is not this machine, because the suite reseeds what it
+> reaches. Run it locally; never against production (CLAUDE.md, Production safety).
 
 ```bash
 PAWS_API=https://<domain>/api \

@@ -34,6 +34,7 @@
     "test:session-ui": "node scripts/session_ui.mjs",
     "test:client-ip": "php scripts/client_ip.php",
     "test:admin-levels": "python scripts/admin_levels.py",
+    "test:audit-guard": "python scripts/audit_target_guard.py",
     "test:admin-levels-ui": "node scripts/admin_levels_ui.mjs",
     "test:i18n": "node --import ./scripts/alias-hook.mjs scripts/i18n_check.mjs",
     "test:disclaimer": "node --import ./scripts/alias-hook.mjs scripts/disclaimer_check.mjs",

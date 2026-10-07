@@ -15,8 +15,8 @@ yourself. A document is a snapshot; the repository is the truth.
 - The production database is read-only: `SELECT`, `SHOW`, `DESCRIBE` only. No `UPDATE`,
   `DELETE`, reseeding, or destructive upload checks (`verify:deploy --upload` only locally).
 - **Never run `npm run audit` (or `scripts/audit*.py`) against production.** It reseeds
-  whatever database it points at. It targets local by default; never point `PAWS_API` or
-  `PAWS_MYSQL_ARGS` at production.
+  whatever database it points at. `scripts/audit.py` now refuses any API or database that
+  isn't this machine; don't work around that check.
 - Never display secrets: Railway variables, DB credentials or connection strings,
   `BREVO_API_KEY`, the Turnstile secret, `RATE_LIMIT_SECRET`, `api/config.local.php`,
   cookies, session ids, raw auth tokens.

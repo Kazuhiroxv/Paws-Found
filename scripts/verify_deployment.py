@@ -431,7 +431,6 @@ if passed != ran:
     print('  Fix these before running the full suites against this deployment.')
 else:
     print()
-    print('  Now run the two suites against it:')
-    print(f'    PAWS_API={API} PAWS_MYSQL_ARGS="..." python scripts/audit_cases.py')
-    print(f'    PAWS_API={API} python scripts/multi_device.py')
+    print('  The audit suites run only against this machine (scripts/audit.py')
+    print('  refuses a deployment); run them locally before you deploy.')
 sys.exit(0 if passed == ran else 1)

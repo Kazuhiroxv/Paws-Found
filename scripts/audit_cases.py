@@ -1766,6 +1766,12 @@ if __name__ == '__main__':
     print('Paws&Found — system audit')
     print(f'  API: {audit.API}')
 
+    # This suite reseeds and rewrites what it reaches, so it refuses any API or
+    # database that is not this machine before it sends anything that changes
+    # data (audit.py, "Target safety"). The database half runs inside
+    # db_reachable(), below.
+    audit.require_local_api()
+
     # Forty-nine of these assertions read the database directly, and that is
     # the point of them: a response that says a row was written proves nothing
     # on its own. Without the database this suite would run about two thirds of
@@ -1775,17 +1781,9 @@ if __name__ == '__main__':
         print()
         print('  Cannot reach the database, so this suite will not run.')
         print()
-        print('  It needs BOTH the API and the MySQL server that API is using.')
-        print('  Against a hosted site that usually means turning on the host')
-        print('  control panel\'s "Remote MySQL" for this machine, then:')
-        print()
-        print('    PAWS_API=https://<domain>/api \\')
-        print('    PAWS_MYSQL_ARGS="-u <dbuser> -p<password> -h <dbhost>" \\')
-        print('    python scripts/audit_cases.py')
-        print()
-        print('  Or run it on the host itself. `npm run multi-device` needs only')
-        print('  the API and is the one to reach for when the database is not')
-        print('  reachable from here.')
+        print('  It needs BOTH the local API and the local MySQL server that API')
+        print('  is using: start XAMPP\'s Apache and MariaDB (port 3307). See')
+        print('  docs/CURRENT_STATE.md, "Running it locally".')
         sys.exit(2)
 
     reseed()
