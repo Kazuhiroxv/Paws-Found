@@ -580,7 +580,15 @@ Rolling back and operating the live site: [PRODUCTION_RUNBOOK.md](PRODUCTION_RUN
 - **Section 4 and Corrections 1–7 are committed locally, not deployed**
   (12 commits; §1). Shipping them is Kyle's call, and they need migrations
   `008` to `012` on Railway first (§4a), then the IP check.
-- **Cancel (register 16) and Reset (11) — AWAITING CLARIFICATION.**
+- **Schema freeze status (6 October 2026)** — `docs/final-schema-audit.md`
+  is the schema source of truth. Cancel (register 16): **DEFERRED PENDING
+  INSTRUCTOR CLARIFICATION**, no Cancel publication state. Reset (11):
+  **AWAITING CLARIFICATION**. Contact number (N1): **IMPLEMENTED, AWAITING
+  INSTRUCTOR-INTENT CONFIRMATION**. `match_claims.staff_notes`: **KEEP**
+  (written, not shown). `pet_reports.assigned_staff_id`: **CANDIDATE FOR
+  REMOVAL**, waiting on a read-only production query; no migration 013 yet.
+  The freeze, the final ERD and then the production backup and migrations
+  follow, in that order (`docs/DECISIONS.md`, "Schema freeze notes").
 - **No automatic log retention** (`docs/security-activity-logging.md`). The
   re-consent gap is closed by Correction 7's non-blocking acknowledgement.
 - **The Filipino has not had a native-speaker review**; recommended before the

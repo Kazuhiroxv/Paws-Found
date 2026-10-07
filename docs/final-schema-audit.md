@@ -48,6 +48,13 @@ proves the same thing by a different route: a 2947a43-era database migrated to
 
 ### 1.2 Decisions to make before the freeze
 
+**Status, 6 October 2026:** Cancel **DEFERRED PENDING INSTRUCTOR
+CLARIFICATION**; `staff_notes` **KEEP**; `assigned_staff_id` **CANDIDATE FOR
+REMOVAL**, blocked on a read-only production query (no migration 013 yet).
+Reset (**AWAITING CLARIFICATION**) and the contact number (**IMPLEMENTED,
+AWAITING INSTRUCTOR-INTENT CONFIRMATION**) do not block the freeze. Reasons:
+`docs/DECISIONS.md`, "Schema freeze notes".
+
 1. **Cancel (register 16) — the only open item that could change the schema.**
    If Ma'am's "cancel" is a third review decision with its own state, it needs a
    migration on **three** ENUM columns that share the publication values
@@ -57,18 +64,27 @@ proves the same thing by a different route: a 2947a43-era database migrated to
    until they match the schema) and a `notifications.notification_type` value
    if the reporter is told. (The comment above `PUBLICATION_ACTIONS` says "one
    value in the publication ENUM"; it is three columns.) If Cancel only means
-   closing the dialog, nothing changes. **Without a clarification: defer it
-   formally and freeze.**
+   closing the dialog, nothing changes. **Decided: DEFERRED PENDING
+   INSTRUCTOR CLARIFICATION.** No Cancel publication state is implemented,
+   because its intended semantics were not established; the states remain
+   `pending_review`, `published`, `rejected`, `removed`.
 2. **`pet_reports.assigned_staff_id` is unused.** It has a foreign key to
    `users` (SET NULL), but no PHP, no interface code and no seed row sets or
    reads it; every report has it NULL. It dates from the proposal ERD
    ("assigned coordinator"). Either keep it and say on the ERD that it is
    reserved and unused, or drop it in a final migration before the freeze. A
    column that appears on the ERD but does nothing is a likely panel question.
+   **Status: CANDIDATE FOR REMOVAL.** Local evidence: no API, interface, test
+   or seed use; 0 of 32 local reports set. The final decision waits on a
+   read-only production query; if production also has zero assigned rows,
+   migration 013 drops it before the final ERD. Not created yet.
 3. **`match_claims.staff_notes` is written, never read back** (known since
    HANDOFF §12): coordinators' notes are stored when they decide, but no page
    shows them. Keep (it is an audit trail of the decision) or show it; no
    schema change either way.
+   **Status: KEEP** — application-written internal coordinator data (the
+   latest decision note replaces the previous one), not surfaced in the
+   interface: a known presentation limitation, not dead schema.
 4. **`match_signals.signal_key` says `color`**, while everything since
    Correction 3 says `colour` (`pet_colours`, `colour_name`). Cosmetic and
    stored in 28 seed rows and every production pairing — **leave it**, and be

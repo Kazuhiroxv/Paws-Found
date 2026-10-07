@@ -626,7 +626,8 @@ the reports that were already public.
 ### What was not built (Correction 4)
 
 **Cancel** — Ma'am's third decision. Its meaning is not established, so it is
-not guessed; the dialogs' "Go back" only closes the dialog. **Withdraw
+not guessed; the dialogs' "Go back" only closes the dialog. (Formally deferred
+before the schema freeze — see "Schema freeze notes" below.) **Withdraw
 submission** — turning a filed report back into a draft would undo a filing
 with its photographs; not needed for the required flow. **Flagging** an
 unpublished report is impossible: only published reports can be flagged.
@@ -886,6 +887,36 @@ Ma'am asked (rec 2) to print or save the report list as a PDF, on Explore.
   and cannot be taken back.
 - **Escaping:** the sheet is React text, so a name like
   `<img src=x onerror=…>` prints as those characters (PRINT-07).
+
+### Schema freeze notes (6 October 2026)
+
+Decided after the pre-freeze audit (`docs/final-schema-audit.md`), before the
+final ERD. Docs only; no schema or code changed.
+
+- **Cancel — DEFERRED PENDING INSTRUCTOR CLARIFICATION.** No Cancel
+  publication state is implemented, because its intended semantics were not
+  established. The publication states remain `pending_review`, `published`,
+  `rejected`, `removed`. A real third review decision would later need a
+  schema migration on three ENUM columns (`pet_reports.publication_status`,
+  `publication_logs.previous_state`, `publication_logs.new_state`), a row in
+  `PUBLICATION_ACTIONS`, and labels in both languages (`test:i18n` compares
+  them with the schema).
+- **Reset — AWAITING CLARIFICATION.** No implementation. It does not affect
+  the schema.
+- **Contact number — IMPLEMENTED, AWAITING INSTRUCTOR-INTENT CONFIRMATION.**
+  No behaviour change. Whatever Ma'am meant would change visibility or
+  validation, not the tables.
+- **`match_claims.staff_notes` — KEEP.** The application writes it: a
+  coordinator's decision with a note stores it there (the latest note replaces
+  the previous one). No page shows it. It is internal coordinator data, kept;
+  not surfacing it is a known presentation limitation, not dead schema.
+- **`pet_reports.assigned_staff_id` — CANDIDATE FOR REMOVAL.** A foreign key
+  to `users` from the proposal design ("the coordinator handling the case")
+  that nothing uses: no API, interface, test or seed reference, and 0 of 32
+  local reports set it. The decision waits on a read-only production query
+  (`SUM(assigned_staff_id IS NOT NULL)` on `pet_reports`): zero rows would
+  justify migration 013 to drop it before the final ERD; any rows mean stop
+  and find out what they are. Migration 013 is not created yet.
 
 ### No automatic retention (Correction 5)
 

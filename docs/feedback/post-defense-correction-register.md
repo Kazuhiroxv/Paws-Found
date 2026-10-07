@@ -23,9 +23,11 @@ States: **done** (committed on `post-defense/revisions`), **in progress**,
 | Filipino (18) | **DONE** |
 | Print / PDF of the report list (N5) | **DONE** |
 | Privacy Notice acknowledgement (team item) | **DONE** |
-| Reset (11) | **AWAITING CLARIFICATION** |
-| Cancel (16) | **AWAITING CLARIFICATION** |
-| Contact number (N1) | **AWAITING INSTRUCTOR-INTENT CONFIRMATION** |
+| Reset (11) | **AWAITING CLARIFICATION** — no implementation |
+| Cancel (16) | **DEFERRED PENDING INSTRUCTOR CLARIFICATION** — no Cancel publication state |
+| Contact number (N1) | **IMPLEMENTED, AWAITING INSTRUCTOR-INTENT CONFIRMATION** — no behaviour change |
+| `pet_reports.assigned_staff_id` (schema) | **CANDIDATE FOR REMOVAL** — blocked on a read-only production query; no migration 013 yet |
+| `match_claims.staff_notes` (schema) | **KEEP** — written, not shown; a presentation limitation, not dead schema |
 | Final ERD | **PENDING FINAL SCHEMA PASS** |
 | Final presentation (17, N7) | **PENDING** |
 
@@ -54,7 +56,7 @@ deployment rehearsal, and the final presentation and live demonstration.
 | 13 | Time shown with AM/PM | NOTES | **done (Correction 3)** — Hour / Minutes / AM or PM on the form, "1:05 PM" on the review and the report page; the API and the TIME column stay 24-hour | Correction 3 |
 | 14 | Map focused on the Philippines | NOTES | **done (Correction 3)** — opens on the whole country, cannot be dragged far off it, refuses a pin outside it (in the browser and the API); a pin never changes the province or city | Correction 3 |
 | 15 | Description of at least 30 characters | NOTES + AUDIO (rec 1 02:01) | **done (Correction 3)** — counted after trimming, runs of spaces counted once; a live "18 / 30 minimum" | Correction 3 |
-| 16 | Pet Coordinator approves a report before it is posted | NOTES + AUDIO (rec 1 03:48–07:31) | **done (Correction 4) — except Cancel.** A filed report waits for review (`publication_status = pending_review`), is not public and not matched; a Pet Coordinator approves (published, then matched) or marks it not approved with a reason (the reporter edits and resubmits). Since Correction 6A **only a Pet Coordinator** makes this decision: every administrator level gets 403 and no button. **Cancel: AWAITING CLARIFICATION** — see below | Correction 4 |
+| 16 | Pet Coordinator approves a report before it is posted | NOTES + AUDIO (rec 1 03:48–07:31) | **done (Correction 4) — except Cancel.** A filed report waits for review (`publication_status = pending_review`), is not public and not matched; a Pet Coordinator approves (published, then matched) or marks it not approved with a reason (the reporter edits and resubmits). Since Correction 6A **only a Pet Coordinator** makes this decision: every administrator level gets 403 and no button. **Cancel: DEFERRED PENDING INSTRUCTOR CLARIFICATION** (6 October, before the schema freeze) — no Cancel publication state; see below | Correction 4 |
 | 17 | Presentation order: scope and limitations by role, then the ERD, then the demo | NOTES | **PENDING** — final presentation not started (after the final schema pass and the final ERD, which is **PENDING FINAL SCHEMA PASS**) | |
 | 18 | Other languages, such as Filipino | NOTES + AUDIO (rec 1 16:57, "you can also consider") | **DONE (Correction 7)** — English and Filipino across the whole interface, public, customer, Pet Coordinator and Administration (the scope is the team's decision, not Ma'am's words); a labelled language control in the header, the phone menu and the workspace rail; kept in this browser (`localStorage`), English by default, no database change; `<html lang>` `en`/`fil`. What people typed, notifications and match reasons (server-written), emails and stored values are not translated — see `docs/localization.md` | Correction 7 |
 | 19 | Removed reports must not appear as Closed | NOTES + AUDIO (rec 1 18:58–19:21) | **done (Correction 4)** — removal is its own publication state (`removed`), never `status = closed`; no Closed entry is written; legacy removals (seeded report 9) converted by migration 010 on evidence | Correction 4 |
@@ -133,21 +135,30 @@ The recordings do not cover these, so they rest on the written notes alone:
   levels. If Ma'am meant something different, the levels are one table
   (`ADMIN_CAPABILITIES`) and one ENUM to change.
 - **Reset (11)** — AWAITING CLARIFICATION — exact Reset behavior not
-  established. Reset what: the report form, a filter, a password?
+  established. Reset what: the report form, a filter, a password? No
+  implementation; it does not block the schema freeze.
 - **Contact number (N1)** — AWAITING INSTRUCTOR-INTENT CONFIRMATION. Which of
   these did she mean: A collected, B required, C shown publicly, or D a clear
   way to reach the reporter? Built for now: never published, coordinators see
-  it.
+  it. IMPLEMENTED, AWAITING INSTRUCTOR-INTENT CONFIRMATION; no behaviour
+  change, and it does not block the schema freeze.
 - **Filipino (18)** — built (Correction 7) for the whole interface, the team's
   choice for a coherent feature; Ma'am's words were only "you can also
   consider".
-- **Cancel (16)** — AWAITING INSTRUCTOR-INTENT CLARIFICATION. Ma'am's three
-  actions are accept, reject and cancel; accept and reject are built
-  (Correction 4). Cancel could mean: A closing the decision dialog with no
-  action; B the coordinator returning the report to its reporter; C the
-  reporter withdrawing their submission; D an administrative cancellation; E
-  something else. None is built or assumed. The recordings give no more than
-  "you cancel it, you reject it, or you accept it".
+- **Cancel (16)** — **DEFERRED PENDING INSTRUCTOR CLARIFICATION** (decided
+  6 October 2026, before the schema freeze). Ma'am's three actions are accept,
+  reject and cancel; accept and reject are built (Correction 4). Cancel could
+  mean: A closing the decision dialog with no action; B the coordinator
+  returning the report to its reporter; C the reporter withdrawing their
+  submission; D an administrative cancellation; E something else. The
+  recordings give no more than "you cancel it, you reject it, or you accept
+  it". **No Cancel publication state is implemented, because its intended
+  semantics were not established.** The publication states remain
+  `pending_review`, `published`, `rejected`, `removed`. A real third review
+  decision would later need a schema migration (three ENUM columns:
+  `pet_reports.publication_status`, `publication_logs.previous_state`,
+  `publication_logs.new_state`), an API change (`PUBLICATION_ACTIONS`) and
+  new labels in both languages.
 - **Flagged posts (19)** — rec 1 11:49–11:52 may mean a flagged report should
   disappear *before* a decision. If so, anyone could hide any report by flagging
   it; confirm before building.
