@@ -22,6 +22,11 @@ anything (column, key, value and schema_migrations untouched); with it cleared,
 
 Correction 3A (PSGC9); 010 since Correction 4, 011 since 5, 012 since 6, 013
 since the schema freeze. Never touches Railway; needs Docker for the MySQL half.
+
+The migrations are fed EXACTLY as committed, with the target database chosen
+by the client (`mysql ... <database> < file`), as on Railway: they have no USE
+line, so nothing is rewritten. Only the two baseline files (schema.sql and
+seed.sql, which create `pawsandfound` themselves) are renamed on the way in.
 """
 import os
 import re
@@ -69,6 +74,7 @@ SELECT CONCAT_WS('|', c.category_code, b.breed_name) FROM pet_breeds b
   JOIN pet_categories c ON c.category_id = b.category_id WHERE b.is_listed ORDER BY 1;"""
 
 results = []
+MIGRATIONS = set()   # basenames of the migration files: fed unchanged, database chosen by the client
 
 
 def check(name, ok, detail=''):
@@ -101,6 +107,7 @@ def files(folder):
                save('i-012.sql', current('database/migrations/012_admin_privilege_levels.sql')),
                save('j-013.sql', current('database/migrations/013_remove_unused_staff_assignment.sql'))]
     upgrade.append(upgrade[-1])
+    MIGRATIONS.update(os.path.basename(path) for path in upgrade[2:])
     fresh = [save('e-schema.sql', current('database/schema.sql')),
              save('f-seed.sql', current('database/seed.sql'))]
     return upgrade, fresh
@@ -127,14 +134,17 @@ def mysql94(upgrade, fresh):
             time.sleep(2)
 
         def run(db, path=None, query=None):
-            # Both paths create `pawsandfound`, so each runs in its own pass,
-            # renamed on the way in.
+            # The baseline files create `pawsandfound`, so they are renamed on
+            # the way in; a migration goes in unchanged, into `db`.
             if path:
                 with open(path, encoding='utf-8') as source:
-                    sql = re.sub(r'\bpawsandfound\b', db, source.read())
+                    sql = source.read()
+                target = [db] if os.path.basename(path) in MIGRATIONS else []
+                if not target:
+                    sql = re.sub(r'\bpawsandfound\b', db, sql)
                 return subprocess.run(['docker', 'exec', '-i', name, 'mysql', '-uroot', '-pparity',
-                                       '--default-character-set=utf8mb4'], input=sql, capture_output=True,
-                                      text=True, encoding='utf-8')
+                                       '--default-character-set=utf8mb4'] + target, input=sql,
+                                      capture_output=True, text=True, encoding='utf-8')
             return subprocess.run(['docker', 'exec', name, 'mysql', '-uroot', '-pparity', '-N', '-B',
                                    '--default-character-set=utf8mb4', db, '-e', query],
                                   capture_output=True, text=True, encoding='utf-8')
@@ -153,8 +163,11 @@ def mariadb(upgrade, fresh):
     def run(db, path=None, query=None):
         if path:
             with open(path, encoding='utf-8') as source:
-                sql = re.sub(r'\bpawsandfound\b', db, source.read())
-            return subprocess.run(MARIADB, input=sql, capture_output=True, text=True, encoding='utf-8')
+                sql = source.read()
+            target = [db] if os.path.basename(path) in MIGRATIONS else []
+            if not target:
+                sql = re.sub(r'\bpawsandfound\b', db, sql)
+            return subprocess.run(MARIADB + target, input=sql, capture_output=True, text=True, encoding='utf-8')
         return subprocess.run(MARIADB + ['-N', '-B', db, '-e', query], capture_output=True, text=True,
                               encoding='utf-8')
 

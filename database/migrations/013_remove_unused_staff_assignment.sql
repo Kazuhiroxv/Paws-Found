@@ -52,7 +52,9 @@
 --   mysql -u root -h 127.0.0.1 -P 3307 --default-character-set=utf8mb4 pawsandfound < 013_remove_unused_staff_assignment.sql
 -- =============================================================================
 
-USE pawsandfound;
+-- No USE statement: this runs on whichever database the client selected (the
+-- database named on the command line above), so the same file serves the
+-- local `pawsandfound` and the hosted `railway` unchanged.
 SET NAMES utf8mb4;
 
 -- Is the column still there? (On a second run it is not, and there is nothing

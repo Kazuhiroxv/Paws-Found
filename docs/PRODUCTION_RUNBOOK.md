@@ -118,9 +118,25 @@ each, is in `CURRENT_STATE.md` §4a:
 
 1. back up the Railway database (§4 below)
 2. preview and run 008, 009, 010, 011, 012, 013 — official MySQL client,
-   `--default-character-set=utf8mb4`, one at a time
-3. push `post-defense/revisions` to `portfolio`'s `team/current` (Kyle's
-   decision, not before)
+   `--default-character-set=utf8mb4`, one at a time, stopping at the first
+   error. The files are run **as committed**: they have no `USE` line, so the
+   database named on the command line (`railway`) is the one they change — no
+   copy, no rewriting. From Git Bash, in the release worktree:
+
+   ```bash
+   docker run --rm -i mysql:9.4 \
+     mysql -h HOST -P PORT -u USER -pPASSWORD \
+     --default-character-set=utf8mb4 railway \
+     < database/migrations/008_split_user_names.sql
+   ```
+
+   and likewise `009_report_reference_data.sql`,
+   `010_report_publication_workflow.sql`, `011_session_activity_logging.sql`,
+   `012_admin_privilege_levels.sql`, `013_remove_unused_staff_assignment.sql`.
+   Then `SELECT GROUP_CONCAT(version ORDER BY version) FROM schema_migrations;`
+   must list 001 to 013.
+3. push the release branch to `portfolio`'s `team/current` (Kyle's decision,
+   not before): `git push portfolio release/demo-2026-10-07:team/current`
 4. `/api/health`, then `npm run verify:deploy <url>`
 5. check the recorded IP from two networks (`security-activity-logging.md`)
 6. Correction 7 on the live site: the language control, `/disclaimer`, a

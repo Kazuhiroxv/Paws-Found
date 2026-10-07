@@ -57,7 +57,9 @@
 --   mysql -u root -h 127.0.0.1 -P 3307 pawsandfound < 008_split_user_names.sql
 -- =============================================================================
 
-USE pawsandfound;
+-- No USE statement: this runs on whichever database the client selected (the
+-- database named on the command line above), so the same file serves the
+-- local `pawsandfound` and the hosted `railway` unchanged.
 
 ALTER TABLE users
   ADD COLUMN first_name VARCHAR(60) NOT NULL DEFAULT '' AFTER user_id,

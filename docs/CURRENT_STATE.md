@@ -326,7 +326,9 @@ and `docs/PRODUCTION_RUNBOOK.md` §2 has the full inventory). New code reads `ph
 `publication_status`, `publication_logs`, `report_drafts`, `user_sessions`,
 `user_activity_logs` and `users.admin_level`, none of which exist before
 009–012; and each migration assumes the one before. Use the official MySQL client with
-`--default-character-set=utf8mb4`:
+`--default-character-set=utf8mb4`, naming the database on the command line —
+the migrations have no `USE` line (release hardening), so the committed files
+run unchanged against `railway` (exact command: `PRODUCTION_RUNBOOK.md` §2):
 
 1. back up the Railway database (`docs/PRODUCTION_RUNBOOK.md`)
 2. preview 008 (query at the top of `008_split_user_names.sql`), run 008

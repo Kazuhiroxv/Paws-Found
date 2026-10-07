@@ -56,6 +56,11 @@ pre-009 backup, run 009 — because the new file cannot be laid over the old.
                             changes nothing, if any report has it set.
                             AFTER 012; the code does not depend on it.
 
+**No migration names a database.** 008 to 013 have no `USE` line: name the
+database on the command line (`mysql ... pawsandfound < file` here,
+`mysql ... railway < file` on Railway), and the same committed file serves
+both. Every `information_schema` lookup inside them uses `DATABASE()`.
+
 **013 is the one migration that removes something.** Every other file here is
 additive. 013 drops a column only after evidence that it held nothing, and it
 checks again itself before dropping it: a populated column stops it with an

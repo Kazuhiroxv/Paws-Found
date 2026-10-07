@@ -92,7 +92,9 @@
 -- SET NAMES below is a second guard for a client that ignores the flag.
 -- =============================================================================
 
-USE pawsandfound;
+-- No USE statement: this runs on whichever database the client selected (the
+-- database named on the command line above), so the same file serves the
+-- local `pawsandfound` and the hosted `railway` unchanged.
 SET NAMES utf8mb4;
 
 -- -----------------------------------------------------------------------------
