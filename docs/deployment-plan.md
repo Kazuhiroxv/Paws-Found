@@ -799,6 +799,10 @@ database is final.
 
 **15. Run the multi-device suite against production.**
 
+> **Superseded (7 October 2026):** `multi_device.py` now refuses any API that
+> is not this machine. Run it locally; never against production (CLAUDE.md,
+> Production safety).
+
 ```bash
 PAWS_API=https://<domain>/api python scripts/multi_device.py
 ```

@@ -21,9 +21,9 @@ Run the rest before any push. Run `verify:deploy` after any deploy.
 
 Every suite built on `scripts/audit.py` refuses a database that is not this
 machine, and `audit` also refuses a non-local `PAWS_API` (`npm run
-test:audit-guard` proves both). `multi-device` can still take a LAN `PAWS_API`
-against this machine's database. Containers and LAN databases are refused
-until the team decides they count as local.
+test:audit-guard` proves both). `multi-device` and `auth_lifecycle` also refuse
+a non-local `PAWS_API`, the LAN address included. Containers and LAN targets
+are refused until the team decides they count as local.
 
 `PAWS_MYSQL_ARGS` goes to a MySQL client. **XAMPP's `mysql.exe` is MariaDB's
 and cannot authenticate against MySQL 8 or 9** — it fails with

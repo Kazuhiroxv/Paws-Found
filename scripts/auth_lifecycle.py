@@ -38,6 +38,11 @@ LIFECYCLE_PW = 'quiet harbour passphrase'  # no piece of "Lifecycle Tester": the
 CAPTURE_DIR = os.path.join(os.environ.get('TEMP', '/tmp'), 'pawsandfound-mail')
 LOCAL_CONFIG = os.path.join(audit.PROJECT, 'api', 'config.local.php')
 
+# This suite registers accounts, resets passwords and revokes sessions, so it
+# refuses any API that is not this machine before its first request, and before
+# it writes LOCAL_CONFIG (audit.py, "Target safety").
+audit.require_local_api()
+
 results = []
 
 

@@ -5,7 +5,9 @@ The audit suites refuse any database or API that is not this machine.
 
 `npm run audit` and the seven suites built on scripts/audit.py reseed and
 rewrite the database they reach, so audit.py checks the destination before
-anything changes data (its "Target safety" section). This suite proves:
+anything changes data (its "Target safety" section). audit_cases.py,
+multi_device.py and auth_lifecycle.py also refuse a non-local PAWS_API before
+their first request. This suite proves:
 
   * refused targets stop before any MySQL statement except the read-only
     identity probe, and before any HTTP request at all;
@@ -87,15 +89,16 @@ class Instrumented:
             urllib.request.OpenerDirector.open = REAL_OPEN
 
 
-def configure(mysql_args=None, api=None, mysql_host_env=None):
+def configure(mysql_args=None, api=None, mysql_host_env=None, paws_api_env=None):
     audit.MYSQL_ARGS = list(mysql_args if mysql_args is not None else DEFAULT_ARGS)
     audit.API = api or DEFAULT_API
     audit.DB_REACHABLE = None
     audit._db_checked_for = None
-    if mysql_host_env is None:
-        os.environ.pop('MYSQL_HOST', None)
-    else:
-        os.environ['MYSQL_HOST'] = mysql_host_env
+    for name, value in (('MYSQL_HOST', mysql_host_env), ('PAWS_API', paws_api_env)):
+        if value is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = value
 
 
 def refused(action, **target):
@@ -118,6 +121,18 @@ def refused(action, **target):
 
 def run_audit_main():
     runpy.run_path(os.path.join(HERE, 'audit_cases.py'), run_name='__main__')
+
+
+def run_script(name):
+    return lambda: runpy.run_path(os.path.join(HERE, name), run_name='__main__')
+
+
+LOCAL_CONFIG = os.path.join(audit.PROJECT, 'api', 'config.local.php')
+
+
+def config_state():
+    """Whether config.local.php exists, and when it last changed (never its contents)."""
+    return os.path.getmtime(LOCAL_CONFIG) if os.path.exists(LOCAL_CONFIG) else None
 
 
 def expect_refusal(name, action, **target):
@@ -154,6 +169,23 @@ expect_refusal('npm run audit: PAWS_API = production', run_audit_main, api=PRODU
 expect_refusal('npm run audit: PAWS_API = LAN address', run_audit_main, api=LAN_API)
 expect_refusal('npm run audit: local API, remote database', run_audit_main,
                mysql_args=['-u', 'root', '-h', REMOTE_IP, '-P', '3306'])
+
+# multi_device.py and auth_lifecycle.py read PAWS_API the way a real run does.
+for script in ('multi_device.py', 'auth_lifecycle.py'):
+    for label, target in (('production', PRODUCTION_API), ('LAN address', LAN_API)):
+        expect_refusal(f'{script}: PAWS_API = {label}', run_script(script),
+                       api=target, paws_api_env=target)
+
+before = config_state()
+_, _, probe = refused(run_script('multi_device.py'), api=PRODUCTION_API,
+                      paws_api_env=PRODUCTION_API)
+check('multi_device.py: production API stops before any MySQL invocation', not probe.mysql,
+      f'mysql={probe.mysql}')
+_, _, probe = refused(run_script('auth_lifecycle.py'), api=PRODUCTION_API,
+                      paws_api_env=PRODUCTION_API)
+check('auth_lifecycle.py: production API stops before MySQL and before writing '
+      'config.local.php', not probe.mysql and config_state() == before,
+      f'mysql={probe.mysql}, config.local.php changed={config_state() != before}')
 
 # The production API is refused before even the database check runs.
 _, _, probe = refused(run_audit_main, api=PRODUCTION_API)

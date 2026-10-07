@@ -470,7 +470,7 @@ python scripts/migration_parity.py                            # 41  (needs Docke
 python scripts/publication_workflow.py                        # 71  (reseeds)
 python scripts/session_activity.py                            # 88  (reseeds; writes config.local.php, restores it)
 python scripts/admin_levels.py                                # 93  (reseeds)
-python scripts/audit_target_guard.py                          # 28  (needs MariaDB; changes nothing)
+python scripts/audit_target_guard.py                          # 34  (needs MariaDB; changes nothing)
 C:\xampp\php\php.exe scripts/client_ip.php                   # 18
 python scripts/psgc_reference.py check                        # place data and SQL in step
 PAWS_PW=<seeded password> npm run audit                       # 384  (reseeds, restores)

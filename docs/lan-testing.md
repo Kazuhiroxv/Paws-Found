@@ -108,11 +108,12 @@ all passing as of 30 September 2026.** A coordinator or an administrator keeps
 one session at a time, so the several-devices steps use a customer account. It restores the demonstration data at
 the end, so it can be run as often as the code changes.
 
-Pointed at another machine with `PAWS_API`, it reports **71/71 with 2 skipped**.
-Checks K3 and K4 turn the session timeout down by writing
-`api/config.local.php` on the machine running the suite, and a server elsewhere
-never reads it — so the suite names them as skipped rather than counting a
-failure it did not actually observe.
+It runs only against this machine's API: since 7 October 2026 `scripts/audit.py`
+refuses any other `PAWS_API`, the LAN address included, until the team decides
+a LAN target counts as local. With `PAWS_API` set to another local URL it reports
+**71/71 with 2 skipped**: checks K3 and K4 turn the session timeout down by
+writing `api/config.local.php`, which that server may not read, so the suite
+names them as skipped rather than counting a failure it did not observe.
 
 | | What it proves |
 | --- | --- |
@@ -125,12 +126,8 @@ failure it did not actually observe.
 | G | The administrator unlock clears the counter as well as the status, device B can sign in again, and the unlock is in the audit log |
 | H | A customer typing `/users`, `/moderation`, `/categories`, somebody else's report, or an invented endpoint gets 403, 403, 403, 403, 404 — and nothing is created |
 
-Run it against the LAN address on the day too, which tests the same things
-across the network rather than through the loopback:
-
-```bash
-PAWS_API=http://192.168.254.108/pawsandfound/api python scripts/multi_device.py
-```
+Running it against the LAN address is refused (see above), so the same
+sequence across the network is the by-hand rehearsal in 5.2.
 
 ### 5.2 The part only real hardware can show
 

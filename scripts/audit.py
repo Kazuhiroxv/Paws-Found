@@ -23,8 +23,8 @@ import uuid
 
 # Where to point the suite: the local XAMPP deployment. The suites built on this
 # module reseed and rewrite the database they reach, so they only ever run
-# against this machine; see "Target safety" below. multi_device.py may still
-# point PAWS_API at the LAN address, against this machine's database.
+# against this machine; see "Target safety" below. audit_cases.py,
+# multi_device.py and auth_lifecycle.py also refuse a non-local PAWS_API.
 API = os.environ.get('PAWS_API', 'http://localhost/pawsandfound/api').rstrip('/')
 
 # The repository root, derived from this file's own location. A fixed path

@@ -11,9 +11,9 @@ This is not a substitute for the real rehearsal on real devices — see
 docs/lan-testing.md, which says what only hardware can show. It is what can be
 run on any machine, in twenty seconds, as often as the code changes.
 
-Run it against the LAN address on the day as well:
-
-    PAWS_API=http://192.168.254.108/pawsandfound/api python scripts/multi_device.py
+It runs only against this machine's API (audit.py, "Target safety"); a LAN
+address is refused until the team decides it counts as local, so the rehearsal
+over the LAN address is done by hand (docs/lan-testing.md).
 
 It restores the demonstration data at the end, so it can be run again.
 
@@ -33,6 +33,10 @@ from audit import reseed, sql
 REMOTE = bool(os.environ.get('PAWS_API'))
 if REMOTE:
     audit.API = os.environ['PAWS_API']
+
+# These sessions sign in, change a role and unlock an account, so the run
+# refuses any API that is not this machine before its first request.
+audit.require_local_api()
 
 PW = audit.PW
 results = []
