@@ -15,7 +15,8 @@ information_schema; nothing about the schema is typed into this file. What is
 typed here is only the layout: where each table sits and which way each line
 runs. The script refuses to draw if
 
-  - the database does not have 17 tables and 24 foreign keys,
+  - the database does not have 24 tables and 34 foreign keys (the schema
+    frozen after migration 013; docs/final-schema-audit.md),
   - information_schema and database/schema.sql disagree on any table, column
     or foreign key,
   - a foreign key has no line, or a line has no foreign key.
@@ -75,8 +76,8 @@ for table, name, cols in query(
         "GROUP BY tc.table_name, tc.constraint_name"):
     uniques.setdefault(table, []).append((name, cols.split(',')))
 
-if len(columns) != 17 or len(fks) != 24:
-    sys.exit(f'Expected 17 tables and 24 foreign keys, found {len(columns)} and {len(fks)}.')
+if len(columns) != 24 or len(fks) != 34:
+    sys.exit(f'Expected 24 tables and 34 foreign keys, found {len(columns)} and {len(fks)}.')
 if any(fk['table'] in OPERATIONAL or fk['ref_table'] in OPERATIONAL for fk in fks):
     sys.exit('An operational table has a foreign key; it can no longer be left off the ERD.')
 
@@ -103,7 +104,7 @@ if file_cols != db_cols or file_fks != db_fks:
     sys.exit('information_schema and database/schema.sql disagree. Fix that before drawing.')
 
 domain = [t for t in columns if t not in OPERATIONAL]
-assert len(domain) == 15
+assert len(domain) == 22
 
 
 def show_type(ctype):
@@ -217,8 +218,6 @@ ROUTES = {
                                         (ch('A', 50), row('locations', 'location_id')), (right('locations'), row('locations', 'location_id'))]),
     'fk_reports_user': dict(points=[(left('pet_reports') + 26, bottom('pet_reports')), (left('pet_reports') + 26, top('users'))],
                             label='user_id'),
-    'fk_reports_staff': dict(points=[(left('pet_reports') + 52, bottom('pet_reports')), (left('pet_reports') + 52, top('users'))],
-                             label='assigned_staff_id'),
     # Steps down so the two long lines from the Workflow group can reach the
     # top of pet_reports above it without crossing.
     'fk_images_report': dict(points=[(left('report_images'), row('report_images', 'report_id')), (ch('B', 58), row('report_images', 'report_id')),
@@ -313,7 +312,7 @@ svg.append(f'<rect width="{PAGE_W}" height="{PAGE_H}" fill="#FFFFFF"/>')
 text(28, 52, 'Paws&Found', 28, 700)
 text(28, 77, 'Entity Relationship Diagram', 17, 600, MUTED)
 text(PAGE_W - 28, 48, 'Production MySQL Schema', 15, 700, anchor='end')
-text(PAGE_W - 28, 68, '15 Domain Tables · 24 Foreign Keys', 13, 400, anchor='end')
+text(PAGE_W - 28, 68, f'{len(domain)} Domain Tables · {len(fks)} Foreign Keys', 13, 400, anchor='end')
 text(PAGE_W - 28, 87, 'Operational tables omitted from conceptual ERD: schema_migrations, auth_rate_limits',
      10.5, 400, MUTED, anchor='end')
 

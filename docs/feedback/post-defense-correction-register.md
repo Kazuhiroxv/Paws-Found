@@ -26,7 +26,7 @@ States: **done** (committed on `post-defense/revisions`), **in progress**,
 | Reset (11) | **AWAITING CLARIFICATION** — no implementation |
 | Cancel (16) | **DEFERRED PENDING INSTRUCTOR CLARIFICATION** — no Cancel publication state |
 | Contact number (N1) | **IMPLEMENTED, AWAITING INSTRUCTOR-INTENT CONFIRMATION** — no behaviour change |
-| `pet_reports.assigned_staff_id` (schema) | **CANDIDATE FOR REMOVAL** — blocked on a read-only production query; no migration 013 yet |
+| `pet_reports.assigned_staff_id` (schema) | **REMOVED** by migration 013 — production 0 of 48 reports, local 0 of 32, no code, test or seed use |
 | `match_claims.staff_notes` (schema) | **KEEP** — written, not shown; a presentation limitation, not dead schema |
 | Final ERD | **PENDING FINAL SCHEMA PASS** |
 | Final presentation (17, N7) | **PENDING** |

@@ -49,11 +49,24 @@ pre-009 backup, run 009 — because the new file cannot be laid over the old.
                             Super Administrators; + privilege_changed,
                             admin_level_changed. No new table.
                             AFTER 011, WITH the code — see the file.
+    013_remove_unused_staff_assignment.sql  removes pet_reports.assigned_staff_id
+                            and its foreign key fk_reports_staff, which nothing
+                            ever set or read (production 0 of 48 reports, local
+                            0 of 32, no code, test or seed use). REFUSES, and
+                            changes nothing, if any report has it set.
+                            AFTER 012; the code does not depend on it.
+
+**013 is the one migration that removes something.** Every other file here is
+additive. 013 drops a column only after evidence that it held nothing, and it
+checks again itself before dropping it: a populated column stops it with an
+error that names the refusal. It is schema reconciliation before the final
+freeze, so the ERD shows the system that was built.
 
 `npm run test:migrations` builds the production path (2947a43 schema and seed
-→ 008 → 009 → 010 → 011 → 012 → 012) and a fresh install on MySQL 9.4 and
-MariaDB, and requires them to be identical. After 012: 24 tables, 35 foreign
-keys, 3 CHECK constraints.
+→ 008 → 009 → 010 → 011 → 012 → 013 → 013) and a fresh install on MySQL 9.4
+and MariaDB, and requires them to be identical, and proves 013's refusal on a
+populated column on both engines. After 013: 24 tables, 34 foreign keys, 3
+CHECK constraints (35 foreign keys after 012).
 
 Deploying 008 and 009 (Correction 3), in one sitting: back up, preview 008
 (query in the file), run 008, preview 009 (queries in the file), run 009, push

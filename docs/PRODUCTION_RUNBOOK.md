@@ -111,11 +111,13 @@ subjects is in `CURRENT_STATE.md` §1.
 **Migrations they need, in this order, before the push:** `008` (first and
 last name) → `009` (report reference data) → `010` (publication workflow and
 drafts) → `011` (session and activity records) → `012` (administrator
-levels). **Correction 7 adds none.** The order, with the preview query before
+levels) → `013` (removes the unused `pet_reports.assigned_staff_id`; it
+refuses, changing nothing, if any report has it set — production had 0 of 48
+on 6 October). **Correction 7 adds none.** The order, with the preview query before
 each, is in `CURRENT_STATE.md` §4a:
 
 1. back up the Railway database (§4 below)
-2. preview and run 008, 009, 010, 011, 012 — official MySQL client,
+2. preview and run 008, 009, 010, 011, 012, 013 — official MySQL client,
    `--default-character-set=utf8mb4`, one at a time
 3. push `post-defense/revisions` to `portfolio`'s `team/current` (Kyle's
    decision, not before)

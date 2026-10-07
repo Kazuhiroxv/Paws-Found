@@ -883,10 +883,21 @@ English and in Filipino, 132 combinations: no horizontal page overflow, and
 first measured overflowing at 1280 px in development (the development role
 selector beside it) and fixed with a compact EN/FIL control.
 
+### Migration 013 (schema freeze)
+
+`npm run test:migrations` — **41 checks** (29 before). The upgrade path runs
+008 → … → 013 and 013 again; the expected counts are 24 tables, 34 foreign
+keys, migrations to 013. New on each engine, a `guard` database built to 012
+with one report's `assigned_staff_id` set: 013 must **refuse** (error 1054
+naming the refusal), leave the column, the foreign key, the value and
+`schema_migrations` untouched; then, with every row NULL, 013 must succeed and
+remove the column and key. Five checks per engine, ten in all, plus the two
+013 imports per engine on the upgrade path.
+
 ## 3. Last verified results
 
 4 October 2026 (Correction 7), on the development laptop unless stated, on
-branch `post-defense/revisions`. **1,503 checks in twenty-seven suites, all
+branch `post-defense/revisions`. **1,515 checks in twenty-seven suites, all
 passing, on a quiet tree with a reseed before each browser suite;
 a11y 50 pages** (1,374 at Correction 6A; 1,353 at Correction 6; 1,246 at Correction 5A; 1,238 at Correction 5). Plain `npm run lint` again: the `PawsAndFound_*`
 folders were moved out of the repository.
@@ -910,7 +921,7 @@ test:report-rules                        50/50
 test:scores                              11/11
 test:controls                            62/62
 test:report-ui                           47/47   (820 px, and 390 px with touch)
-test:migrations                          29/29   (MySQL 9.4 strict + MariaDB; 008→…→012→012 = fresh; 24 tables, 35 FKs, 3 CHECKs)
+test:migrations                          41/41   (MySQL 9.4 strict + MariaDB; 008→…→013→013 = fresh; 24 tables, 34 FKs, 3 CHECKs; 013 refuses a populated assigned_staff_id on both engines; 6 October)
 test:publication                         71/71
 test:sessions                            88/88   (session records, activity trail, log access, client IP end to end, sentinel secrets)
 test:session-ui                          26/26   (race held at the network, session-end messages, page views, Logs page)
@@ -946,7 +957,7 @@ verify:deploy vs production              25/25 + 3 skipped (read-only default; p
 verify:deploy vs local production image 24/25 + 3 skipped  (7.1, correctly, on plain HTTP; image on MySQL 9.4, fresh schema + seed; 4 October, Correction 7)
 verify:deploy --upload, local only       24/27   (7.1 as above; 5.1-5.2 409 — the verifier picks report 1, which the seed has as Possible Match; register D2)
 2947a43 schema + seed -> 008 -> 009 -> 009, MySQL 9.4 strict and MariaDB   clean, idempotent
-migrated vs fresh schema.sql + seed.sql   identical structure (24 tables, 35 FKs, 3 CHECKs) and reference data, on both engines
+migrated vs fresh schema.sql + seed.sql   identical structure (24 tables, 34 FKs, 3 CHECKs, after 013) and reference data, on both engines
 migration 008 on MySQL 9.4 and MariaDB   from the 007 schema: all 10 names split, full_name unchanged
 ```
 

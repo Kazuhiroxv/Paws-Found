@@ -8,15 +8,20 @@ XAMPP's MariaDB (scratch databases, never `pawsandfound`) — it builds two
 databases:
 
     upgrade   production's schema and seed at 2947a43, then 008, 009, 010, 011,
-              012, then 012 again (a migration must survive being run twice)
+              012, 013, then 013 again (a migration must survive being run twice)
     fresh     today's schema.sql + seed.sql
 
 and requires them to agree: identical table structure, identical reference
 rows (areas, cities, colours, listed breeds), the same counts, every seeded
 location coded, and "Las Piñas" stored as UTF-8.
 
-Correction 3A (PSGC9); 010 since Correction 4, 011 since 5, 012 since 6. Never
-touches Railway; needs Docker for the MySQL half.
+A third database per engine, `guard`, is built to 012 and tests 013's refusal:
+with one report's assigned_staff_id set, 013 must stop before changing
+anything (column, key, value and schema_migrations untouched); with it cleared,
+013 must succeed.
+
+Correction 3A (PSGC9); 010 since Correction 4, 011 since 5, 012 since 6, 013
+since the schema freeze. Never touches Railway; needs Docker for the MySQL half.
 """
 import os
 import re
@@ -93,7 +98,8 @@ def files(folder):
                save('d-009.sql', current('database/migrations/009_report_reference_data.sql')),
                save('g-010.sql', current('database/migrations/010_report_publication_workflow.sql')),
                save('h-011.sql', current('database/migrations/011_session_activity_logging.sql')),
-               save('i-012.sql', current('database/migrations/012_admin_privilege_levels.sql'))]
+               save('i-012.sql', current('database/migrations/012_admin_privilege_levels.sql')),
+               save('j-013.sql', current('database/migrations/013_remove_unused_staff_assignment.sql'))]
     upgrade.append(upgrade[-1])
     fresh = [save('e-schema.sql', current('database/schema.sql')),
              save('f-seed.sql', current('database/seed.sql'))]
@@ -158,7 +164,8 @@ def mariadb(upgrade, fresh):
                                                  encoding='utf-8').stdout,
                        upgrade, fresh)
     finally:
-        subprocess.run(MARIADB + ['-e', 'DROP DATABASE IF EXISTS c3p_upgrade; DROP DATABASE IF EXISTS c3p_fresh;'],
+        subprocess.run(MARIADB + ['-e', 'DROP DATABASE IF EXISTS c3p_upgrade; DROP DATABASE IF EXISTS c3p_fresh; '
+                                        'DROP DATABASE IF EXISTS c3p_guard;'],
                        capture_output=True)
 
 
@@ -176,7 +183,7 @@ def compare(engine, run, dump, upgrade, fresh):
     # area_type is an ENUM, so GROUP_CONCAT orders it by its declared order.
     # Report 9 was removed by moderation: 010 makes it removed/active with its
     # removal in publication_logs, and no 'closed' case entry left for it.
-    expected = ('24 | 35 | 001,002,003,004,005,006,007,008,009,010,011,012 | province=82,ncr=1,special_area=1'
+    expected = ('24 | 34 | 001,002,003,004,005,006,007,008,009,010,011,012,013 | province=82,ncr=1,special_area=1'
                 ' | 1642 | 17 | 32 | 0 | 43697479206F66204C6173205069C3B16173'
                 ' | published/active=19,published/possible_match=6,published/returned=4,'
                 'published/closed=2,removed/active=1 | 9:10:published:removed | 0 | 4 | 0 | 0'
@@ -192,7 +199,42 @@ def compare(engine, run, dump, upgrade, fresh):
     reference = {db: run(db, query=REFERENCE).stdout for db in ('c3p_upgrade', 'c3p_fresh')}
     check(f'{engine}: the reference rows are identical', reference['c3p_upgrade'] == reference['c3p_fresh']
           and reference['c3p_fresh'].count('\n') > 1700)
+    guard(engine, run, upgrade)
     return reference['c3p_fresh']
+
+
+GUARD_STATE = """SELECT CONCAT_WS(' | ',
+  (SELECT COUNT(*) FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'pet_reports' AND column_name = 'assigned_staff_id'),
+  (SELECT COUNT(*) FROM information_schema.table_constraints
+    WHERE table_schema = DATABASE() AND constraint_name = 'fk_reports_staff'),
+  (SELECT COUNT(*) FROM schema_migrations WHERE version = '013'))"""
+
+
+def guard(engine, run, upgrade):
+    """013 refuses while any report has an assignment, and changes nothing."""
+    db = 'c3p_guard'
+    migration_013 = upgrade[-1]
+    for path in upgrade[:-2]:          # 2947a43 schema and seed, 008 ... 012
+        run(db, path=path)
+    staff = run(db, query="SELECT MIN(user_id) FROM users WHERE role = 'staff'").stdout.strip()
+    run(db, query=f'UPDATE pet_reports SET assigned_staff_id = {staff} WHERE report_id = 1')
+
+    refused = run(db, path=migration_013)
+    last = refused.stderr.strip().splitlines()[-1] if refused.stderr.strip() else 'no error'
+    check(f'{engine}: 013 refuses while a report has assigned_staff_id set', '013 REFUSED' in refused.stderr, last)
+    state = run(db, query=GUARD_STATE).stdout.strip()
+    check(f'{engine}: and changes nothing - column and foreign key kept, 013 not recorded', state == '1 | 1 | 0', state)
+    kept = run(db, query='SELECT assigned_staff_id FROM pet_reports WHERE report_id = 1').stdout.strip()
+    check(f'{engine}: and the assignment is still there', kept == staff and staff != '', kept)
+
+    run(db, query='UPDATE pet_reports SET assigned_staff_id = NULL')
+    passed = run(db, path=migration_013)
+    errors = [line for line in passed.stderr.splitlines() if 'ERROR' in line]
+    check(f'{engine}: with every row NULL, 013 succeeds', not errors, errors[0] if errors else '')
+    state = run(db, query=GUARD_STATE).stdout.strip()
+    check(f'{engine}: the column and its foreign key are gone, 013 recorded', state == '0 | 0 | 1', state)
+    run(db, query=f'DROP DATABASE {db}')
 
 
 if __name__ == '__main__':

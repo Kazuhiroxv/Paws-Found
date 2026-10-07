@@ -68,7 +68,7 @@ save as PDF, with the filters applied. A [Disclaimer](src/pages/public/Disclaime
 says plainly that this is an academic, non-commercial project that handles no
 payments and guarantees nothing.
 
-**It is tested.** 1,503 automated checks in twenty-seven suites, all passing, and
+**It is tested.** 1,515 automated checks in twenty-seven suites, all passing, and
 axe-core over 50 pages — see [`docs/TESTING.md`](docs/TESTING.md) §3.
 
 ## Getting started

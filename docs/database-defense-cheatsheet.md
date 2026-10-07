@@ -111,8 +111,8 @@ and CASCADE so deleting an account takes its counter with it.
 ## Run these if you are asked to prove it
 
 ```sql
--- 24 tables, 35 foreign keys after migration 011 (17 and 24 when this sheet
--- was first written; 15 of the tables are on the ERD figure)
+-- 24 tables, 34 foreign keys after migration 013 (35 after 011; 17 and 24
+-- when this sheet was first written; 15 of the tables are on the ERD figure)
 SELECT COUNT(*) FROM information_schema.tables
  WHERE table_schema = 'pawsandfound';
 

@@ -58,12 +58,12 @@ before Correction 7. This table is the corrected inventory; re-run the command
 rather than trusting it.) Health `{"status":"ok","database":"ok"}`.
 Untracked: `docs/dbeaver-defense-queries.pdf`.
 
-**The local database has migrations `008` to `012` applied** (first and last
+**The local database has migrations `008` to `013` applied** (first and last
 name; the report reference data; reviewed publication and drafts; session
-records and the activity trail; administrator levels). The production database
-has none of them, and must get all five, in order, immediately before the code
-is pushed — see §4a. **Correction 7 adds no migration**; the deploy order is
-unchanged.
+records and the activity trail; administrator levels; the removal of the
+unused `pet_reports.assigned_staff_id`). The production database has none of
+them, and must get all six, in order, immediately before the code is pushed —
+see §4a. **Correction 7 adds no migration**; 013 is the final schema cleanup.
 
 ---
 
@@ -77,7 +77,7 @@ unchanged.
 | Team repository | remote **`origin`** → `Arkemic/paws-and-found`. **Its push URL is disabled on purpose** (`DISABLED-do-not-push-to-team-repo`). Do not re-enable it. |
 | Last deployed commit | **`2947a43`** "docs: reopening a decision; counts to 689" (bundle `assets/index-C9niofAT.js`) |
 | Local stack | XAMPP at `C:\xampp`: Apache + PHP 8.3, **MariaDB 10.4 on port 3307** (not 3306), database `pawsandfound`. Vite dev server on `:5173`. |
-| Stack | React 19 + Vite 8 + Tailwind 4 + React Router 7 + Leaflet; PHP REST API in `api/`; MySQL schema `database/schema.sql` (24 tables, 35 FKs, through migration 011) |
+| Stack | React 19 + Vite 8 + Tailwind 4 + React Router 7 + Leaflet; PHP REST API in `api/`; MySQL schema `database/schema.sql` (24 tables, 34 FKs, through migration 013) |
 
 ---
 
@@ -336,6 +336,9 @@ and `docs/PRODUCTION_RUNBOOK.md` §2 has the full inventory). New code reads `ph
 5. run 011 (two new, empty tables; nothing to preview)
 5a. preview 012 (`SELECT user_id, email FROM users WHERE role = 'admin';` —
    every one becomes a Super Administrator), run 012
+5b. preview 013 (queries at the top of `013_remove_unused_staff_assignment.sql`
+   — `assigned_reports` must be 0; on 6 October production had 0 of 48), run
+   013 (it refuses, changing nothing, if any report has the column set)
 6. push; check `/api/health`; run `npm run verify:deploy <url>`
 7. **check the recorded IP** (`docs/security-activity-logging.md`, "IP
    address"): (a) sign in from network A, e.g. home Wi-Fi; (b) sign in from
@@ -463,7 +466,7 @@ C:\xampp\php\php.exe scripts/identity_rules.php              # 41
 C:\xampp\php\php.exe scripts/report_rules.php                # 50
 C:\xampp\php\php.exe scripts/match_scores.php                # 11
 python scripts/report_controls.py                             # 62  (reseeds)
-python scripts/migration_parity.py                            # 29  (needs Docker; scratch databases only)
+python scripts/migration_parity.py                            # 41  (needs Docker; scratch databases only)
 python scripts/publication_workflow.py                        # 71  (reseeds)
 python scripts/session_activity.py                            # 88  (reseeds; writes config.local.php, restores it)
 python scripts/admin_levels.py                                # 93  (reseeds)
@@ -489,8 +492,8 @@ python scripts/privacy_ack.py                                 # 29  (Correction 
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:i18n-ui  # 57 (Correction 7; reseed first)
 ```
 
-**1,503 checks in total, in twenty-seven suites** on `post-defense/revisions`
-(1,374 after Correction 6A; 1,353 after Correction 6; 1,246 after Correction 5A; 1,238 after Correction 5; 1,112 in eighteen after Correction 4; 1,006 in sixteen after 3A; 972 after 3;
+**1,515 checks in total, in twenty-seven suites** on `post-defense/revisions`
+(1,503 after Correction 7; 1,374 after Correction 6A; 1,353 after Correction 6; 1,246 after Correction 5A; 1,238 after Correction 5; 1,112 in eighteen after Correction 4; 1,006 in sixteen after 3A; 972 after 3;
 802 after 2; 689 in production). a11y: 50 pages, nine of them in Filipino. Plain `npm run lint` is the
 gate again: the four `PawsAndFound_*` folders that had appeared in the
 repository root were moved to `C:\Projects\_archives\paws-and-found\` on
@@ -579,14 +582,15 @@ Rolling back and operating the live site: [PRODUCTION_RUNBOOK.md](PRODUCTION_RUN
 
 - **Section 4 and Corrections 1–7 are committed locally, not deployed**
   (12 commits; §1). Shipping them is Kyle's call, and they need migrations
-  `008` to `012` on Railway first (§4a), then the IP check.
+  `008` to `013` on Railway first (§4a), then the IP check.
 - **Schema freeze status (6 October 2026)** — `docs/final-schema-audit.md`
   is the schema source of truth. Cancel (register 16): **DEFERRED PENDING
   INSTRUCTOR CLARIFICATION**, no Cancel publication state. Reset (11):
   **AWAITING CLARIFICATION**. Contact number (N1): **IMPLEMENTED, AWAITING
   INSTRUCTOR-INTENT CONFIRMATION**. `match_claims.staff_notes`: **KEEP**
-  (written, not shown). `pet_reports.assigned_staff_id`: **CANDIDATE FOR
-  REMOVAL**, waiting on a read-only production query; no migration 013 yet.
+  (written, not shown). `pet_reports.assigned_staff_id`: **REMOVED** by
+  migration 013 (production 0 of 48 reports, local 0 of 32, no use in code,
+  tests or seed).
   The freeze, the final ERD and then the production backup and migrations
   follow, in that order (`docs/DECISIONS.md`, "Schema freeze notes").
 - **No automatic log retention** (`docs/security-activity-logging.md`). The

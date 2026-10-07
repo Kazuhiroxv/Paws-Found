@@ -910,13 +910,16 @@ final ERD. Docs only; no schema or code changed.
   coordinator's decision with a note stores it there (the latest note replaces
   the previous one). No page shows it. It is internal coordinator data, kept;
   not surfacing it is a known presentation limitation, not dead schema.
-- **`pet_reports.assigned_staff_id` — CANDIDATE FOR REMOVAL.** A foreign key
-  to `users` from the proposal design ("the coordinator handling the case")
-  that nothing uses: no API, interface, test or seed reference, and 0 of 32
-  local reports set it. The decision waits on a read-only production query
-  (`SUM(assigned_staff_id IS NOT NULL)` on `pet_reports`): zero rows would
-  justify migration 013 to drop it before the final ERD; any rows mean stop
-  and find out what they are. Migration 013 is not created yet.
+- **`pet_reports.assigned_staff_id` — REMOVED by migration 013.** A foreign
+  key to `users` from the proposal design ("the coordinator handling the
+  case") that nothing used. `assigned_staff_id` was removed because production, local data, seed data, API, frontend and tests all showed no actual use: production 0 of 48
+  reports (read-only query Kyle ran, 6 October 2026), local 0 of 32, and no
+  reference in `api/`, `src/`, the tests or either seed. Removing it is schema
+  reconciliation before the final freeze, not cosmetic cleanup: a column on
+  the ERD that does nothing would misdescribe the system to the panel. 013
+  refuses to run (and changes nothing) if any report has the column set —
+  tested on both engines (`test:migrations`). It is the only migration that
+  drops something, and it does so only after evidence that it held nothing.
 
 ### No automatic retention (Correction 5)
 

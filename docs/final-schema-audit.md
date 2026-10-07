@@ -1,8 +1,10 @@
 # Final pre-freeze audit — database and architecture
 
-**6 October 2026, at `d7f7435` (Correction 7), branch `post-defense/revisions`.**
-Read-only: nothing in the schema, the data or the code was changed to write it.
-This is the source of truth for the schema freeze and the final ERD.
+**6 October 2026, at `d7f7435` (Correction 7), branch `post-defense/revisions`;
+updated the same day for migration 013** (the final schema cleanup, which
+removed `pet_reports.assigned_staff_id`). The audit itself was read-only; §2–§6
+are regenerated from the schema after 013. This is the source of truth for the
+schema freeze and the final ERD.
 
 **How it was produced.** The tables, columns, keys, constraints and ENUM values
 in §2–§6 were **generated** from `information_schema` (not typed), on two
@@ -12,12 +14,13 @@ databases:
   `database/railway/schema.sql` and `seed.sql` — the authority for this
   document;
 - the **local MariaDB 10.4.32** (XAMPP), which reached the same schema by
-  applying migrations 001→012 in turn.
+  applying migrations 001→013 in turn.
 
 The lifecycles and the role hierarchy (§8–§10) are read from the PHP that
 enforces them. **Production's database was not read** (this audit has no
-production database access); per `CURRENT_STATE.md`, it is at migration 007
-and gets 008→012 at deployment. Production's API answered
+production database access) except for one read-only query Kyle ran for
+§1.2 item 2; per `CURRENT_STATE.md`, it is at migration 007 and gets 008→013 at
+deployment. Production's API answered
 `{"status":"ok","database":"ok"}` and still serves the `2947a43` bundle.
 
 ---
@@ -31,26 +34,28 @@ and gets 008→012 at deployment. Production's API answered
 
 | Check | Result |
 | --- | --- |
-| Tables / columns | **24 / 208** on both engines |
+| Tables / columns | **24 / 207** on both engines (208 before 013) |
 | Primary keys | 24 — every table has one; all single-column |
-| Foreign keys | **35** on both engines; ON DELETE: 16 CASCADE, 13 SET NULL, 6 RESTRICT |
+| Foreign keys | **34** on both engines (35 before 013); ON DELETE: 16 CASCADE, 12 SET NULL, 6 RESTRICT |
 | CHECK constraints | **3** on both engines (`chk_match_distinct`, `chk_match_score`, `chk_users_admin_level`) |
 | UNIQUE keys (besides primary keys) | 12, identical |
-| Secondary indexes | 50, identical |
+| Secondary indexes | 49, identical (50 before 013: InnoDB's own index for `fk_reports_staff` went with the column) |
 | Triggers / views / stored routines | 0 / 0 / 0 — all rules live in PHP or in the constraints above |
 | Storage engine | InnoDB everywhere |
-| Migrations recorded | `001`…`012` on the migrated MariaDB; the fresh install records the same twelve |
+| Migrations recorded | `001`…`013` on the migrated MariaDB; the fresh install records the same thirteen |
 | MySQL 9.4 vs migrated MariaDB | **Structurally identical.** Two representational differences only: MariaDB writes `on update current_timestamp()` where MySQL writes `current_timestamp` (4 columns), and the two `match_claims` foreign keys report ON UPDATE `RESTRICT` on MariaDB and `NO ACTION` on MySQL — the same behaviour in InnoDB (migration 007 exists because of this pair) |
 
-The automated parity check, `npm run test:migrations` (29/29 on 4 October),
-proves the same thing by a different route: a 2947a43-era database migrated to
-012 equals a fresh install on both engines.
+The automated parity check, `npm run test:migrations` (41/41 on 6 October,
+with migration 013), proves the same thing by a different route: a
+2947a43-era database migrated to 013 equals a fresh install on both engines.
+After 013 the two engines agree on every column, key, index and constraint;
+the two representational differences above remain.
 
 ### 1.2 Decisions to make before the freeze
 
 **Status, 6 October 2026:** Cancel **DEFERRED PENDING INSTRUCTOR
-CLARIFICATION**; `staff_notes` **KEEP**; `assigned_staff_id` **CANDIDATE FOR
-REMOVAL**, blocked on a read-only production query (no migration 013 yet).
+CLARIFICATION**; `staff_notes` **KEEP**; `assigned_staff_id` **REMOVED** by
+migration 013 (production showed 0 of 48 reports assigned).
 Reset (**AWAITING CLARIFICATION**) and the contact number (**IMPLEMENTED,
 AWAITING INSTRUCTOR-INTENT CONFIRMATION**) do not block the freeze. Reasons:
 `docs/DECISIONS.md`, "Schema freeze notes".
@@ -74,10 +79,13 @@ AWAITING INSTRUCTOR-INTENT CONFIRMATION**) do not block the freeze. Reasons:
    ("assigned coordinator"). Either keep it and say on the ERD that it is
    reserved and unused, or drop it in a final migration before the freeze. A
    column that appears on the ERD but does nothing is a likely panel question.
-   **Status: CANDIDATE FOR REMOVAL.** Local evidence: no API, interface, test
-   or seed use; 0 of 32 local reports set. The final decision waits on a
-   read-only production query; if production also has zero assigned rows,
-   migration 013 drops it before the final ERD. Not created yet.
+   **Status: REMOVED by migration 013.** `assigned_staff_id` was removed
+   because production, local data, seed data, API, frontend and tests all
+   showed no actual use: production 0 of 48 reports (read-only query, 6
+   October 2026), local 0 of 32; no reference in `api/`, `src/`, the tests or
+   either seed. This is schema reconciliation before the final freeze — the
+   ERD now shows what was built — not a cosmetic change. 013 refuses to run if
+   any report has the column set.
 3. **`match_claims.staff_notes` is written, never read back** (known since
    HANDOFF §12): coordinators' notes are stored when they decide, but no page
    shows them. Keep (it is an audit trail of the decision) or show it; no
@@ -98,7 +106,8 @@ None of these is a defect in what the system does.
 ### 1.3 The defense ERD is out of date (expected)
 
 The current figure (`docs/diagrams/erd.mmd` / `erd-a3.*`, generated by
-`scripts/erd.py` before Correction 3) has **15 tables and 24 relationships**.
+`scripts/erd.py` before Correction 3) has **15 tables and 24 relationships**,
+one of which (`fk_reports_staff`, `assigned_staff_id`) migration 013 removed.
 Against the frozen schema it lacks:
 
 - **7 tables:** `pet_colours`, `ph_areas`, `ph_cities` (009),
@@ -113,10 +122,13 @@ Against the frozen schema it lacks:
   `publication_logs→pet_reports/users`, `user_sessions→users`,
   `user_activity_logs→users/user_sessions`.
 
-`scripts/erd.py` refuses to draw unless the database has 17 tables and 24
-foreign keys, so the final ERD pass updates its expected counts (24 / 35, 22
-drawn) and gives the seven new tables a place on the page. Nothing about the
-schema is typed into it; the layout is.
+`scripts/erd.py` now expects the frozen schema (24 tables, 34 foreign keys,
+22 drawn; updated with 013, which also took out its `assigned_staff_id` line)
+and refuses to draw until the final ERD pass gives the seven new tables and
+their eleven lines a place on the page. Nothing about the schema is typed into
+it; the layout is. Run it against MySQL 9.4 (`PAWS_MYSQL`/`PAWS_MYSQL_ARGS`):
+its unique-key query joins two `information_schema` views, the kind of query
+that crashed the local MariaDB during this audit.
 
 
 ## 2. The 24 tables
@@ -125,7 +137,7 @@ schema is typed into it; the layout is.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | `users` | Domain — people | base schema | 18 | `user_id` | 0 | 10 | yes |
 | 2 | `locations` | Domain — reports | base schema | 8 | `location_id` | 1 | 32 | yes |
-| 3 | `pet_reports` | Domain — reports | base schema | 25 | `report_id` | 5 | 32 | yes |
+| 3 | `pet_reports` | Domain — reports | base schema | 24 | `report_id` | 4 | 32 | yes |
 | 4 | `report_drafts` | Domain — reports | migration 010 | 25 | `draft_id` | 4 | 0 | **no** |
 | 5 | `report_images` | Domain — reports | base schema | 6 | `image_id` | 1 | 33 | yes |
 | 6 | `match_claims` | Domain — matching | base schema | 11 | `match_id` | 4 | 4 | yes |
@@ -146,11 +158,11 @@ schema is typed into it; the layout is.
 | 21 | `user_activity_logs` | Security | migration 011 | 10 | `activity_id` | 2 | 0 | **no** |
 | 22 | `user_sessions` | Security | migration 011 | 10 | `session_record_id` | 1 | 0 | **no** |
 | 23 | `auth_rate_limits` | Infrastructure | migration 005 | 6 | `rate_limit_id` | 0 | 0 | **no** |
-| 24 | `schema_migrations` | Infrastructure | migration 001 | 2 | `version` | 0 | 12 | **no** |
+| 24 | `schema_migrations` | Infrastructure | migration 001 | 2 | `version` | 0 | 13 | **no** |
 
-Totals: **24 tables, 208 columns, 35 foreign keys, 3 CHECK constraints, 12 UNIQUE keys besides the primary keys, 50 secondary indexes**; 0 triggers, 0 views, 0 stored routines. Every table is InnoDB.
+Totals: **24 tables, 207 columns, 34 foreign keys, 3 CHECK constraints, 12 UNIQUE keys besides the primary keys, 49 secondary indexes**; 0 triggers, 0 views, 0 stored routines. Every table is InnoDB.
 
-## 3. Foreign keys (35)
+## 3. Foreign keys (34)
 
 | # | Child table.column | → Parent | ON DELETE | ON UPDATE | Constraint |
 | --- | --- | --- | --- | --- | --- |
@@ -181,16 +193,15 @@ Totals: **24 tables, 208 columns, 35 foreign keys, 3 CHECK constraints, 12 UNIQU
 | 25 | `moderation_cases.reported_by_user_id` | `users.user_id` | SET NULL | CASCADE | `fk_moderation_reporter` |
 | 26 | `moderation_cases.resolved_by_admin_id` | `users.user_id` | SET NULL | CASCADE | `fk_moderation_admin` |
 | 27 | `notifications.user_id` | `users.user_id` | CASCADE | CASCADE | `fk_notifications_user` |
-| 28 | `pet_reports.assigned_staff_id` | `users.user_id` | SET NULL | CASCADE | `fk_reports_staff` |
-| 29 | `pet_reports.user_id` | `users.user_id` | RESTRICT | CASCADE | `fk_reports_user` |
-| 30 | `privacy_consents.user_id` | `users.user_id` | CASCADE | CASCADE | `fk_consent_user` |
-| 31 | `publication_logs.actor_user_id` | `users.user_id` | SET NULL | CASCADE | `fk_publication_logs_actor` |
-| 32 | `report_drafts.user_id` | `users.user_id` | CASCADE | CASCADE | `fk_report_drafts_user` |
-| 33 | `status_logs.updated_by_user_id` | `users.user_id` | SET NULL | CASCADE | `fk_logs_user` |
-| 34 | `user_activity_logs.user_id` | `users.user_id` | CASCADE | CASCADE | `fk_activity_user` |
-| 35 | `user_sessions.user_id` | `users.user_id` | CASCADE | CASCADE | `fk_user_sessions_user` |
+| 28 | `pet_reports.user_id` | `users.user_id` | RESTRICT | CASCADE | `fk_reports_user` |
+| 29 | `privacy_consents.user_id` | `users.user_id` | CASCADE | CASCADE | `fk_consent_user` |
+| 30 | `publication_logs.actor_user_id` | `users.user_id` | SET NULL | CASCADE | `fk_publication_logs_actor` |
+| 31 | `report_drafts.user_id` | `users.user_id` | CASCADE | CASCADE | `fk_report_drafts_user` |
+| 32 | `status_logs.updated_by_user_id` | `users.user_id` | SET NULL | CASCADE | `fk_logs_user` |
+| 33 | `user_activity_logs.user_id` | `users.user_id` | CASCADE | CASCADE | `fk_activity_user` |
+| 34 | `user_sessions.user_id` | `users.user_id` | CASCADE | CASCADE | `fk_user_sessions_user` |
 
-ON DELETE, counted: CASCADE 16, RESTRICT 6, SET NULL 13.
+ON DELETE, counted: CASCADE 16, RESTRICT 6, SET NULL 12.
 
 ## 4. CHECK and UNIQUE constraints
 
@@ -301,7 +312,6 @@ Generated from `information_schema.COLUMNS` on the fresh MySQL 9.4 install. Key:
 | `category_id` | `int unsigned` | no | MUL | FK → `pet_categories.category_id` |
 | `breed_id` | `int unsigned` | yes | MUL | FK → `pet_breeds.breed_id` |
 | `location_id` | `int unsigned` | no | MUL | FK → `locations.location_id` |
-| `assigned_staff_id` | `int unsigned` | yes | MUL | FK → `users.user_id` |
 | `report_type` | `enum('lost','found')` | no | MUL |  |
 | `status` | `enum('active','possible_match','returned','closed')` | no |  |  |
 | `publication_status` | `enum('pending_review','published','rejected','removed')` | no | MUL |  |
@@ -607,9 +617,11 @@ additive migration, mirrored into `schema.sql`.
 | `010_report_publication_workflow` | `publication_logs`, `report_drafts` | `pet_reports.publication_status`; `notifications.notification_type` and `audit_logs.action` values; legacy removals converted to `removed` |
 | `011_session_activity_logging` | `user_sessions`, `user_activity_logs` | |
 | `012_admin_privilege_levels` | | `users.admin_level` + `chk_users_admin_level`; `user_sessions.end_reason` gains `privilege_changed`; `audit_logs.action` gains `admin_level_changed`; existing administrators become `super_admin` |
+| `013_remove_unused_staff_assignment` | | **removes** `pet_reports.assigned_staff_id` and `fk_reports_staff` (never used); refuses if any report has it set. The one migration that drops something, after evidence that it held nothing |
 
-**Correction 7 added no migration.** Production has 001→007 (per `CURRENT_STATE.md`; not re-read here); deployment runs
-008→012, in order, after a backup (`CURRENT_STATE.md` §4a,
+**Correction 7 added no migration; 013 is the final schema cleanup.**
+Production has 001→007 (per `CURRENT_STATE.md`; not re-read here); deployment
+runs 008→013, in order, after a backup (`CURRENT_STATE.md` §4a,
 `PRODUCTION_RUNBOOK.md` §2).
 
 ## 8. Role hierarchy (as enforced)
@@ -695,13 +707,14 @@ a confirmed pairing ──▶ both reports returned, in one transaction
 ## 11. What the final ERD must show
 
 All **22 business tables** (§2 minus `schema_migrations` and
-`auth_rate_limits`), their primary keys, every column, and the **35
+`auth_rate_limits`), their primary keys, every column, and the **34
 relationships** in §3 with the cardinalities `scripts/erd.py` derives from
 nullability. Group them as §2 does — domain, reference, security — so the
 security tables (sessions, activity, audit, consents, tokens, attempts) read as
 the accountability layer rather than as clutter. Note on the page: the two
 operational tables omitted; `full_name` generated; `admin_level` tied to
-`role` by a CHECK; and the decision taken on `assigned_staff_id` (§1.2).
+`role` by a CHECK. `assigned_staff_id` is gone (migration 013), so it is not
+drawn.
 
 ## 12. Reproducing this audit
 

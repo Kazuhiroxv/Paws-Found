@@ -124,13 +124,14 @@ def sql_injection():
     # 26 after migration 009 (ph_cities -> ph_areas, locations -> ph_cities);
     # 32 after 010 (publication_logs -> pet_reports, users; report_drafts ->
     # users, pet_categories, ph_areas, ph_cities); 35 after 011 (user_sessions
-    # -> users; user_activity_logs -> users, user_sessions).
-    # docs/erd-defense.md lists 35 (the figure is redrawn in the final ERD
+    # -> users; user_activity_logs -> users, user_sessions); 34 after 013
+    # (pet_reports.assigned_staff_id, never used, removed with its key).
+    # docs/erd-defense.md lists 34 (the figure is redrawn in the final ERD
     # pass). A diagram cannot be wrong quietly if the suite counts
     # the same thing the diagram is drawing.
     fks = sql("SELECT COUNT(*) FROM information_schema.table_constraints "
               "WHERE table_schema='pawsandfound' AND constraint_type='FOREIGN KEY';")
-    check(C, 'SQL-14', 'Foreign keys match the ERD', '35 keys', fks + ' keys', fks == '35')
+    check(C, 'SQL-14', 'Foreign keys match the ERD', '34 keys', fks + ' keys', fks == '34')
     roles = sql('SELECT GROUP_CONCAT(role ORDER BY user_id) FROM users WHERE user_id<=3;')
     check(C, 'SQL-13', 'No account was promoted', 'user,user,user', roles, roles == 'user,user,user')
 

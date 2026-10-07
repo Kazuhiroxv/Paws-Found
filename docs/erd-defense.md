@@ -261,18 +261,19 @@ The centre of the system. Everything else hangs off it.
 | | |
 | --- | --- |
 | **Primary key** | `report_id` |
-| **Foreign keys** | `user_id` → users (RESTRICT) · `category_id` → pet_categories (RESTRICT) · `breed_id` → pet_breeds (SET NULL) · `location_id` → locations (RESTRICT) · `assigned_staff_id` → users (SET NULL) |
+| **Foreign keys** | `user_id` → users (RESTRICT) · `category_id` → pet_categories (RESTRICT) · `breed_id` → pet_breeds (SET NULL) · `location_id` → locations (RESTRICT) |
 | **Referenced by** | `report_images`, `status_logs`, `notifications`, `moderation_cases`, `match_claims` (twice) |
 
-**Two foreign keys to the same table.** `user_id` is who filed it;
-`assigned_staff_id` is the coordinator handling it. They point at `users` for
-different reasons and have different delete rules, which is why they are two
-columns and not one.
+**Why `user_id` is RESTRICT.** A reporter cannot be deleted while their
+reports exist, which is why accounts are *suspended* instead.
 
-**Why the delete rules differ.** `user_id` is RESTRICT — a reporter cannot be
-deleted while their reports exist, which is why accounts are *suspended*
-instead. `assigned_staff_id` is SET NULL — a coordinator leaving should not
-delete the case, it should leave it unassigned.
+**No assigned coordinator (migration 013).** The proposal design had a second
+key to `users`, `assigned_staff_id`, "the coordinator handling the case". The
+system that was built never assigns a report to one coordinator: any Pet
+Coordinator works the shared queues. `assigned_staff_id` was removed because production, local data, seed data, API, frontend and tests all showed no actual use — production 0 of 48
+reports, local 0 of 32, no reference in the API, the interface, the tests or
+the seed — so migration 013 dropped the column and its key before the final
+ERD. The schema shows what was built.
 
 **Two deliberate differences from the proposal ERD.** `category_id` sits
 directly on the report and is NOT NULL: in the draft, species was only
@@ -623,7 +624,6 @@ an email, and its consequence is a 429 and a Retry-After header.
 ## Every relationship, in one list
 
     users            1 ── N  pet_reports         (user_id, RESTRICT)
-    users            1 ── N  pet_reports         (assigned_staff_id, SET NULL)
     users            1 ── N  notifications       (CASCADE)
     users            1 ── N  status_logs         (SET NULL)
     users            1 ── N  match_claims        (submitted_by, SET NULL)
@@ -658,7 +658,8 @@ an email, and its consequence is a 429 and a Retry-After header.
     match_claims     1 ── N  match_signals       (CASCADE)
     match_claims     1 ── N  notifications       (CASCADE)
 
-35 foreign keys. Counted from `information_schema`, not from memory.
+34 foreign keys (35 before migration 013 removed `assigned_staff_id`).
+Counted from `information_schema`, not from memory.
 `auth_rate_limits` and `schema_migrations` appear nowhere above, because
 they have no relationships to appear in; neither does `pet_colours`, on purpose
 (4b).

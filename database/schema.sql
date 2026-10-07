@@ -15,6 +15,10 @@
 -- Recounted 30 September 2026; the 25 September figures for primary and
 -- unique keys were taken before migrations 005 and 006.
 --
+-- Now (after migration 013, 6 October 2026): 24 tables, 34 foreign keys,
+-- 3 CHECK constraints — every table, column and key is listed in
+-- docs/final-schema-audit.md, generated from information_schema.
+--
 -- First imported on MariaDB 10.4.32 (XAMPP) on 2026-08-19 at 11 tables and 20
 -- foreign keys; the lockout, audit and consent tables arrived with the
 -- hardening pass as migrations 001 to 004, and the account-lifecycle tables
@@ -323,7 +327,8 @@ CREATE TABLE pet_reports (
   category_id       INT UNSIGNED NOT NULL,          -- species: a matching gate
   breed_id          INT UNSIGNED     NULL,          -- optional, often unknown
   location_id       INT UNSIGNED NOT NULL,
-  assigned_staff_id INT UNSIGNED     NULL,          -- coordinator handling the case
+  -- (assigned_staff_id, "the coordinator handling the case", was removed by
+  -- migration 013: nothing ever set or read it.)
 
   report_type       ENUM('lost','found') NOT NULL,
   status            ENUM('active','possible_match','returned','closed')
@@ -381,10 +386,6 @@ CREATE TABLE pet_reports (
   CONSTRAINT fk_reports_location
     FOREIGN KEY (location_id) REFERENCES locations (location_id)
     ON DELETE RESTRICT ON UPDATE CASCADE,
-
-  CONSTRAINT fk_reports_staff
-    FOREIGN KEY (assigned_staff_id) REFERENCES users (user_id)
-    ON DELETE SET NULL ON UPDATE CASCADE,
 
   -- Indexes chosen for the filters the Explore page actually offers, and for
   -- the sort + pagination the guide requires.
@@ -907,14 +908,14 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- A fresh import of this file already contains everything migrations 001 to
--- 012 do, so it records all twelve as applied. Otherwise somebody running the
+-- 013 do, so it records all thirteen as applied. Otherwise somebody running the
 -- migrations afterwards would re-apply changes that are already here.
 --
 -- 004 and 005 were missing from this list: the baseline had their schema
 -- changes but claimed only three migrations had run. Harmless until somebody
 -- trusted the list.
 INSERT INTO schema_migrations (version)
-VALUES ('001'), ('002'), ('003'), ('004'), ('005'), ('006'), ('007'), ('008'), ('009'), ('010'), ('011'), ('012')
+VALUES ('001'), ('002'), ('003'), ('004'), ('005'), ('006'), ('007'), ('008'), ('009'), ('010'), ('011'), ('012'), ('013')
   ON DUPLICATE KEY UPDATE version = version;
 
 
