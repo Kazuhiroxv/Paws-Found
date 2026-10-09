@@ -127,7 +127,9 @@ the decision needed, and continue only if that won't make later changes harder.
 
 - Path-scoped rules load automatically when you touch matching files:
   `.claude/rules/frontend.md` (`src/`), `php-api.md` (`api/`), `database.md`
-  (`database/`), `assets-and-demo-data.md` (images, demo and seed data).
+  (`database/`), `assets-and-demo-data.md` (images, demo and seed data),
+  `browser-verification.md` (`src/`, `public/`, `index.html`: when to check the rendered
+  app with the project-local Playwright MCP server in `.mcp.json`).
 - `docs/CURRENT_STATE.md` — live state, Kyle's rules, local setup, test gate, shipping.
 - `docs/HANDOFF.md` — architecture, database, auth, email, deployment.
 - `docs/TESTING.md`, `docs/DECISIONS.md`, `docs/PRODUCTION_RUNBOOK.md`,

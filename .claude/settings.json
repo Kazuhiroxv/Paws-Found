@@ -7,6 +7,10 @@
       "PowerShell(npm run audit *)",
       "PowerShell(python scripts/audit*)",
       "PowerShell(py scripts/audit*)"
+    ],
+    "deny": [
+      "mcp__playwright__browser_run_code_unsafe",
+      "mcp__plugin_playwright_playwright__browser_run_code_unsafe"
     ]
   }
 }
