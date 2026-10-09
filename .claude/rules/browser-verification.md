@@ -20,7 +20,8 @@ and say that rendered behavior was not checked.
 
 When you use it: open only the local dev server (`http://localhost:5173`, which needs
 Apache and MariaDB for `/api`), never production; sign in only with the seeded local
-accounts and never print the password; avoid changing data you don't need to (reseed
-afterwards if you did). Check the changed screen at desktop width and at 390px; exercise
+accounts and never print the password (whatever you type is recorded in the session
+transcript, so never use a real credential); avoid changing data you don't need to
+(reseed afterwards if you did). Check the changed screen at desktop width and at 390px; exercise
 what changed; read console errors; close the browser when done. Report what you saw in
 the browser separately from what you assume.
