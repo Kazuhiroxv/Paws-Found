@@ -3,7 +3,7 @@ import { Outlet, useLocation, useNavigate, useNavigationType } from 'react-route
 import { Navbar } from '@/components/Navbar'
 import { Footer } from '@/components/Footer'
 import { SessionNotice } from '@/components/SessionNotice'
-import { PrivacyUpdateNotice } from '@/components/PrivacyUpdateNotice'
+import { PrivacyConsentDialog } from '@/components/PrivacyConsentDialog'
 import { t } from '@/i18n'
 import { ROLES } from '@/constants'
 import { logService } from '@/services'
@@ -46,6 +46,7 @@ const GUEST_FLOW_PAGES = ['/login', '/register', '/verify-email', '/forgot-passw
  * @param {() => void} [props.onDismissNotice]
  * @param {() => void} [props.onRouteChange]  Re-check who is signed in.
  * @param {() => void} [props.onPrivacyAcknowledged]  Re-read the account.
+ * @param {string|null} [props.privacyNoticeVersion]  The notice version every visitor agrees to.
  */
 export function RootLayout({
   role,
@@ -56,6 +57,7 @@ export function RootLayout({
   onDismissNotice,
   onRouteChange,
   onPrivacyAcknowledged,
+  privacyNoticeVersion,
 }) {
   const { pathname, hash } = useLocation()
   const navigationType = useNavigationType()
@@ -138,9 +140,13 @@ export function RootLayout({
           at the moment it arrives. */}
       <SessionNotice notice={notice} onDismiss={onDismissNotice} />
 
-      {/* Correction 7: an account that has not been shown the Privacy Notice
-          as it now reads is told, once, without being stopped. */}
-      <PrivacyUpdateNotice user={user} onAcknowledged={onPrivacyAcknowledged} />
+      {/* Everybody agrees to the Privacy Notice before using the site: a
+          dialog that cannot be dismissed, once per version (2026-10-16). */}
+      <PrivacyConsentDialog
+        user={user}
+        version={privacyNoticeVersion}
+        onAgreed={onPrivacyAcknowledged}
+      />
 
       {/* The environment layer: grain plus the two glows for this area of the
           site. It is behind the page, above the ground, and fades out well

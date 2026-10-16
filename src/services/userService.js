@@ -88,6 +88,8 @@ export async function checkSession() {
 
   return {
     endedReason: row ? null : (payload.session_ended ?? null),
+    // The Privacy Notice version every visitor must agree to, signed in or not.
+    privacyNoticeVersion: payload.privacy_notice_version ?? null,
     user: row && {
       id: row.user_id,
       firstName: row.first_name ?? '',

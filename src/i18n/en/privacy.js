@@ -7,7 +7,7 @@ export default {
   title: 'Privacy Notice',
   description:
     'What Paws&Found collects about you, what it shows other people, and what it keeps to itself.',
-  updated: 'Last updated {version}. This is the version you agree to when you create an account.',
+  updated: 'Last updated {version}. This is the version you agree to when you first open Paws&Found and when you create an account.',
   short: {
     title: 'The short version',
     name: '<b>Your name is shown</b> on every report you file, so the person on the other side knows who they are dealing with.',
@@ -118,7 +118,7 @@ export default {
     title: 'If this notice changes',
     body: [
       'Each agreement is recorded against the version of this notice that was showing at the time, so we can tell who agreed to which wording. If this notice changes in a way that alters what you agreed to, the date at the top changes with it.',
-      'When it does, an account that agreed to an earlier version is told so the next time it is signed in, with a link to this page. Pressing "Acknowledge" records — with the date, time and network address — that the updated notice was shown; it is not a separate choice about the records described above, which are kept for security either way. Nobody is stopped from using Paws&Found while the message is showing, and nobody is recorded as having seen wording they were not shown.',
+      'When you first open Paws&Found, and again whenever this notice changes, you are asked to agree to it before you can use the site. If you are signed in, your agreement is recorded with the date, time and network address; if you are not, it is remembered only in your browser. Agreeing is not a separate choice about the records described above, which are kept for security either way, and nobody is recorded as having agreed to wording they were not shown.',
     ],
   },
 }

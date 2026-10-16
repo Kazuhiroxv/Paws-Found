@@ -15,6 +15,7 @@
 // The page.evaluate() callbacks below run inside the page, where these exist.
 /* global document, window, MutationObserver, PopStateEvent, HTMLInputElement, HTMLTextAreaElement */
 import puppeteer from 'puppeteer-core'
+import { launchAgreed } from './privacy-agreed.mjs'
 
 const BASE = process.env.PAWS_BASE ?? 'http://localhost/pawsandfound'
 const API = BASE + '/api'
@@ -28,7 +29,7 @@ if (!PASSWORD) {
   process.exit(2)
 }
 
-const browser = await puppeteer.launch({
+const browser = await launchAgreed(puppeteer, {
   executablePath: CHROME,
   headless: 'new',
   defaultViewport: { width: 1280, height: 900 },

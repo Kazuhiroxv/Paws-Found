@@ -66,6 +66,21 @@ INSERT INTO privacy_consents (user_id, notice_version, consented_at) VALUES
   (9, '2026-09-23', '2026-02-10 01:05:00'),
   (10, '2026-09-23', '2026-01-05 00:30:00');
 
+-- And each account's agreement to the current notice (2026-10-03), so the
+-- demonstration accounts are not stopped by the Privacy Notice dialog. The
+-- privacy tests take one account back to the older agreement themselves.
+INSERT INTO privacy_consents (user_id, notice_version, consented_at) VALUES
+  (1, '2026-10-03', '2026-10-04 09:10:00'),
+  (2, '2026-10-03', '2026-10-04 09:11:00'),
+  (3, '2026-10-03', '2026-10-04 09:12:00'),
+  (4, '2026-10-03', '2026-10-04 09:13:00'),
+  (5, '2026-10-03', '2026-10-04 09:14:00'),
+  (6, '2026-10-03', '2026-10-04 09:15:00'),
+  (7, '2026-10-03', '2026-10-04 09:16:00'),
+  (8, '2026-10-03', '2026-10-04 09:17:00'),
+  (9, '2026-10-03', '2026-10-04 09:18:00'),
+  (10, '2026-10-03', '2026-10-04 09:19:00');
+
 -- One location per report. Coordinates are barangay-level (approximate).
 INSERT INTO locations (location_id, label, city, province, city_code, latitude, longitude, `precision`) VALUES
   (1,'Near Poblacion Public Market, Barangay Poblacion', 'Makati City', 'Metro Manila', '1380300000', 14.5654, 121.0296, 'approximate'),

@@ -7,7 +7,7 @@ export default {
   description:
     'Kung ano ang kinokolekta ng Paws&Found tungkol sa iyo, kung ano ang ipinapakita nito sa ibang tao, at kung ano ang itinatago nito.',
   updated:
-    'Huling na-update noong {version}. Ito ang bersyong sinasang-ayunan mo kapag gumawa ka ng account.',
+    'Huling na-update noong {version}. Ito ang bersyong sinasang-ayunan mo kapag una mong binuksan ang Paws&Found at kapag gumawa ka ng account.',
   short: {
     title: 'Ang maikling bersyon',
     name: '<b>Ipinapakita ang pangalan mo</b> sa bawat report na ifa-file mo, para alam ng kabilang panig kung sino ang kausap nila.',
@@ -119,7 +119,7 @@ export default {
     title: 'Kung magbago ang abisong ito',
     body: [
       'Itinatala ang bawat pagsang-ayon laban sa bersyon ng abisong ito na nakita noon, para malaman namin kung sino ang sumang-ayon sa aling pananalita. Kung magbago ang abisong ito sa paraang nagbabago sa sinang-ayunan mo, magbabago rin ang petsa sa itaas.',
-      'Kapag nangyari iyon, sasabihan ang account na sumang-ayon sa naunang bersyon sa susunod na pag-sign in nito, kasama ang link sa pahinang ito. Ang pagpindot sa "Nakita ko na" ay nagtatala — kasama ang petsa, oras at network address — na naipakita ang na-update na abiso; hindi ito hiwalay na pagpili tungkol sa mga rekord na inilarawan sa itaas, na itinatago para sa seguridad alinman ang mangyari. Walang pinipigilang gumamit ng Paws&Found habang ipinapakita ang mensahe, at walang itinatalang nakakita ng pananalitang hindi naman ipinakita sa kanila.',
+      'Kapag una mong binuksan ang Paws&Found, at tuwing magbabago ang abisong ito, hihilingin sa iyong sumang-ayon dito bago mo magamit ang site. Kung naka-sign in ka, itinatala ang pagsang-ayon mo kasama ang petsa, oras at network address; kung hindi, sa browser mo lang ito naaalala. Hindi hiwalay na pagpili ang pagsang-ayon tungkol sa mga rekord na inilarawan sa itaas, na itinatago para sa seguridad alinman ang mangyari, at walang itinatalang sumang-ayon sa pananalitang hindi naman ipinakita sa kanya.',
     ],
   },
 }

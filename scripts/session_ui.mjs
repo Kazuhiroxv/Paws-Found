@@ -25,6 +25,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer-core'
+import { launchAgreed } from './privacy-agreed.mjs'
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const BASE = process.env.PAWS_BASE ?? 'http://localhost:5173'
@@ -74,7 +75,7 @@ writeConfig()
 // out after a few runs, and no email would arrive for MSG-05.
 sql('DELETE FROM auth_rate_limits')
 
-const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new' })
+const browser = await launchAgreed(puppeteer, { executablePath: CHROME, headless: 'new' })
 
 // ------------------------------------------------------------------ helpers
 const text = (page) => page.evaluate(() => document.body.innerText)

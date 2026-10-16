@@ -22,7 +22,7 @@ States: **done** (committed on `post-defense/revisions`), **in progress**,
 | Disclaimer (8) | **DONE** |
 | Filipino (18) | **DONE** |
 | Print / PDF of the report list (N5) | **DONE** |
-| Privacy Notice acknowledgement (team item) | **DONE** |
+| Privacy Notice acknowledgement (team item) | **DONE** — since 2026-10-16 (Kyle's change) a dialog every visitor must answer before using the site, replacing the message that could be scrolled past; development branch, not yet deployed |
 | Reset (11) | **AWAITING CLARIFICATION** — no implementation |
 | Cancel (16) | **DEFERRED PENDING INSTRUCTOR CLARIFICATION** — no Cancel publication state |
 | Contact number (N1) | **IMPLEMENTED, AWAITING INSTRUCTOR-INTENT CONFIRMATION** — no behaviour change |

@@ -68,8 +68,8 @@ save as PDF, with the filters applied. A [Disclaimer](src/pages/public/Disclaime
 says plainly that this is an academic, non-commercial project that handles no
 payments and guarantees nothing.
 
-**It is tested.** 1,515 automated checks in twenty-seven suites, all passing, and
-axe-core over 50 pages — see [`docs/TESTING.md`](docs/TESTING.md) §3.
+**It is tested.** 1,519 automated checks in twenty-seven suites, all passing, and
+axe-core over 52 pages — see [`docs/TESTING.md`](docs/TESTING.md) §3.
 
 ## Getting started
 
@@ -200,9 +200,9 @@ with the password itself. On a built site everyone signs in through the form.
 | `npm run test:admin-levels-ui` | 33 browser checks of what each administrator level sees and can do, including no review buttons on a pending report (**reseeds**) |
 | `npm run test:i18n` | 22 checks that English and Filipino have the same keys, placeholders and plurals, that no interface text is hard-coded, and that stored values stay the database's codes — needs nothing running |
 | `npm run test:disclaimer` | 21 checks that the Disclaimer says what it must in both languages, and claims no immunity — needs nothing running |
-| `npm run test:privacy-ack` | 29 checks of the Privacy Notice acknowledgement: stored in `privacy_consents`, blocks nothing, only for your own account (**reseeds**) |
-| `npm run test:i18n-ui` | 57 browser checks: the language switch, the Privacy Notice message, the Disclaimer, and Print / Save as PDF on three pages (**reseeds**) |
-| `npm run a11y` | axe-core over all 50 pages in every role, nine of them in Filipino (`PAWS_BASE=http://localhost:5173` for the dev build) |
+| `npm run test:privacy-ack` | 30 checks of agreeing to the Privacy Notice: stored in `privacy_consents`, the version told to guests too, only for your own account (**reseeds**) |
+| `npm run test:i18n-ui` | 60 browser checks: the language switch, the Privacy Notice dialog (guests and accounts; it cannot be dismissed), the Disclaimer, and Print / Save as PDF on three pages (**reseeds**) |
+| `npm run a11y` | axe-core over all 52 pages in every role (the Privacy Notice dialog included), ten of them in Filipino (`PAWS_BASE=http://localhost:5173` for the dev build) |
 | `npm run verify:deploy <url>` | 28 checks that only fail on a real host |
 
 See [`docs/TESTING.md`](docs/TESTING.md) for prerequisites and what each one

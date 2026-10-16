@@ -87,15 +87,15 @@ export default {
       'An administrator changed this account from {from} to {to}. The pages available to you have changed to match.',
     dismiss: 'Dismiss this message',
   },
-  privacyUpdate: {
-    title: 'Privacy Notice updated',
-    body:
-      "We've updated our Privacy Notice to explain security and activity records such as sign-in history, IP address and pages visited while signed in.",
-    note: 'These records are kept to protect accounts and the service; acknowledging confirms you have been shown the update.',
-    review: 'Review Privacy Notice',
-    acknowledge: 'Acknowledge',
+  privacyConsent: {
+    title: 'Privacy Notice',
+    description: 'Before you use Paws&Found, please read how it handles your information.',
+    note: 'If you are signed in, your agreement is recorded with the date, time and network address. You can read the notice again at any time from the footer.',
+    readFull: 'Read the full Privacy Notice',
+    agree: 'I agree',
     saving: 'Saving…',
-    failed: 'The acknowledgement could not be saved. Please try again.',
+    failed: 'Your agreement could not be saved. Please try again.',
+    reading: "You're reading the Privacy Notice. When you're ready, agree to continue using Paws&Found.",
   },
   access: {
     eyebrow: 'Administrator',

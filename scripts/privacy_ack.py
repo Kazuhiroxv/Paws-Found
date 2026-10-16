@@ -1,12 +1,15 @@
 """
-Paws&Found — the Privacy Notice update acknowledgement (Correction 7).
+Paws&Found — agreeing to the Privacy Notice (Correction 7; a dialog since 2026-10-16).
 
     python scripts/privacy_ack.py        (npm run test:privacy-ack)
 
-Against the local API and database; reseeds at the start and the end. The
-seeded accounts agreed to the notice of 2026-09-23, before Correction 5
-described the session and activity records (the current version is
-PRIVACY_NOTICE_VERSION in api/config.php).
+Against the local API and database; reseeds at the start and the end. Every
+seeded account has agreed to the current notice (PRIVACY_NOTICE_VERSION in
+api/config.php) as well as to the one of 2026-09-23; the three accounts used
+here are taken back to the older agreement only.
+
+  PRIV-00  /auth/me names the current version to everybody, a guest included
+           (the browser asks a guest to agree to it before the site is used)
 
   PRIV-01  an account that agreed to an older version is told: /auth/me says
            the current notice is not acknowledged
@@ -16,7 +19,8 @@ PRIVACY_NOTICE_VERSION in api/config.php).
   PRIV-05  it is not a consent to optional processing: nothing in the body
            is read, there is no "decline", and the security and activity
            records are kept before, during and after, acknowledged or not
-  PRIV-06  the notice blocks nothing: an unacknowledged account works as usual
+  PRIV-06  the API itself does not refuse an account that has not agreed: the
+           dialog that cannot be dismissed is the interface's (i18n_ui PRIV)
   PRIV-07  nobody can acknowledge for somebody else; a guest cannot at all;
            a request without the CSRF token is refused
   PRIV-08  the acknowledgement is in the activity trail, once, with the
@@ -78,7 +82,13 @@ if not audit.db_reachable():
     sys.exit(2)
 
 reseed()
+sql(f"DELETE FROM privacy_consents WHERE notice_version = '{CURRENT}' AND user_id IN "
+    f"(SELECT user_id FROM users WHERE email IN ('{CUSTOMER}', '{OTHER}', '{STAFF}'))")
 print(f'Current notice: {CURRENT}\n')
+
+print('PRIV-00  everybody is told the current version, a guest too')
+_, guest_me = audit.Session().call('GET', '/auth/me')
+check('PRIV-00', "a guest's /auth/me names the current notice version", CURRENT, guest_me.get('privacy_notice_version'))
 
 customer = signed_in(CUSTOMER)
 me = uid(CUSTOMER)
@@ -91,7 +101,7 @@ check('PRIV-01', 'and says it has not been acknowledged', False, n.get('acknowle
 check('PRIV-01', 'the seeded agreement is to an older version', '2026-09-23',
       sql(f'SELECT MAX(notice_version) FROM privacy_consents WHERE user_id = {me}'))
 
-print('\nPRIV-06  nothing is blocked meanwhile')
+print('\nPRIV-06  the API itself does not refuse (the dialog is the interface)')
 code, _ = customer.call('GET', '/reports?publication=all&reporter_id=' + str(me))
 check('PRIV-06', 'an unacknowledged account still lists its own reports', 200, code)
 code, _ = customer.call('POST', '/activity/page-view', {'path': '/dashboard'})

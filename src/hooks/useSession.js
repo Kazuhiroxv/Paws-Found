@@ -38,6 +38,8 @@ const POLL_INTERVAL_MS = 10_000
 export function useSession() {
   const [user, setUser] = useState(undefined)
   const [notice, setNotice] = useState(null)
+  // The Privacy Notice version the server says is current (for guests too).
+  const [privacyNoticeVersion, setPrivacyNoticeVersion] = useState(null)
 
   // The last answer, readable without making `refresh` depend on it — a
   // dependency there would rebuild the timer on every change.
@@ -94,7 +96,8 @@ export function useSession() {
         const started = generation.current
 
         try {
-          const { user: next, endedReason } = await userService.checkSession()
+          const { user: next, endedReason, privacyNoticeVersion: version } = await userService.checkSession()
+          if (version) setPrivacyNoticeVersion(version)
           if (started === generation.current) apply(next, { announce: true, reason: endedReason })
         } catch {
           // The server could not be reached, which is not the same as being
@@ -161,6 +164,7 @@ export function useSession() {
   return {
     user,
     notice,
+    privacyNoticeVersion,
     dismissNotice: useCallback(() => setNotice(null), []),
     refresh,
     setSignedInUser,

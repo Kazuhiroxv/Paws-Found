@@ -806,12 +806,21 @@ function auth_me(): never
     // A browser whose session the server ended is also told why
     // (`session_ended`), so the page can say "your session expired" rather
     // than appearing at Sign in with no explanation.
+    //
+    // Everybody, guest or not, is told which version of the Privacy Notice is
+    // current: the browser asks a visitor to agree to that version before the
+    // site can be used, and asks again when it changes.
     if ($user === null) {
-        json_response(['user' => null, 'csrf_token' => csrf_token()] + session_end_notice());
+        json_response([
+            'user' => null,
+            'csrf_token' => csrf_token(),
+            'privacy_notice_version' => PRIVACY_NOTICE_VERSION,
+        ] + session_end_notice());
     }
 
     json_response([
         'csrf_token' => csrf_token(),
+        'privacy_notice_version' => PRIVACY_NOTICE_VERSION,
         'user' => [
             'user_id' => (int) $user['user_id'],
             'first_name' => $user['first_name'],

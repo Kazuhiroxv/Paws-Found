@@ -70,7 +70,7 @@ export default function App() {
   // administrator changes it on a fourth; the API refuses those devices
   // immediately, and this is what makes their screens agree
   // (src/hooks/useSession.js).
-  const { user, notice, dismissNotice, refresh, setSignedInUser, signOut } = useSession()
+  const { user, notice, privacyNoticeVersion, dismissNotice, refresh, setSignedInUser, signOut } = useSession()
 
   // English or Filipino (Correction 7). Subscribing here re-renders every
   // route when the language changes — in place, without remounting, so the
@@ -147,6 +147,7 @@ export default function App() {
               notice={notice}
               onDismissNotice={dismissNotice}
               onPrivacyAcknowledged={refresh}
+              privacyNoticeVersion={privacyNoticeVersion}
               // Every route change re-asks who is signed in, so opening a page
               // is itself a check rather than something the timer catches up
               // with a few seconds later.

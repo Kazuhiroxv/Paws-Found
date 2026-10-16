@@ -834,7 +834,48 @@ disclaimer says no payment passes through the system. A reporter may still
 type "reward offered" in a description; that is their text, and moderation
 already covers scams.
 
-### Privacy Notice updates: acknowledged, not re-consented (Correction 7)
+### The Privacy Notice is agreed to before the site is used (2026-10-16)
+
+Kyle's change after Correction 7: the notice must be a pop-up met on entering
+the site, not a message that can be scrolled past. It replaces the
+non-blocking acknowledgement below.
+
+- **Everybody, once per version.** Any visitor, guest or signed in, gets a
+  modal dialog on arrival: the notice's own "short version" (the same five
+  points, so nothing new is claimed), a language switch, "Read the full
+  Privacy Notice" and "I agree". There is no close button; Escape and a click
+  outside do nothing (if Chrome forces the dialog shut on a repeated Escape,
+  it opens again). The page behind cannot be reached until the visitor agrees.
+- **Where the agreement is kept.** A signed-in account: a `privacy_consents`
+  row for the current version, with the time and network address, through
+  the existing `POST /auth/privacy-acknowledgement`, plus the
+  `privacy_notice_acknowledged` activity row. A guest: only this browser's
+  note of the version (`localStorage`); nothing about a guest is sent or
+  stored on the server. An account's own record decides for that account, so
+  a person who agreed as a guest and then signs in to an account on an older
+  agreement is asked again for the account.
+- **Reading before agreeing.** "Read the full Privacy Notice" opens `/privacy`;
+  there the dialog steps aside and a bar fixed to the bottom of the screen
+  carries "I agree", so it cannot be scrolled away either.
+- **Still no Decline.** The records the notice describes are kept for security
+  whatever the answer, so "Decline" would be a choice that changes nothing.
+- **The version.** `/auth/me` now tells every visitor the current version
+  (`privacy_notice_version`), so the browser compares against the server's,
+  not a copy. It stays 2026-10-03: the processing is unchanged; the notice's
+  "If this notice changes" section and its first line now describe the dialog.
+- **The seed.** Each demonstration account has, besides its 2026-09-23
+  agreement, one to 2026-10-03 dated the morning after, so the demo accounts
+  are not stopped; the privacy tests take their accounts back to the older
+  agreement themselves. Production's existing accounts agreed to 2026-09-23
+  and will each be asked once.
+- **Limit.** The dialog is the interface's. The API does not refuse an
+  account that has not agreed (`test:privacy-ack` PRIV-06 says so); making
+  every endpoint check it would be a much larger change for little gain, since
+  the API is only reached through the interface.
+
+### Privacy Notice updates: acknowledged, not re-consented (Correction 7) — superseded 2026-10-16
+
+*Replaced by the dialog above; kept as the record of what Correction 7 built.*
 
 An account whose latest `privacy_consents` row is for an older notice version
 sees a message at the top of its pages: what changed, "Review Privacy Notice"

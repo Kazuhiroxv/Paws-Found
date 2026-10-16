@@ -23,6 +23,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer-core'
+import { launchAgreed } from './privacy-agreed.mjs'
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const BASE = process.env.PAWS_BASE ?? 'http://localhost:5173'
@@ -59,7 +60,7 @@ reseed()
 sql(`UPDATE users SET role = 'admin', admin_level = 'moderator' WHERE email = '${MODERATOR}';
      UPDATE users SET role = 'admin', admin_level = 'manager' WHERE email = '${MANAGER}'`)
 
-const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new' })
+const browser = await launchAgreed(puppeteer, { executablePath: CHROME, headless: 'new' })
 
 // ------------------------------------------------------------------ helpers
 const text = (page) => page.evaluate(() => document.body.innerText)

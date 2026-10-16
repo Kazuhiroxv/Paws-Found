@@ -11,8 +11,11 @@
  *          coordinator's review queue and Administration all in Filipino;
  *          session-end reasons, statuses and the permission-denied page too;
  *          stored values and what people typed never change
- *   PRIV   the "Privacy Notice updated" message: shown, non-blocking,
- *          Review opens the notice, Acknowledge records it and it goes
+ *   PRIV   the Privacy Notice dialog (2026-10-16): shown to a guest on a first
+ *          visit and to an account on an older agreement; it cannot be closed,
+ *          escaped, clicked past or tabbed out of; "Read the full Privacy
+ *          Notice" opens the notice with a fixed "I agree" bar; agreeing records
+ *          the version (an account) or remembers it (a guest), and it goes
  *   DISC   the Disclaimer, public, in both languages; its short forms where
  *          they belong
  *   PRINT  Print / Save as PDF on Explore, the coordinator's queue and
@@ -32,6 +35,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import puppeteer from 'puppeteer-core'
+import { launchAgreed, PRIVACY_NOTICE_VERSION, PRIVACY_NOTE_KEY } from './privacy-agreed.mjs'
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const BASE = process.env.PAWS_BASE ?? 'http://localhost:5173'
@@ -67,9 +71,15 @@ const sql = (query) => mysql(['-N', '-B', 'pawsandfound', '-e', query]).toString
 const reseed = () => mysql(['pawsandfound'], fs.readFileSync(path.join(ROOT, 'database', 'seed.sql')))
 
 reseed()
+// The customer goes back to the older agreement only, so the notice dialog
+// asks them again (every seeded account has agreed to the current version).
+const onOlderAgreement = () => sql(`DELETE FROM privacy_consents WHERE notice_version = '${PRIVACY_NOTICE_VERSION}'
+  AND user_id = (SELECT user_id FROM users WHERE email = '${CUSTOMER}')`)
+onOlderAgreement()
+const dialogOpen = (page) => page.evaluate(() => Boolean(document.querySelector('dialog[open] [data-privacy-consent]')))
 sql(`UPDATE users SET role = 'admin', admin_level = 'moderator' WHERE email = '${MODERATOR}'`)
 
-const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new' })
+const browser = await launchAgreed(puppeteer, { executablePath: CHROME, headless: 'new' })
 
 // ------------------------------------------------------------------ helpers
 async function newPage({ email = null, language = null, width = 1366 } = {}) {
@@ -198,6 +208,23 @@ try {
     await context.close()
   }
 
+  // PRIV-G: a guest's first visit. `?privacy-ask` keeps the suite's own
+  // agreement off this page, so the dialog is met as a new visitor meets it.
+  {
+    const { context, page } = await newPage()
+    await page.evaluate((key) => localStorage.removeItem(key), PRIVACY_NOTE_KEY)
+    await open(page, '/?privacy-ask')
+    check('PRIV-G1', 'a guest is asked on a first visit, before using the site', await dialogOpen(page))
+    await clickText(page, en.shell.privacyConsent.agree, 'dialog[open] button')
+    await pause(500)
+    check('PRIV-G2', '"I agree" remembers the version in this browser only, and the dialog goes',
+      (await page.evaluate((key) => localStorage.getItem(key), PRIVACY_NOTE_KEY)) === PRIVACY_NOTICE_VERSION
+        && !(await dialogOpen(page)))
+    await open(page, '/explore?privacy-ask')
+    check('PRIV-G3', 'and the guest is not asked again', !(await dialogOpen(page)))
+    await context.close()
+  }
+
   // Customer: dashboard, wizard, form contents, statuses.
   {
     const { context, page } = await newPage({ email: CUSTOMER, language: 'fil' })
@@ -205,42 +232,63 @@ try {
     const dash = await text(page)
     check('I18N-08', 'a customer\'s dashboard is in Filipino',
       dash.includes(fil.dashboard.welcome.replace('{name}', 'Maria')) && dash.includes(fil.nav.myReports), dash.slice(0, 80))
-    check('PRIV-01', 'the "Privacy Notice updated" message is shown to an older agreement',
-      dash.includes(fil.shell.privacyUpdate.title) && dash.includes(fil.shell.privacyUpdate.acknowledge))
-    check('PRIV-06', 'and it blocks nothing: no dialog, and the page under it works',
-      (await page.evaluate(() => !document.querySelector('dialog[open]'))) && (await clickText(page, fil.nav.myReports, 'nav a')))
-    await pause(800)
-    check('PRIV-06', 'My Reports opened with the message still above it', page.url().endsWith('/dashboard/reports')
-      && (await text(page)).includes(fil.shell.privacyUpdate.title))
-    check('PRIV-05', 'the message offers Review and Acknowledge, never Agree or Decline',
+    check('PRIV-01', 'the Privacy Notice dialog is shown to an account on an older agreement',
+      (await dialogOpen(page)) && dash.includes(fil.shell.privacyConsent.title) && dash.includes(fil.shell.privacyConsent.agree))
+    check('PRIV-05', 'it offers "Read the full Privacy Notice" and "I agree", no close button and no Decline',
       await page.evaluate(() => {
-        const s = document.querySelector('[data-privacy-update]')
-        const words = [...s.querySelectorAll('a, button')].map((b) => b.textContent.trim())
-        return words.length === 2 && !/agree|decline|sang-ayon|tanggihan/i.test(s.innerText)
+        const d = document.querySelector('dialog[open]')
+        const actions = [...d.querySelectorAll('a, button')].map((b) => b.textContent.trim()).filter(Boolean)
+        return actions.length === 2 && !d.querySelector('button[aria-label]') && !/decline|tanggihan/i.test(d.innerText)
       }))
+    // Real key presses and a real click, not element.click(): those are what
+    // a visitor has, and the dialog must survive them.
+    await page.keyboard.press('Escape')
+    await pause(300)
+    await page.keyboard.press('Escape')
+    await pause(300)
+    await page.mouse.click(5, 5)
+    await pause(500)
+    check('PRIV-06', 'Escape twice and a click outside: still open, still on the dashboard',
+      (await dialogOpen(page)) && page.url().endsWith('/dashboard'))
+    let trapped = true
+    for (let i = 0; i < 8; i += 1) {
+      await page.keyboard.press('Tab')
+      // Past the last button Chrome hands focus to its own toolbar, and the page
+      // then reports <body>: that is leaving the page, not reaching it.
+      trapped = trapped && await page.evaluate(() => {
+        const el = document.activeElement
+        return !el || el === document.body || Boolean(el.closest('dialog[open]'))
+      })
+    }
+    check('PRIV-06', 'Tab never lands on anything behind the dialog', trapped)
+
+    // PRIV-03 and PRIV-04: read the notice, agree there.
+    await clickText(page, fil.shell.privacyConsent.readFull, 'dialog[open] a')
+    await pause(800)
+    check('PRIV-03', '"Read the full Privacy Notice" opens it, in Filipino, with the "I agree" bar fixed on screen',
+      page.url().endsWith('/privacy') && (await text(page)).includes(fil.privacy.title)
+        && await page.evaluate(() => {
+          window.scrollTo(0, document.body.scrollHeight)
+          const bar = document.querySelector('[data-privacy-reading]')
+          const box = bar?.getBoundingClientRect()
+          return Boolean(bar) && getComputedStyle(bar).position === 'fixed' && box.bottom <= window.innerHeight + 1
+        }))
+    await clickText(page, fil.shell.privacyConsent.agree, '[data-privacy-reading] button')
+    await pause(1500)
+    const userId = sql(`SELECT user_id FROM users WHERE email = '${CUSTOMER}'`)
+    check('PRIV-04', '"I agree" records the current version for the account, and the bar goes',
+      sql(`SELECT COUNT(*) FROM privacy_consents WHERE user_id = ${userId} AND notice_version = '${PRIVACY_NOTICE_VERSION}'`) === '1'
+        && !(await page.evaluate(() => Boolean(document.querySelector('[data-privacy-reading]')))))
+    await open(page, '/dashboard')
+    check('PRIV-02', 'and it is not shown again', !(await dialogOpen(page)))
 
     // I18N-13, I18N-14: statuses in Filipino.
+    await open(page, '/dashboard/reports')
     await clickText(page, fil.myReports.tabs.open, 'button[role="tab"]')
     await pause(300)
     const reportsText = await text(page)
     check('I18N-14', 'case statuses are in Filipino (Aktibo, Posibleng Tugma)',
       reportsText.includes(fil.labels.caseStatus.active) || reportsText.includes(fil.labels.caseStatus.possible_match))
-
-    // PRIV-03 and PRIV-04.
-    await open(page, '/dashboard')
-    await clickText(page, fil.shell.privacyUpdate.review, '[data-privacy-update] a')
-    await pause(800)
-    check('PRIV-03', 'Review opens the Privacy Notice, in Filipino',
-      page.url().endsWith('/privacy') && (await text(page)).includes(fil.privacy.title))
-    await clickText(page, fil.shell.privacyUpdate.acknowledge, '[data-privacy-update] button')
-    await pause(1500)
-    const userId = sql(`SELECT user_id FROM users WHERE email = '${CUSTOMER}'`)
-    const current = fs.readFileSync(path.join(ROOT, 'api', 'config.php'), 'utf8').split("define('PRIVACY_NOTICE_VERSION', '")[1].split("'")[0]
-    check('PRIV-04', 'Acknowledge records the current version and the message goes',
-      sql(`SELECT COUNT(*) FROM privacy_consents WHERE user_id = ${userId} AND notice_version = '${current}'`) === '1'
-        && !(await page.evaluate(() => Boolean(document.querySelector('[data-privacy-update]')))))
-    await open(page, '/dashboard')
-    check('PRIV-02', 'and it is not shown again', !(await page.evaluate(() => Boolean(document.querySelector('[data-privacy-update]')))))
 
     // I18N-09, I18N-05: the wizard, a half-filled form, and a switch.
     await switchTo(page, 'en')

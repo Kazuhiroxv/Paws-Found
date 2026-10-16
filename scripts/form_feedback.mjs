@@ -23,6 +23,7 @@
 // The functions passed to page.evaluate run in the browser, not in Node.
 /* global document, window, HTMLInputElement, HTMLSelectElement, HTMLTextAreaElement, ClipboardEvent, DragEvent, DataTransfer */
 import puppeteer from 'puppeteer-core'
+import { launchAgreed } from './privacy-agreed.mjs'
 
 const BASE = process.env.PAWS_BASE ?? 'http://localhost:5173'
 const API = BASE + '/api'
@@ -40,7 +41,7 @@ const check = (id, description, ok, detail = '') => {
 }
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
-const browser = await puppeteer.launch({
+const browser = await launchAgreed(puppeteer, {
   executablePath: CHROME,
   headless: 'new',
   defaultViewport: { width: 1280, height: 900 },

@@ -181,6 +181,14 @@ L.push(users.map((u, i) =>
   `  (${i + 1}, '2026-09-23', ${ts(u.createdAt) === 'NULL' ? 'CURRENT_TIMESTAMP' : ts(u.createdAt)})`
 ).join(',\n') + ';')
 L.push('')
+// And the agreement to the current notice (2026-10-03), given the morning after
+// it took effect, so the Privacy Notice dialog does not stop the demo accounts.
+L.push("-- And each account's agreement to the current notice (2026-10-03), so the")
+L.push('-- demonstration accounts are not stopped by the Privacy Notice dialog. The')
+L.push('-- privacy tests take one account back to the older agreement themselves.')
+L.push('INSERT INTO privacy_consents (user_id, notice_version, consented_at) VALUES')
+L.push(users.map((u, i) => `  (${i + 1}, '2026-10-03', '2026-10-04 09:${String(10 + i).padStart(2, '0')}:00')`).join(',\n') + ';')
+L.push('')
 
 // The PSGC code of each report's city (migration 009), found the way the
 // migration finds it for a database that already exists: the province by

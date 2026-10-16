@@ -86,15 +86,15 @@ export default {
       'Binago ng isang administrator ang account na ito mula {from} patungong {to}. Binago rin ang mga pahinang puwede mong buksan.',
     dismiss: 'Isara ang mensaheng ito',
   },
-  privacyUpdate: {
-    title: 'Na-update ang Abiso sa Privacy',
-    body:
-      'In-update namin ang aming Abiso sa Privacy para ipaliwanag ang mga rekord ng seguridad at aktibidad, gaya ng kasaysayan ng pag-sign in, IP address, at mga pahinang binuksan habang naka-sign in.',
-    note: 'Itinatago ang mga rekord na ito para protektahan ang mga account at ang serbisyo; ang pagpindot sa "Nakita ko na" ay nagpapatunay lang na naipakita na sa iyo ang update.',
-    review: 'Basahin ang Abiso sa Privacy',
-    acknowledge: 'Nakita ko na',
+  privacyConsent: {
+    title: 'Abiso sa Privacy',
+    description: 'Bago mo gamitin ang Paws&Found, pakibasa kung paano nito pinangangasiwaan ang impormasyon mo.',
+    note: 'Kung naka-sign in ka, itinatala ang pagsang-ayon mo kasama ang petsa, oras at network address. Mababasa mo ulit ang abiso anumang oras mula sa footer.',
+    readFull: 'Basahin ang buong Abiso sa Privacy',
+    agree: 'Sumasang-ayon ako',
     saving: 'Sine-save…',
-    failed: 'Hindi ito na-save. Subukan ulit.',
+    failed: 'Hindi na-save ang pagsang-ayon mo. Subukan ulit.',
+    reading: 'Binabasa mo ang Abiso sa Privacy. Kapag handa ka na, sumang-ayon para patuloy na magamit ang Paws&Found.',
   },
   access: {
     eyebrow: 'Administrator',

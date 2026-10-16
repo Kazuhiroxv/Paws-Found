@@ -21,6 +21,7 @@
 /* global document, window, HTMLInputElement, HTMLSelectElement, HTMLTextAreaElement */
 import { execFileSync } from 'node:child_process'
 import puppeteer, { KnownDevices } from 'puppeteer-core'
+import { launchAgreed } from './privacy-agreed.mjs'
 
 const BASE = process.env.PAWS_BASE ?? 'http://localhost:5173'
 const API = BASE + '/api'
@@ -42,7 +43,7 @@ const sql = (query) =>
   execFileSync(MYSQL, ['-uroot', '-h127.0.0.1', '-P3307', '--default-character-set=utf8mb4', '-N', '-B', 'pawsandfound', '-e', query])
     .toString().trim()
 
-const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new' })
+const browser = await launchAgreed(puppeteer, { executablePath: CHROME, headless: 'new' })
 
 // ------------------------------------------------------------------ helpers
 async function fieldByLabel(page, label) {

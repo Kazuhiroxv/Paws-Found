@@ -226,7 +226,10 @@ footer. **Privacy Notice acknowledgement**: an account whose latest consent is
 for an older notice version sees a message that does not block anything,
 with "Review Privacy Notice" and "Acknowledge"; acknowledging writes a
 `privacy_consents` row and a `privacy_notice_acknowledged` activity row
-(`POST /api/auth/privacy-acknowledgement`). The notice version stays
+(`POST /api/auth/privacy-acknowledgement`). *(Replaced on 2026-10-16, on the
+development branch only, by a dialog every visitor must answer before using
+the site — `docs/DECISIONS.md`, "The Privacy Notice is agreed to before the
+site is used".)* The notice version stays
 2026-10-03. The report list API now also returns `created_at` to signed-in
 viewers (not to guests), for the printed "Filed" column. **No migration.**
 Administrators can now open `/privacy` and `/disclaimer`.
@@ -483,19 +486,19 @@ PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:report-ui # 47
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:workflow-ui # 33
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:session-ui  # 26 (reseeds)
 PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:admin-levels-ui # 33 (reseeds)
-PAWS_BASE=http://localhost:5173 npm run a11y                      # 50 pages
+PAWS_BASE=http://localhost:5173 npm run a11y                      # 52 pages
 C:\xampp\php\php.exe scripts/city_fallback.php                # 11
 C:\xampp\php\php.exe scripts/calendar_today.php               # 8
 C:\xampp\php\php.exe scripts/matching_log.php                 # 6
 npm run test:i18n                                             # 22  (Correction 7; needs nothing running)
 npm run test:disclaimer                                       # 21  (Correction 7; needs nothing running)
-python scripts/privacy_ack.py                                 # 29  (Correction 7; reseeds)
-PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:i18n-ui  # 57 (Correction 7; reseed first)
+python scripts/privacy_ack.py                                 # 30  (Correction 7; reseeds)
+PAWS_BASE=http://localhost:5173 PAWS_PW=<…> npm run test:i18n-ui  # 60 (Correction 7, Privacy Notice dialog; reseed first)
 ```
 
-**1,515 checks in total, in twenty-seven suites** on `post-defense/revisions`
-(1,503 after Correction 7; 1,374 after Correction 6A; 1,353 after Correction 6; 1,246 after Correction 5A; 1,238 after Correction 5; 1,112 in eighteen after Correction 4; 1,006 in sixteen after 3A; 972 after 3;
-802 after 2; 689 in production). a11y: 50 pages, nine of them in Filipino. Plain `npm run lint` is the
+**1,519 checks in total, in twenty-seven suites** on `post-defense/revisions`
+(1,515 at migration 013; 1,503 after Correction 7; 1,374 after Correction 6A; 1,353 after Correction 6; 1,246 after Correction 5A; 1,238 after Correction 5; 1,112 in eighteen after Correction 4; 1,006 in sixteen after 3A; 972 after 3;
+802 after 2; 689 in production). a11y: 52 pages, ten of them in Filipino. Plain `npm run lint` is the
 gate again: the four `PawsAndFound_*` folders that had appeared in the
 repository root were moved to `C:\Projects\_archives\paws-and-found\` on
 3 October (Kyle's decision; nothing deleted).
@@ -594,8 +597,12 @@ Rolling back and operating the live site: [PRODUCTION_RUNBOOK.md](PRODUCTION_RUN
   tests or seed).
   The freeze, the final ERD and then the production backup and migrations
   follow, in that order (`docs/DECISIONS.md`, "Schema freeze notes").
-- **No automatic log retention** (`docs/security-activity-logging.md`). The
-  re-consent gap is closed by Correction 7's non-blocking acknowledgement.
+- **No automatic log retention** (`docs/security-activity-logging.md`).
+- **Privacy Notice dialog (2026-10-16), development branch only, not deployed.**
+  Every visitor agrees to the notice in a dialog that cannot be dismissed
+  before using the site (guests: remembered in the browser; accounts:
+  `privacy_consents`). Production still shows Correction 7's message;
+  deploying the dialog needs Kyle's go-ahead.
 - **The Filipino has not had a native-speaker review**; recommended before the
   final presentation (`docs/localization.md` §7).
 - **Feature freeze after Correction 7**: nothing new unless a clarification

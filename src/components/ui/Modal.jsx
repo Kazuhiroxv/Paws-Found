@@ -26,6 +26,10 @@ import { t } from '@/i18n'
  *   bottom of the screen at full width — for something long on a phone, like
  *   a filter panel, where a centred box wastes the space it has and puts its
  *   controls out of thumb's reach.
+ * @param {boolean} [props.dismissible]  false for a dialog that must be
+ *   answered (the Privacy Notice): no close button, a click outside does
+ *   nothing, Escape does nothing, and if the browser closes it anyway (Chrome
+ *   lets a second Escape through) it opens again. `onClose` is not called.
  */
 const SIZES = {
   sm: 'max-w-sm',
@@ -47,6 +51,7 @@ function OpenModal({
   footer,
   size = 'md',
   placement = 'centre',
+  dismissible = true,
   className,
   children,
 }) {
@@ -69,17 +74,29 @@ function OpenModal({
   }, [])
 
   // The browser fires `close` for Escape too, so this covers every exit route.
+  // A dialog that must be answered refuses Escape (`cancel`), and is shown
+  // again if the browser closes it regardless.
   useEffect(() => {
     const dialog = dialogRef.current
-    const handleClose = () => onClose?.()
+    const handleCancel = (event) => {
+      if (!dismissible) event.preventDefault()
+    }
+    const handleClose = () => {
+      if (dismissible) onClose?.()
+      else if (dialog.isConnected && !dialog.open) dialog.showModal()
+    }
+    dialog.addEventListener('cancel', handleCancel)
     dialog.addEventListener('close', handleClose)
-    return () => dialog.removeEventListener('close', handleClose)
-  }, [onClose])
+    return () => {
+      dialog.removeEventListener('cancel', handleCancel)
+      dialog.removeEventListener('close', handleClose)
+    }
+  }, [onClose, dismissible])
 
   // A click that lands on the dialog element itself is a click on the backdrop:
   // the panel inside stops it from reaching here.
   const handleBackdropClick = (event) => {
-    if (event.target === dialogRef.current) onClose?.()
+    if (dismissible && event.target === dialogRef.current) onClose?.()
   }
 
   return (
@@ -124,9 +141,11 @@ function OpenModal({
             </p>
           )}
         </div>
-        <Button variant="ghost" size="sm" onClick={onClose} aria-label={t('ui.closeDialog')}>
-          <X size={16} aria-hidden="true" />
-        </Button>
+        {dismissible && (
+          <Button variant="ghost" size="sm" onClick={onClose} aria-label={t('ui.closeDialog')}>
+            <X size={16} aria-hidden="true" />
+          </Button>
+        )}
       </div>
 
       {/* Only when there is something to put in it. A dialog made of a title,
@@ -134,8 +153,10 @@ function OpenModal({
           carried an empty padded strip between them. */}
       {Children.toArray(children).length > 0 && <div className="px-4 py-4">{children}</div>}
 
+      {/* Stuck to the bottom of a dialog that scrolls, so its buttons stay in
+          view on a short phone screen instead of waiting below the fold. */}
       {footer && (
-        <div className="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
+        <div className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t border-border bg-panel px-4 py-3">
           {footer}
         </div>
       )}

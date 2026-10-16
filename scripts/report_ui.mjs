@@ -23,6 +23,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import puppeteer, { KnownDevices } from 'puppeteer-core'
+import { launchAgreed } from './privacy-agreed.mjs'
 
 const BASE = process.env.PAWS_BASE ?? 'http://localhost:5173'
 const API = BASE + '/api'
@@ -52,7 +53,7 @@ const photo = (n) => {
   return path
 }
 
-const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new' })
+const browser = await launchAgreed(puppeteer, { executablePath: CHROME, headless: 'new' })
 
 // ------------------------------------------------------------------ helpers
 async function fieldByLabel(page, label) {

@@ -837,7 +837,7 @@ may be inaccurate, nothing guaranteed, safety guidance; `DISC-08` no waiver,
 immunity or hold-harmless wording in either language; `DISC-09` English and
 Filipino have the same sections, paragraphs and safety points.
 
-**`npm run test:privacy-ack` — 29 checks** (`scripts/privacy_ack.py`, local
+**`npm run test:privacy-ack` — 30 checks** (`scripts/privacy_ack.py`, local
 API, reseeds at the start and the end). `PRIV-01`/`02` `/auth/me` says
 whether the account has acknowledged the current notice version; `PRIV-04`
 acknowledging writes the version into `privacy_consents` (the one consent
@@ -848,7 +848,7 @@ usual; `PRIV-07` nobody acknowledges for another account, a guest cannot, no
 CSRF token is refused; `PRIV-08` one activity row, with the version, the
 address and the session.
 
-**`npm run test:i18n-ui` — 57 checks** (`scripts/i18n_ui.mjs`, Chrome, dev
+**`npm run test:i18n-ui` — 60 checks** (`scripts/i18n_ui.mjs`, Chrome, dev
 server, reseeds). `I18N-01`…`17` in the browser: English by default; Filipino
 chosen from the header; remembered across pages and a reload; `<html lang>`
 follows; switching keeps the page, the session and a half-filled report form,
@@ -876,6 +876,29 @@ Administration, Logs, permission denied): **50 pages, 0 violations**, with
 `<html lang="fil">` accepted. `test:ui` ADMIN-SITE-1 now expects `/privacy`
 and `/disclaimer` to stay open to an administrator.
 
+### Privacy Notice dialog (2026-10-16)
+
+Every visitor agrees to the notice in a dialog that cannot be dismissed
+(`docs/DECISIONS.md`). The browser suites now start Chrome through
+`scripts/privacy-agreed.mjs`, which sets this browser's agreement on every
+page so the dialog does not stand in front of what a suite is testing; the
+seeded accounts have agreed to the current version in `seed.sql`. A page whose
+address carries `?privacy-ask` is left without the agreement, which is how the
+dialog itself is tested.
+
+`test:i18n-ui` (60, from 57): `PRIV-G1`…`G3` a guest is asked on a first
+visit, "I agree" remembers the version in the browser, and the guest is not
+asked again; `PRIV-01` an account on an older agreement is asked;
+`PRIV-05` only "Read the full Privacy Notice" and "I agree", no close button,
+no Decline; `PRIV-06` two real Escape presses and a real click outside leave
+it open on the same page, and Tab never lands on anything behind it;
+`PRIV-03` "Read" opens the notice in Filipino with the "I agree" bar fixed on
+screen even scrolled to the end; `PRIV-04` agreeing there records the version
+for the account; `PRIV-02` not asked again. `test:privacy-ack` (30, from 29):
+`PRIV-00` a guest's `/auth/me` names the current version; `PRIV-06` now
+states that the API itself does not refuse (the dialog is the interface's).
+`a11y` (52 pages, from 50): the dialog, in English and in Filipino.
+
 **Responsive check (not a suite; run once for Correction 7):** 22 pages —
 public, customer, coordinator and administrator — at 390, 820 and 1280 px in
 English and in Filipino, 132 combinations: no horizontal page overflow, and
@@ -897,9 +920,9 @@ remove the column and key. Five checks per engine, ten in all, plus the two
 ## 3. Last verified results
 
 4 October 2026 (Correction 7), on the development laptop unless stated, on
-branch `post-defense/revisions`. **1,515 checks in twenty-seven suites, all
+branch `post-defense/revisions`. **1,519 checks in twenty-seven suites, all
 passing, on a quiet tree with a reseed before each browser suite;
-a11y 50 pages** (1,374 at Correction 6A; 1,353 at Correction 6; 1,246 at Correction 5A; 1,238 at Correction 5). Plain `npm run lint` again: the `PawsAndFound_*`
+a11y 52 pages** (1,515 at migration 013; 1,374 at Correction 6A; 1,353 at Correction 6; 1,246 at Correction 5A; 1,238 at Correction 5). Plain `npm run lint` again: the `PawsAndFound_*`
 folders were moved out of the repository.
 
 **Two lessons from this gate.** (1) Do not edit any file in the repository
@@ -941,11 +964,11 @@ test:signout                             24/24
 test:ui                                  66/66
 test:city                                11/11
 test:matching-log                         6/6
-a11y                                     50 pages, 0 violations (+ Disclaimer in both languages, eight more pages in Filipino)
+a11y                                     52 pages, 0 violations (+ the Privacy Notice dialog in both languages, 2026-10-16)
 test:i18n                                22/22   (Correction 7: key parity, placeholders, plurals, no hard-coded text, stored values = schema ENUMs)
 test:disclaimer                          21/21   (Correction 7: required points in both languages, no immunity wording)
-test:privacy-ack                         29/29   (Correction 7: acknowledgement in privacy_consents, non-blocking, own account only, activity row)
-test:i18n-ui                             57/57   (Correction 7: language switch in Chrome, privacy message, disclaimer, print/PDF on three pages)
+test:privacy-ack                         30/30   (agreement in privacy_consents, own account only, activity row; guests told the version)
+test:i18n-ui                             60/60   (language switch in Chrome, the Privacy Notice dialog for guests and accounts, disclaimer, print/PDF)
 responsive sweep, Correction 7           132/132 (22 pages x 390/820/1280 px x English/Filipino, no horizontal overflow)
 docker build --pull --no-cache           clean, one MPM, Syntax OK  (4 October, Correction 7)
 image on MySQL 9.4 strict, Correction 7  migrations 001-012, health ok; /disclaimer deep link; bundle carries Filipino and the payment sentence; seeded customer not acknowledged -> acknowledge 200 -> acknowledged; guest refused; list created_at signed in only; Super Admin approve 403, coordinator approve 200; coordinator logs 403; Super Admin logs show the acknowledgement with its version; super_admin capabilities: 15/15

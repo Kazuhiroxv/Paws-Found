@@ -377,6 +377,7 @@ enforced, not claimed.
   can avoid sending them. Actions cannot be avoided — the server writes them.
 * A session that predates 011 has no record; its activity rows have no session
   until it next signs in (at most 8 hours).
-* No automatic retention. (The re-consent gap is closed by Correction 7: an
-  account on an older notice version is asked, without being blocked, to
-  review and acknowledge the current one — `docs/DECISIONS.md`.)
+* No automatic retention. (The re-consent gap is closed: Correction 7 asked an
+  account on an older notice version, without blocking it; since 2026-10-16
+  every visitor must agree to the current version in a dialog before using
+  the site — `docs/DECISIONS.md`.)

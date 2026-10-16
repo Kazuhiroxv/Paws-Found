@@ -32,6 +32,7 @@
 // The page.evaluate() callbacks run inside the page, where these exist.
 /* global document, window, HTMLInputElement, HTMLTextAreaElement, ClipboardEvent, DataTransfer, FocusEvent, innerWidth */
 import puppeteer from 'puppeteer-core'
+import { launchAgreed } from './privacy-agreed.mjs'
 
 const BASE = process.env.PAWS_BASE ?? 'http://localhost/pawsandfound'
 const API = BASE + '/api'
@@ -50,7 +51,7 @@ const check = (id, description, ok, detail = '') => {
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const path = (page) => new URL(page.url()).pathname
 
-const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new', defaultViewport: { width: 1280, height: 900 } })
+const browser = await launchAgreed(puppeteer, { executablePath: CHROME, headless: 'new', defaultViewport: { width: 1280, height: 900 } })
 
 // ---- MOD-LINK: the flagged report preview on the moderation queue
 {

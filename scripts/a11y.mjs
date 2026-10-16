@@ -12,6 +12,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer-core'
+import { launchAgreed } from './privacy-agreed.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const BASE = process.env.PAWS_BASE ?? 'http://localhost/pawsandfound'
@@ -42,6 +43,16 @@ async function openRoleDialog(page) {
     ;[...document.querySelectorAll('input[type=radio]')].find((r) => r.value === 'admin')?.click()
   })
   await new Promise((r) => setTimeout(r, 400))
+}
+
+/** Forget this browser's agreement, so the Privacy Notice dialog opens. */
+async function showPrivacyDialog(page) {
+  await page.evaluate(() => localStorage.removeItem('paws:privacy-notice'))
+  await page.reload({ waitUntil: 'networkidle2' })
+  await new Promise((r) => setTimeout(r, 900))
+  if (!(await page.evaluate(() => Boolean(document.querySelector('dialog[open] [data-privacy-consent]'))))) {
+    throw new Error('The Privacy Notice dialog did not open, so it was not audited')
+  }
 }
 
 const PAGES = [
@@ -96,15 +107,19 @@ const PAGES = [
   ['guest', '/disclaimer', 'Disclaimer — Filipino', null, 'fil'],
   ['guest', '/', 'Homepage — Filipino', null, 'fil'],
   ['guest', '/explore?type=lost', 'Explore — Filipino, print control', null, 'fil'],
-  ['maria.santos@example.com', '/dashboard', 'Customer dashboard — Filipino, privacy update', null, 'fil'],
+  ['maria.santos@example.com', '/dashboard', 'Customer dashboard — Filipino', null, 'fil'],
   ['maria.santos@example.com', '/report/lost', 'Report a lost pet — Filipino', null, 'fil'],
   ['patricia.lim@example.com', '/staff/review', 'Report review — Filipino', null, 'fil'],
   ['grace.bautista@example.com', '/admin/users', 'Accounts — Filipino', null, 'fil'],
   ['grace.bautista@example.com', '/admin/logs', 'Logs — Filipino', null, 'fil'],
   [MODERATOR, '/admin/logs', 'No access — Filipino', null, 'fil'],
+  // 2026-10-16: the Privacy Notice dialog a first-time visitor meets, in both
+  // languages. `?privacy-ask` keeps the suite's own agreement off the page.
+  ['guest', '/?privacy-ask', 'Privacy Notice dialog', showPrivacyDialog],
+  ['guest', '/?privacy-ask', 'Privacy Notice dialog — Filipino', showPrivacyDialog, 'fil'],
 ]
 
-const browser = await puppeteer.launch({
+const browser = await launchAgreed(puppeteer, {
   executablePath: CHROME,
   headless: 'new',
   defaultViewport: { width: 1440, height: 950 },
